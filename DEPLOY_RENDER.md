@@ -18,7 +18,7 @@ https://render.com でアカウント作成し、GitHub と連携します。
 3. **Root Directory**: リポジトリ直下に newsite がある場合は `newsite` を指定
 4. **Runtime**: Python
 5. **Build Command**: `pip install -r requirements.txt`（既定のまま）
-6. **Start Command**: `uvicorn main:app --host 0.0.0.0 --port $PORT`
+6. **Start Command**: `bash start.sh`（または `uvicorn main:app --host 0.0.0.0 --port $PORT`）
 
 ### 3. 環境変数
 
