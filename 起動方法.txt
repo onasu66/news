@@ -1,0 +1,17 @@
+■ ニュースサイト（ホットニュース）の起動方法
+
+このフォルダ（newsite）でサーバーを起動してください。
+
+  cd d:\app\newsite
+  python main.py
+
+（port 8001 で起動します。8000 は漫画サイト用なので競合しません。）
+
+起動後はブラウザで ★ port 8001 を指定してください ★
+
+  http://localhost:8001/         … トップ
+  http://localhost:8001/debug    … デバッグ（このアプリで動いているか確認）
+  http://localhost:8001/confirm … 確認用（記事取り込み・削除）
+
+※ http://localhost:8000/ は別アプリ（漫画サイト）です。
+  8000 で開くと {"detail":"Not Found"} になります。ニュースは 8001 で開いてください。

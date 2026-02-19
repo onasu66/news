@@ -1,0 +1,101 @@
+{% extends "base.html" %}
+{% block title %}確認用 - ホットニュース{% endblock %}
+
+{% block content %}
+<div class="confirm-page">
+    <h1 class="confirm-title">確認用</h1>
+    <p class="confirm-desc">RSSの最新記事を1件取り込み、OpenAIの動作や記事表示を確認できます。直近の記事はここから削除できます。</p>
+
+    <div class="confirm-actions">
+        <button type="button" id="btn-import-one" class="btn-add-article">最新記事を1件取り込む</button>
+        <a href="/" class="confirm-back">← トップへ</a>
+    </div>
+
+    <section class="confirm-list-section">
+        <h2 class="confirm-list-title">直近の記事（{{ recent_articles|length }}件）</h2>
+        {% if recent_articles %}
+        <ul class="confirm-article-list" id="confirm-article-list">
+            {% for item in recent_articles %}
+            <li class="confirm-article-item" data-article-id="{{ item.id }}">
+                <a href="/article/{{ item.id }}" class="confirm-article-link">{{ item.title[:60] }}{% if item.title|length > 60 %}...{% endif %}</a>
+                <span class="confirm-article-meta">{{ item.source }} · {{ item.category }}</span>
+                <button type="button" class="btn-delete-article" data-article-id="{{ item.id }}" title="この記事を削除">削除</button>
+            </li>
+            {% endfor %}
+        </ul>
+        {% else %}
+        <p class="confirm-empty">記事がありません。「最新記事を1件取り込む」で取り込んでください。</p>
+        {% endif %}
+    </section>
+</div>
+
+<style>
+.confirm-page { max-width: 720px; margin: 0 auto; padding: 1.5rem 1rem; }
+.confirm-title { font-size: 1.5rem; margin-bottom: 0.5rem; }
+.confirm-desc { color: #555; margin-bottom: 1.5rem; font-size: 0.95rem; }
+.confirm-actions { display: flex; align-items: center; gap: 1rem; margin-bottom: 2rem; flex-wrap: wrap; }
+.confirm-back { color: var(--color-primary, #2563eb); text-decoration: none; font-size: 0.9rem; }
+.confirm-list-title { font-size: 1.1rem; margin-bottom: 0.75rem; }
+.confirm-article-list { list-style: none; padding: 0; margin: 0; }
+.confirm-article-item { display: flex; align-items: center; gap: 0.75rem; padding: 0.6rem 0; border-bottom: 1px solid #eee; flex-wrap: wrap; }
+.confirm-article-link { flex: 1 1 280px; font-weight: 500; color: #111; text-decoration: none; }
+.confirm-article-link:hover { text-decoration: underline; }
+.confirm-article-meta { font-size: 0.8rem; color: #666; }
+.btn-delete-article { padding: 0.25rem 0.6rem; font-size: 0.8rem; background: #dc2626; color: #fff; border: none; border-radius: 4px; cursor: pointer; }
+.btn-delete-article:hover { background: #b91c1c; }
+.btn-delete-article:disabled { opacity: 0.6; cursor: not-allowed; }
+.confirm-empty { color: #666; }
+</style>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function() {
+    // 最新記事を1件取り込む
+    var btnImport = document.getElementById('btn-import-one');
+    if (btnImport) {
+        btnImport.addEventListener('click', function() {
+            btnImport.disabled = true;
+            btnImport.textContent = '取り込み中...';
+            fetch('/api/article/force-add-one')
+                .then(function(r) { return r.json(); })
+                .then(function(data) {
+                    if (data.status === 'ok' && data.article_id) {
+                        window.location.href = '/?added=1';
+                        return;
+                    }
+                    btnImport.disabled = false;
+                    btnImport.textContent = '最新記事を1件取り込む';
+                    alert(data.message || '取り込みに失敗しました');
+                })
+                .catch(function() {
+                    btnImport.disabled = false;
+                    btnImport.textContent = '最新記事を1件取り込む';
+                    alert('取得に失敗しました');
+                });
+        });
+    }
+
+    // 削除ボタン
+    document.querySelectorAll('.btn-delete-article').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            var id = this.getAttribute('data-article-id');
+            if (!id || !confirm('この記事を削除しますか？')) return;
+            var row = this.closest('.confirm-article-item');
+            this.disabled = true;
+            this.textContent = '削除中...';
+            fetch('/api/admin/article/' + encodeURIComponent(id) + '/delete', { method: 'POST' })
+                .then(function(r) { return r.json(); })
+                .then(function(data) {
+                    if (data.status === 'ok' && row) row.remove();
+                    else alert(data.message || '削除に失敗しました');
+                })
+                .catch(function() {
+                    if (btn) { btn.disabled = false; btn.textContent = '削除'; }
+                    alert('削除に失敗しました');
+                });
+        });
+    });
+})();
+</script>
+{% endblock %}

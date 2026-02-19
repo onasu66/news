@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block title %}管理者ログイン - ホットニュース{% endblock %}
+{% block content %}
+<div class="admin-login-wrap">
+    <h1>管理者ログイン</h1>
+    {% if error %}
+    <p class="admin-error">{{ error }}</p>
+    {% endif %}
+    <form method="post" action="/admin/login" class="admin-form">
+        <label for="secret">管理者シークレット</label>
+        <input type="password" id="secret" name="secret" required autocomplete="current-password" placeholder="ADMIN_SECRET を入力">
+        <button type="submit">ログイン</button>
+    </form>
+    <p><a href="/">トップに戻る</a></p>
+</div>
+{% endblock %}

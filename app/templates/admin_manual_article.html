@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% block title %}手動で記事を追加 - 管理者{% endblock %}
+{% block content %}
+<div class="admin-manual-wrap">
+    <h1>手動で記事を追加</h1>
+    <p class="admin-desc">概要を入力すると、AIが同じ形式（理解ナビゲーター）で記事本文を生成し、サイトに掲載します。管理人だけが利用できます。</p>
+    {% if error %}
+    <p class="admin-error">{{ error }}</p>
+    {% endif %}
+    {% if success and article_id %}
+    <p class="admin-success">記事を作成しました。<a href="/article/{{ article_id }}">記事を表示</a></p>
+    {% endif %}
+    <form id="form-manual-article" class="admin-form">
+        <label for="title">タイトル <span class="required">必須</span></label>
+        <input type="text" id="title" name="title" required placeholder="例: 〇〇が〇〇を発表">
+        <label for="summary">概要 <span class="required">必須</span></label>
+        <textarea id="summary" name="summary" required rows="8" placeholder="記事の要点・経緯・背景などを自由に書いてください。AIがこの内容を元に「理解ナビゲーター」形式の記事本文を生成します。"></textarea>
+        <label for="link">元URL（任意）</label>
+        <input type="url" id="link" name="link" placeholder="https://...">
+        <label for="source">ソース名（任意）</label>
+        <input type="text" id="source" name="source" placeholder="編集部" value="編集部">
+        <button type="submit" id="btn-submit">記事を生成して追加</button>
+    </form>
+    <p><a href="/">トップに戻る</a> | <a href="/admin/logout">ログアウト</a></p>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+document.getElementById('form-manual-article').addEventListener('submit', function(e) {
+    e.preventDefault();
+    var btn = document.getElementById('btn-submit');
+    btn.disabled = true;
+    btn.textContent = '生成中...（数十秒かかります）';
+    var fd = new FormData(this);
+    var body = { title: fd.get('title'), summary: fd.get('summary'), link: fd.get('link') || '', source: fd.get('source') || '編集部' };
+    fetch('/api/admin/article/manual', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+        if (data.article_id) {
+            window.location.href = '/article/' + data.article_id;
+        } else {
+            btn.disabled = false;
+            btn.textContent = '記事を生成して追加';
+            alert(data.message || '作成に失敗しました');
+        }
+    })
+    .catch(function() {
+        btn.disabled = false;
+        btn.textContent = '記事を生成して追加';
+        alert('通信エラー');
+    });
+});
+</script>
+{% endblock %}

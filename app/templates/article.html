@@ -1,0 +1,205 @@
+{% extends "base.html" %}
+{% block title %}{{ article.title }} - ホットニュース{% endblock %}
+
+{% block content %}
+<article class="article-detail">
+    <header class="article-header">
+        <a href="/" class="back-link">← 一覧に戻る</a>
+        <div class="article-meta">
+            <span class="article-source">{{ article.source }}</span>
+            <span class="article-badge">理解ナビゲーター</span>
+        </div>
+        <h1 class="article-title">{{ article.title }}</h1>
+    </header>
+
+    <div class="article-hero">
+        <img src="{{ image_url }}" alt="{{ article.title }}" class="article-image">
+    </div>
+
+    <div class="article-content-wrapper">
+        <div class="article-main">
+            <div id="article-inline-content" class="article-inline-content" data-fallback="{{ article.summary|e }}">
+                <p class="loading">記事を読み込み中...</p>
+            </div>
+            <div class="article-actions">
+                <a href="{{ article.link }}" target="_blank" rel="noopener" class="read-original">
+                    元記事を読む →
+                </a>
+                <button type="button" id="btn-one-take" class="btn-one-take">記事を追加する（RSS最新1件を再生成）</button>
+            </div>
+        </div>
+    </div>
+
+    <section class="personas-section">
+        <h2 class="personas-title">5人のAIの意見 <span class="personas-hint">（クリックで表示）</span></h2>
+        <div class="personas-grid">
+            {% for p in personas %}
+            <div class="persona-card" data-persona-id="{{ p.id }}" data-article-id="{{ article.id }}">
+                <button type="button" class="persona-trigger" aria-expanded="false">
+                    <span class="persona-emoji">{{ p.emoji }}</span>
+                    <span class="persona-name">{{ p.name }}</span>
+                    <span class="persona-arrow">▶</span>
+                </button>
+                <div class="persona-content" hidden>
+                    <p class="persona-loading">読込中...</p>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </section>
+</article>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const articleId = '{{ article.id }}';
+
+    function escapeHtml(s) {
+        if (s == null) return '';
+        const div = document.createElement('div');
+        div.textContent = s;
+        return div.innerHTML;
+    }
+
+    // ミドルマン＋5人格を一括取得（キャッシュがあれば即返却）
+    fetch('/api/article/' + articleId + '/explanations')
+        .then(r => r.json())
+        .then(function(data) {
+            const el = document.getElementById('article-inline-content');
+            var navLabels = { facts: 'ニュース', background: '背景', impact: '影響範囲', prediction: '予測', caution: '注意' };
+            if (!data.blocks || data.blocks.length === 0) {
+                const fallback = el.dataset.fallback || '';
+                el.innerHTML = '<p>' + escapeHtml(fallback) + '</p>';
+            } else {
+                var isNavigator = data.blocks.length && data.blocks[0].type === 'navigator_section';
+                if (isNavigator) {
+                    var paras = [], asides = [];
+                    data.blocks.forEach(function(b) {
+                        if (b.type === 'navigator_section' && b.section && navLabels[b.section]) {
+                            var body = (b.content || '').trim() ? escapeHtml(b.content).replace(/\n/g, '<br>') : '';
+                            if (b.section === 'facts' && body) {
+                                paras = (b.content || '').trim().split(/\n\n+/).filter(function(p) { return p.trim(); });
+                            } else if (b.section !== 'facts' && body) {
+                                asides.push({ section: b.section, label: navLabels[b.section], body: body });
+                            }
+                        }
+                    });
+                    var factsHtml = '';
+                    if (paras.length) {
+                        factsHtml = '<div class="article-body">';
+                        paras.forEach(function(p, i) {
+                            factsHtml += '<p>' + escapeHtml(p).replace(/\n/g, '<br>') + '</p>';
+                            if (asides[i]) {
+                                var a = asides[i];
+                                factsHtml += '<div class="scroll-bubble-group"><div class="scroll-trigger" data-aside-index="' + i + '" aria-hidden="true"></div><div class="midorman-bubble-wrap" data-aside-index="' + i + '"><div class="midorman-aside midorman-aside-' + escapeHtml(a.section) + '"><span class="midorman-aside-label">' + escapeHtml(a.label) + '</span><div class="midorman-aside-body">' + a.body + '</div></div></div></div>';
+                            }
+                        });
+                        for (var j = paras.length; j < asides.length; j++) {
+                            var a = asides[j];
+                            factsHtml += '<div class="scroll-bubble-group"><div class="scroll-trigger" data-aside-index="' + j + '" aria-hidden="true"></div><div class="midorman-bubble-wrap" data-aside-index="' + j + '"><div class="midorman-aside midorman-aside-' + escapeHtml(a.section) + '"><span class="midorman-aside-label">' + escapeHtml(a.label) + '</span><div class="midorman-aside-body">' + a.body + '</div></div></div></div>';
+                        }
+                        factsHtml += '</div>';
+                    }
+                    el.innerHTML = '<div class="article-readflow">' + factsHtml + '</div>';
+                    if (asides.length) {
+                        var observer = new IntersectionObserver(function(entries) {
+                            entries.forEach(function(entry) {
+                                if (!entry.isIntersecting) return;
+                                var trigger = entry.target;
+                                var group = trigger.closest('.scroll-bubble-group');
+                                if (group) {
+                                    var wrap = group.querySelector('.midorman-bubble-wrap');
+                                    if (wrap) wrap.classList.add('is-visible');
+                                }
+                            });
+                        }, { rootMargin: '0px 0px -15% 0px', threshold: 0 });
+                        el.querySelectorAll('.scroll-trigger').forEach(function(t) { observer.observe(t); });
+                    }
+                } else {
+                    var html = '<div class="article-readflow article-with-bubbles">';
+                    data.blocks.forEach(function(b) {
+                        if (b.type === 'explain') {
+                            html += '<div class="midorman-bubble-above"><span class="midorman-bubble-avatar" aria-hidden="true">🎙️</span><div class="midorman-bubble-inner"><p class="midorman-bubble-text">' + escapeHtml(b.content).replace(/\n/g, '<br>') + '</p></div></div>';
+                        } else if (b.type === 'text') {
+                            var paras = (b.content || '').trim().split(/\n\n+/).filter(function(p) { return p.trim(); });
+                            if (paras.length) paras.forEach(function(p) {
+                                html += '<p class="article-text">' + escapeHtml(p).replace(/\n/g, '<br>') + '</p>';
+                            });
+                        }
+                    });
+                    html += '</div>';
+                    el.innerHTML = html;
+                    var bubbles = el.querySelectorAll('.midorman-bubble-above');
+                    bubbles.forEach(function(bub, i) {
+                        bub.style.animationDelay = (0.1 + i * 0.12) + 's';
+                    });
+                }
+            }
+
+            // 5人格のデータをカードにセット（クリックで表示するだけ）
+            const personas = data.personas || [];
+            document.querySelectorAll('.persona-card').forEach(function(card, i) {
+                const content = card.querySelector('.persona-content');
+                const opinion = personas[i] || '';
+                content.dataset.loaded = 'true';
+                content.innerHTML = opinion
+                    ? '<p class="persona-opinion">' + escapeHtml(opinion).replace(/\n/g, '<br>') + '</p>'
+                    : '<p class="persona-error">取得できませんでした</p>';
+            });
+        })
+        .catch(function() {
+            const el = document.getElementById('article-inline-content');
+            el.innerHTML = '<p>' + escapeHtml(el.dataset.fallback || '') + '</p>';
+            document.querySelectorAll('.persona-content').forEach(function(c) {
+                c.innerHTML = '<p class="persona-error">取得に失敗しました</p>';
+            });
+        });
+
+    // 5人格：クリックで表示/非表示（データは既に読み込み済み）
+    document.querySelectorAll('.persona-card').forEach(function(card) {
+        const btn = card.querySelector('.persona-trigger');
+        const content = card.querySelector('.persona-content');
+
+        btn.addEventListener('click', function() {
+            const isOpen = btn.getAttribute('aria-expanded') === 'true';
+            if (isOpen) {
+                content.hidden = true;
+                btn.setAttribute('aria-expanded', 'false');
+                btn.querySelector('.persona-arrow').textContent = '▶';
+            } else {
+                content.hidden = false;
+                btn.setAttribute('aria-expanded', 'true');
+                btn.querySelector('.persona-arrow').textContent = '▼';
+            }
+        });
+    });
+
+    // 記事を追加する：RSSの最新1件を読み込み、AIミドルマンが解説した記事を1件追加・再生成
+    const btnOneTake = document.getElementById('btn-one-take');
+    if (btnOneTake) {
+        btnOneTake.addEventListener('click', function() {
+            btnOneTake.disabled = true;
+            btnOneTake.textContent = '読み込み中...';
+            fetch('/api/article/force-add-one')
+                .then(function(r) { return r.json(); })
+                .then(function(data) {
+                    if (data.status === 'ok' && data.article_id) {
+                        window.location.href = '/?added=1';
+                    } else {
+                        btnOneTake.disabled = false;
+                        btnOneTake.textContent = '記事を追加する（RSS最新1件を再生成）';
+                        var errMsg = data.message || (typeof data.detail === 'string' ? data.detail : '') || (Array.isArray(data.detail) ? data.detail.map(function(d){ return d.msg || d.loc; }).filter(Boolean).join(', ') : '') || '取り込みに失敗しました';
+                        alert(errMsg);
+                    }
+                })
+                .catch(function() {
+                    btnOneTake.disabled = false;
+                    btnOneTake.textContent = '記事を追加する（RSS最新1件を再生成）';
+                    alert('取得に失敗しました');
+                });
+        });
+    }
+});
+</script>
+{% endblock %}
