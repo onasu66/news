@@ -40,6 +40,10 @@
     box-sizing: border-box;
 }
 
+html {
+    overflow-x: hidden;
+}
+
 body {
     margin: 0;
     font-family: var(--font-sans);
@@ -54,6 +58,48 @@ body {
         radial-gradient(circle at 80% 20%, rgba(99, 102, 241, 0.08) 0%, transparent 40%),
         radial-gradient(ellipse 120% 80% at 50% -20%, rgba(99, 102, 241, 0.07), transparent 50%),
         linear-gradient(180deg, var(--color-bg) 0%, #e0e7ff 100%);
+    background-attachment: fixed;
+    position: relative;
+}
+
+/* 控えめな背景アニメーション（信頼性を損なわない程度のゆるやかな変化） */
+@keyframes bg-orb-float {
+    0%, 100% { transform: translate(0, 0); }
+    50% { transform: translate(2%, -2%); }
+}
+
+body::before {
+    content: '';
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background-image:
+        radial-gradient(ellipse 60% 40% at 10% 90%, rgba(99, 102, 241, 0.04) 0%, transparent 50%),
+        radial-gradient(ellipse 50% 50% at 90% 10%, rgba(236, 72, 153, 0.03) 0%, transparent 50%),
+        radial-gradient(ellipse 40% 60% at 50% 50%, rgba(99, 102, 241, 0.02) 0%, transparent 45%);
+    pointer-events: none;
+    z-index: 0;
+}
+
+body::after {
+    content: '';
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: linear-gradient(135deg, transparent 0%, rgba(255,255,255,0.5) 100%);
+    pointer-events: none;
+    z-index: 0;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+    body::before {
+        animation: bg-orb-float 20s ease-in-out infinite;
+    }
+}
+
+/* メインコンテンツを背景レイヤーの上に */
+.main-content,
+.site-footer {
+    position: relative;
+    z-index: 1;
 }
 
 /* ========== ヘッダー ========== */
@@ -1185,7 +1231,9 @@ body {
     margin: 0;
 }
 
-/* ========== レスポンシブ ========== */
+/* ========== レスポンシブ（モバイルファースト対応） ========== */
+
+/* タブレット */
 @media (max-width: 900px) {
     .page-top {
         grid-template-columns: 1fr;
@@ -1200,20 +1248,36 @@ body {
 @media (max-width: 600px) {
     .header-inner {
         padding: 0.875rem 1rem;
+        flex-wrap: wrap;
+        gap: 0.5rem;
     }
 
     .logo {
         font-size: 1.2rem;
     }
 
-    .nav-main a {
-        padding: 0.4rem 0.75rem;
-        font-size: 0.85rem;
+    .logo-tagline {
+        font-size: 0.65rem;
     }
 
-    .btn-refresh {
-        padding: 0.45rem 0.9rem;
+    .nav-main {
+        flex-wrap: wrap;
+        justify-content: flex-end;
+        gap: 0.25rem;
+    }
+
+    .nav-main a {
+        padding: 0.5rem 0.85rem;
+        font-size: 0.85rem;
+        min-height: 44px;
+        display: inline-flex;
+        align-items: center;
+    }
+
+    .btn-login, .btn-refresh {
+        padding: 0.5rem 0.9rem;
         font-size: 0.8rem;
+        min-height: 44px;
     }
 
     .main-content {
@@ -1232,8 +1296,30 @@ body {
         font-size: 0.95rem;
     }
 
+    .btn-add-article {
+        width: 100%;
+        justify-content: center;
+        min-height: 48px;
+        padding: 0.75rem 1rem;
+    }
+
     .trends-sidebar {
         padding: 1.25rem;
+    }
+
+    .category-nav {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        flex-wrap: nowrap;
+        padding-bottom: 0.5rem;
+        scrollbar-width: thin;
+    }
+
+    .category-tab {
+        flex-shrink: 0;
+        min-height: 44px;
+        display: inline-flex;
+        align-items: center;
     }
 
     .news-grid {
@@ -1243,6 +1329,10 @@ body {
 
     .news-card-body {
         padding: 1rem 1.25rem;
+    }
+
+    .news-card {
+        min-height: 0;
     }
 
     .article-title {
@@ -1261,13 +1351,102 @@ body {
         padding: 1.25rem;
     }
 
+    .article-inline-content .midorman-bubble-above,
+    .article-inline-content .midorman-bubble-wrap .midorman-bubble-above {
+        padding-left: 2.2rem;
+    }
+
+    .midorman-bubble-avatar {
+        font-size: 1.35rem;
+    }
+
     .personas-grid {
         grid-template-columns: 1fr;
+        gap: 0.75rem;
+    }
+
+    .persona-trigger {
+        min-height: 48px;
+        padding: 0.75rem 1rem;
+        width: 100%;
+        justify-content: space-between;
+    }
+
+    .article-actions {
+        flex-direction: column;
+        gap: 0.75rem;
+    }
+
+    .read-original, .btn-one-take {
+        width: 100%;
+        justify-content: center;
+        min-height: 44px;
+    }
+
+    .pagination-list a,
+    .pagination-list .pagination-current {
+        min-height: 44px;
+        padding: 0.65rem 1rem;
     }
 
     .site-footer {
         margin-top: 2.5rem;
         padding: 1.5rem 1rem;
+    }
+
+    .footer-inner p {
+        font-size: 0.85rem;
+    }
+}
+
+/* 確認ページ・管理画面 */
+.confirm-page,
+.admin-login-wrap,
+.admin-manual-wrap {
+    padding-left: 1rem !important;
+    padding-right: 1rem !important;
+}
+
+@media (max-width: 480px) {
+    .header-inner {
+        padding: 0.75rem 0.875rem;
+    }
+
+    .main-content {
+        padding: 1rem 0.875rem;
+    }
+
+    .hero h1 {
+        font-size: 1.45rem;
+    }
+
+    .section-title {
+        font-size: 1.15rem;
+    }
+
+    .article-title {
+        font-size: 1.25rem;
+    }
+
+    .added-one-heading {
+        font-size: 1rem;
+    }
+
+    .confirm-article-item {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.5rem;
+    }
+
+    .confirm-article-link {
+        flex: none;
+        width: 100%;
+    }
+
+    .admin-login-wrap,
+    .admin-manual-wrap {
+        margin: 1rem auto;
+        padding: 1rem !important;
     }
 }
 
