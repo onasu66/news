@@ -3,7 +3,7 @@ import uuid
 from datetime import datetime
 
 from fastapi import APIRouter, Request, HTTPException, Form, Header
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, RedirectResponse, Response
 from fastapi.templating import Jinja2Templates
 from pathlib import Path
 
@@ -20,6 +20,35 @@ from app.services.ai_service import (
 
 router = APIRouter()
 templates = Jinja2Templates(directory=str(Path(__file__).resolve().parent.parent / "templates"))
+
+
+@router.get("/robots.txt")
+async def robots_txt(request: Request):
+    """検索エンジン向け robots.txt"""
+    site_url = _get_site_url(request)
+    body = f"User-agent: *\nAllow: /\nDisallow: /admin\nDisallow: /confirm\n\nSitemap: {site_url}/sitemap.xml\n"
+    return Response(content=body, media_type="text/plain; charset=utf-8")
+
+
+@router.get("/sitemap.xml")
+async def sitemap_xml(request: Request):
+    """SEO用 sitemap.xml"""
+    from app.services.article_cache import load_all
+    from app.services.explanation_cache import get_cached_article_ids
+
+    site_url = _get_site_url(request)
+    all_articles = load_all()
+    processed = get_cached_article_ids()
+    articles = [a for a in all_articles if a.id in processed]
+    lines = [
+        '<?xml version="1.0" encoding="UTF-8"?>',
+        '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">',
+        f"  <url><loc>{site_url}/</loc><changefreq>hourly</changefreq><priority>1.0</priority></url>",
+    ]
+    for a in articles[:5000]:
+        lines.append(f"  <url><loc>{site_url}/article/{a.id}</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>")
+    lines.append("</urlset>")
+    return Response(content="\n".join(lines), media_type="application/xml; charset=utf-8")
 
 
 @router.get("/", response_class=HTMLResponse)
@@ -43,6 +72,8 @@ async def index(request: Request, page: int = 1):
                 item.image_url = get_image_url(item.id, 400, 225)
             elif item.image_url and not item.image_url.startswith("http"):
                 item.image_url = get_image_url(item.image_url, 400, 225)
+    site_url = _get_site_url(request)
+    og_image = (added_one.image_url or "https://picsum.photos/1200/630") if added_one else "https://picsum.photos/1200/630"
     return templates.TemplateResponse(
         "index.html",
         {
@@ -51,6 +82,8 @@ async def index(request: Request, page: int = 1):
             "trends": trends,
             "pagination": pagination,
             "added_one": added_one,
+            "site_url": site_url,
+            "og_image": og_image,
         }
     )
 
@@ -74,15 +107,80 @@ async def confirm_page(request: Request):
     )
 
 
+def _get_site_url(request: Request) -> str:
+    """サイトの絶対URL（末尾スラッシュなし）"""
+    base = getattr(settings, "SITE_URL", "").strip().rstrip("/")
+    if base:
+        return base
+    return str(request.base_url).rstrip("/")
+
+
+def _blocks_to_html(blocks: list) -> str:
+    """ブロックをHTMLに変換（SSR用・XSS対策済み）"""
+    if not blocks:
+        return ""
+    import html
+    out = []
+    is_navigator = blocks and blocks[0].get("type") == "navigator_section"
+    nav_labels = {"facts": "ニュース", "background": "背景", "impact": "影響範囲", "prediction": "予測", "caution": "注意"}
+    if is_navigator:
+        paras, asides = [], []
+        for b in blocks:
+            if b.get("type") != "navigator_section" or not b.get("section"):
+                continue
+            body = (b.get("content") or "").strip()
+            body_safe = html.escape(body).replace("\n", "<br>") if body else ""
+            if b.get("section") == "facts" and body:
+                paras = body.split("\n\n")
+                paras = [p.strip() for p in paras if p.strip()]
+            elif b.get("section") != "facts" and body:
+                asides.append({"section": b["section"], "label": nav_labels.get(b["section"], b["section"]), "body": body_safe})
+        for i, p in enumerate(paras):
+            out.append(f'<p class="article-text">{html.escape(p).replace("\n", "<br>")}</p>')
+            if i < len(asides):
+                a = asides[i]
+                out.append(f'<div class="scroll-bubble-group"><div class="midorman-bubble-wrap is-visible"><div class="midorman-aside midorman-aside-{html.escape(a["section"])}"><span class="midorman-aside-label">{html.escape(a["label"])}</span><div class="midorman-aside-body">{a["body"]}</div></div></div></div>')
+        for j in range(len(paras), len(asides)):
+            a = asides[j]
+            out.append(f'<div class="scroll-bubble-group"><div class="midorman-bubble-wrap is-visible"><div class="midorman-aside midorman-aside-{html.escape(a["section"])}"><span class="midorman-aside-label">{html.escape(a["label"])}</span><div class="midorman-aside-body">{a["body"]}</div></div></div></div>')
+        return '<div class="article-readflow">' + "".join(out) + "</div>" if out else ""
+    # text/explain 形式
+    html_parts = ['<div class="article-readflow article-with-bubbles">']
+    for b in blocks:
+        if b.get("type") == "explain":
+            c = html.escape(b.get("content") or "").replace("\n", "<br>")
+            html_parts.append(f'<div class="midorman-bubble-above"><span class="midorman-bubble-avatar" aria-hidden="true">🎙️</span><div class="midorman-bubble-inner"><p class="midorman-bubble-text">{c}</p></div></div>')
+        elif b.get("type") == "text":
+            for p in (b.get("content") or "").strip().split("\n\n"):
+                p = p.strip()
+                if p:
+                    html_parts.append(f'<p class="article-text">{html.escape(p).replace("\n", "<br>")}</p>')
+    html_parts.append("</div>")
+    return "".join(html_parts)
+
+
 @router.get("/article/{article_id}", response_class=HTMLResponse)
 async def article_detail(request: Request, article_id: str):
-    """記事詳細（AI解説付き・5人格の意見）"""
+    """記事詳細（AI解説付き・5人格の意見）・SSRで本文を出力"""
+    from app.services.explanation_cache import get_cached
+
     item = NewsAggregator.get_article(article_id)
     if not item:
         raise HTTPException(status_code=404, detail="記事が見つかりません")
     image_url = item.image_url or get_image_url(item.id, 800, 450)
     if image_url and not image_url.startswith("http"):
         image_url = get_image_url(image_url, 800, 450)
+    site_url = _get_site_url(request)
+    article_url = f"{site_url}/article/{article_id}"
+    og_image = image_url if (image_url or "").startswith("http") else f"{site_url}{image_url}" if image_url else ""
+    if not og_image:
+        og_image = get_image_url(item.id, 1200, 630)
+    cached = get_cached(article_id)
+    blocks = _sanitize_blocks(cached["blocks"]) if cached and cached.get("blocks") else []
+    personas_data = cached.get("personas", []) if cached else []
+    body_html = _blocks_to_html(blocks) if blocks else ""
+    _text = (item.summary or item.title or "").replace("\n", " ").strip()
+    meta_desc = (_text[:157] + "...") if len(_text) > 160 else _text[:160]
     return templates.TemplateResponse(
         "article.html",
         {
@@ -90,6 +188,13 @@ async def article_detail(request: Request, article_id: str):
             "article": item,
             "image_url": image_url,
             "personas": PERSONAS,
+            "site_url": site_url,
+            "article_url": article_url,
+            "og_image": og_image,
+            "blocks": blocks,
+            "personas_data": personas_data,
+            "body_html": body_html,
+            "meta_description": meta_desc,
         }
     )
 

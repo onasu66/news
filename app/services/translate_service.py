@@ -67,3 +67,42 @@ def translate_and_rewrite(title: str, summary: str) -> tuple[str, str]:
         return new_title, new_summary
     except Exception:
         return title, summary
+
+
+def translate_article_body(body: str, max_chars: int = 25000) -> str:
+    """英語の記事本文を日本語に翻訳。APIキー未設定や失敗時は原文を返す"""
+    if not body or len(body) < 50:
+        return body
+    try:
+        from openai import OpenAI
+        from app.config import settings
+
+        if not settings.OPENAI_API_KEY:
+            return body
+
+        client = OpenAI(api_key=settings.OPENAI_API_KEY)
+        model = settings.OPENAI_MODEL
+        prompt = f"""以下の英語ニュース記事の本文を、日本語に翻訳してください。
+・意味を保ちながら自然な日本語に。著作権に配慮し、独自の表現で言い換えてください。
+・専門用語は必要に応じて補足説明を添える。
+・翻訳後の本文のみ返し、余計な説明は不要。
+
+【元の本文】
+{body[:max_chars]}
+"""
+        resp = create_with_retry(
+            client,
+            8000,
+            model=model,
+            messages=[
+                {"role": "system", "content": "ニュース記事を日本語に翻訳するアシスタント。自然な日本語で、余計な説明は出力しない。"},
+                {"role": "user", "content": prompt},
+            ],
+            temperature=0.3,
+        )
+        raw = resp.choices[0].message.content or ""
+        if raw and len(raw.strip()) > 100:
+            return raw.strip()
+    except Exception:
+        pass
+    return body

@@ -55,8 +55,8 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(
-    title="ホットニュース",
-    description="RSSと検索トレンドを集約したニュースサイト",
+    title="知リポAI",
+    description="最新ニュースをAIが解説する知的ニュースレポート",
     lifespan=lifespan,
 )
 
@@ -104,7 +104,7 @@ async def debug_page():
 <hr>
 <h2>アプリ</h2>
 <ul>
-<li>アプリ名: ホットニュース（newsite）</li>
+<li>アプリ名: 知リポAI（newsite）</li>
 <li>ベースディレクトリ: <code>{base_dir}</code></li>
 <li>データフォルダ: <code>{data_dir}</code></li>
 <li>articles.db 存在: {articles_db.exists()}</li>

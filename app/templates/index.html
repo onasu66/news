@@ -1,16 +1,28 @@
 {% extends "base.html" %}
-{% block title %}ホットニュース - 今話題のニュースをAIが解説{% endblock %}
+{% block title %}知リポAI - 最新ニュースをAIが知的に解説{% endblock %}
+{% block meta_extra %}
+    <meta property="og:type" content="website">
+    <meta property="og:title" content="知リポAI - 最新ニュースをAIが知的に解説">
+    <meta property="og:description" content="信頼メディアの最新ニュースを収集し、AIが背景・ポイントを解説。知的ニュースレポートで、ニュースがもっと分かる。">
+    <meta property="og:image" content="{{ og_image|default('https://picsum.photos/1200/630') }}">
+    <meta property="og:url" content="{{ site_url|default(request.url) }}/">
+    <meta property="og:site_name" content="知リポAI">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="知リポAI - 最新ニュースをAIが知的に解説">
+    <meta name="twitter:description" content="信頼メディアの最新ニュースを収集し、AIが背景・ポイントを解説。知的ニュースレポートで、ニュースがもっと分かる。">
+    <meta name="twitter:image" content="{{ og_image|default('https://picsum.photos/1200/630') }}">
+{% endblock %}
 
 {% block content %}
 <div class="page-top">
     <div class="hero">
-        <span class="hero-badge">AI解説付き</span>
-        <h1>今、話題のニュース</h1>
-        <p class="hero-desc">Yahoo!ニュース、NHK、Reutersなど信頼できるメディアから収集したニュースを、難しい部分はAIが分かりやすく解説。毎日更新で最新の話題をお届けします。</p>
-        <button type="button" id="btn-add-article" class="btn-add-article">記事を追加する</button>
+        <span class="hero-badge">AIが解説する知的リポート</span>
+        <h1>最新ニュースを、AIが解説</h1>
+        <p class="hero-desc">NHK・Reuters・読売など信頼メディアの最新ニュースを収集し、AIが背景やポイントを解説。ひとつのニュースを「知のリポート」として、分かりやすくお届けします。</p>
+        <button type="button" id="btn-add-article" class="btn-add-article">新しいリポートを追加</button>
 
         <div class="added-one-box">
-            <h2 class="added-one-title">追加した1件</h2>
+            <h2 class="added-one-title">注目の1本</h2>
             {% if added_one %}
             <article class="added-one-card">
                 <a href="/article/{{ added_one.id }}" class="added-one-link">
@@ -21,19 +33,19 @@
                         <span class="added-one-source">{{ added_one.source }}</span>
                         <h3 class="added-one-heading">{{ added_one.title }}</h3>
                         <p class="added-one-summary">{{ added_one.summary[:160] }}{% if added_one.summary|length > 160 %}...{% endif %}</p>
-                        <span class="added-one-badge">AI解説あり</span>
+                        <span class="added-one-badge">AI解説つき</span>
                     </div>
                 </a>
             </article>
             {% else %}
-            <p class="added-one-empty">まだ記事がありません。「記事を追加する」ボタンでRSSの最新1件を取り込めます。</p>
+            <p class="added-one-empty">まだリポートがありません。「新しいリポートを追加」で最新ニュースをAI解説付きで取り込みます。</p>
             {% endif %}
         </div>
     </div>
 
     <aside class="trends-sidebar">
         <h2 class="sidebar-title">
-            <span class="icon-fire">🔥</span> 急上昇ワード
+            <span class="icon-fire">📈</span> いま検索されている
         </h2>
         <ul class="trends-list">
             {% for t in trends %}
@@ -44,16 +56,16 @@
                 </a>
             </li>
             {% else %}
-            <li class="trends-empty">再読込で取得を試みます</li>
+            <li class="trends-empty">再読込でトレンドを取得します</li>
             {% endfor %}
         </ul>
     </aside>
 </div>
 
 <section class="news-section">
-    <p id="added-msg" class="added-msg" style="display:none; background:#d4edda; color:#155724; padding:0.5rem 1rem; border-radius:4px; margin-bottom:1rem;">記事を1件追加しました。上の「追加した1件」に表示されています。</p>
+    <p id="added-msg" class="added-msg" style="display:none; background:#d4edda; color:#155724; padding:0.5rem 1rem; border-radius:4px; margin-bottom:1rem;">新しいリポートを追加しました。上の「注目の1本」に表示されています。</p>
 
-    <h2 class="section-title">最新ニュース</h2>
+    <h2 class="section-title">AI解説つきニュースリポート</h2>
     <nav class="category-nav" aria-label="ジャンル一覧">
         {% for category, items in news_by_category %}
         <a href="#cat-{{ category }}" class="category-tab">{{ category }}</a>
@@ -78,7 +90,7 @@
                         <span class="news-source">{{ item.source }}</span>
                         <h3 class="news-title">{{ item.title }}</h3>
                         <p class="news-summary">{{ item.summary[:120] }}{% if item.summary|length > 120 %}...{% endif %}</p>
-                        <span class="news-badge">AI解説あり</span>
+                        <span class="news-badge">AI解説</span>
                     </div>
                 </a>
             </article>
@@ -119,9 +131,9 @@
     if (btnAdd) {
         btnAdd.addEventListener('click', function() {
             btnAdd.disabled = true;
-            btnAdd.textContent = 'RSSの最新1件を読み込み中...';
+            btnAdd.textContent = '最新ニュースを取得中...';
             var slowMsg = setTimeout(function() {
-                if (btnAdd.disabled) btnAdd.textContent = 'RSS取得・AI解説中（1〜2分かかることがあります）...';
+                if (btnAdd.disabled) btnAdd.textContent = 'AIが解説中（1〜2分かかることがあります）...';
             }, 8000);
             fetch('/api/article/force-add-one')
                 .then(function(r) { return r.json(); })
@@ -131,7 +143,7 @@
                         window.location.href = '/?added=1';
                     } else {
                         btnAdd.disabled = false;
-                        btnAdd.textContent = '記事を追加する';
+                        btnAdd.textContent = '新しいリポートを追加';
                         var errMsg = data.message || (typeof data.detail === 'string' ? data.detail : '') || (Array.isArray(data.detail) ? data.detail.map(function(d){ return d.msg || d.loc; }).filter(Boolean).join(', ') : '') || '取り込みに失敗しました';
                         alert(errMsg);
                     }
@@ -139,7 +151,7 @@
                 .catch(function() {
                     clearTimeout(slowMsg);
                     btnAdd.disabled = false;
-                    btnAdd.textContent = '記事を追加する';
+                    btnAdd.textContent = '新しいリポートを追加';
                     alert('取得に失敗しました');
                 });
         });
@@ -150,11 +162,11 @@
         setTimeout(function() {
             fetch('/api/status').then(function(r) { return r.json(); }).then(function(d) {
                 if (d.displayable === 0) {
-                    var msg = '記事がありません。';
+                    var msg = 'リポートがありません。';
                     if (!d.openai_key_set) {
                         msg += '.envにOPENAI_API_KEYを設定してください。';
                     } else {
-                        msg += ' 「記事を追加する」ボタンでRSSから取り込めます。';
+                        msg += ' 「新しいリポートを追加」で最新ニュースをAI解説付きで取り込めます。';
                     }
                     empty.innerHTML = msg;
                 }

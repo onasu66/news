@@ -24,6 +24,8 @@ class Settings:
     ADMIN_SECRET: str = os.getenv("ADMIN_SECRET", "").strip()
     # Firebase（未設定ならSQLiteを使用）。サービスアカウントJSON文字列 or 空
     FIREBASE_SERVICE_ACCOUNT_JSON: str = os.getenv("FIREBASE_SERVICE_ACCOUNT_JSON", "").strip()
+    # サイトの絶対URL（sitemap・OG・canonical用）。未設定時はリクエストの base_url を使用
+    SITE_URL: str = os.getenv("SITE_URL", "").rstrip("/")
 
 
 settings = Settings()

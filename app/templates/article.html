@@ -1,5 +1,19 @@
 {% extends "base.html" %}
-{% block title %}{{ article.title }} - ホットニュース{% endblock %}
+{% block title %}{{ article.title }} - 知リポAI{% endblock %}
+{% block meta_description %}{{ meta_description|default(article.summary[:160] if article.summary else article.title)|e }}{% endblock %}
+{% block meta_extra %}
+    <link rel="canonical" href="{{ article_url }}">
+    <meta property="og:type" content="article">
+    <meta property="og:title" content="{{ article.title }} - 知リポAI">
+    <meta property="og:description" content="{{ meta_description|e }}">
+    <meta property="og:image" content="{{ og_image|default(image_url) }}">
+    <meta property="og:url" content="{{ article_url }}">
+    <meta property="og:site_name" content="知リポAI">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="{{ article.title }} - 知リポAI">
+    <meta name="twitter:description" content="{{ meta_description|e }}">
+    <meta name="twitter:image" content="{{ og_image|default(image_url) }}">
+{% endblock %}
 
 {% block content %}
 <article class="article-detail">
@@ -7,7 +21,7 @@
         <a href="/" class="back-link">← 一覧に戻る</a>
         <div class="article-meta">
             <span class="article-source">{{ article.source }}</span>
-            <span class="article-badge">理解ナビゲーター</span>
+            <span class="article-badge">AI解説つきリポート</span>
         </div>
         <h1 class="article-title">{{ article.title }}</h1>
     </header>
@@ -19,19 +33,23 @@
     <div class="article-content-wrapper">
         <div class="article-main">
             <div id="article-inline-content" class="article-inline-content" data-fallback="{{ article.summary|e }}">
-                <p class="loading">記事を読み込み中...</p>
+                {% if body_html %}
+                {{ body_html|safe }}
+                {% else %}
+                <p class="article-text">{{ article.summary|default('')|e }}</p>
+                {% endif %}
             </div>
             <div class="article-actions">
                 <a href="{{ article.link }}" target="_blank" rel="noopener" class="read-original">
-                    元記事を読む →
+                    出典を読む →
                 </a>
-                <button type="button" id="btn-one-take" class="btn-one-take">記事を追加する（RSS最新1件を再生成）</button>
+                <button type="button" id="btn-one-take" class="btn-one-take">新しいリポートを1本追加</button>
             </div>
         </div>
     </div>
 
     <section class="personas-section">
-        <h2 class="personas-title">5人のAIの意見 <span class="personas-hint">（クリックで表示）</span></h2>
+        <h2 class="personas-title">AIの多角的な視点 <span class="personas-hint">（クリックで表示）</span></h2>
         <div class="personas-grid">
             {% for p in personas %}
             <div class="persona-card" data-persona-id="{{ p.id }}" data-article-id="{{ article.id }}">
@@ -54,6 +72,7 @@
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     const articleId = '{{ article.id }}';
+    const ssrPersonas = {{ personas_data|tojson|safe }};
 
     function escapeHtml(s) {
         if (s == null) return '';
@@ -62,7 +81,17 @@ document.addEventListener('DOMContentLoaded', function() {
         return div.innerHTML;
     }
 
-    // ミドルマン＋5人格を一括取得（キャッシュがあれば即返却）
+    var hasSsr = document.getElementById('article-inline-content').querySelector('.article-text, .article-readflow') && ssrPersonas && ssrPersonas.length > 0;
+    if (hasSsr) {
+        document.querySelectorAll('.persona-card').forEach(function(card, i) {
+            var content = card.querySelector('.persona-content');
+            var opinion = ssrPersonas[i] || '';
+            content.dataset.loaded = 'true';
+            content.innerHTML = opinion
+                ? '<p class="persona-opinion">' + escapeHtml(opinion).replace(/\n/g, '<br>') + '</p>'
+                : '<p class="persona-error">取得できませんでした</p>';
+        });
+    } else {
     fetch('/api/article/' + articleId + '/explanations')
         .then(r => r.json())
         .then(function(data) {
@@ -155,6 +184,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 c.innerHTML = '<p class="persona-error">取得に失敗しました</p>';
             });
         });
+    }
 
     // 5人格：クリックで表示/非表示（データは既に読み込み済み）
     document.querySelectorAll('.persona-card').forEach(function(card) {
@@ -188,14 +218,14 @@ document.addEventListener('DOMContentLoaded', function() {
                         window.location.href = '/?added=1';
                     } else {
                         btnOneTake.disabled = false;
-                        btnOneTake.textContent = '記事を追加する（RSS最新1件を再生成）';
+                        btnOneTake.textContent = '新しいリポートを1本追加';
                         var errMsg = data.message || (typeof data.detail === 'string' ? data.detail : '') || (Array.isArray(data.detail) ? data.detail.map(function(d){ return d.msg || d.loc; }).filter(Boolean).join(', ') : '') || '取り込みに失敗しました';
                         alert(errMsg);
                     }
                 })
                 .catch(function() {
                     btnOneTake.disabled = false;
-                    btnOneTake.textContent = '記事を追加する（RSS最新1件を再生成）';
+                    btnOneTake.textContent = '新しいリポートを1本追加';
                     alert('取得に失敗しました');
                 });
         });

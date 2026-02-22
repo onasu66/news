@@ -30,7 +30,7 @@ def process_rss_to_site_article(item: NewsItem, force: bool = False) -> bool:
     if not force and get_cached(item.id):
         return False  # 既にAI処理済み（force でなければスキップ）
 
-    # 海外記事は日本語に
+    # 海外記事はタイトル・要約を日本語に
     if is_foreign_article(item.source, item.title, item.summary):
         title_ja, summary_ja = translate_and_rewrite(item.title, item.summary)
         item = NewsItem(
@@ -48,6 +48,10 @@ def process_rss_to_site_article(item: NewsItem, force: bool = False) -> bool:
     body = fetch_article_body(item.link)
     if body:
         body_clean = sanitize_display_text(body)[:40000]
+        # 英語本文は日本語に翻訳してから反映（約3分で読める分量になるようAIで調整）
+        if is_foreign_article(item.source, item.title, body_clean):
+            from app.services.translate_service import translate_article_body
+            body_clean = translate_article_body(body_clean)
         content = sanitize_display_text(f"{item.title}\n\n{item.summary}\n\n{body_clean}")
     else:
         content = sanitize_display_text(f"{item.title}\n\n{item.summary}")

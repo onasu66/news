@@ -3,8 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="ホットニュース - 今話題のニュースをAIが分かりやすく解説。複数の信頼できるメディアから収集した記事を、難解な部分に解説を加えてお届けします。">
-    <title>{% block title %}ホットニュース{% endblock %}</title>
+    <meta name="description" content="{% block meta_description %}知リポAI - 最新ニュースをAIが知的に解説。信頼メディアから収集し、背景・ポイントを解説する知的ニュースレポートです。{% endblock %}">
+    <title>{% block title %}知リポAI{% endblock %}</title>
+    {% block meta_extra %}{% endblock %}
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -13,12 +14,15 @@
 <body>
     <header class="site-header">
         <div class="header-inner">
-            <a href="/" class="logo">ホットニュース</a>
+            <a href="/" class="logo-wrap">
+                <span class="logo"><span class="logo-icon">📰</span>知リポAI</span>
+                <span class="logo-tagline">AIが解説する知的ニュース</span>
+            </a>
             <nav class="nav-main">
                 <a href="/">トップ</a>
                 <a href="/confirm">確認用</a>
                 <a href="/admin/login" class="btn-login" title="管理者ログイン">ログイン</a>
-                <button type="button" class="btn-refresh" id="btn-refresh" title="最新ニュースを読み込む">再読込</button>
+                <button type="button" class="btn-refresh" id="btn-refresh" title="最新のリポートを読み込む">再読込</button>
             </nav>
         </div>
     </header>
@@ -29,7 +33,7 @@
 
     <footer class="site-footer">
         <div class="footer-inner">
-            <p>信頼できるメディアのRSSフィードと検索トレンドから収集 | AI解説で分かりやすくお届け</p>
+            <p>知リポAI — 最新ニュースをAIが解説する、知的ニュースレポート</p>
         </div>
     </footer>
 

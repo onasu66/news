@@ -26,8 +26,9 @@ https://render.com でアカウント作成し、GitHub と連携します。
 
 | 変数名 | 必須 | 説明 |
 |--------|------|------|
-| `OPENAI_API_KEY` | ○ | OpenAI API キー（AI解説に必要） |
+| `OPENAI_API_KEY` | ○ | OpenAI API キー（AI解説に必要）。未設定だと「APIキーが設定されていません」と表示される |
 | `FIREBASE_SERVICE_ACCOUNT_JSON` | ○* | Firebase サービスアカウント JSON 文字列（記事・解説の永続化） |
+| `SITE_URL` | △ | サイトの絶対URL（例: `https://xxx.onrender.com`）。sitemap・OG・canonical用。未設定時はリクエストから自動取得 |
 | `ADMIN_SECRET` | △ | 管理画面ログイン用。未設定なら管理機能は無効 |
 | `NEWS_REFRESH_INTERVAL` | - | ニュース更新間隔（分）。既定: 240 |
 | `FULLTEXT_RSS_BASE_URL` | - | FiveFilters Full-Text RSS の URL（任意） |
