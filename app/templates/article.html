@@ -81,6 +81,24 @@ document.addEventListener('DOMContentLoaded', function() {
         return div.innerHTML;
     }
 
+    function initScrollBubbles(container) {
+        if (!container) return;
+        var triggers = container.querySelectorAll('.scroll-trigger');
+        if (triggers.length === 0) return;
+        var observer = new IntersectionObserver(function(entries) {
+            entries.forEach(function(entry) {
+                if (!entry.isIntersecting) return;
+                var trigger = entry.target;
+                var group = trigger.closest('.scroll-bubble-group');
+                if (group) {
+                    var wrap = group.querySelector('.midorman-bubble-wrap');
+                    if (wrap) wrap.classList.add('is-visible');
+                }
+            });
+        }, { rootMargin: '0px 0px -15% 0px', threshold: 0 });
+        triggers.forEach(function(t) { observer.observe(t); });
+    }
+
     var hasSsr = document.getElementById('article-inline-content').querySelector('.article-text, .article-readflow') && ssrPersonas && ssrPersonas.length > 0;
     if (hasSsr) {
         document.querySelectorAll('.persona-card').forEach(function(card, i) {
@@ -131,25 +149,13 @@ document.addEventListener('DOMContentLoaded', function() {
                         factsHtml += '</div>';
                     }
                     el.innerHTML = '<div class="article-readflow">' + factsHtml + '</div>';
-                    if (asides.length) {
-                        var observer = new IntersectionObserver(function(entries) {
-                            entries.forEach(function(entry) {
-                                if (!entry.isIntersecting) return;
-                                var trigger = entry.target;
-                                var group = trigger.closest('.scroll-bubble-group');
-                                if (group) {
-                                    var wrap = group.querySelector('.midorman-bubble-wrap');
-                                    if (wrap) wrap.classList.add('is-visible');
-                                }
-                            });
-                        }, { rootMargin: '0px 0px -15% 0px', threshold: 0 });
-                        el.querySelectorAll('.scroll-trigger').forEach(function(t) { observer.observe(t); });
-                    }
+                    if (asides.length) initScrollBubbles(el);
                 } else {
                     var html = '<div class="article-readflow article-with-bubbles">';
                     data.blocks.forEach(function(b) {
                         if (b.type === 'explain') {
-                            html += '<div class="midorman-bubble-above"><span class="midorman-bubble-avatar" aria-hidden="true">🎙️</span><div class="midorman-bubble-inner"><p class="midorman-bubble-text">' + escapeHtml(b.content).replace(/\n/g, '<br>') + '</p></div></div>';
+                            var c = escapeHtml(b.content || '').replace(/\n/g, '<br>');
+                            html += '<div class="scroll-bubble-group"><div class="scroll-trigger" aria-hidden="true"></div><div class="midorman-bubble-wrap"><div class="midorman-bubble-above"><span class="midorman-bubble-avatar" aria-hidden="true">🎙️</span><div class="midorman-bubble-inner"><p class="midorman-bubble-text">' + c + '</p></div></div></div></div>';
                         } else if (b.type === 'text') {
                             var paras = (b.content || '').trim().split(/\n\n+/).filter(function(p) { return p.trim(); });
                             if (paras.length) paras.forEach(function(p) {
@@ -159,10 +165,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     });
                     html += '</div>';
                     el.innerHTML = html;
-                    var bubbles = el.querySelectorAll('.midorman-bubble-above');
-                    bubbles.forEach(function(bub, i) {
-                        bub.style.animationDelay = (0.1 + i * 0.12) + 's';
-                    });
+                    initScrollBubbles(el);
                 }
             }
 
@@ -185,6 +188,10 @@ document.addEventListener('DOMContentLoaded', function() {
             });
         });
     }
+
+    // スクロール連動吹き出し（SSR時は初期HTMLに既にある）
+    var contentEl = document.getElementById('article-inline-content');
+    if (contentEl) initScrollBubbles(contentEl);
 
     // 5人格：クリックで表示/非表示（データは既に読み込み済み）
     document.querySelectorAll('.persona-card').forEach(function(card) {

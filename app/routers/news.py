@@ -144,12 +144,13 @@ def _blocks_to_html(blocks: list) -> str:
             a = asides[j]
             out.append(f'<div class="scroll-bubble-group"><div class="midorman-bubble-wrap is-visible"><div class="midorman-aside midorman-aside-{html.escape(a["section"])}"><span class="midorman-aside-label">{html.escape(a["label"])}</span><div class="midorman-aside-body">{a["body"]}</div></div></div></div>')
         return '<div class="article-readflow">' + "".join(out) + "</div>" if out else ""
-    # text/explain 形式
+    # text/explain 形式（スクロール連動で吹き出し表示）
     html_parts = ['<div class="article-readflow article-with-bubbles">']
     for b in blocks:
         if b.get("type") == "explain":
             c = html.escape(b.get("content") or "").replace("\n", "<br>")
-            html_parts.append(f'<div class="midorman-bubble-above"><span class="midorman-bubble-avatar" aria-hidden="true">🎙️</span><div class="midorman-bubble-inner"><p class="midorman-bubble-text">{c}</p></div></div>')
+            bubble = f'<div class="midorman-bubble-above"><span class="midorman-bubble-avatar" aria-hidden="true">🎙️</span><div class="midorman-bubble-inner"><p class="midorman-bubble-text">{c}</p></div></div>'
+            html_parts.append(f'<div class="scroll-bubble-group"><div class="scroll-trigger" aria-hidden="true"></div><div class="midorman-bubble-wrap">{bubble}</div></div>')
         elif b.get("type") == "text":
             for p in (b.get("content") or "").strip().split("\n\n"):
                 p = p.strip()
