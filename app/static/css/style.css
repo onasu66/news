@@ -1325,15 +1325,41 @@ body::after {
     }
 }
 
+/* ========== スマホ専用デザイン（見やすさ最優先） ========== */
 @media (max-width: 600px) {
+    html {
+        font-size: 16px;
+    }
+
+    body {
+        -webkit-tap-highlight-color: rgba(99, 102, 241, 0.1);
+    }
+
+    /* セーフエリア（ノッチ・ホームインジケータ対応） */
+    .main-content {
+        padding: 1.25rem 1rem;
+        padding-bottom: max(1.5rem, env(safe-area-inset-bottom));
+    }
+
+    .site-footer {
+        padding-bottom: max(1.5rem, env(safe-area-inset-bottom));
+    }
+
+    /* ヘッダー：シンプルでタップしやすく（ノッチ対応） */
+    .site-header {
+        padding-top: env(safe-area-inset-top);
+    }
+
     .header-inner {
-        padding: 0.875rem 1rem;
+        padding: 0.75rem 1rem;
         flex-wrap: wrap;
         gap: 0.5rem;
     }
 
     .logo {
-        font-size: 1.2rem;
+        font-size: 1.25rem;
+        flex: 1;
+        min-width: 0;
     }
 
     .logo-tagline {
@@ -1343,113 +1369,255 @@ body::after {
     .nav-main {
         flex-wrap: wrap;
         justify-content: flex-end;
-        gap: 0.25rem;
+        gap: 0.35rem;
     }
 
     .nav-main a {
-        padding: 0.5rem 0.85rem;
-        font-size: 0.85rem;
+        padding: 0.6rem 1rem;
+        font-size: 0.9rem;
         min-height: 44px;
+        min-width: 44px;
         display: inline-flex;
         align-items: center;
+        justify-content: center;
+        border-radius: 10px;
+        -webkit-tap-highlight-color: transparent;
     }
 
     .btn-login, .btn-refresh {
-        padding: 0.5rem 0.9rem;
-        font-size: 0.8rem;
+        padding: 0.6rem 1rem;
+        font-size: 0.85rem;
         min-height: 44px;
+        min-width: 44px;
     }
 
-    .main-content {
-        padding: 1.25rem 1rem;
-    }
-
+    /* ヒーロー：スマホ向けにコンパクトかつ印象的に */
     .hero {
-        padding: 1.25rem 0;
+        padding: 1.5rem 0;
+        border-left-width: 4px;
     }
 
     .hero h1 {
-        font-size: 1.6rem;
+        font-size: 1.7rem;
+        line-height: 1.35;
+        margin-bottom: 0.6rem;
     }
 
     .hero-desc {
-        font-size: 0.95rem;
+        font-size: 1rem;
+        line-height: 1.75;
+        color: var(--color-text-secondary);
     }
 
     .btn-add-article {
         width: 100%;
         justify-content: center;
-        min-height: 48px;
-        padding: 0.75rem 1rem;
+        min-height: 52px;
+        padding: 0.85rem 1.25rem;
+        font-size: 1rem;
+        border-radius: 14px;
+        margin-top: 1rem;
     }
 
+    /* 注目1本：カードを読みやすく */
+    .added-one-box {
+        padding: 1.25rem;
+        border-radius: 16px;
+        margin-top: 1.25rem;
+    }
+
+    .added-one-title {
+        font-size: 1rem;
+        margin-bottom: 0.75rem;
+    }
+
+    .added-one-card {
+        border-radius: 14px;
+    }
+
+    .added-one-body {
+        padding: 1rem 1rem;
+    }
+
+    .added-one-heading {
+        font-size: 1.1rem;
+        line-height: 1.5;
+    }
+
+    .added-one-summary {
+        font-size: 0.95rem;
+        line-height: 1.6;
+    }
+
+    /* トレンド：タップしやすい行 */
     .trends-sidebar {
         padding: 1.25rem;
+        border-radius: 16px;
+        margin-bottom: 1.5rem;
     }
 
+    .trends-list a {
+        padding: 0.75rem 0;
+        font-size: 0.95rem;
+        min-height: 48px;
+        display: flex;
+        align-items: center;
+    }
+
+    /* ジャンルタブ：横スクロール・タップしやすく */
     .category-nav {
         overflow-x: auto;
         -webkit-overflow-scrolling: touch;
         flex-wrap: nowrap;
-        padding-bottom: 0.5rem;
-        scrollbar-width: thin;
+        padding: 0.75rem 0 1rem;
+        margin: 0 -0.5rem 1.5rem;
+        gap: 0.5rem;
+        scrollbar-width: none;
+    }
+
+    .category-nav::-webkit-scrollbar {
+        display: none;
     }
 
     .category-tab {
         flex-shrink: 0;
-        min-height: 44px;
+        min-height: 48px;
+        padding: 0.65rem 1.25rem;
         display: inline-flex;
         align-items: center;
+        font-size: 0.95rem;
+        border-radius: 12px;
+    }
+
+    /* ニュースカード：タップ領域を広く・読みやすく */
+    .section-title {
+        font-size: 1.2rem;
+        margin-bottom: 1rem;
     }
 
     .news-grid {
         grid-template-columns: 1fr;
-        gap: 1.25rem;
-    }
-
-    .news-card-body {
-        padding: 1rem 1.25rem;
+        gap: 1rem;
     }
 
     .news-card {
         min-height: 0;
+        border-radius: 14px;
+        overflow: hidden;
+    }
+
+    .news-card-link {
+        display: block;
+    }
+
+    .news-card-body {
+        padding: 1.15rem 1.25rem;
+    }
+
+    .news-title {
+        font-size: 1.05rem;
+        line-height: 1.5;
+        -webkit-line-clamp: 2;
+    }
+
+    .news-summary {
+        font-size: 0.95rem;
+        line-height: 1.6;
+    }
+
+    .category-block {
+        margin-bottom: 2rem;
+    }
+
+    .category-heading {
+        font-size: 1.1rem;
+        padding-bottom: 0.6rem;
+        margin-bottom: 0.75rem;
+    }
+
+    /* 記事詳細：読了性を最優先 */
+    .article-detail {
+        max-width: 100%;
     }
 
     .article-title {
-        font-size: 1.4rem;
+        font-size: 1.45rem;
+        line-height: 1.4;
     }
 
     .article-hero {
-        margin-bottom: 1.5rem;
+        margin-bottom: 1.25rem;
+        border-radius: 14px;
     }
 
     .article-image {
-        max-height: 220px;
+        max-height: 200px;
     }
 
     .article-main {
-        padding: 1.25rem;
+        padding: 1.5rem 1.25rem;
+        border-radius: 14px;
+    }
+
+    .article-with-bubbles .article-text,
+    .article-text {
+        font-size: 1.05rem;
+        line-height: 1.95;
     }
 
     .article-with-bubbles .scroll-bubble-group {
         margin-left: 0;
         margin-right: 0;
         max-width: 100%;
+        margin-top: 1rem;
+        margin-bottom: 1rem;
     }
 
     .article-inline-content .midorman-bubble-above,
     .article-inline-content .midorman-bubble-wrap .midorman-bubble-above {
-        padding-left: 2.2rem;
+        padding-left: 2.5rem;
+    }
+
+    .article-with-bubbles .scroll-bubble-group .midorman-bubble-above .midorman-bubble-inner {
+        padding: 0.9rem 1rem 1rem;
+        font-size: 0.95rem;
+        line-height: 1.7;
     }
 
     .article-with-bubbles .scroll-bubble-group .midorman-bubble-above .midorman-bubble-avatar {
         right: 0.5rem;
         top: 0.4rem;
-        font-size: 1.1rem;
+        font-size: 1.2rem;
     }
 
     .midorman-bubble-avatar {
         font-size: 1.35rem;
+    }
+
+    /* 記事アクション：親指で届く大きなボタン */
+    .article-actions {
+        flex-direction: column;
+        gap: 0.75rem;
+        margin-top: 1.5rem;
+    }
+
+    .read-original, .btn-one-take {
+        width: 100%;
+        justify-content: center;
+        min-height: 52px;
+        padding: 0.85rem 1.25rem;
+        font-size: 1rem;
+        border-radius: 12px;
+    }
+
+    /* パーソナカード：見やすく開きやすく */
+    .personas-section {
+        margin-top: 2rem;
+    }
+
+    .personas-title {
+        font-size: 1.05rem;
+        margin-bottom: 1rem;
     }
 
     .personas-grid {
@@ -1458,27 +1626,28 @@ body::after {
     }
 
     .persona-trigger {
-        min-height: 48px;
-        padding: 0.75rem 1rem;
+        min-height: 52px;
+        padding: 0.9rem 1rem;
         width: 100%;
         justify-content: space-between;
+        border-radius: 12px;
+        font-size: 1rem;
     }
 
-    .article-actions {
-        flex-direction: column;
-        gap: 0.75rem;
-    }
-
-    .read-original, .btn-one-take {
-        width: 100%;
-        justify-content: center;
-        min-height: 44px;
+    /* ページネーション */
+    .pagination {
+        margin-top: 2rem;
+        padding-top: 1.5rem;
     }
 
     .pagination-list a,
     .pagination-list .pagination-current {
-        min-height: 44px;
-        padding: 0.65rem 1rem;
+        min-height: 48px;
+        min-width: 48px;
+        padding: 0.75rem 1.25rem;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
     }
 
     .site-footer {
@@ -1487,7 +1656,7 @@ body::after {
     }
 
     .footer-inner p {
-        font-size: 0.85rem;
+        font-size: 0.9rem;
     }
 }
 
@@ -1499,29 +1668,51 @@ body::after {
     padding-right: 1rem !important;
 }
 
+/* 小型スマホ（375px以下）向けの微調整 */
 @media (max-width: 480px) {
     .header-inner {
-        padding: 0.75rem 0.875rem;
+        padding: 0.65rem 0.875rem;
     }
 
     .main-content {
         padding: 1rem 0.875rem;
+        padding-bottom: max(1.25rem, env(safe-area-inset-bottom));
     }
 
-    .hero h1 {
-        font-size: 1.45rem;
-    }
-
-    .section-title {
+    .logo {
         font-size: 1.15rem;
     }
 
+    .hero h1 {
+        font-size: 1.5rem;
+    }
+
+    .hero-desc {
+        font-size: 0.95rem;
+    }
+
+    .section-title {
+        font-size: 1.1rem;
+    }
+
     .article-title {
-        font-size: 1.25rem;
+        font-size: 1.3rem;
+    }
+
+    .article-main {
+        padding: 1.25rem 1rem;
     }
 
     .added-one-heading {
-        font-size: 1rem;
+        font-size: 1.05rem;
+    }
+
+    .added-one-box {
+        padding: 1rem;
+    }
+
+    .news-card-body {
+        padding: 1rem 1.15rem;
     }
 
     .confirm-article-item {
