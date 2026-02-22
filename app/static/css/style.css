@@ -54,18 +54,25 @@ body {
     -moz-osx-font-smoothing: grayscale;
     min-height: 100vh;
     background-image:
-        radial-gradient(circle at 20% 80%, rgba(236, 72, 153, 0.06) 0%, transparent 40%),
-        radial-gradient(circle at 80% 20%, rgba(99, 102, 241, 0.08) 0%, transparent 40%),
-        radial-gradient(ellipse 120% 80% at 50% -20%, rgba(99, 102, 241, 0.07), transparent 50%),
-        linear-gradient(180deg, var(--color-bg) 0%, #e0e7ff 100%);
+        radial-gradient(ellipse 80% 50% at 50% 0%, rgba(99, 102, 241, 0.12) 0%, transparent 55%),
+        radial-gradient(circle at 20% 85%, rgba(236, 72, 153, 0.08) 0%, transparent 45%),
+        radial-gradient(circle at 85% 25%, rgba(99, 102, 241, 0.1) 0%, transparent 40%),
+        radial-gradient(ellipse 120% 80% at 50% -20%, rgba(99, 102, 241, 0.08), transparent 50%),
+        linear-gradient(180deg, #f8fafc 0%, #eef2ff 40%, #fce7f3 100%);
     background-attachment: fixed;
     position: relative;
 }
 
-/* 控えめな背景アニメーション（信頼性を損なわない程度のゆるやかな変化） */
+/* 背景アニメーション：ゆるやかなオーブの動き */
 @keyframes bg-orb-float {
-    0%, 100% { transform: translate(0, 0); }
-    50% { transform: translate(2%, -2%); }
+    0%, 100% { transform: translate(0, 0) scale(1); opacity: 1; }
+    33% { transform: translate(2%, -1.5%) scale(1.02); opacity: 0.98; }
+    66% { transform: translate(-1%, 1%) scale(0.98); opacity: 1; }
+}
+
+@keyframes bg-shimmer {
+    0%, 100% { background-position: 100% 0; }
+    50% { background-position: 0% 0; }
 }
 
 body::before {
@@ -73,9 +80,9 @@ body::before {
     position: fixed;
     top: 0; left: 0; right: 0; bottom: 0;
     background-image:
-        radial-gradient(ellipse 60% 40% at 10% 90%, rgba(99, 102, 241, 0.04) 0%, transparent 50%),
-        radial-gradient(ellipse 50% 50% at 90% 10%, rgba(236, 72, 153, 0.03) 0%, transparent 50%),
-        radial-gradient(ellipse 40% 60% at 50% 50%, rgba(99, 102, 241, 0.02) 0%, transparent 45%);
+        radial-gradient(ellipse 60% 40% at 10% 90%, rgba(99, 102, 241, 0.06) 0%, transparent 50%),
+        radial-gradient(ellipse 50% 50% at 90% 15%, rgba(236, 72, 153, 0.05) 0%, transparent 50%),
+        radial-gradient(ellipse 45% 55% at 50% 50%, rgba(99, 102, 241, 0.04) 0%, transparent 48%);
     pointer-events: none;
     z-index: 0;
 }
@@ -84,14 +91,19 @@ body::after {
     content: '';
     position: fixed;
     top: 0; left: 0; right: 0; bottom: 0;
-    background: linear-gradient(135deg, transparent 0%, rgba(255,255,255,0.5) 100%);
+    background: linear-gradient(120deg, transparent 30%, rgba(255,255,255,0.4) 50%, transparent 70%);
+    background-size: 200% 100%;
+    background-position: 100% 0;
     pointer-events: none;
     z-index: 0;
 }
 
 @media (prefers-reduced-motion: no-preference) {
     body::before {
-        animation: bg-orb-float 20s ease-in-out infinite;
+        animation: bg-orb-float 25s ease-in-out infinite;
+    }
+    body::after {
+        animation: bg-shimmer 15s ease-in-out infinite;
     }
 }
 
@@ -270,6 +282,42 @@ body::after {
 @keyframes hero-badge-pulse {
     0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(99, 102, 241, 0.2); }
     50% { opacity: 0.95; box-shadow: 0 0 0 6px rgba(99, 102, 241, 0); }
+}
+
+/* ヒーロー・カードのフェードイン */
+@keyframes hero-fade-in {
+    from { opacity: 0; transform: translateY(12px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.page-top .hero {
+    animation: hero-fade-in 0.6s ease-out;
+}
+
+.added-one-card,
+.news-card {
+    animation: hero-fade-in 0.5s ease-out both;
+}
+
+.news-card:nth-child(1) { animation-delay: 0.05s; }
+.news-card:nth-child(2) { animation-delay: 0.1s; }
+.news-card:nth-child(3) { animation-delay: 0.15s; }
+.news-card:nth-child(4) { animation-delay: 0.2s; }
+.news-card:nth-child(5) { animation-delay: 0.25s; }
+.news-card:nth-child(6) { animation-delay: 0.3s; }
+.news-card:nth-child(n+7) { animation-delay: 0.35s; }
+
+.trends-sidebar {
+    animation: hero-fade-in 0.5s ease-out 0.2s both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .page-top .hero,
+    .added-one-card,
+    .news-card,
+    .trends-sidebar {
+        animation: none;
+    }
 }
 
 .hero h1 {
@@ -959,7 +1007,12 @@ body::after {
     margin-top: 0.5em;
 }
 
-/* スクロール連動：記事の該当位置でミドルマン吹き出しを表示 */
+/* スクロール連動：ポップアップ風吹き出し・記事を邪魔しない位置（text/explain形式のみ） */
+.article-with-bubbles .scroll-bubble-group {
+    margin: 1.25rem 0 1.25rem auto;
+    max-width: min(320px, 85%);
+}
+
 .scroll-bubble-group {
     margin: 1.5rem 0;
 }
@@ -973,19 +1026,46 @@ body::after {
 
 .midorman-bubble-wrap {
     opacity: 0;
-    transform: translateY(12px) translateX(-8px);
-    transition: opacity 0.45s ease-out, transform 0.4s cubic-bezier(0.22, 1, 0.36, 1);
+    transform: translateY(10px) translateX(20px) scale(0.95);
+    transition: opacity 0.4s ease-out, transform 0.35s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 .midorman-bubble-wrap.is-visible {
     opacity: 1;
-    transform: translateY(0) translateX(0);
+    transform: translateY(0) translateX(0) scale(1);
 }
 
-/* スクロール連動時：内側の吹き出しアニメはwrapに任せる */
-.scroll-bubble-group .midorman-bubble-above {
+/* スクロール連動時：ポップアップ風の見た目に（text/explain形式） */
+.article-with-bubbles .scroll-bubble-group .midorman-bubble-above {
     opacity: 1;
     animation: none;
+    margin: 0;
+    padding-left: 0;
+}
+
+.article-with-bubbles .scroll-bubble-group .midorman-bubble-above .midorman-bubble-inner {
+    position: relative;
+    border-radius: 16px 16px 6px 16px;
+    box-shadow: 0 4px 20px rgba(245, 158, 11, 0.25), 0 2px 8px rgba(0,0,0,0.06);
+    padding: 0.85rem 2.5rem 1rem 1.1rem;
+}
+
+.article-with-bubbles .article-with-bubbles .scroll-bubble-group .midorman-bubble-above .midorman-bubble-inner::after {
+    left: auto;
+    right: 1rem;
+    bottom: -8px;
+    border-top-color: #f59e0b;
+    border-left-width: 8px;
+    border-right-width: 0;
+}
+
+.article-with-bubbles .scroll-bubble-group .midorman-bubble-above .midorman-bubble-avatar {
+    position: absolute;
+    right: 0.6rem;
+    top: 0.5rem;
+    left: auto;
+    font-size: 1.2rem;
+    opacity: 0.9;
 }
 
 /* ミドルマンが補足：アニメ風吹き出し・読みやすくはっきり */
@@ -1351,9 +1431,21 @@ body::after {
         padding: 1.25rem;
     }
 
+    .article-with-bubbles .scroll-bubble-group {
+        margin-left: 0;
+        margin-right: 0;
+        max-width: 100%;
+    }
+
     .article-inline-content .midorman-bubble-above,
     .article-inline-content .midorman-bubble-wrap .midorman-bubble-above {
         padding-left: 2.2rem;
+    }
+
+    .article-with-bubbles .scroll-bubble-group .midorman-bubble-above .midorman-bubble-avatar {
+        right: 0.5rem;
+        top: 0.4rem;
+        font-size: 1.1rem;
     }
 
     .midorman-bubble-avatar {
