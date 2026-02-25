@@ -61,9 +61,76 @@ def _is_generic_trend_label(text: str) -> bool:
     return bool(re.match(r"^トレンド\s*\d+$", t))
 
 
-def fetch_trending_searches() -> list[TrendItem]:
-    """Google検索急上昇を取得（RSS取り込み時のトレンド精査に利用）"""
+def fetch_super_duper_trends() -> list[TrendItem]:
+    """
+    RapidAPI Super Duper Trends で急上昇ワードを取得（要 RAPIDAPI_KEY）。
+    https://rapidapi.com/chriswmccully/api/super-duper-trends
+    取得したワードはRSS取り込み時にトレンド合致度で記事を優先するために使う。
+    """
     try:
-        return fetch_google_trends()
+        from app.config import settings
+        if not getattr(settings, "RAPIDAPI_KEY", "").strip():
+            return []
+        import httpx
+        host = getattr(settings, "RAPIDAPI_SUPER_DUPER_HOST", "super-duper-trends.p.rapidapi.com")
+        trends: list[TrendItem] = []
+        for path in ("/trending/now", "/trending/hourly", "/v1/trending", "/trending"):
+            try:
+                url = "https://" + host + path
+                resp = httpx.get(
+                    url,
+                    headers={
+                        "X-RapidAPI-Key": settings.RAPIDAPI_KEY,
+                        "X-RapidAPI-Host": host,
+                    },
+                    timeout=10.0,
+                )
+                if resp.status_code != 200:
+                    continue
+                data = resp.json()
+                items = data if isinstance(data, list) else (
+                    data.get("items") or data.get("data") or data.get("trends")
+                    or data.get("hourly") or data.get("results") or []
+                )
+                if not isinstance(items, list):
+                    continue
+                for entry in items[:25]:
+                    if isinstance(entry, str):
+                        kw = entry.strip()
+                    elif isinstance(entry, dict):
+                        kw = (entry.get("keyword") or entry.get("title") or entry.get("query") or entry.get("name") or "").strip()
+                    else:
+                        continue
+                    if not kw or len(kw) < 2:
+                        continue
+                    item_id = hashlib.md5(("sdt-" + kw).encode("utf-8")).hexdigest()[:16]
+                    trends.append(TrendItem(id=item_id, keyword=kw, source="google"))
+                break
+            except Exception:
+                continue
+        return trends[:20]
     except Exception:
         return []
+
+
+def fetch_trending_searches() -> list[TrendItem]:
+    """Google検索急上昇＋RapidAPI Super Duper Trends（設定時）をマージして取得"""
+    seen: set[str] = set()
+    out: list[TrendItem] = []
+    try:
+        for item in fetch_google_trends():
+            k = item.keyword.lower().strip()
+            if k not in seen:
+                seen.add(k)
+                out.append(item)
+    except Exception:
+        pass
+    try:
+        for item in fetch_super_duper_trends():
+            k = item.keyword.lower().strip()
+            if k not in seen:
+                seen.add(k)
+                out.append(item)
+    except Exception:
+        pass
+    return out[:25]

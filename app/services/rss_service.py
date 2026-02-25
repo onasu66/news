@@ -46,7 +46,7 @@ class NewsItem:
     image_url: Optional[str] = None
 
 
-# RSSフィード (URL, 表示名, ジャンル) — NHK・共同通信・Reuters・AP・Yahoo!・BBC・読売（全文は記事URL取得で対応）
+# RSSフィード (URL, 表示名, ジャンル) — NHK・共同通信・Reuters・AP・Yahoo!・BBC・読売・World News International・Le Monde
 RSS_FEEDS = [
     ("https://www.nhk.or.jp/rss/news/cat0.xml", "NHK", "国内"),
     ("https://english.kyodonews.net/list/feed/rss4kyodonews-fzone", "共同通信", "国際"),
@@ -55,12 +55,15 @@ RSS_FEEDS = [
     ("https://news.yahoo.co.jp/rss/topics/top-picks.xml", "Yahoo!ニュース", "総合"),
     ("http://feeds.bbci.co.uk/news/rss.xml", "BBC News", "国際"),
     ("https://rss.yomiuri.co.jp/f/yol_topstories", "読売新聞オンライン", "政治・社会"),
+    ("https://www.worldnewsintl.org/feed", "World News International", "国際"),
+    ("https://www.lemonde.fr/rss/une.xml", "Le Monde", "国際"),
 ]
 
 # タイトルキーワードでジャンルを上書き（総合ソース向け）
 CATEGORY_KEYWORDS = {
     "スポーツ": ["野球", "サッカー", "試合", "選手", "ゴルフ", "テニス", "NBA", "MLB", "オリンピック", "世界選手権"],
     "エンタメ": ["映画", "ドラマ", "俳優", "女優", "アイドル", "歌手", "コンサート", "ライブ", "芸能"],
+    "テクノロジー": ["AI", "量子", "solar", "hydrogen", "aviation", "cyber", "DMARC", "email", "technology", "perovskite", "vertical farm"],
 }
 
 
@@ -68,7 +71,7 @@ def _detect_category_from_title(title: str, default: str) -> str:
     """タイトルからジャンルを推定（総合ソース向け）"""
     t = title.lower()
     for cat, keywords in CATEGORY_KEYWORDS.items():
-        if any(kw in title for kw in keywords):
+        if any(kw.lower() in t for kw in keywords):
             return cat
     return default
 

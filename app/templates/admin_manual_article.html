@@ -8,7 +8,7 @@
     <p class="admin-error">{{ error }}</p>
     {% endif %}
     {% if success and article_id %}
-    <p class="admin-success">記事を作成しました。<a href="/article/{{ article_id }}">記事を表示</a></p>
+    <p class="admin-success">記事を作成しました。<a href="/topic/{{ article_id }}">記事を表示</a></p>
     {% endif %}
     <form id="form-manual-article" class="admin-form">
         <label for="title">タイトル <span class="required">必須</span></label>
@@ -41,7 +41,7 @@ document.getElementById('form-manual-article').addEventListener('submit', functi
     .then(function(r) { return r.json(); })
     .then(function(data) {
         if (data.article_id) {
-            window.location.href = '/article/' + data.article_id;
+            window.location.href = '/topic/' + data.article_id;
         } else {
             btn.disabled = false;
             btn.textContent = '記事を生成して追加';

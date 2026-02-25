@@ -25,7 +25,7 @@
             <h2 class="added-one-title">注目の1本</h2>
             {% if added_one %}
             <article class="added-one-card">
-                <a href="/article/{{ added_one.id }}" class="added-one-link">
+                <a href="/topic/{{ added_one.id }}" class="added-one-link">
                     <div class="added-one-image">
                         <img src="{{ added_one.image_url or 'https://picsum.photos/400/225' }}" alt="{{ added_one.title }}" loading="lazy" onerror="this.src='https://picsum.photos/seed/{{ added_one.id }}/400/225'">
                     </div>
@@ -66,38 +66,42 @@
     <p id="added-msg" class="added-msg" style="display:none; background:#d4edda; color:#155724; padding:0.5rem 1rem; border-radius:4px; margin-bottom:1rem;">新しいリポートを追加しました。上の「注目の1本」に表示されています。</p>
 
     <h2 class="section-title">AI解説つきニュースリポート</h2>
-    <nav class="category-nav" aria-label="ジャンル一覧">
-        {% for category, items in news_by_category %}
-        <a href="#cat-{{ category }}" class="category-tab">{{ category }}</a>
-        {% else %}
-        <span class="category-empty" id="empty-state">読み込み中</span>
-        {% endfor %}
-    </nav>
-    {% for category, items in news_by_category %}
-    <div id="cat-{{ category }}" class="category-block">
-        <h3 class="category-heading">{{ category }}</h3>
-        <div class="news-grid">
-            {% for item in items %}
-            <article class="news-card">
-                <a href="/article/{{ item.id }}" class="news-card-link">
-                    <div class="news-card-image">
-                        <img src="{{ item.image_url or 'https://picsum.photos/400/225' }}" 
-                             alt="{{ item.title }}" 
-                             loading="lazy"
-                             onerror="this.src='https://picsum.photos/seed/{{ item.id }}/400/225'">
-                    </div>
-                    <div class="news-card-body">
-                        <span class="news-source">{{ item.source }}</span>
-                        <h3 class="news-title">{{ item.title }}</h3>
-                        <p class="news-summary">{{ item.summary[:120] }}{% if item.summary|length > 120 %}...{% endif %}</p>
-                        <span class="news-badge">AI解説</span>
-                    </div>
-                </a>
-            </article>
+    <div class="genre-tabs-wrap" role="tablist" aria-label="ジャンルで絞り込み">
+        <div class="genre-tabs-scroll">
+            {% for category, items in news_by_category %}
+            <button type="button" class="genre-tab" role="tab" aria-selected="{% if loop.first %}true{% else %}false{% endif %}" aria-controls="panel-{{ category }}" id="tab-{{ category }}" data-cat="{{ category }}">{{ category }}</button>
+            {% else %}
+            <span class="category-empty" id="empty-state">読み込み中</span>
             {% endfor %}
         </div>
     </div>
-    {% endfor %}
+    <div class="genre-panels">
+        {% for category, items in news_by_category %}
+        <div id="panel-{{ category }}" class="genre-panel" role="tabpanel" aria-labelledby="tab-{{ category }}" {% if not loop.first %}hidden{% endif %}>
+            <h3 class="category-heading">{{ category }}</h3>
+            <div class="news-grid news-grid-cards">
+                {% for item in items %}
+                <article class="news-card">
+                    <a href="/topic/{{ item.id }}" class="news-card-link">
+                        <div class="news-card-image">
+                            <img src="{{ item.image_url or 'https://picsum.photos/400/225' }}" 
+                                 alt="{{ item.title }}" 
+                                 loading="lazy"
+                                 onerror="this.src='https://picsum.photos/seed/{{ item.id }}/400/225'">
+                        </div>
+                        <div class="news-card-body">
+                            <span class="news-source">{{ item.source }}</span>
+                            <h3 class="news-title">{{ item.title }}</h3>
+                            <p class="news-summary">{{ item.summary[:120] }}{% if item.summary|length > 120 %}...{% endif %}</p>
+                            <span class="news-badge">AI解説</span>
+                        </div>
+                    </a>
+                </article>
+                {% endfor %}
+            </div>
+        </div>
+        {% endfor %}
+    </div>
 
     {% if pagination and pagination.total_pages > 1 %}
     <nav class="pagination" aria-label="ページネーション">
@@ -126,6 +130,43 @@
         if (el) el.style.display = 'block';
         history.replaceState(null, '', window.location.pathname);
     }
+
+    // ジャンルタブ切替 ＋ スワイプ
+    var tabs = document.querySelectorAll('.genre-tab');
+    var panels = document.querySelectorAll('.genre-panel');
+    var scrollEl = document.querySelector('.genre-tabs-scroll');
+    if (tabs.length && panels.length) {
+        tabs.forEach(function(tab) {
+            tab.addEventListener('click', function() {
+                var cat = this.getAttribute('data-cat');
+                tabs.forEach(function(t) { t.setAttribute('aria-selected', t === tab ? 'true' : 'false'); t.classList.toggle('is-active', t === tab); });
+                panels.forEach(function(p) {
+                    var show = p.id === 'panel-' + cat;
+                    p.hidden = !show;
+                });
+                if (scrollEl) {
+                    var tabLeft = tab.offsetLeft;
+                    scrollEl.scrollTo({ left: tabLeft - scrollEl.offsetWidth / 2 + tab.offsetWidth / 2, behavior: 'smooth' });
+                }
+            });
+        });
+        // スワイプ（タッチ）
+        var startX = 0, currentIdx = 0;
+        var panelList = Array.prototype.slice.call(panels);
+        document.querySelector('.genre-panels').addEventListener('touchstart', function(e) {
+            startX = e.touches[0].clientX;
+            currentIdx = panelList.findIndex(function(p) { return !p.hidden; });
+        }, { passive: true });
+        document.querySelector('.genre-panels').addEventListener('touchend', function(e) {
+            var dx = e.changedTouches[0].clientX - startX;
+            if (Math.abs(dx) < 50) return;
+            var next = dx < 0 ? Math.min(currentIdx + 1, tabs.length - 1) : Math.max(currentIdx - 1, 0);
+            if (next !== currentIdx && tabs[next]) tabs[next].click();
+        }, { passive: true });
+        // 初期アクティブ
+        document.querySelector('.genre-tab[aria-selected="true"]')?.classList.add('is-active');
+    }
+
     // 記事を追加する：RSSの最新1件を読み込み、AIミドルマンが解説した記事を1件追加・再生成
     var btnAdd = document.getElementById('btn-add-article');
     if (btnAdd) {

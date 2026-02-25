@@ -24,6 +24,7 @@
             <span class="article-badge">AI解説つきリポート</span>
         </div>
         <h1 class="article-title">{{ article.title }}</h1>
+        <h2 class="article-h2">{{ article.title }}とは？</h2>
     </header>
 
     <div class="article-hero">
@@ -66,17 +67,28 @@
         </div>
     </section>
 
-    <nav class="next-article-nav" aria-label="続けて読む">
-        {% if prev_article %}
-        <a href="/article/{{ prev_article.id }}" class="next-article-link next-article-prev">← 前の記事</a>
+    <section class="next-read-section" aria-label="次に読む記事・思考ジャーニー">
+        <h2 class="next-read-title">次に読む記事</h2>
+        <nav class="next-article-nav" aria-label="続けて読む">
+            {% if prev_article %}
+            <a href="/topic/{{ prev_article.id }}" class="next-article-link next-article-prev">← 前の記事</a>
+            {% endif %}
+            {% if next_article %}
+            <a href="/topic/{{ next_article.id }}" class="next-article-link next-article-next">次の記事へ →</a>
+            {% endif %}
+            {% if not prev_article and not next_article %}
+            <a href="/" class="next-article-link next-article-back">一覧に戻る</a>
+            {% endif %}
+        </nav>
+        {% if related_articles|default([]) %}
+        <h3 class="related-title">関連トピック（{{ article.category }}）</h3>
+        <ul class="related-list">
+            {% for rel in related_articles %}
+            <li><a href="/topic/{{ rel.id }}">{{ rel.title }}</a></li>
+            {% endfor %}
+        </ul>
         {% endif %}
-        {% if next_article %}
-        <a href="/article/{{ next_article.id }}" class="next-article-link next-article-next">次の記事へ →</a>
-        {% endif %}
-        {% if not prev_article and not next_article %}
-        <a href="/" class="next-article-link next-article-back">一覧に戻る</a>
-        {% endif %}
-    </nav>
+    </section>
 </article>
 
 <div id="midorman-float" class="midorman-float" aria-live="polite" hidden>
@@ -194,9 +206,12 @@ document.addEventListener('DOMContentLoaded', function() {
                     if (asides.length) initScrollBubbles(el);
                 } else {
                     var html = '<div class="article-readflow article-with-bubbles">';
+                    var explainIdx = 0;
                     data.blocks.forEach(function(b) {
                         if (b.type === 'explain') {
+                            explainIdx++;
                             var c = escapeHtml(b.content || '').replace(/\n/g, '<br>');
+                            html += '<h3 class="article-h3" id="explain-' + explainIdx + '">要点の解説</h3>';
                             html += '<div class="scroll-bubble-group"><div class="scroll-trigger" aria-hidden="true"></div><div class="midorman-bubble-wrap"><div class="midorman-bubble-above"><span class="midorman-bubble-avatar" aria-hidden="true">🎙️</span><div class="midorman-bubble-inner"><p class="midorman-bubble-text">' + c + '</p></div></div></div></div>';
                         } else if (b.type === 'text') {
                             var paras = (b.content || '').trim().split(/\n\n+/).filter(function(p) { return p.trim(); });

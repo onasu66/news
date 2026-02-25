@@ -17,7 +17,7 @@
         <ul class="confirm-article-list" id="confirm-article-list">
             {% for item in recent_articles %}
             <li class="confirm-article-item" data-article-id="{{ item.id }}">
-                <a href="/article/{{ item.id }}" class="confirm-article-link">{{ item.title[:60] }}{% if item.title|length > 60 %}...{% endif %}</a>
+                <a href="/topic/{{ item.id }}" class="confirm-article-link">{{ item.title[:60] }}{% if item.title|length > 60 %}...{% endif %}</a>
                 <span class="confirm-article-meta">{{ item.source }} · {{ item.category }}</span>
                 <button type="button" class="btn-delete-article" data-article-id="{{ item.id }}" title="この記事を削除">削除</button>
             </li>

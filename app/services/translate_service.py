@@ -3,7 +3,7 @@ import re
 
 from app.utils.openai_compat import create_with_retry
 
-FOREIGN_SOURCES = {"Reuters", "AP News", "BBC News", "共同通信"}
+FOREIGN_SOURCES = {"Reuters", "AP News", "BBC News", "共同通信", "World News International", "Le Monde"}
 
 
 def is_foreign_article(source: str, title: str, summary: str) -> bool:
@@ -31,6 +31,10 @@ def translate_and_rewrite(title: str, summary: str) -> tuple[str, str]:
         prompt = f"""以下の英語ニュースのタイトルと要約を、日本語に訳し、独自の表現で言い直してください。
 元の文章をそのまま訳すのではなく、意味を保ちながら別の言い方で書き直してください（著作権配慮）。
 
+■ タイトルは【】で囲んだインパクトのある短い語句から始めてください。
+  例：【ついに】〇〇が〇〇に、【なぜ】〇〇は〇〇なのか、【衝撃】〇〇が判明、【速報】〇〇を発表
+  ※【】の中は2〜5文字程度の短い語句。内容に合う自然なものにする。
+
 【元タイトル】{title[:300]}
 
 【元要約】
@@ -38,7 +42,7 @@ def translate_and_rewrite(title: str, summary: str) -> tuple[str, str]:
 
 以下の形式のみで返してください。
 ===タイトル===
-（日本語のタイトルを1行で）
+（日本語のタイトルを1行で。【○○】から始める）
 ===要約===
 （日本語の要約を2〜4文で）"""
 

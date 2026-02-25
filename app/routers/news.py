@@ -46,7 +46,7 @@ async def sitemap_xml(request: Request):
         f"  <url><loc>{site_url}/</loc><changefreq>hourly</changefreq><priority>1.0</priority></url>",
     ]
     for a in articles[:5000]:
-        lines.append(f"  <url><loc>{site_url}/article/{a.id}</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>")
+        lines.append(f"  <url><loc>{site_url}/topic/{a.id}</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>")
     lines.append("</urlset>")
     return Response(content="\n".join(lines), media_type="application/xml; charset=utf-8")
 
@@ -115,6 +115,19 @@ def _get_site_url(request: Request) -> str:
     return str(request.base_url).rstrip("/")
 
 
+def _meta_description_qa(title: str, summary: str | None, max_len: int = 160) -> str:
+    """質問＋解答型のmeta description（SEO向け）"""
+    t = (title or "").strip()
+    s = (summary or "").replace("\n", " ").strip()[:200]
+    if not t:
+        return (s[: max_len - 3] + "...") if len(s) > max_len else s
+    question = f"{t}とは？"
+    if not s:
+        return question[:max_len]
+    answer = s[: max_len - len(question) - 4] + "..." if len(s) > max_len - len(question) - 2 else s
+    return f"{question} {answer}"[:max_len]
+
+
 def _blocks_to_html(blocks: list) -> str:
     """ブロックをHTMLに変換（SSR用・XSS対策済み）"""
     if not blocks:
@@ -144,11 +157,15 @@ def _blocks_to_html(blocks: list) -> str:
             a = asides[j]
             out.append(f'<div class="scroll-bubble-group"><div class="midorman-bubble-wrap is-visible"><div class="midorman-aside midorman-aside-{html.escape(a["section"])}"><span class="midorman-aside-label">{html.escape(a["label"])}</span><div class="midorman-aside-body">{a["body"]}</div></div></div></div>')
         return '<div class="article-readflow">' + "".join(out) + "</div>" if out else ""
-    # text/explain 形式（スクロール連動で吹き出し表示）
+    # text/explain 形式（H2/H3 疑問型＋回答型でSEO・ミドルマン解説も本文に残す）
     html_parts = ['<div class="article-readflow article-with-bubbles">']
+    explain_index = 0
     for b in blocks:
         if b.get("type") == "explain":
+            explain_index += 1
             c = html.escape(b.get("content") or "").replace("\n", "<br>")
+            h3_id = f"explain-{explain_index}"
+            html_parts.append(f'<h3 class="article-h3" id="{h3_id}">要点の解説</h3>')
             bubble = f'<div class="midorman-bubble-above"><span class="midorman-bubble-avatar" aria-hidden="true">🎙️</span><div class="midorman-bubble-inner"><p class="midorman-bubble-text">{c}</p></div></div>'
             html_parts.append(f'<div class="scroll-bubble-group"><div class="scroll-trigger" aria-hidden="true"></div><div class="midorman-bubble-wrap">{bubble}</div></div>')
         elif b.get("type") == "text":
@@ -160,38 +177,39 @@ def _blocks_to_html(blocks: list) -> str:
     return "".join(html_parts)
 
 
-@router.get("/article/{article_id}", response_class=HTMLResponse)
-async def article_detail(request: Request, article_id: str):
-    """記事詳細（AI解説付き・5人格の意見）・SSRで本文を出力"""
+@router.get("/topic/{topic_id}", response_class=HTMLResponse)
+async def topic_detail(request: Request, topic_id: str):
+    """トピック詳細（URL: /topic/○○）・AI解説・SEO向け本文"""
     from app.services.explanation_cache import get_cached
 
-    item = NewsAggregator.get_article(article_id)
+    item = NewsAggregator.get_article(topic_id)
     if not item:
         raise HTTPException(status_code=404, detail="記事が見つかりません")
     image_url = item.image_url or get_image_url(item.id, 800, 450)
     if image_url and not image_url.startswith("http"):
         image_url = get_image_url(image_url, 800, 450)
     site_url = _get_site_url(request)
-    article_url = f"{site_url}/article/{article_id}"
+    article_url = f"{site_url}/topic/{topic_id}"
     og_image = image_url if (image_url or "").startswith("http") else f"{site_url}{image_url}" if image_url else ""
     if not og_image:
         og_image = get_image_url(item.id, 1200, 630)
-    cached = get_cached(article_id)
+    cached = get_cached(topic_id)
     blocks = _sanitize_blocks(cached["blocks"]) if cached and cached.get("blocks") else []
     personas_data = cached.get("personas", []) if cached else []
     body_html = _blocks_to_html(blocks) if blocks else ""
-    _text = (item.summary or item.title or "").replace("\n", " ").strip()
-    meta_desc = (_text[:157] + "...") if len(_text) > 160 else _text[:160]
+    meta_desc = _meta_description_qa(item.title, item.summary)
 
     all_news = NewsAggregator.get_news()
     next_article = prev_article = None
     for i, a in enumerate(all_news):
-        if a.id == article_id:
+        if a.id == topic_id:
             if i + 1 < len(all_news):
                 next_article = all_news[i + 1]
             if i > 0:
                 prev_article = all_news[i - 1]
             break
+
+    related = [a for a in all_news if a.category == item.category and a.id != topic_id][:4]
 
     return templates.TemplateResponse(
         "article.html",
@@ -209,8 +227,19 @@ async def article_detail(request: Request, article_id: str):
             "meta_description": meta_desc,
             "next_article": next_article,
             "prev_article": prev_article,
+            "related_articles": related,
         }
     )
+
+
+@router.get("/article/{article_id}", response_class=HTMLResponse)
+async def article_detail(request: Request, article_id: str):
+    """旧URL: /topic/ へリダイレクト"""
+    item = NewsAggregator.get_article(article_id)
+    if not item:
+        raise HTTPException(status_code=404, detail="記事が見つかりません")
+    from fastapi.responses import RedirectResponse
+    return RedirectResponse(url=f"/topic/{article_id}", status_code=301)
 
 
 def _sanitize_blocks(blocks: list) -> list:

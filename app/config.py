@@ -26,6 +26,9 @@ class Settings:
     FIREBASE_SERVICE_ACCOUNT_JSON: str = os.getenv("FIREBASE_SERVICE_ACCOUNT_JSON", "").strip()
     # サイトの絶対URL（sitemap・OG・canonical用）。未設定時はリクエストの base_url を使用
     SITE_URL: str = os.getenv("SITE_URL", "").rstrip("/")
+    # RapidAPI（Super Duper Trends 等）。未設定ならGoogleトレンドRSSのみ使用
+    RAPIDAPI_KEY: str = os.getenv("RAPIDAPI_KEY", "").strip()
+    RAPIDAPI_SUPER_DUPER_HOST: str = os.getenv("RAPIDAPI_SUPER_DUPER_HOST", "super-duper-trends.p.rapidapi.com").strip()
 
 
 settings = Settings()

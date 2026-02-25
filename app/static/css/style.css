@@ -547,7 +547,77 @@ body::after {
     }
 }
 
-/* ジャンルタブ */
+/* ジャンルタブ＋スワイプ切替 */
+.genre-tabs-wrap {
+    margin-bottom: 1.5rem;
+}
+
+.genre-tabs-scroll {
+    display: flex;
+    flex-wrap: nowrap;
+    gap: 0.5rem;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    padding: 0.5rem 0 1rem;
+    scrollbar-width: thin;
+}
+
+.genre-tabs-scroll::-webkit-scrollbar {
+    height: 6px;
+}
+
+.genre-tab {
+    flex-shrink: 0;
+    padding: 0.6rem 1.25rem;
+    background: var(--color-surface);
+    color: var(--color-text-secondary);
+    font-size: 0.95rem;
+    font-weight: 600;
+    border-radius: 999px;
+    border: 2px solid var(--color-border);
+    cursor: pointer;
+    transition: all 0.25s ease;
+    box-shadow: var(--shadow-xs);
+}
+
+.genre-tab:hover {
+    background: linear-gradient(135deg, var(--color-accent), var(--color-primary-light));
+    color: #fff;
+    border-color: transparent;
+    box-shadow: 0 4px 12px rgba(99, 102, 241, 0.35);
+    transform: translateY(-2px);
+}
+
+.genre-tab.is-active,
+.genre-tab[aria-selected="true"] {
+    background: linear-gradient(135deg, var(--color-accent), var(--color-primary-light));
+    color: #fff;
+    border-color: transparent;
+    box-shadow: 0 4px 14px rgba(99, 102, 241, 0.4);
+}
+
+.genre-panels {
+    min-height: 200px;
+}
+
+.genre-panel {
+    animation: genre-panel-in 0.3s ease-out;
+}
+
+@keyframes genre-panel-in {
+    from { opacity: 0.6; }
+    to { opacity: 1; }
+}
+
+.genre-panel .category-heading {
+    margin-bottom: 1rem;
+}
+
+.news-grid-cards {
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+}
+
+/* 従来のcategory-nav（フォールバック用） */
 .category-nav {
     display: flex;
     flex-wrap: wrap;
@@ -569,18 +639,6 @@ body::after {
     transition: all 0.25s ease;
     box-shadow: var(--shadow-xs);
 }
-
-.category-tab:hover {
-    background: linear-gradient(135deg, var(--color-accent), var(--color-primary-light));
-    color: #fff;
-    border-color: transparent;
-    box-shadow: 0 4px 12px rgba(99, 102, 241, 0.35);
-    transform: translateY(-1px);
-}
-
-.category-tab:nth-child(3n+1):hover { background: linear-gradient(135deg, #6366f1, #4f46e5); }
-.category-tab:nth-child(3n+2):hover { background: linear-gradient(135deg, #ec4899, #db2777); }
-.category-tab:nth-child(3n):hover { background: linear-gradient(135deg, #0ea5e9, #0284c7); }
 
 /* ジャンルブロック */
 .category-block {
@@ -758,6 +816,46 @@ body::after {
     color: var(--color-primary);
 }
 
+.next-read-section {
+    margin-top: 2.5rem;
+    padding-top: 1.75rem;
+    border-top: 2px dashed var(--color-border-light);
+}
+
+.next-read-title {
+    font-size: 1.2rem;
+    font-weight: 800;
+    margin: 0 0 1rem 0;
+    color: var(--color-primary);
+}
+
+.related-title {
+    font-size: 1rem;
+    font-weight: 700;
+    margin: 1.25rem 0 0.5rem 0;
+    color: var(--color-text-secondary);
+}
+
+.related-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.related-list li {
+    margin: 0.35rem 0;
+}
+
+.related-list a {
+    color: var(--color-accent);
+    text-decoration: none;
+    font-size: 0.95rem;
+}
+
+.related-list a:hover {
+    text-decoration: underline;
+}
+
 /* ========== ミドルマン フローティング（醜くならない程度に） ========== */
 .midorman-float {
     position: fixed;
@@ -924,6 +1022,22 @@ body::after {
     margin: 0.5rem 0 0 0;
     color: var(--color-primary);
     letter-spacing: -0.02em;
+}
+
+.article-h2 {
+    font-size: 1.15rem;
+    font-weight: 700;
+    color: var(--color-text-secondary);
+    margin: 0.5rem 0 0 0;
+    letter-spacing: -0.01em;
+}
+
+.article-h3 {
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: var(--color-primary);
+    margin: 1.25rem 0 0.5rem 0;
+    letter-spacing: -0.01em;
 }
 
 .article-hero {
@@ -1570,10 +1684,30 @@ body::after {
         align-items: center;
     }
 
-    /* ジャンル：横スクロールで分かりやすく・右に続きがあることを示す */
+    /* ジャンルタブ：横スクロール＋スワイプ */
     .news-section .section-title {
         font-size: 1.15rem;
         margin-bottom: 0.75rem;
+    }
+
+    .genre-tabs-scroll {
+        padding: 0.75rem 1rem 1rem;
+        margin: 0 -1rem 1.25rem;
+        scrollbar-width: none;
+        box-shadow: inset -1.5rem 0 1rem -0.5rem var(--color-bg);
+    }
+
+    .genre-tabs-scroll::-webkit-scrollbar {
+        display: none;
+    }
+
+    .genre-tab {
+        min-height: 48px;
+        padding: 0.65rem 1.25rem;
+        display: inline-flex;
+        align-items: center;
+        font-size: 0.95rem;
+        border-radius: 12px;
     }
 
     .category-nav {
@@ -1584,7 +1718,6 @@ body::after {
         margin: 0 -1rem 1.25rem;
         gap: 0.5rem;
         scrollbar-width: none;
-        box-shadow: inset -1.5rem 0 1rem -0.5rem var(--color-bg);
     }
 
     .category-nav::-webkit-scrollbar {

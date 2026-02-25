@@ -1,10 +1,17 @@
 """RSS記事をAI解説付きのサイト記事に変換するパイプライン"""
+import re
 from .rss_service import NewsItem, sanitize_display_text
 from .translate_service import is_foreign_article, translate_and_rewrite
 from .ai_batch_service import generate_all_explanations
 from .explanation_cache import save_cache, get_cached, get_cached_article_ids
-from .article_cache import save_article
+from .article_cache import save_article, load_all
 from .article_fetcher import fetch_article_body
+
+
+def _normalize_title_for_dedup(title: str) -> str:
+    """同一内容判定用：余分な空白・記号を除き小文字化（重複記事の正規化）"""
+    t = re.sub(r"\s+", " ", (title or "").strip()).lower()
+    return re.sub(r"[^\w\u3040-\u9fff\u30a0-\u30ff\u4e00-\u9fff\s]", "", t).strip()
 
 
 def _extract_display_summary(blocks: list) -> str:
@@ -44,6 +51,19 @@ def process_rss_to_site_article(item: NewsItem, force: bool = False) -> bool:
             image_url=item.image_url,
         )
 
+    # 日本語記事もタイトルに【】が無ければ付与
+    if not item.title.startswith("【"):
+        item = NewsItem(
+            id=item.id,
+            title=_add_bracket_title(item.title),
+            link=item.link,
+            summary=item.summary,
+            published=item.published,
+            source=item.source,
+            category=item.category,
+            image_url=item.image_url,
+        )
+
     # 記事URLから本文を取得して反映（取れればRSS要約より充実した内容に）
     body = fetch_article_body(item.link)
     if body:
@@ -68,6 +88,28 @@ def process_rss_to_site_article(item: NewsItem, force: bool = False) -> bool:
     return True
 
 
+def _add_bracket_title(title: str) -> str:
+    """タイトルに【】付きのインパクト語句を先頭に付ける（簡易ルール）"""
+    import re
+    if title.startswith("【"):
+        return title
+    t = title.strip()
+    bracket_map = [
+        (r"(発表|公開|開始|解禁|決定)", "発表"),
+        (r"(なぜ|理由|原因|背景)", "なぜ"),
+        (r"(判明|発覚|明らかに)", "判明"),
+        (r"(初めて|史上初|世界初|日本初)", "初"),
+        (r"(急増|急落|急騰|暴落|高騰)", "速報"),
+        (r"(改正|法案|規制|制裁)", "注目"),
+        (r"(危機|懸念|警告|リスク)", "警鐘"),
+        (r"(合意|締結|連携|提携)", "注目"),
+    ]
+    for pattern, label in bracket_map:
+        if re.search(pattern, t):
+            return f"【{label}】{t}"
+    return f"【解説】{t}"
+
+
 def _rank_by_trending(items: list[NewsItem], trend_keywords: list[str]) -> list[NewsItem]:
     """トレンド合致度＋ソース重みで記事をランク付け（話題度の高い順）"""
     SOURCE_WEIGHT = {
@@ -86,25 +128,45 @@ def _rank_by_trending(items: list[NewsItem], trend_keywords: list[str]) -> list[
 
 def process_new_rss_articles(rss_items: list[NewsItem], max_per_run: int = 5, trend_keywords: list[str] | None = None) -> int:
     """
-    RSSから取得した記事のうち未処理のものをAIで変換して掲載。
-    トレンドキーワードがある場合はトレンド合致度で精査し、合致した話題を優先して取り込む。
-    未取り込みがなければ、RSSの最新を強制で上書き取り込みする（ボタンで必ず1件追加できるようにする）。
+    RSS記事を Autocomplete スコアリング → 軽量フィルタ → 同一内容は1本に → 上位N件をAI処理して掲載。
+
+    1. 軽量フィルタで低価値記事を除外（文字数・ジャンル・キーワード）
+    2. Google Autocomplete + トレンド + 高価値キーワードでスコアリング
+    3. 既存記事・候補内で「同じ内容」（正規化タイトル一致）は1本だけに除外
+    4. スコア上位 max_per_run 件を AI 解説付きで記事化
     """
     if not rss_items:
         return 0
     cached_ids = get_cached_article_ids()
     uncached = [x for x in rss_items if x.id not in cached_ids]
-    # トレンドで精査: キーワードがあるときはトレンド合致＋ソース重みでランクし、上位から取り込む
-    if trend_keywords:
-        uncached = _rank_by_trending(uncached, trend_keywords)
-    if not uncached:
-        # 未取り込みがなければ全件をトレンド順（または日付順）で並べ直し、上書き取り込み
-        ranked_all = _rank_by_trending(rss_items, trend_keywords) if trend_keywords else rss_items
-        to_process = ranked_all[:max_per_run]
-        force = True
-    else:
-        to_process = uncached[:max_per_run]
+
+    from .keyword_scorer import rank_and_filter_articles
+
+    if uncached:
+        ranked = rank_and_filter_articles(uncached, trend_keywords, max_articles=max_per_run * 3)
         force = False
+    else:
+        ranked = rank_and_filter_articles(rss_items, trend_keywords, max_articles=max_per_run * 3)
+        force = True
+
+    # 既存掲載記事の正規化タイトル（同じ内容は1本だけにするため）
+    existing_norm = set()
+    for a in load_all():
+        existing_norm.add(_normalize_title_for_dedup(a.title))
+
+    # 候補内で正規化タイトルが重複しているものはスコア上位1件だけ残す
+    seen_norm = set()
+    deduped: list[NewsItem] = []
+    for item in ranked:
+        norm = _normalize_title_for_dedup(item.title)
+        if norm in existing_norm:
+            continue
+        if norm in seen_norm:
+            continue
+        seen_norm.add(norm)
+        deduped.append(item)
+
+    to_process = deduped[:max_per_run]
 
     count = 0
     for item in to_process:

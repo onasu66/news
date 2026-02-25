@@ -1,11 +1,13 @@
 """ニュースサイト - FastAPI メインアプリケーション"""
 from contextlib import asynccontextmanager
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
 from fastapi import FastAPI
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from apscheduler.schedulers.background import BackgroundScheduler
+from apscheduler.triggers.cron import CronTrigger
 
 from app.routers import news
 from app.services.news_aggregator import NewsAggregator
@@ -15,6 +17,13 @@ try:
     INTERVAL_MIN = settings.NEWS_REFRESH_INTERVAL
 except Exception:
     INTERVAL_MIN = 240
+
+JST = ZoneInfo("Asia/Tokyo")
+
+
+def _scheduled_rss_fetch_and_article():
+    """指定時刻にRSS取得→記事化（9:30/12:30/20:00/0:00 JST で実行）"""
+    NewsAggregator.get_news(force_refresh=True)
 
 
 @asynccontextmanager
@@ -36,7 +45,7 @@ async def lifespan(app: FastAPI):
     t = threading.Thread(target=_init, daemon=True)
     t.start()
 
-    scheduler = BackgroundScheduler()
+    scheduler = BackgroundScheduler(timezone=JST)
     scheduler.add_job(
         lambda: NewsAggregator.get_news(force_refresh=True),
         "interval",
@@ -49,6 +58,18 @@ async def lifespan(app: FastAPI):
         minutes=INTERVAL_MIN,
         id="refresh_trends",
     )
+    # 朝9:30・昼12:30・夜20:00・夜中0:00（JST）にRSS取得→記事化
+    for job_id, hour, minute in [
+        ("rss_00", 0, 0),
+        ("rss_0930", 9, 30),
+        ("rss_1230", 12, 30),
+        ("rss_2000", 20, 0),
+    ]:
+        scheduler.add_job(
+            _scheduled_rss_fetch_and_article,
+            CronTrigger(hour=hour, minute=minute, timezone=JST),
+            id=job_id,
+        )
     scheduler.start()
     yield
     scheduler.shutdown()
