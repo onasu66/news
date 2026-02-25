@@ -149,7 +149,8 @@ def _blocks_to_html(blocks: list) -> str:
             elif b.get("section") != "facts" and body:
                 asides.append({"section": b["section"], "label": nav_labels.get(b["section"], b["section"]), "body": body_safe})
         for i, p in enumerate(paras):
-            out.append(f'<p class="article-text">{html.escape(p).replace("\n", "<br>")}</p>')
+            p_safe = html.escape(p).replace("\n", "<br>")
+            out.append(f'<p class="article-text">{p_safe}</p>')
             if i < len(asides):
                 a = asides[i]
                 out.append(f'<div class="scroll-bubble-group"><div class="midorman-bubble-wrap is-visible"><div class="midorman-aside midorman-aside-{html.escape(a["section"])}"><span class="midorman-aside-label">{html.escape(a["label"])}</span><div class="midorman-aside-body">{a["body"]}</div></div></div></div>')
@@ -172,7 +173,8 @@ def _blocks_to_html(blocks: list) -> str:
             for p in (b.get("content") or "").strip().split("\n\n"):
                 p = p.strip()
                 if p:
-                    html_parts.append(f'<p class="article-text">{html.escape(p).replace("\n", "<br>")}</p>')
+                    p_safe = html.escape(p).replace("\n", "<br>")
+                    html_parts.append(f'<p class="article-text">{p_safe}</p>')
     html_parts.append("</div>")
     return "".join(html_parts)
 
@@ -472,21 +474,42 @@ async def api_seed_articles():
     return {"status": "ok", "added": added, "total": total}
 
 
-@router.get("/api/article/seed-one")
-async def api_seed_one_article():
-    """RSSから1件読み込み、AI解説付きで記事を1件作る。作成した記事IDを返す"""
+def _do_seed_one_sync():
+    """RSS取得→1件だけ記事化（重い処理を同期的に実行・スレッドから呼ぶ用）"""
     from app.services.rss_service import fetch_rss_news
     from app.services.article_processor import process_new_rss_articles
-
     news = fetch_rss_news()
+    if not news:
+        return {"status": "error", "article_id": None, "message": "RSSから記事を取得できませんでした。フィードURLやネットワークを確認してください。"}
     added = process_new_rss_articles(news, max_per_run=1)
     if added <= 0:
         return {"status": "none", "article_id": None, "message": "取り込める記事がありません"}
     NewsAggregator.get_news(force_refresh=True)
-    # 先頭＝今追加した1件
     updated = NewsAggregator.get_news()
     new_id = updated[0].id if updated else None
     return {"status": "ok", "article_id": new_id}
+
+
+@router.get("/api/article/seed-one")
+async def api_seed_one_article():
+    """RSSから1件読み込み、AI解説付きで記事を1件作る。作成した記事IDを返す（常にJSONで返す）"""
+    import asyncio
+    import logging
+    logger = logging.getLogger(__name__)
+    try:
+        loop = asyncio.get_event_loop()
+        result = await asyncio.wait_for(
+            loop.run_in_executor(None, _do_seed_one_sync),
+            timeout=180.0,
+        )
+        return result
+    except asyncio.TimeoutError:
+        logger.warning("seed-one がタイムアウトしました")
+        return {"status": "error", "article_id": None, "message": "処理がタイムアウトしました（3分）。RSSやOpenAIの応答が遅い可能性があります。もう一度お試しください。"}
+    except Exception as e:
+        logger.exception("seed-one でエラー")
+        msg = str(e).strip() or "不明なエラー"
+        return {"status": "error", "article_id": None, "message": f"処理に失敗しました: {msg}"}
 
 
 def _do_force_add_one_sync():

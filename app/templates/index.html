@@ -211,7 +211,10 @@
                 if (btnRssOne.disabled) btnRssOne.textContent = 'AI解説中...';
             }, 5000);
             fetch('/api/article/seed-one')
-                .then(function(r) { return r.json(); })
+                .then(function(r) {
+                    if (!r.ok) return r.text().then(function(t) { throw new Error(r.status + ': ' + (t || r.statusText)); });
+                    return r.json();
+                })
                 .then(function(data) {
                     clearTimeout(slowMsg);
                     btnRssOne.disabled = false;
@@ -225,11 +228,15 @@
                         alert(data.message || '取り込みに失敗しました');
                     }
                 })
-                .catch(function() {
+                .catch(function(err) {
                     clearTimeout(slowMsg);
                     btnRssOne.disabled = false;
                     btnRssOne.textContent = '手動でRSS取得（1件）';
-                    alert('取得に失敗しました');
+                    var msg = (err && err.message) ? err.message : '取得に失敗しました';
+                    if (msg === 'Failed to fetch' || msg.indexOf('NetworkError') !== -1) {
+                        msg = '取得に失敗しました（接続できませんでした。サーバーが停止しているか、タイムアウトの可能性があります）';
+                    }
+                    alert(msg);
                 });
         });
     }

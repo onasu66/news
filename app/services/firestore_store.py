@@ -222,5 +222,12 @@ def firestore_save_cache(article_id: str, blocks: list, personas: list):
 
 
 def use_firestore() -> bool:
-    """Firestore を使用するか（認証情報が env または credentials ファイルにあるか）"""
-    return _load_credential_dict() is not None
+    """Firestore を使用するか（認証情報があり、かつ firebase_admin がインストールされている場合のみ）"""
+    if _load_credential_dict() is None:
+        return False
+    try:
+        import firebase_admin  # noqa: F401
+        return True
+    except ModuleNotFoundError:
+        # ローカルで firebase-admin 未インストール時は SQLite にフォールバック
+        return False
