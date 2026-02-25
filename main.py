@@ -205,6 +205,48 @@ async def debug_articles_status():
     }
 
 
+@app.get("/api/debug/save-history")
+async def debug_save_history():
+    """記事保存の成功・失敗履歴（起動中のシード／スケジュール分）。新しい順。"""
+    from app.services.save_history import get_entries
+    return {"entries": get_entries()}
+
+
+@app.get("/debug/save-history", response_class=HTMLResponse)
+async def debug_save_history_page():
+    """記事保存履歴をブラウザで確認するページ"""
+    import html
+    from app.services.save_history import get_entries
+    entries = get_entries()
+    rows = []
+    for e in entries:
+        status = "保存OK" if e.get("success") else "保存なし・失敗"
+        err = (e.get("error") or "").strip()
+        err_safe = html.escape(err) if err else ""
+        err_cell = f'<td style="color:#c00; font-size:0.9em;">{err_safe}</td>' if err_safe else "<td></td>"
+        title_safe = html.escape(e.get("title", ""))
+        rows.append(
+            f"<tr><td>{html.escape(e.get('at', ''))}</td><td>{html.escape(e.get('source', ''))}</td>"
+            f"<td>{status}</td><td>{html.escape(e.get('article_id', ''))}</td>"
+            f"<td style=\"max-width:320px; overflow:hidden; text-overflow:ellipsis;\">{title_safe}</td>{err_cell}</tr>"
+        )
+    table_body = "\n".join(rows) if rows else "<tr><td colspan=\"5\">まだ履歴がありません。シード実行後やスケジュール実行後に表示されます。</td></tr>"
+    html = f"""<!DOCTYPE html>
+<html lang="ja"><head><meta charset="UTF-8"><title>記事保存履歴</title></head>
+<body style="font-family: sans-serif; padding: 1.5rem; max-width: 960px;">
+<h1>記事保存履歴</h1>
+<p>python main.py 起動中のシード／スケジュールで「保存できた記事」「保存されなかった記事」を表示します（最大200件・再起動でクリア）。</p>
+<p><a href="/debug">デバッグ情報に戻る</a></p>
+<table border="1" cellpadding="6" style="border-collapse: collapse; width:100%;">
+<thead><tr><th>日時</th><th>種別</th><th>結果</th><th>ID</th><th>タイトル</th><th>エラー等</th></tr></thead>
+<tbody>
+{table_body}
+</tbody>
+</table>
+</body></html>"""
+    return HTMLResponse(html)
+
+
 def _get_routes_info(app_obj: FastAPI) -> list:
     out = []
     for r in app_obj.routes:
@@ -249,6 +291,7 @@ async def debug_page():
 <li><a href="/admin/login">ログイン</a></li>
 <li><a href="/api/debug/articles-status" target="_blank">記事ステータス（なぜ出ないか確認）</a></li>
 <li><a href="/api/debug/storage" target="_blank">ストレージ確認（Firebase / SQLite どちらか）</a></li>
+<li><a href="/debug/save-history">記事保存履歴（保存できた・できなかった）</a></li>
 </ul>
 <h2>同じWi‑Fi内から</h2>
 <p>サーバーは <code>0.0.0.0:8001</code> で待ち受けています。同じWi‑Fi／LAN内のスマホや別PCから、<br>

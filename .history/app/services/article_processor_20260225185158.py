@@ -1,5 +1,6 @@
 """RSS記事をAI解説付きのサイト記事に変換するパイプライン"""
 import re
+import random
 from .rss_service import NewsItem, sanitize_display_text
 from .translate_service import is_foreign_article, translate_and_rewrite
 from .ai_batch_service import generate_all_explanations

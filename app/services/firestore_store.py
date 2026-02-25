@@ -51,9 +51,15 @@ def _get_client():
     import firebase_admin
     from firebase_admin import credentials, firestore
     try:
+        # すでにデフォルトアプリが初期化されていればそれを使う
         firebase_admin.get_app()
     except ValueError:
-        firebase_admin.initialize_app(credentials.Certificate(cred_dict))
+        # 別スレッドとの競合で initialize_app が二重に呼ばれても問題ないように二重ガード
+        try:
+            firebase_admin.initialize_app(credentials.Certificate(cred_dict))
+        except ValueError:
+            # ここに来るのは「今この瞬間に別スレッドが initialize 済み」の場合なので無視して続行
+            pass
     _client = firestore.client()
     return _client
 
