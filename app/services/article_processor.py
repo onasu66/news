@@ -90,14 +90,15 @@ def process_rss_to_site_article(item: NewsItem, force: bool = False) -> bool:
 
 
 def _add_bracket_title(title: str) -> str:
-    """タイトルに【】付きのインパクト語句を先頭に付ける（簡易ルール）"""
+    """タイトルに【】付きのインパクト語句を先頭に付ける（SEO向け・「なぜ」「理由」「何」を入れる）"""
     import re
     if title.startswith("【"):
         return title
     t = title.strip()
     bracket_map = [
+        (r"(なぜ|理由|原因|背景|どうして)", "なぜ"),
+        (r"(何|とは|どういう)", "何"),
         (r"(発表|公開|開始|解禁|決定)", "発表"),
-        (r"(なぜ|理由|原因|背景)", "なぜ"),
         (r"(判明|発覚|明らかに)", "判明"),
         (r"(初めて|史上初|世界初|日本初)", "初"),
         (r"(急増|急落|急騰|暴落|高騰)", "速報"),

@@ -1405,6 +1405,33 @@ body::after {
 .midorman-aside-prediction .midorman-aside-label { background: linear-gradient(135deg, #c2410c 0%, #ea580c 100%); }
 .midorman-aside-caution .midorman-aside-label { background: linear-gradient(135deg, #b91c1c 0%, #dc2626 100%); }
 
+/* 記事末尾の解説ブロック（隙間なし本文の後にまとめて表示） */
+.article-asides {
+    margin-top: 2.5rem;
+    padding-top: 1.5rem;
+    border-top: 2px solid #e7e5e4;
+}
+.article-asides .article-h3 {
+    font-size: 1.25rem;
+    margin-bottom: 1rem;
+    color: #1c1917;
+}
+.article-asides .midorman-aside-block {
+    margin-bottom: 1rem;
+    padding: 1rem 1.2rem;
+    border-radius: 12px;
+    background: linear-gradient(180deg, #fffbeb 0%, #fef3c7 100%);
+    border: 1px solid #f59e0b;
+}
+.article-asides .midorman-aside-block .midorman-aside-label { margin-bottom: 0.4rem; }
+.article-asides .article-explain-text {
+    margin-bottom: 1rem;
+    padding: 0.75rem 1rem;
+    background: #fefce8;
+    border-radius: 8px;
+    line-height: 1.7;
+}
+
 .read-original {
     display: inline-flex;
     align-items: center;

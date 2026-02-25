@@ -80,9 +80,10 @@ async def lifespan(app: FastAPI):
     t.start()
 
     scheduler = BackgroundScheduler(timezone=JST)
+    # RSS→記事化は 0:00/9:30/12:30/20:00 JST のみ。interval はトレンド更新のみ
     if not rss_ai_disabled:
         scheduler.add_job(
-            lambda: NewsAggregator.get_news(force_refresh=True),
+            lambda: NewsAggregator.get_news(force_refresh=False),
             "interval",
             minutes=INTERVAL_MIN,
             id="refresh_news",
