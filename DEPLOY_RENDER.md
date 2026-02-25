@@ -26,10 +26,11 @@ https://render.com でアカウント作成し、GitHub と連携します。
 
 | 変数名 | 必須 | 説明 |
 |--------|------|------|
-| `OPENAI_API_KEY` | ○ | OpenAI API キー（AI解説に必要）。未設定だと「APIキーが設定されていません」と表示される |
+| `OPENAI_API_KEY` | △ | AI解説に使う（Render で RSS/AI 無効なら不要）。未設定だと「APIキーが設定されていません」と表示される場合あり |
 | `FIREBASE_SERVICE_ACCOUNT_JSON` | ○* | Firebase サービスアカウント JSON 文字列（記事・解説の永続化） |
 | `SITE_URL` | △ | サイトの絶対URL（例: `https://xxx.onrender.com`）。sitemap・OG・canonical用。未設定時はリクエストから自動取得 |
 | `ADMIN_SECRET` | △ | 管理画面ログイン用。未設定なら管理機能は無効 |
+| `DISABLE_RSS_AND_AI` | - | `1` または `true` で RSS 取得・AI 要約を無効（表示のみ）。**Render では未設定でも無効になる場合あり**（`RENDER` が設定されている場合） |
 | `NEWS_REFRESH_INTERVAL` | - | ニュース更新間隔（分）。既定: 240 |
 | `FULLTEXT_RSS_BASE_URL` | - | FiveFilters Full-Text RSS の URL（任意） |
 
@@ -47,6 +48,13 @@ https://render.com でアカウント作成し、GitHub と連携します。
 2. リポジトリを選択
 3. Root Directory を `newsite` に設定（必要な場合）
 4. 環境変数は後から **Environment** で追加
+
+## Render では RSS 取得・AI 要約は実行されません
+
+- **Render 上では RSS からの記事取得と AI 要約は行いません**（`RENDER=true` が自動で設定されるため、または `DISABLE_RSS_AND_AI=1` を設定した場合）。
+- 表示されるのは **Firestore 等に既に保存されている記事のみ**です。RSS 取得・記事生成は**ローカルや別サーバー・cron で実行**し、同じ Firestore を使う想定です。
+- 手動の「RSS取得」「1本追加」「シード記事」などの API を叩いても、Render 上では 503 で拒否されます。
+- トレンド取得と「ニュース更新」ボタンは動作しますが、記事リストの再取得はキャッシュのみ（RSS は呼びません）。
 
 ## 注意事項
 

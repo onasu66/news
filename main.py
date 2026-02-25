@@ -18,10 +18,11 @@ from app.routers import news
 from app.services.news_aggregator import NewsAggregator
 
 try:
-    from app.config import settings
+    from app.config import settings, is_rss_and_ai_disabled
     INTERVAL_MIN = settings.NEWS_REFRESH_INTERVAL
 except Exception:
     INTERVAL_MIN = 240
+    is_rss_and_ai_disabled = lambda: False
 
 JST = ZoneInfo("Asia/Tokyo")
 
@@ -45,55 +46,51 @@ def _seed_if_needed():
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """起動時にスケジューラ開始。Firebase 認証がある場合は起動時に Firestore を初期化（Render で SQLite に落ちないようにする）。"""
+    """起動時にスケジューラ開始。Firestore は初回アクセス時に遅延読み込み（512MB 制限で OOM にならないようにする）。"""
     import threading
-    # Firebase 認証が設定されていれば起動時に Firestore を import して接続を確定（Render で記事が消えないようにする）
-    try:
-        from app.config import settings
-        if getattr(settings, "FIREBASE_SERVICE_ACCOUNT_JSON", "").strip():
-            from app.services.firestore_store import use_firestore, _get_client
-            if use_firestore():
-                _get_client()
-                logger.info("ストレージ: Firestore を使用します（起動時に接続済み）")
-            else:
-                logger.warning("FIREBASE_SERVICE_ACCOUNT_JSON は設定されていますが Firestore が有効になりませんでした（firebase-admin 未インストールまたは JSON 不正の可能性）。SQLite を使用します。")
-    except Exception as e:
-        logger.warning("Firestore 起動時チェックでエラー: %s", e)
-    # 初回シードはブロックせずバックグラウンドで実行（RSS+AIで数分かかるため）
-    t_seed = threading.Thread(target=_seed_if_needed, daemon=True)
-    t_seed.start()
+    rss_ai_disabled = is_rss_and_ai_disabled()
+    if rss_ai_disabled:
+        logger.info("RSS取得・AI要約は無効です（DISABLE_RSS_AND_AI または RENDER）。表示はキャッシュのみ。")
+
+    # Firestore は起動時に import しない（firebase-admin が重く 512MB で OOM になるため）。初回の記事取得時に読み込まれる。
+    if not rss_ai_disabled:
+        # 初回シードはブロックせずバックグラウンドで実行（RSS+AIで数分かかるため）
+        t_seed = threading.Thread(target=_seed_if_needed, daemon=True)
+        t_seed.start()
 
     def _init():
-        NewsAggregator.get_news(force_refresh=True)
+        NewsAggregator.get_news(force_refresh=not rss_ai_disabled)
         NewsAggregator.get_trends(force_refresh=True)
     t = threading.Thread(target=_init, daemon=True)
     t.start()
 
     scheduler = BackgroundScheduler(timezone=JST)
-    scheduler.add_job(
-        lambda: NewsAggregator.get_news(force_refresh=True),
-        "interval",
-        minutes=INTERVAL_MIN,
-        id="refresh_news",
-    )
+    if not rss_ai_disabled:
+        scheduler.add_job(
+            lambda: NewsAggregator.get_news(force_refresh=True),
+            "interval",
+            minutes=INTERVAL_MIN,
+            id="refresh_news",
+        )
     scheduler.add_job(
         lambda: NewsAggregator.get_trends(force_refresh=True),
         "interval",
         minutes=INTERVAL_MIN,
         id="refresh_trends",
     )
-    # 朝9:30・昼12:30・夜20:00・夜中0:00（JST）にRSS取得→記事化
-    for job_id, hour, minute in [
-        ("rss_00", 0, 0),
-        ("rss_0930", 9, 30),
-        ("rss_1230", 12, 30),
-        ("rss_2000", 20, 0),
-    ]:
-        scheduler.add_job(
-            _scheduled_rss_fetch_and_article,
-            CronTrigger(hour=hour, minute=minute, timezone=JST),
-            id=job_id,
-        )
+    if not rss_ai_disabled:
+        # 朝9:30・昼12:30・夜20:00・夜中0:00（JST）にRSS取得→記事化
+        for job_id, hour, minute in [
+            ("rss_00", 0, 0),
+            ("rss_0930", 9, 30),
+            ("rss_1230", 12, 30),
+            ("rss_2000", 20, 0),
+        ]:
+            scheduler.add_job(
+                _scheduled_rss_fetch_and_article,
+                CronTrigger(hour=hour, minute=minute, timezone=JST),
+                id=job_id,
+            )
     scheduler.start()
     # 起動直後のメモリをログ（Render 512MB 制限の確認用）
     try:

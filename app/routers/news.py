@@ -7,7 +7,7 @@ from fastapi.responses import HTMLResponse, RedirectResponse, Response
 from fastapi.templating import Jinja2Templates
 from pathlib import Path
 
-from app.config import settings
+from app.config import settings, is_rss_and_ai_disabled
 from app.services.news_aggregator import NewsAggregator
 from app.services.rss_service import NewsItem, sanitize_display_text
 from app.services.article_cache import save_article
@@ -329,10 +329,12 @@ async def api_refresh_news():
 
     def _refresh():
         NewsAggregator.get_trends(force_refresh=True)  # トレンドは速い
-        NewsAggregator.get_news(force_refresh=True)   # 記事はAI処理で遅い
+        if not is_rss_and_ai_disabled():
+            NewsAggregator.get_news(force_refresh=True)  # 記事はAI処理で遅い（無効時はスキップ）
 
     threading.Thread(target=_refresh, daemon=True).start()
-    return {"status": "ok", "message": "更新を開始しました"}
+    msg = "更新を開始しました" if not is_rss_and_ai_disabled() else "トレンドのみ更新しました（RSS・AIはこの環境では無効です）"
+    return {"status": "ok", "message": msg}
 
 
 def _is_admin(request: Request, x_admin_secret: str | None = Header(None, alias="X-Admin-Secret")) -> bool:
@@ -403,7 +405,7 @@ def _do_create_manual_article_sync(title: str, summary: str, link: str = "", sou
     )
     if not save_article(item):
         return {"status": "error", "article_id": None, "message": "記事の保存に失敗しました"}
-    NewsAggregator.get_news(force_refresh=True)
+    NewsAggregator.get_news(force_refresh=not is_rss_and_ai_disabled())
     return {"status": "ok", "article_id": article_id}
 
 
@@ -415,6 +417,8 @@ async def api_admin_article_manual(
     """手動で概要を送り、AIが理解ナビゲーター形式の記事を生成して追加（管理者のみ）"""
     if not _is_admin(request, x_admin_secret):
         raise HTTPException(status_code=403, detail="管理者のみ利用できます")
+    if is_rss_and_ai_disabled():
+        raise HTTPException(status_code=503, detail="この環境ではRSS取得・AI要約は無効です。手動記事追加はローカル等で実行してください。")
     try:
         body = await request.json()
     except Exception:
@@ -452,7 +456,7 @@ async def api_delete_article(article_id: str):
     from app.services.article_cache import delete_article as delete_article_from_db
     deleted_cache = delete_cache(article_id)
     deleted_article = delete_article_from_db(article_id)
-    NewsAggregator.get_news(force_refresh=True)
+    NewsAggregator.get_news(force_refresh=not is_rss_and_ai_disabled())
     return {
         "status": "ok",
         "deleted": deleted_cache or deleted_article,
@@ -463,6 +467,8 @@ async def api_delete_article(article_id: str):
 @router.get("/api/admin/seed-articles")
 async def api_seed_articles():
     """RSSからミドルマンAI解説付きで記事を投入（新着5件）"""
+    if is_rss_and_ai_disabled():
+        raise HTTPException(status_code=503, detail="この環境ではRSS取得・AI要約は無効です。ローカル等で実行してください。")
     from app.services.rss_service import fetch_rss_news
     from app.services.article_processor import process_new_rss_articles
     from app.services.explanation_cache import get_cached_article_ids
@@ -493,6 +499,8 @@ def _do_seed_one_sync():
 @router.get("/api/article/seed-one")
 async def api_seed_one_article():
     """RSSから1件読み込み、AI解説付きで記事を1件作る。作成した記事IDを返す（常にJSONで返す）"""
+    if is_rss_and_ai_disabled():
+        raise HTTPException(status_code=503, detail="この環境ではRSS取得・AI要約は無効です。")
     import asyncio
     import logging
     logger = logging.getLogger(__name__)
@@ -537,6 +545,8 @@ def _do_force_add_one_sync():
 @router.get("/api/article/force-add-one")
 async def api_force_add_one_article():
     """RSSの先頭1件を必ず1件取り込む。重い処理はスレッドで実行して固まらないようにする。"""
+    if is_rss_and_ai_disabled():
+        raise HTTPException(status_code=503, detail="この環境ではRSS取得・AI要約は無効です。")
     import asyncio
     import logging
     logger = logging.getLogger(__name__)

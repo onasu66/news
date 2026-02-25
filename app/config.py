@@ -30,5 +30,14 @@ class Settings:
     RAPIDAPI_KEY: str = os.getenv("RAPIDAPI_KEY", "").strip()
     RAPIDAPI_SUPER_DUPER_HOST: str = os.getenv("RAPIDAPI_SUPER_DUPER_HOST", "super-duper-trends.p.rapidapi.com").strip()
 
-
 settings = Settings()
+
+
+def is_rss_and_ai_disabled() -> bool:
+    """RSS取得・AI要約をこのインスタンスで無効にするか。Render では True にするとRSS/AIを動かさず表示のみ。"""
+    v = os.getenv("DISABLE_RSS_AND_AI", "").strip().lower()
+    if v in ("1", "true", "yes"):
+        return True
+    if os.getenv("RENDER", "").strip().lower() == "true":
+        return True
+    return False
