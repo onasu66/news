@@ -112,11 +112,8 @@ class NewsAggregator:
         by_cat: dict[str, list[NewsItem]] = {}
         for item in page_items:
             by_cat.setdefault(item.category, []).append(item)
-        news_by_category = [
-            (cat, by_cat[cat])
-            for cat in CATEGORY_ORDER
-            if cat in by_cat and by_cat[cat]
-        ]
+        # 全ジャンルを表示順で出す（記事が0件のジャンルもタブ・パネルを表示）
+        news_by_category = [(cat, by_cat.get(cat, [])) for cat in CATEGORY_ORDER]
 
         pagination = {
             "page": page,

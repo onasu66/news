@@ -83,6 +83,9 @@
         <div id="panel-{{ category }}" class="genre-panel" role="tabpanel" aria-labelledby="tab-{{ category }}" {% if not loop.first %}hidden{% endif %}>
             <h3 class="category-heading">{{ category }}</h3>
             <div class="news-grid news-grid-cards">
+                {% if not items %}
+                <p class="category-empty-msg">このジャンルにはまだ記事がありません。</p>
+                {% endif %}
                 {% for item in items %}
                 <article class="news-card">
                     <a href="/topic/{{ item.id }}" class="news-card-link">
