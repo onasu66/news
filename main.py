@@ -47,10 +47,25 @@ def _seed_if_needed():
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """起動時にスケジューラ開始。Firestore は初回アクセス時に遅延読み込み（512MB 制限で OOM にならないようにする）。"""
+    import os
     import threading
     rss_ai_disabled = is_rss_and_ai_disabled()
     if rss_ai_disabled:
         logger.info("RSS取得・AI要約は無効です（DISABLE_RSS_AND_AI または RENDER）。表示はキャッシュのみ。")
+
+    # Render では credentials ファイルがデプロイされないため、Firestore を使うには FIREBASE_SERVICE_ACCOUNT_JSON が必須
+    if os.environ.get("RENDER", "").strip().lower() == "true":
+        try:
+            from app.services.firestore_store import use_firestore
+            if use_firestore():
+                logger.info("ストレージ: Firestore を使用しています。")
+            else:
+                logger.error(
+                    "Render で Firestore を使うには、ダッシュボードの Environment に "
+                    "FIREBASE_SERVICE_ACCOUNT_JSON を設定してください。未設定のため SQLite（空）を使用しており、記事は表示されません。"
+                )
+        except Exception as e:
+            logger.warning("ストレージ確認でエラー: %s", e)
 
     # Firestore は起動時に import しない（firebase-admin が重く 512MB で OOM になるため）。初回の記事取得時に読み込まれる。
     if not rss_ai_disabled:

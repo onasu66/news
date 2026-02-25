@@ -12,7 +12,10 @@ services:
     envVars:
       - key: PYTHON_VERSION
         value: "3.11"
-      # 以下は Render ダッシュボードの Environment で設定
+      # Render で Firestore を使うには必須（未設定だと SQLite＝空で記事が表示されない）
+      # - key: FIREBASE_SERVICE_ACCOUNT_JSON
+      #   sync: false
+      # 以下は任意。Render ダッシュボードの Environment で設定
       # - key: OPENAI_API_KEY
       #   sync: false
       # - key: ADMIN_SECRET

@@ -20,21 +20,21 @@ https://render.com でアカウント作成し、GitHub と連携します。
 5. **Build Command**: `pip install -r requirements.txt`（既定のまま）
 6. **Start Command**: `bash start.sh`（または `uvicorn main:app --host 0.0.0.0 --port $PORT`）
 
-### 3. 環境変数
+### 3. 環境変数（Render で Firestore を使うにはここが必須）
 
-**Environment** タブで以下を設定します。
+**Render では `credentials/` のファイルはデプロイされません。** 記事を表示するには、必ず **Environment** タブで次を設定してください。
 
 | 変数名 | 必須 | 説明 |
 |--------|------|------|
+| `FIREBASE_SERVICE_ACCOUNT_JSON` | **○** | Firebase サービスアカウントの JSON を**1行にした文字列**で貼り付け。未設定だと SQLite（空）になり記事は表示されません。設定すると **Render でも Firestore を使用**します。 |
 | `OPENAI_API_KEY` | △ | AI解説に使う（Render で RSS/AI 無効なら不要）。未設定だと「APIキーが設定されていません」と表示される場合あり |
-| `FIREBASE_SERVICE_ACCOUNT_JSON` | ○* | Firebase サービスアカウント JSON 文字列（記事・解説の永続化） |
 | `SITE_URL` | △ | サイトの絶対URL（例: `https://xxx.onrender.com`）。sitemap・OG・canonical用。未設定時はリクエストから自動取得 |
 | `ADMIN_SECRET` | △ | 管理画面ログイン用。未設定なら管理機能は無効 |
 | `DISABLE_RSS_AND_AI` | - | `1` または `true` で RSS 取得・AI 要約を無効（表示のみ）。**Render では未設定でも無効になる場合あり**（`RENDER` が設定されている場合） |
 | `NEWS_REFRESH_INTERVAL` | - | ニュース更新間隔（分）。既定: 240 |
 | `FULLTEXT_RSS_BASE_URL` | - | FiveFilters Full-Text RSS の URL（任意） |
 
-\* **Render では必ず設定してください。** Render のディスクは一時的（エフェメラル）なため、SQLite のデータは再デプロイ・再起動で消えます。未設定だと「記事が一つも出てこない」状態になります。
+**FIREBASE_SERVICE_ACCOUNT_JSON を設定すれば、Render 上でも Firestore に接続し、ローカルで保存した記事がそのまま表示されます。** 未設定のままでは SQLite（空）になるため記事は 0 件です。
 
 ### 4. デプロイ
 
