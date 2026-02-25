@@ -65,7 +65,26 @@
             {% endfor %}
         </div>
     </section>
+
+    <nav class="next-article-nav" aria-label="続けて読む">
+        {% if prev_article %}
+        <a href="/article/{{ prev_article.id }}" class="next-article-link next-article-prev">← 前の記事</a>
+        {% endif %}
+        {% if next_article %}
+        <a href="/article/{{ next_article.id }}" class="next-article-link next-article-next">次の記事へ →</a>
+        {% endif %}
+        {% if not prev_article and not next_article %}
+        <a href="/" class="next-article-link next-article-back">一覧に戻る</a>
+        {% endif %}
+    </nav>
 </article>
+
+<div id="midorman-float" class="midorman-float" aria-live="polite" hidden>
+    <span class="midorman-float-avatar" aria-hidden="true">🎙️</span>
+    <div class="midorman-float-inner">
+        <p class="midorman-float-text" id="midorman-float-text"></p>
+    </div>
+</div>
 {% endblock %}
 
 {% block scripts %}
@@ -97,6 +116,29 @@ document.addEventListener('DOMContentLoaded', function() {
             });
         }, { rootMargin: '0px 0px -15% 0px', threshold: 0 });
         triggers.forEach(function(t) { observer.observe(t); });
+    }
+
+    function initMidormanFloat(container) {
+        var floatEl = document.getElementById('midorman-float');
+        var floatText = document.getElementById('midorman-float-text');
+        if (!floatEl || !floatText) return;
+        var wraps = container.querySelectorAll('.article-with-bubbles .scroll-bubble-group .midorman-bubble-wrap');
+        if (wraps.length === 0) return;
+        var lastHtml = '';
+        var floatObserver = new IntersectionObserver(function(entries) {
+            entries.forEach(function(entry) {
+                if (!entry.isIntersecting) return;
+                var wrap = entry.target;
+                var textEl = wrap.querySelector('.midorman-bubble-text');
+                if (textEl) {
+                    lastHtml = textEl.innerHTML;
+                    floatText.innerHTML = lastHtml;
+                    floatEl.hidden = false;
+                }
+            });
+        }, { rootMargin: '-10% 0px -50% 0px', threshold: 0 });
+        wraps.forEach(function(w) { floatObserver.observe(w); });
+        if (lastHtml) floatEl.hidden = false;
     }
 
     var hasSsr = document.getElementById('article-inline-content').querySelector('.article-text, .article-readflow') && ssrPersonas && ssrPersonas.length > 0;
@@ -166,6 +208,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     html += '</div>';
                     el.innerHTML = html;
                     initScrollBubbles(el);
+                    initMidormanFloat(el);
                 }
             }
 
@@ -191,7 +234,10 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // スクロール連動吹き出し（SSR時は初期HTMLに既にある）
     var contentEl = document.getElementById('article-inline-content');
-    if (contentEl) initScrollBubbles(contentEl);
+    if (contentEl) {
+        initScrollBubbles(contentEl);
+        initMidormanFloat(contentEl);
+    }
 
     // 5人格：クリックで表示/非表示（データは既に読み込み済み）
     document.querySelectorAll('.persona-card').forEach(function(card) {

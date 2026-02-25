@@ -705,6 +705,112 @@ body::after {
     font-weight: 600;
 }
 
+/* ========== 次の記事（シームレスに続けて読む） ========== */
+.next-article-nav {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    margin-top: 2.5rem;
+    padding-top: 1.75rem;
+    border-top: 2px dashed var(--color-border-light);
+}
+
+.next-article-link {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.75rem 1.25rem;
+    border-radius: var(--radius);
+    font-weight: 600;
+    font-size: 0.95rem;
+    text-decoration: none;
+    transition: background 0.2s, color 0.2s, box-shadow 0.2s;
+}
+
+.next-article-next {
+    background: linear-gradient(135deg, var(--color-accent), var(--color-primary-light));
+    color: #fff;
+    box-shadow: 0 2px 10px rgba(99, 102, 241, 0.3);
+}
+
+.next-article-next:hover {
+    box-shadow: 0 4px 16px rgba(99, 102, 241, 0.4);
+    color: #fff;
+}
+
+.next-article-prev {
+    background: var(--color-bg-subtle);
+    color: var(--color-text-secondary);
+    border: 1px solid var(--color-border);
+}
+
+.next-article-prev:hover {
+    background: var(--color-surface);
+    color: var(--color-accent);
+}
+
+.next-article-back {
+    background: var(--color-accent-soft);
+    color: var(--color-accent);
+}
+
+.next-article-back:hover {
+    background: var(--color-accent-muted);
+    color: var(--color-primary);
+}
+
+/* ========== ミドルマン フローティング（醜くならない程度に） ========== */
+.midorman-float {
+    position: fixed;
+    right: 1rem;
+    bottom: 1.5rem;
+    max-width: 280px;
+    z-index: 50;
+    display: flex;
+    align-items: flex-end;
+    gap: 0.35rem;
+    pointer-events: none;
+}
+
+.midorman-float-inner {
+    background: linear-gradient(180deg, #fffbeb 0%, #fef3c7 98%);
+    border: 2px solid #f59e0b;
+    border-radius: 14px 14px 6px 14px;
+    padding: 0.65rem 0.9rem 0.75rem;
+    box-shadow: 0 4px 20px rgba(245, 158, 11, 0.25), 0 2px 10px rgba(0,0,0,0.08);
+}
+
+.midorman-float-avatar {
+    font-size: 1.4rem;
+    line-height: 1;
+    flex-shrink: 0;
+}
+
+.midorman-float-text {
+    margin: 0;
+    font-size: 0.9rem;
+    line-height: 1.6;
+    color: #1c1917;
+}
+
+.midorman-float-text br {
+    display: block;
+    content: "";
+    margin-top: 0.35em;
+}
+
+@media (max-width: 600px) {
+    .midorman-float {
+        left: 0.875rem;
+        right: 0.875rem;
+        bottom: max(1rem, env(safe-area-inset-bottom));
+        max-width: none;
+    }
+
+    .midorman-float-inner {
+        flex: 1;
+    }
+}
+
 /* ========== ページネーション ========== */
 .pagination {
     margin-top: 3rem;
@@ -1050,7 +1156,7 @@ body::after {
     padding: 0.85rem 2.5rem 1rem 1.1rem;
 }
 
-.article-with-bubbles .article-with-bubbles .scroll-bubble-group .midorman-bubble-above .midorman-bubble-inner::after {
+.article-with-bubbles .scroll-bubble-group .midorman-bubble-above .midorman-bubble-inner::after {
     left: auto;
     right: 1rem;
     bottom: -8px;
@@ -1464,15 +1570,21 @@ body::after {
         align-items: center;
     }
 
-    /* ジャンルタブ：横スクロール・タップしやすく */
+    /* ジャンル：横スクロールで分かりやすく・右に続きがあることを示す */
+    .news-section .section-title {
+        font-size: 1.15rem;
+        margin-bottom: 0.75rem;
+    }
+
     .category-nav {
         overflow-x: auto;
         -webkit-overflow-scrolling: touch;
         flex-wrap: nowrap;
-        padding: 0.75rem 0 1rem;
-        margin: 0 -0.5rem 1.5rem;
+        padding: 0.75rem 1rem 1rem;
+        margin: 0 -1rem 1.25rem;
         gap: 0.5rem;
         scrollbar-width: none;
+        box-shadow: inset -1.5rem 0 1rem -0.5rem var(--color-bg);
     }
 
     .category-nav::-webkit-scrollbar {
@@ -1487,6 +1599,20 @@ body::after {
         align-items: center;
         font-size: 0.95rem;
         border-radius: 12px;
+    }
+
+    /* ジャンルブロック：見やすい区切り */
+    .category-block {
+        margin-bottom: 2rem;
+        scroll-margin-top: 5rem;
+    }
+
+    .category-heading {
+        font-size: 1.1rem;
+        padding: 0.5rem 0 0.6rem;
+        margin-bottom: 0.75rem;
+        border-bottom: 3px solid;
+        border-image: linear-gradient(90deg, var(--color-accent), var(--color-fun)) 1;
     }
 
     /* ニュースカード：タップ領域を広く・読みやすく */
@@ -1514,25 +1640,28 @@ body::after {
         padding: 1.15rem 1.25rem;
     }
 
+    /* 記事タイトル：目を引くデザイン（スマホ） */
     .news-title {
-        font-size: 1.05rem;
+        font-size: 1.08rem;
+        font-weight: 700;
         line-height: 1.5;
         -webkit-line-clamp: 2;
+        color: var(--color-primary);
+        letter-spacing: -0.02em;
+    }
+
+    @supports (background-clip: text) {
+        .news-card .news-title {
+            background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-accent) 100%);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+        }
     }
 
     .news-summary {
         font-size: 0.95rem;
         line-height: 1.6;
-    }
-
-    .category-block {
-        margin-bottom: 2rem;
-    }
-
-    .category-heading {
-        font-size: 1.1rem;
-        padding-bottom: 0.6rem;
-        margin-bottom: 0.75rem;
     }
 
     /* 記事詳細：読了性を最優先 */
@@ -1648,6 +1777,24 @@ body::after {
         display: inline-flex;
         align-items: center;
         justify-content: center;
+    }
+
+    /* 次の記事：シームレスに続けて読める */
+    .next-article-nav {
+        margin-top: 2rem;
+        padding-top: 1.5rem;
+        gap: 0.75rem;
+    }
+
+    .next-article-link {
+        flex: 1;
+        min-width: 140px;
+        justify-content: center;
+        min-height: 48px;
+    }
+
+    .next-article-next {
+        flex: 1 1 100%;
     }
 
     .site-footer {

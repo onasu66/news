@@ -182,6 +182,17 @@ async def article_detail(request: Request, article_id: str):
     body_html = _blocks_to_html(blocks) if blocks else ""
     _text = (item.summary or item.title or "").replace("\n", " ").strip()
     meta_desc = (_text[:157] + "...") if len(_text) > 160 else _text[:160]
+
+    all_news = NewsAggregator.get_news()
+    next_article = prev_article = None
+    for i, a in enumerate(all_news):
+        if a.id == article_id:
+            if i + 1 < len(all_news):
+                next_article = all_news[i + 1]
+            if i > 0:
+                prev_article = all_news[i - 1]
+            break
+
     return templates.TemplateResponse(
         "article.html",
         {
@@ -196,6 +207,8 @@ async def article_detail(request: Request, article_id: str):
             "personas_data": personas_data,
             "body_html": body_html,
             "meta_description": meta_desc,
+            "next_article": next_article,
+            "prev_article": prev_article,
         }
     )
 
