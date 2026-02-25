@@ -33,7 +33,7 @@ https://render.com でアカウント作成し、GitHub と連携します。
 | `NEWS_REFRESH_INTERVAL` | - | ニュース更新間隔（分）。既定: 240 |
 | `FULLTEXT_RSS_BASE_URL` | - | FiveFilters Full-Text RSS の URL（任意） |
 
-\* `FIREBASE_SERVICE_ACCOUNT_JSON` を設定すると Firestore を使用し、再デプロイ後も記事が保持されます。未設定の場合は SQLite（一時的）を使用します。
+\* **Render では必ず設定してください。** Render のディスクは一時的（エフェメラル）なため、SQLite のデータは再デプロイ・再起動で消えます。未設定だと「記事が一つも出てこない」状態になります。
 
 ### 4. デプロイ
 
@@ -50,5 +50,5 @@ https://render.com でアカウント作成し、GitHub と連携します。
 
 ## 注意事項
 
-- **ストレージ**: `FIREBASE_SERVICE_ACCOUNT_JSON` を設定すれば Firestore に永続化され、再デプロイ後も記事・解説は保持されます。未設定の場合は SQLite を使いますが、無料プランでは再デプロイ時に消えます。
+- **ストレージ（記事が出てこない場合）**: Render のファイルシステムは**一時的**です。`FIREBASE_SERVICE_ACCOUNT_JSON` を設定しないと SQLite を使いますが、**再デプロイ・再起動のたびにデータが消え、記事が 0 件**になります。記事を表示したい場合は **Firestore 用の環境変数を必ず設定**してください。
 - **コールドスタート**: 無料プランではアクセスがないとスリープします。初回アクセスは数十秒かかることがあります。

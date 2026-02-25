@@ -1,12 +1,15 @@
 """Firestore ストア - 記事・解説を Firestore に永続化（Render 等での永続化対応）"""
 import json
+import logging
 from pathlib import Path
 from datetime import datetime
 from typing import Optional
 
+logger = logging.getLogger(__name__)
+
 try:
     from app.config import settings
-    _FIREBASE_JSON = getattr(settings, "FIREBASE_SERVICE_ACCOUNT_JSON", "") or ""
+    _FIREBASE_JSON = (getattr(settings, "FIREBASE_SERVICE_ACCOUNT_JSON", "") or "").strip()
 except Exception:
     _FIREBASE_JSON = ""
 
@@ -17,12 +20,20 @@ _client = None
 
 
 def _load_credential_dict():
-    """サービスアカウント認証情報を取得（env優先、次に credentials ファイル）"""
+    """サービスアカウント認証情報を取得（env優先、次に credentials ファイル）。JSON が不正なら None。"""
     if _FIREBASE_JSON:
-        return json.loads(_FIREBASE_JSON)
+        try:
+            return json.loads(_FIREBASE_JSON)
+        except json.JSONDecodeError as e:
+            logger.warning("FIREBASE_SERVICE_ACCOUNT_JSON の JSON が不正です: %s", e)
+            return None
     if _CREDENTIALS_PATH.exists():
-        with open(_CREDENTIALS_PATH, encoding="utf-8") as f:
-            return json.load(f)
+        try:
+            with open(_CREDENTIALS_PATH, encoding="utf-8") as f:
+                return json.load(f)
+        except (json.JSONDecodeError, OSError) as e:
+            logger.warning("credentials ファイルの読み込みに失敗しました: %s", e)
+            return None
     return None
 
 

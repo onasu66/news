@@ -118,6 +118,69 @@ if static_path.exists():
 app.include_router(news.router)
 
 
+@app.get("/api/debug/storage")
+async def debug_storage():
+    """Firebase/Firestore が有効か確認。認証設定の診断用。"""
+    try:
+        from app.services.firestore_store import use_firestore, _load_credential_dict, _FIREBASE_JSON, _CREDENTIALS_PATH
+        cred_dict = _load_credential_dict()
+        credentials_set = bool(_FIREBASE_JSON or _CREDENTIALS_PATH.exists())
+        credentials_valid = cred_dict is not None
+        try:
+            import firebase_admin  # noqa: F401
+            firebase_available = True
+        except ModuleNotFoundError:
+            firebase_available = False
+        use_firestore_result = use_firestore()
+        storage = "firestore" if use_firestore_result else "sqlite"
+        if not use_firestore_result and credentials_set:
+            if not credentials_valid:
+                msg = "FIREBASE_SERVICE_ACCOUNT_JSON が不正です。JSON 形式を確認してください。"
+            elif not firebase_available:
+                msg = "firebase-admin がインストールされていません。pip install firebase-admin を実行してください。"
+            else:
+                msg = "Firestore が無効です。上記を確認してください。"
+        else:
+            msg = "Firestore を使用しています。" if use_firestore_result else "認証が未設定のため SQLite を使用しています。"
+        return {
+            "storage": storage,
+            "credentials_set": credentials_set,
+            "credentials_valid_json": credentials_valid,
+            "firebase_admin_available": firebase_available,
+            "message": msg,
+        }
+    except Exception as e:
+        return {
+            "storage": "sqlite",
+            "credentials_set": False,
+            "credentials_valid_json": False,
+            "firebase_admin_available": False,
+            "message": "確認中にエラー: " + str(e),
+        }
+
+
+@app.get("/api/debug/articles-status")
+async def debug_articles_status():
+    """記事が表示されない原因の確認用。保存記事数・AI解説済み数・表示対象数を返す。"""
+    from app.services.article_cache import load_all
+    from app.services.explanation_cache import get_cached_article_ids
+    try:
+        from app.services.firestore_store import use_firestore
+        storage = "firestore" if use_firestore() else "sqlite"
+    except Exception:
+        storage = "sqlite"
+    all_articles = load_all()
+    processed_ids = get_cached_article_ids()
+    displayable = [a for a in all_articles if a.id in processed_ids]
+    return {
+        "storage": storage,
+        "articles_total": len(all_articles),
+        "with_ai_explanation": len(processed_ids),
+        "displayable": len(displayable),
+        "message": "表示されるのは「記事が保存されている」かつ「AI解説済み」のものだけです。",
+    }
+
+
 def _get_routes_info(app_obj: FastAPI) -> list:
     out = []
     for r in app_obj.routes:
@@ -160,6 +223,8 @@ async def debug_page():
 <li><a href="/">トップ</a></li>
 <li><a href="/confirm">確認用</a></li>
 <li><a href="/admin/login">ログイン</a></li>
+<li><a href="/api/debug/articles-status" target="_blank">記事ステータス（なぜ出ないか確認）</a></li>
+<li><a href="/api/debug/storage" target="_blank">ストレージ確認（Firebase / SQLite どちらか）</a></li>
 </ul>
 <h2>同じWi‑Fi内から</h2>
 <p>サーバーは <code>0.0.0.0:8001</code> で待ち受けています。同じWi‑Fi／LAN内のスマホや別PCから、<br>

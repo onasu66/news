@@ -134,14 +134,15 @@ document.addEventListener('DOMContentLoaded', function() {
         var floatEl = document.getElementById('midorman-float');
         var floatText = document.getElementById('midorman-float-text');
         if (!floatEl || !floatText) return;
-        var wraps = container.querySelectorAll('.article-with-bubbles .scroll-bubble-group .midorman-bubble-wrap');
+        // text/explain 形式(.article-with-bubbles) と navigator 形式(.article-readflow) の両方に対応
+        var wraps = container.querySelectorAll('.scroll-bubble-group .midorman-bubble-wrap');
         if (wraps.length === 0) return;
         var lastHtml = '';
         var floatObserver = new IntersectionObserver(function(entries) {
             entries.forEach(function(entry) {
                 if (!entry.isIntersecting) return;
                 var wrap = entry.target;
-                var textEl = wrap.querySelector('.midorman-bubble-text');
+                var textEl = wrap.querySelector('.midorman-bubble-text') || wrap.querySelector('.midorman-aside-body');
                 if (textEl) {
                     lastHtml = textEl.innerHTML;
                     floatText.innerHTML = lastHtml;
