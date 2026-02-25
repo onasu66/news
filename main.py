@@ -1,9 +1,14 @@
 """ニュースサイト - FastAPI メインアプリケーション"""
+import logging
 from contextlib import asynccontextmanager
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
 from fastapi import FastAPI
+
+# 起動時メモリログ等を Render/ローカルで見るため
+logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(name)s: %(message)s")
+logger = logging.getLogger(__name__)
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from apscheduler.schedulers.background import BackgroundScheduler
@@ -78,6 +83,16 @@ async def lifespan(app: FastAPI):
             id=job_id,
         )
     scheduler.start()
+    # 起動直後のメモリをログ（Render 512MB 制限の確認用）
+    try:
+        import resource
+        usage = resource.getrusage(resource.RUSAGE_SELF)
+        rss_kb = usage.ru_maxrss  # Linux では KB
+        rss_mb = rss_kb / 1024
+        pct = (rss_mb / 512) * 100
+        logger.info("起動時メモリ: 約 %.1f MB (512MB の %.0f%%)", rss_mb, pct)
+    except Exception:
+        pass
     yield
     scheduler.shutdown()
 
