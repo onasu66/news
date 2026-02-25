@@ -45,8 +45,20 @@ def _seed_if_needed():
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """起動時にスケジューラ開始。重い初回シードはバックグラウンドで実行し、サーバーはすぐ待ち受け開始する（Renderのポートタイムアウト回避）"""
+    """起動時にスケジューラ開始。Firebase 認証がある場合は起動時に Firestore を初期化（Render で SQLite に落ちないようにする）。"""
     import threading
+    # Firebase 認証が設定されていれば起動時に Firestore を import して接続を確定（Render で記事が消えないようにする）
+    try:
+        from app.config import settings
+        if getattr(settings, "FIREBASE_SERVICE_ACCOUNT_JSON", "").strip():
+            from app.services.firestore_store import use_firestore, _get_client
+            if use_firestore():
+                _get_client()
+                logger.info("ストレージ: Firestore を使用します（起動時に接続済み）")
+            else:
+                logger.warning("FIREBASE_SERVICE_ACCOUNT_JSON は設定されていますが Firestore が有効になりませんでした（firebase-admin 未インストールまたは JSON 不正の可能性）。SQLite を使用します。")
+    except Exception as e:
+        logger.warning("Firestore 起動時チェックでエラー: %s", e)
     # 初回シードはブロックせずバックグラウンドで実行（RSS+AIで数分かかるため）
     t_seed = threading.Thread(target=_seed_if_needed, daemon=True)
     t_seed.start()
