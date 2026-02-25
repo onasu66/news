@@ -135,7 +135,7 @@ def _meta_description_qa(title: str, summary: str | None, max_len: int = 160) ->
 
 
 def _blocks_to_html(blocks: list) -> str:
-    """ブロックをHTMLに変換。記事本文は隙間なしで続けて表示し、解説は末尾にまとめる（SSR用・XSS対策済み）"""
+    """ブロックをHTMLに変換。本文とミドルマン解説をフローティング表示用の scroll-bubble-group で出力（SSR用・XSS対策済み）"""
     if not blocks:
         return ""
     import html
@@ -154,36 +154,52 @@ def _blocks_to_html(blocks: list) -> str:
                 paras = [p.strip() for p in paras if p.strip()]
             elif b.get("section") != "facts" and body:
                 asides.append({"section": b["section"], "label": nav_labels.get(b["section"], b["section"]), "body": body_safe})
-        # 記事本文だけを隙間なしで先に表示
-        for p in paras:
+        # 段落と解説を交互に配置（フローティング表示用の scroll-bubble-group）
+        for i, p in enumerate(paras):
             p_safe = html.escape(p).replace("\n", "<br>")
             out.append(f'<p class="article-text">{p_safe}</p>')
-        # 解説は記事の後にまとめて表示
-        if asides:
-            out.append('<section class="article-asides" aria-label="解説">')
-            for a in asides:
-                out.append(f'<div class="midorman-aside-block midorman-aside-{html.escape(a["section"])}"><span class="midorman-aside-label">{html.escape(a["label"])}</span><div class="midorman-aside-body">{a["body"]}</div></div>')
-            out.append("</section>")
+            if i < len(asides):
+                a = asides[i]
+                out.append(
+                    f'<div class="scroll-bubble-group">'
+                    f'<div class="scroll-trigger" aria-hidden="true"></div>'
+                    f'<div class="midorman-bubble-wrap">'
+                    f'<div class="midorman-aside midorman-aside-{html.escape(a["section"])}">'
+                    f'<span class="midorman-aside-label">{html.escape(a["label"])}</span>'
+                    f'<div class="midorman-aside-body">{a["body"]}</div></div></div></div>'
+                )
+        for j in range(len(paras), len(asides)):
+            a = asides[j]
+            out.append(
+                f'<div class="scroll-bubble-group">'
+                f'<div class="scroll-trigger" aria-hidden="true"></div>'
+                f'<div class="midorman-bubble-wrap">'
+                f'<div class="midorman-aside midorman-aside-{html.escape(a["section"])}">'
+                f'<span class="midorman-aside-label">{html.escape(a["label"])}</span>'
+                f'<div class="midorman-aside-body">{a["body"]}</div></div></div></div>'
+            )
         return '<div class="article-readflow">' + "".join(out) + "</div>" if out else ""
-    # text/explain 形式：本文を先に続けて表示し、要点の解説は末尾にまとめる
-    text_parts = []
-    explain_parts = []
+    # text/explain 形式：本文と要点の解説を交互に配置（フローティング表示用）
+    html_parts = ['<div class="article-readflow article-with-bubbles">']
+    explain_index = 0
     for b in blocks:
         if b.get("type") == "explain":
+            explain_index += 1
             c = html.escape(b.get("content") or "").replace("\n", "<br>")
-            explain_parts.append(f'<p class="article-explain-text">{c}</p>')
+            h3_id = f"explain-{explain_index}"
+            html_parts.append(f'<h3 class="article-h3" id="{h3_id}">要点の解説</h3>')
+            bubble = (
+                f'<div class="midorman-bubble-above">'
+                f'<span class="midorman-bubble-avatar" aria-hidden="true">🎙️</span>'
+                f'<div class="midorman-bubble-inner"><p class="midorman-bubble-text">{c}</p></div></div>'
+            )
+            html_parts.append(f'<div class="scroll-bubble-group"><div class="scroll-trigger" aria-hidden="true"></div><div class="midorman-bubble-wrap">{bubble}</div></div>')
         elif b.get("type") == "text":
             for p in (b.get("content") or "").strip().split("\n\n"):
                 p = p.strip()
                 if p:
                     p_safe = html.escape(p).replace("\n", "<br>")
-                    text_parts.append(f'<p class="article-text">{p_safe}</p>')
-    html_parts = ['<div class="article-readflow">']
-    html_parts.extend(text_parts)
-    if explain_parts:
-        html_parts.append('<section class="article-asides" aria-label="要点の解説"><h3 class="article-h3">要点の解説</h3>')
-        html_parts.extend(explain_parts)
-        html_parts.append("</section>")
+                    html_parts.append(f'<p class="article-text">{p_safe}</p>')
     html_parts.append("</div>")
     return "".join(html_parts)
 
