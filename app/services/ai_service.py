@@ -5,7 +5,6 @@ import re
 from typing import Optional, Any
 
 logger = logging.getLogger(__name__)
-from openai import OpenAI
 from app.config import settings
 from app.utils.openai_compat import create_with_retry
 
@@ -37,6 +36,7 @@ def explain_article_with_ai(
     if not settings.OPENAI_API_KEY:
         return "（APIキーが設定されていません。.envにOPENAI_API_KEYを設定してください）"
 
+    from openai import OpenAI
     model = model or settings.OPENAI_MODEL
     client = OpenAI(api_key=settings.OPENAI_API_KEY)
 
@@ -131,6 +131,7 @@ def explain_article_long_with_bubbles(
         return [{"type": "text", "content": content[:3000]}, {"type": "explain", "content": "（APIキーが設定されていません）"}]
 
     from app.services.rss_service import sanitize_display_text
+    from openai import OpenAI
     content = sanitize_display_text(content)
 
     model = model or settings.OPENAI_MODEL
@@ -246,6 +247,7 @@ def explain_article_as_navigator(
         ] + [{"type": "navigator_section", "section": s, "content": ""} for s in _NAVIGATOR_SECTION_ORDER[1:]]
 
     from app.services.rss_service import sanitize_display_text
+    from openai import OpenAI
     content = sanitize_display_text(content)
 
     model = model or settings.OPENAI_MODEL
@@ -353,6 +355,7 @@ def explain_article_inline_with_ai(
         return [{"type": "text", "content": content}, {"type": "explain", "content": "（APIキーが設定されていません）"}]
 
     from app.services.rss_service import sanitize_display_text
+    from openai import OpenAI
     content = sanitize_display_text(content)
 
     model = model or settings.OPENAI_MODEL
@@ -465,6 +468,7 @@ def get_persona_opinion(
     if persona_id < 0 or persona_id >= len(PERSONAS):
         return ""
 
+    from openai import OpenAI
     model = model or settings.OPENAI_MODEL
     p = PERSONAS[persona_id]
     client = OpenAI(api_key=settings.OPENAI_API_KEY)
@@ -496,6 +500,7 @@ def explain_paragraph_with_ai(
     if not settings.OPENAI_API_KEY:
         return "（APIキー未設定）"
 
+    from openai import OpenAI
     model = model or settings.OPENAI_MODEL
     client = OpenAI(api_key=settings.OPENAI_API_KEY)
     try:

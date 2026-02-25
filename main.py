@@ -26,18 +26,25 @@ def _scheduled_rss_fetch_and_article():
     NewsAggregator.get_news(force_refresh=True)
 
 
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    """起動時にスケジューラ開始"""
-    import threading
-    from app.services.rss_service import fetch_rss_news
+def _seed_if_needed():
+    """キャッシュが少ないときだけRSS取得→記事化（重いのでバックグラウンドで実行）"""
     from app.services.explanation_cache import get_cached_article_ids
+    from app.services.rss_service import fetch_rss_news
     from app.services.article_processor import process_new_rss_articles
-
     cached_ids = get_cached_article_ids()
     if len(cached_ids) < 20:
         news_list = fetch_rss_news()
-        process_new_rss_articles(news_list, max_per_run=5)
+        if news_list:
+            process_new_rss_articles(news_list, max_per_run=5)
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """起動時にスケジューラ開始。重い初回シードはバックグラウンドで実行し、サーバーはすぐ待ち受け開始する（Renderのポートタイムアウト回避）"""
+    import threading
+    # 初回シードはブロックせずバックグラウンドで実行（RSS+AIで数分かかるため）
+    t_seed = threading.Thread(target=_seed_if_needed, daemon=True)
+    t_seed.start()
 
     def _init():
         NewsAggregator.get_news(force_refresh=True)
