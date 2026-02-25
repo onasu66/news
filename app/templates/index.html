@@ -19,7 +19,10 @@
         <span class="hero-badge">AIが解説する知的リポート</span>
         <h1>最新ニュースを、AIが解説</h1>
         <p class="hero-desc">NHK・Reuters・読売など信頼メディアの最新ニュースを収集し、AIが背景やポイントを解説。ひとつのニュースを「知のリポート」として、分かりやすくお届けします。</p>
-        <button type="button" id="btn-add-article" class="btn-add-article">新しいリポートを追加</button>
+        <div class="hero-buttons">
+            <button type="button" id="btn-add-article" class="btn-add-article">新しいリポートを追加</button>
+            <button type="button" id="btn-rss-one" class="btn-rss-one" title="RSSを取得して1件だけ記事化">手動でRSS取得（1件）</button>
+        </div>
 
         <div class="added-one-box">
             <h2 class="added-one-title">注目の1本</h2>
@@ -193,6 +196,39 @@
                     clearTimeout(slowMsg);
                     btnAdd.disabled = false;
                     btnAdd.textContent = '新しいリポートを追加';
+                    alert('取得に失敗しました');
+                });
+        });
+    }
+
+    // 手動でRSS取得（1件だけ記事化）
+    var btnRssOne = document.getElementById('btn-rss-one');
+    if (btnRssOne) {
+        btnRssOne.addEventListener('click', function() {
+            btnRssOne.disabled = true;
+            btnRssOne.textContent = 'RSS取得中...';
+            var slowMsg = setTimeout(function() {
+                if (btnRssOne.disabled) btnRssOne.textContent = 'AI解説中...';
+            }, 5000);
+            fetch('/api/article/seed-one')
+                .then(function(r) { return r.json(); })
+                .then(function(data) {
+                    clearTimeout(slowMsg);
+                    btnRssOne.disabled = false;
+                    btnRssOne.textContent = '手動でRSS取得（1件）';
+                    if (data.status === 'ok' && data.article_id) {
+                        document.getElementById('added-msg').style.display = 'block';
+                        window.location.reload();
+                    } else if (data.status === 'none') {
+                        alert(data.message || '取り込める記事がありませんでした。');
+                    } else {
+                        alert(data.message || '取り込みに失敗しました');
+                    }
+                })
+                .catch(function() {
+                    clearTimeout(slowMsg);
+                    btnRssOne.disabled = false;
+                    btnRssOne.textContent = '手動でRSS取得（1件）';
                     alert('取得に失敗しました');
                 });
         });
