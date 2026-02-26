@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% block title %}AI - 知リポAI{% endblock %}
+{% block content %}
+<section class="page-header ai-page-header">
+    <h1 class="page-title">🤖 AIページ</h1>
+    <p class="page-desc">AIがおすすめ・分析・コメントします</p>
+</section>
+<div class="ai-page-content" style="max-width:800px; margin:0 auto; padding:0 1rem;">
+    {% if ai_memo %}
+    <section class="ai-section ai-memo-section">
+        <h2 class="ai-section-title">📝 昨日のAIメモ</h2>
+        <div class="ai-memo-card">
+            <p>{{ ai_memo }}</p>
+        </div>
+    </section>
+    {% endif %}
+
+    {% if ai_personas %}
+    <section class="ai-section ai-persona-section">
+        <h2 class="ai-section-title">💬 今日のAI人格コメント</h2>
+        {% for pc in ai_personas %}
+        <div class="ai-persona-comment">
+            <span class="ai-persona-emoji">{{ pc.emoji }}</span>
+            <div>
+                <strong>{{ pc.name }}</strong>
+                <p>{{ pc.comment }}</p>
+            </div>
+        </div>
+        {% endfor %}
+    </section>
+    {% endif %}
+
+    <section class="ai-section">
+        <h2 class="ai-section-title">🎯 AIおすすめ記事</h2>
+        <div class="news-grid">
+            {% for item in recommended %}
+            <article class="news-card animate-fade-in">
+                <a href="/topic/{{ item.id }}" class="news-card-link">
+                    <div class="news-card-image">
+                        <img src="{{ item.image_url or 'https://picsum.photos/400/225' }}" alt="{{ item.title }}" loading="lazy">
+                        <span class="news-card-category">{{ item.category }}</span>
+                    </div>
+                    <div class="news-card-body">
+                        <h3 class="news-title">{{ item.title }}</h3>
+                        <p class="news-summary-line">👀 {{ item.summary[:80] }}{% if item.summary|length > 80 %}...{% endif %}</p>
+                    </div>
+                </a>
+            </article>
+            {% endfor %}
+        </div>
+    </section>
+</div>
+{% endblock %}

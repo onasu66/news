@@ -52,20 +52,30 @@ async def sitemap_xml(request: Request):
 
 
 @router.get("/", response_class=HTMLResponse)
-async def index(request: Request, page: int = 1):
-    """トップページ（ジャンル別表示・ページネーション対応）"""
-    news_by_category, pagination = NewsAggregator.get_news_by_category(page=page)
+async def index(request: Request, page: int = 1, keyword: str = ""):
+    """トップページ（ジャンル別表示・ページネーション対応）。keyword 指定時は関連記事のみ表示"""
+    from app.services.news_aggregator import CATEGORY_ORDER, ITEMS_PER_PAGE
+    keyword = (keyword or "").strip()
+    if keyword:
+        # キーワードでフィルタ：全記事からタイトル・要約に含まれるものだけ残し、ページネーション＋ジャンル再集計
+        all_news = NewsAggregator.get_news()
+        kw_lower = keyword.lower()
+        filtered = [a for a in all_news if kw_lower in (a.title or "").lower() or kw_lower in (a.summary or "").lower()]
+        per_page = ITEMS_PER_PAGE
+        total = len(filtered)
+        total_pages = max(1, (total + per_page - 1) // per_page)
+        page = max(1, min(page, total_pages))
+        start = (page - 1) * per_page
+        page_items = filtered[start : start + per_page]
+        by_cat: dict[str, list] = {}
+        for a in page_items:
+            by_cat.setdefault(a.category, []).append(a)
+        news_by_category = [(c, by_cat.get(c, [])) for c in CATEGORY_ORDER]
+        pagination = {"page": page, "per_page": per_page, "total": total, "total_pages": total_pages, "has_prev": page > 1, "has_next": page < total_pages}
+    else:
+        news_by_category, pagination = NewsAggregator.get_news_by_category(page=page)
     trends = NewsAggregator.get_trends()
     added_one = None
-    if page == 1:
-        all_news = NewsAggregator.get_news()
-        if all_news:
-            added_one = all_news[0]
-            if added_one:
-                if not added_one.image_url:
-                    added_one.image_url = get_image_url(added_one.id, 400, 225)
-                elif not added_one.image_url.startswith("http"):
-                    added_one.image_url = get_image_url(added_one.image_url, 400, 225)
     for _, items in news_by_category:
         for item in items:
             if not item.image_url:
@@ -73,7 +83,7 @@ async def index(request: Request, page: int = 1):
             elif item.image_url and not item.image_url.startswith("http"):
                 item.image_url = get_image_url(item.image_url, 400, 225)
     site_url = _get_site_url(request)
-    og_image = (added_one.image_url or "https://picsum.photos/1200/630") if added_one else "https://picsum.photos/1200/630"
+    og_image = "https://picsum.photos/1200/630"
     return templates.TemplateResponse(
         "index.html",
         {
@@ -84,8 +94,118 @@ async def index(request: Request, page: int = 1):
             "added_one": added_one,
             "site_url": site_url,
             "og_image": og_image,
+            "search_keyword": keyword,
         }
     )
+
+
+@router.get("/api/news/page")
+async def api_news_page(page: int = 1, keyword: str = ""):
+    """無限スクロール用：ページの記事カードHTMLを返す"""
+    from app.services.news_aggregator import CATEGORY_ORDER, ITEMS_PER_PAGE
+    keyword = (keyword or "").strip()
+    if keyword:
+        all_news = NewsAggregator.get_news()
+        kw_lower = keyword.lower()
+        news = [a for a in all_news if kw_lower in (a.title or "").lower() or kw_lower in (a.summary or "").lower()]
+    else:
+        news = NewsAggregator.get_news()
+    total = len(news)
+    per_page = ITEMS_PER_PAGE
+    total_pages = max(1, (total + per_page - 1) // per_page)
+    page = max(1, min(page, total_pages))
+    start = (page - 1) * per_page
+    items = news[start : start + per_page]
+    for item in items:
+        if not item.image_url:
+            item.image_url = get_image_url(item.id, 400, 225)
+        elif not item.image_url.startswith("http"):
+            item.image_url = get_image_url(item.image_url, 400, 225)
+    import html as html_mod
+    cards_html = ""
+    for item in items:
+        pub = item.published.strftime('%m/%d %H:%M') if item.published else ''
+        title_safe = html_mod.escape(item.title or "")
+        summary_safe = html_mod.escape((item.summary or "")[:80])
+        source_safe = html_mod.escape(item.source or "")
+        cat_safe = html_mod.escape(item.category or "")
+        cards_html += f'''<article class="news-card animate-fade-in" data-category="{cat_safe}">
+<a href="/topic/{item.id}" class="news-card-link">
+<div class="news-card-image"><img src="{item.image_url or 'https://picsum.photos/400/225'}" alt="{title_safe}" loading="lazy"><span class="news-card-category">{cat_safe}</span></div>
+<div class="news-card-body">
+<div class="news-card-meta"><span class="news-card-time">🕒 {pub}</span><span class="news-card-source">{source_safe}</span></div>
+<h3 class="news-title">{title_safe}</h3>
+<p class="news-summary-line">👀 {summary_safe}...</p>
+<div class="news-card-footer"><span class="news-card-ai">✍ AIが解説</span><span class="news-badge">AI解説</span></div>
+</div></a></article>'''
+    return {"html": cards_html, "page": page, "total_pages": total_pages}
+
+
+@router.get("/trend", response_class=HTMLResponse)
+async def trend_page(request: Request):
+    """トレンドページ：スコアが高い記事"""
+    all_news = NewsAggregator.get_news()
+    trends = NewsAggregator.get_trends()
+    trend_keywords = [t.keyword for t in trends]
+    scored = []
+    for item in all_news:
+        text = f"{item.title} {item.summary}"
+        score = sum(1 for kw in trend_keywords if kw.lower() in text.lower())
+        scored.append((score, item))
+    scored.sort(key=lambda x: x[0], reverse=True)
+    top_articles = [item for _, item in scored[:30]]
+    for item in top_articles:
+        if not item.image_url:
+            item.image_url = get_image_url(item.id, 400, 225)
+        elif not item.image_url.startswith("http"):
+            item.image_url = get_image_url(item.image_url, 400, 225)
+    return templates.TemplateResponse("trend.html", {"request": request, "articles": top_articles, "trends": trends})
+
+
+@router.get("/ai", response_class=HTMLResponse)
+async def ai_page(request: Request):
+    """AIページ：おすすめ・昨日のメモ・人格コメント"""
+    all_news = NewsAggregator.get_news()
+    recommended = all_news[:6]
+    for item in recommended:
+        if not item.image_url:
+            item.image_url = get_image_url(item.id, 400, 225)
+        elif not item.image_url.startswith("http"):
+            item.image_url = get_image_url(item.image_url, 400, 225)
+    ai_memo = None
+    ai_personas = []
+    try:
+        from app.services.ai_daily import get_daily_ai_content
+        daily = get_daily_ai_content()
+        if daily:
+            ai_memo = daily.get("memo", "")
+            ai_personas = daily.get("persona_comments", [])
+    except Exception:
+        pass
+    return templates.TemplateResponse("ai.html", {"request": request, "recommended": recommended, "ai_memo": ai_memo, "ai_personas": ai_personas})
+
+
+@router.get("/search", response_class=HTMLResponse)
+async def search_page(request: Request, q: str = ""):
+    """探すページ"""
+    q = (q or "").strip()
+    results = []
+    if q:
+        all_news = NewsAggregator.get_news()
+        ql = q.lower()
+        results = [a for a in all_news if ql in (a.title or "").lower() or ql in (a.summary or "").lower()][:50]
+        for item in results:
+            if not item.image_url:
+                item.image_url = get_image_url(item.id, 400, 225)
+            elif not item.image_url.startswith("http"):
+                item.image_url = get_image_url(item.image_url, 400, 225)
+    return templates.TemplateResponse("search.html", {"request": request, "query": q, "results": results})
+
+
+@router.get("/saved", response_class=HTMLResponse)
+async def saved_page(request: Request):
+    """保存済み記事ページ（ローカルストレージベース）"""
+    return templates.TemplateResponse("saved.html", {"request": request})
 
 
 # 確認用ページで表示する直近の記事数
@@ -223,6 +343,8 @@ async def topic_detail(request: Request, topic_id: str):
     cached = get_cached(topic_id)
     blocks = _sanitize_blocks(cached["blocks"]) if cached and cached.get("blocks") else []
     personas_data = cached.get("personas", []) if cached else []
+    quick_understand = cached.get("quick_understand") if cached else None
+    vote_data = cached.get("vote_data") if cached else None
     body_html = _blocks_to_html(blocks) if blocks else ""
     meta_desc = _meta_description_qa(item.title, item.summary)
 
@@ -237,6 +359,9 @@ async def topic_detail(request: Request, topic_id: str):
             break
 
     related = [a for a in all_news if a.category == item.category and a.id != topic_id][:4]
+    import random as _rnd
+    other_cat = [a for a in all_news if a.category != item.category and a.id != topic_id]
+    ai_recommended = _rnd.sample(other_cat, min(3, len(other_cat))) if other_cat else []
 
     return templates.TemplateResponse(
         "article.html",
@@ -255,6 +380,10 @@ async def topic_detail(request: Request, topic_id: str):
             "next_article": next_article,
             "prev_article": prev_article,
             "related_articles": related,
+            "same_category_articles": related,
+            "ai_recommended": ai_recommended,
+            "quick_understand": quick_understand,
+            "vote_data": vote_data,
         }
     )
 

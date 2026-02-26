@@ -112,6 +112,41 @@ def _add_bracket_title(title: str) -> str:
     return f"【解説】{t}"
 
 
+def _select_diverse_batch(
+    items: list[NewsItem],
+    max_per_run: int,
+    max_per_source: int = 2,
+    max_per_category: int = 2,
+) -> list[NewsItem]:
+    """
+    スコア順の候補から、同ソース最大 max_per_source 件・同ジャンル最大 max_per_category 件を守りつつ、
+    最大 max_per_run 件を選ぶ（多様性を確保）。
+    """
+    source_count: dict[str, int] = {}
+    category_count: dict[str, int] = {}
+    chosen: list[NewsItem] = []
+    # 第1パス: キャップを守りながら選ぶ
+    for item in items:
+        if len(chosen) >= max_per_run:
+            break
+        src = item.source or ""
+        cat = item.category or "総合"
+        if source_count.get(src, 0) >= max_per_source or category_count.get(cat, 0) >= max_per_category:
+            continue
+        chosen.append(item)
+        source_count[src] = source_count.get(src, 0) + 1
+        category_count[cat] = category_count.get(cat, 0) + 1
+    # 第2パス: 足りなければキャップ無視で追加
+    if len(chosen) < max_per_run:
+        for item in items:
+            if len(chosen) >= max_per_run:
+                break
+            if item in chosen:
+                continue
+            chosen.append(item)
+    return chosen[:max_per_run]
+
+
 def _rank_by_trending(items: list[NewsItem], trend_keywords: list[str]) -> list[NewsItem]:
     """トレンド合致度＋ソース重みで記事をランク付け（話題度の高い順）"""
     SOURCE_WEIGHT = {
@@ -168,7 +203,7 @@ def process_new_rss_articles(rss_items: list[NewsItem], max_per_run: int = 5, tr
         seen_norm.add(norm)
         deduped.append(item)
 
-    to_process = deduped[:max_per_run]
+    to_process = _select_diverse_batch(deduped, max_per_run, max_per_source=2, max_per_category=2)
 
     count = 0
     for item in to_process:

@@ -95,7 +95,6 @@ async def lifespan(app: FastAPI):
         id="refresh_trends",
     )
     if not rss_ai_disabled:
-        # 朝9:30・昼12:30・夜20:00・夜中0:00（JST）にRSS取得→記事化
         for job_id, hour, minute in [
             ("rss_00", 0, 0),
             ("rss_0930", 9, 30),
@@ -107,6 +106,18 @@ async def lifespan(app: FastAPI):
                 CronTrigger(hour=hour, minute=minute, timezone=JST),
                 id=job_id,
             )
+        # AIページ日次コンテンツ（朝9時に1回）
+        def _generate_daily():
+            try:
+                from app.services.ai_daily import generate_daily_ai_content
+                generate_daily_ai_content()
+            except Exception as e:
+                logger.warning("Daily AI content generation failed: %s", e)
+        scheduler.add_job(
+            _generate_daily,
+            CronTrigger(hour=9, minute=0, timezone=JST),
+            id="ai_daily",
+        )
     scheduler.start()
     # 起動直後のメモリをログ（Render 512MB 制限の確認用）
     try:

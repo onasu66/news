@@ -491,6 +491,60 @@ def get_persona_opinion(
         return f"（取得失敗: {str(e)}）"
 
 
+def generate_quick_understand(title: str, content: str, model: str | None = None) -> dict:
+    """秒速理解：何が起きた・なぜ・どうなる の3行を生成"""
+    if not settings.OPENAI_API_KEY:
+        return {}
+    from openai import OpenAI
+    model = model or settings.OPENAI_MODEL
+    client = OpenAI(api_key=settings.OPENAI_API_KEY)
+    try:
+        response = create_with_retry(
+            client,
+            300,
+            model=model,
+            messages=[
+                {"role": "system", "content": "あなたはニュース速報の要約者です。以下の記事を3つの視点で各1文（30字以内）にまとめてください。\n\n出力はJSON形式で：\n{\"what\": \"何が起きたか\", \"why\": \"なぜ起きたか\", \"how\": \"今後どうなるか\"}\n\n日本語で、簡潔に。JSONのみ出力。"},
+                {"role": "user", "content": f"【タイトル】{title}\n\n【内容】\n{content[:2000]}"},
+            ],
+            temperature=0.3,
+        )
+        text = (response.choices[0].message.content or "").strip()
+        if text.startswith("```"):
+            text = text.split("\n", 1)[-1].rsplit("```", 1)[0].strip()
+        return json.loads(text)
+    except Exception as e:
+        logger.warning("quick_understand generation failed: %s", e)
+        return {}
+
+
+def generate_vote_question(title: str, content: str, model: str | None = None) -> dict:
+    """投票用の質問とオプションをAIが提案"""
+    if not settings.OPENAI_API_KEY:
+        return {}
+    from openai import OpenAI
+    model = model or settings.OPENAI_MODEL
+    client = OpenAI(api_key=settings.OPENAI_API_KEY)
+    try:
+        response = create_with_retry(
+            client,
+            300,
+            model=model,
+            messages=[
+                {"role": "system", "content": "以下のニュース記事について、読者に問いかける投票質問を1つ作ってください。選択肢は3〜4個。\n\n出力はJSON形式で：\n{\"question\": \"質問文\", \"options\": [{\"id\": \"a\", \"label\": \"選択肢1\"}, {\"id\": \"b\", \"label\": \"選択肢2\"}, ...]}\n\n日本語で。JSONのみ出力。"},
+                {"role": "user", "content": f"【タイトル】{title}\n\n【内容】\n{content[:2000]}"},
+            ],
+            temperature=0.5,
+        )
+        text = (response.choices[0].message.content or "").strip()
+        if text.startswith("```"):
+            text = text.split("\n", 1)[-1].rsplit("```", 1)[0].strip()
+        return json.loads(text)
+    except Exception as e:
+        logger.warning("vote_question generation failed: %s", e)
+        return {}
+
+
 def explain_paragraph_with_ai(
     paragraph: str,
     context_title: str = "",

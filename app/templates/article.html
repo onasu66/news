@@ -21,30 +21,61 @@
         <a href="/" class="back-link">← 一覧に戻る</a>
         <div class="article-meta">
             <span class="article-source">{{ article.source }}</span>
+            <span class="article-date">🕒 {{ article.published.strftime('%Y/%m/%d %H:%M') if article.published else '' }}</span>
+            <span class="article-cat-badge">🏷 {{ article.category }}</span>
             <span class="article-badge">AI解説つきリポート</span>
         </div>
         <h1 class="article-title">{{ article.title }}</h1>
-        <h2 class="article-h2">{{ article.title }}とは？</h2>
+        <div class="article-header-actions">
+            <button type="button" class="save-article-btn" id="btn-save" data-id="{{ article.id }}" data-title="{{ article.title|e }}" data-summary="{{ (article.summary or '')[:100]|e }}">
+                ⭐ 保存
+            </button>
+        </div>
     </header>
 
     <div class="article-hero">
         <img src="{{ image_url }}" alt="{{ article.title }}" class="article-image">
     </div>
 
+    {% if quick_understand %}
+    <div class="quick-understand animate-fade-in">
+        <h2 class="quick-understand-title">⚡ 秒速理解</h2>
+        <div class="quick-understand-item">
+            <span class="quick-understand-label">✅ 何が起きた</span>
+            <span>{{ quick_understand.what }}</span>
+        </div>
+        <div class="quick-understand-item">
+            <span class="quick-understand-label">❓ なぜ</span>
+            <span>{{ quick_understand.why }}</span>
+        </div>
+        <div class="quick-understand-item">
+            <span class="quick-understand-label">🔮 どうなる</span>
+            <span>{{ quick_understand.how }}</span>
+        </div>
+    </div>
+    {% endif %}
+
+    <div class="read-mode-switch">
+        <button type="button" class="read-mode-btn is-active" data-mode="short">📖 1分で読む</button>
+        <button type="button" class="read-mode-btn" data-mode="deep">📚 3分で深掘り</button>
+    </div>
+
     <div class="article-content-wrapper">
         <div class="article-main">
-            <div id="article-inline-content" class="article-inline-content" data-fallback="{{ article.summary|e }}">
-                {% if body_html %}
-                {{ body_html|safe }}
-                {% else %}
+            <div id="article-short-content" class="article-read-content">
                 <p class="article-text">{{ article.summary|default('')|e }}</p>
-                {% endif %}
+            </div>
+            <div id="article-deep-content" class="article-read-content" style="display:none;">
+                <div id="article-inline-content" class="article-inline-content" data-fallback="{{ article.summary|e }}">
+                    {% if body_html %}
+                    {{ body_html|safe }}
+                    {% else %}
+                    <p class="article-text">{{ article.summary|default('')|e }}</p>
+                    {% endif %}
+                </div>
             </div>
             <div class="article-actions">
-                <a href="{{ article.link }}" target="_blank" rel="noopener" class="read-original">
-                    出典を読む →
-                </a>
-                <button type="button" id="btn-one-take" class="btn-one-take">新しいリポートを1本追加</button>
+                <a href="{{ article.link }}" target="_blank" rel="noopener" class="read-original">出典を読む →</a>
             </div>
         </div>
     </div>
@@ -67,8 +98,76 @@
         </div>
     </section>
 
-    <section class="next-read-section" aria-label="次に読む記事・思考ジャーニー">
-        <h2 class="next-read-title">次に読む記事</h2>
+    {% if vote_data %}
+    <section class="vote-section" id="vote-section">
+        <h2 class="vote-question">💭 {{ vote_data.question }}</h2>
+        <div class="vote-options" id="vote-options">
+            {% for opt in vote_data.options %}
+            <button type="button" class="vote-btn" data-vote="{{ opt.id }}">
+                <span class="vote-label">{{ opt.label }}</span>
+                <span class="vote-bar"><span class="vote-bar-fill" style="width:0%"></span></span>
+                <span class="vote-pct">-</span>
+            </button>
+            {% endfor %}
+        </div>
+    </section>
+    {% endif %}
+
+    <section class="article-navigation">
+        {% if related_articles %}
+        <div class="article-nav-section">
+            <h3 class="article-nav-title">📰 関連記事</h3>
+            <div class="news-grid nav-grid">
+                {% for rel in related_articles[:3] %}
+                <article class="news-card news-card-sm">
+                    <a href="/topic/{{ rel.id }}" class="news-card-link">
+                        <div class="news-card-body">
+                            <span class="news-card-category-inline">{{ rel.category }}</span>
+                            <h3 class="news-title">{{ rel.title }}</h3>
+                        </div>
+                    </a>
+                </article>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+
+        {% if same_category_articles %}
+        <div class="article-nav-section">
+            <h3 class="article-nav-title">🏷 {{ article.category }}の記事</h3>
+            <div class="news-grid nav-grid">
+                {% for rel in same_category_articles[:3] %}
+                <article class="news-card news-card-sm">
+                    <a href="/topic/{{ rel.id }}" class="news-card-link">
+                        <div class="news-card-body">
+                            <span class="news-card-category-inline">{{ rel.category }}</span>
+                            <h3 class="news-title">{{ rel.title }}</h3>
+                        </div>
+                    </a>
+                </article>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+
+        {% if ai_recommended %}
+        <div class="article-nav-section">
+            <h3 class="article-nav-title">🤖 AIおすすめ</h3>
+            <div class="news-grid nav-grid">
+                {% for rel in ai_recommended[:3] %}
+                <article class="news-card news-card-sm">
+                    <a href="/topic/{{ rel.id }}" class="news-card-link">
+                        <div class="news-card-body">
+                            <span class="news-card-category-inline">{{ rel.category }}</span>
+                            <h3 class="news-title">{{ rel.title }}</h3>
+                        </div>
+                    </a>
+                </article>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+
         <nav class="next-article-nav" aria-label="続けて読む">
             {% if prev_article %}
             <a href="/topic/{{ prev_article.id }}" class="next-article-link next-article-prev">← 前の記事</a>
@@ -76,86 +175,101 @@
             {% if next_article %}
             <a href="/topic/{{ next_article.id }}" class="next-article-link next-article-next">次の記事へ →</a>
             {% endif %}
-            {% if not prev_article and not next_article %}
-            <a href="/" class="next-article-link next-article-back">一覧に戻る</a>
-            {% endif %}
         </nav>
-        {% if related_articles|default([]) %}
-        <h3 class="related-title">関連トピック（{{ article.category }}）</h3>
-        <ul class="related-list">
-            {% for rel in related_articles %}
-            <li><a href="/topic/{{ rel.id }}">{{ rel.title }}</a></li>
-            {% endfor %}
-        </ul>
-        {% endif %}
     </section>
 </article>
-
-<div id="midorman-float" class="midorman-float" aria-live="polite" hidden>
-    <span class="midorman-float-avatar" aria-hidden="true">🎙️</span>
-    <div class="midorman-float-inner">
-        <p class="midorman-float-text" id="midorman-float-text"></p>
-    </div>
-</div>
 {% endblock %}
 
 {% block scripts %}
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    const articleId = '{{ article.id }}';
-    const ssrPersonas = {{ personas_data|tojson|safe }};
+    var articleId = '{{ article.id }}';
+    var ssrPersonas = {{ personas_data|tojson|safe }};
 
     function escapeHtml(s) {
         if (s == null) return '';
-        const div = document.createElement('div');
+        var div = document.createElement('div');
         div.textContent = s;
         return div.innerHTML;
     }
 
-    function initScrollBubbles(container) {
-        if (!container) return;
-        var triggers = container.querySelectorAll('.scroll-trigger');
-        if (triggers.length === 0) return;
-        var observer = new IntersectionObserver(function(entries) {
-            entries.forEach(function(entry) {
-                if (!entry.isIntersecting) return;
-                var trigger = entry.target;
-                var group = trigger.closest('.scroll-bubble-group');
-                if (group) {
-                    var wrap = group.querySelector('.midorman-bubble-wrap');
-                    if (wrap) wrap.classList.add('is-visible');
-                }
-            });
-        }, { rootMargin: '0px 0px -15% 0px', threshold: 0 });
-        triggers.forEach(function(t) { observer.observe(t); });
+    // Read mode switch
+    var modeBtns = document.querySelectorAll('.read-mode-btn');
+    var shortContent = document.getElementById('article-short-content');
+    var deepContent = document.getElementById('article-deep-content');
+    modeBtns.forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            var mode = this.getAttribute('data-mode');
+            modeBtns.forEach(function(b) { b.classList.remove('is-active'); });
+            this.classList.add('is-active');
+            if (mode === 'short') {
+                shortContent.style.display = '';
+                deepContent.style.display = 'none';
+            } else {
+                shortContent.style.display = 'none';
+                deepContent.style.display = '';
+            }
+        });
+    });
+
+    // Save button
+    var saveBtn = document.getElementById('btn-save');
+    if (saveBtn) {
+        var saved = JSON.parse(localStorage.getItem('saved_articles') || '[]');
+        var isSaved = saved.some(function(a) { return a.id === articleId; });
+        if (isSaved) { saveBtn.classList.add('is-saved'); saveBtn.textContent = '⭐ 保存済み'; }
+        saveBtn.addEventListener('click', function() {
+            var saved = JSON.parse(localStorage.getItem('saved_articles') || '[]');
+            var idx = saved.findIndex(function(a) { return a.id === articleId; });
+            if (idx >= 0) {
+                saved.splice(idx, 1);
+                this.classList.remove('is-saved');
+                this.textContent = '⭐ 保存';
+            } else {
+                saved.push({ id: articleId, title: this.dataset.title, summary: this.dataset.summary });
+                this.classList.add('is-saved');
+                this.textContent = '⭐ 保存済み';
+            }
+            localStorage.setItem('saved_articles', JSON.stringify(saved));
+        });
     }
 
-    function initMidormanFloat(container) {
-        var floatEl = document.getElementById('midorman-float');
-        var floatText = document.getElementById('midorman-float-text');
-        if (!floatEl || !floatText) return;
-        // text/explain 形式(.article-with-bubbles) と navigator 形式(.article-readflow) の両方に対応
-        var wraps = container.querySelectorAll('.scroll-bubble-group .midorman-bubble-wrap');
-        if (wraps.length === 0) return;
-        var lastHtml = '';
-        var floatObserver = new IntersectionObserver(function(entries) {
-            entries.forEach(function(entry) {
-                if (!entry.isIntersecting) return;
-                var wrap = entry.target;
-                var textEl = wrap.querySelector('.midorman-bubble-text') || wrap.querySelector('.midorman-aside-body');
-                if (textEl) {
-                    lastHtml = textEl.innerHTML;
-                    floatText.innerHTML = lastHtml;
-                    floatEl.hidden = false;
-                }
+    // Vote
+    var voteSection = document.getElementById('vote-section');
+    if (voteSection) {
+        var voteBtns = voteSection.querySelectorAll('.vote-btn');
+        var voteKey = 'vote_' + articleId;
+        var existingVote = localStorage.getItem(voteKey);
+        var votes = JSON.parse(localStorage.getItem('vote_counts_' + articleId) || '{}');
+        function updateVoteDisplay() {
+            var total = 0;
+            for (var k in votes) total += votes[k];
+            voteBtns.forEach(function(btn) {
+                var vid = btn.dataset.vote;
+                var count = votes[vid] || 0;
+                var pct = total > 0 ? Math.round((count / total) * 100) : 0;
+                btn.querySelector('.vote-bar-fill').style.width = pct + '%';
+                btn.querySelector('.vote-pct').textContent = pct + '%';
+                if (existingVote === vid) btn.classList.add('voted');
             });
-        }, { rootMargin: '-10% 0px -50% 0px', threshold: 0 });
-        wraps.forEach(function(w) { floatObserver.observe(w); });
-        if (lastHtml) floatEl.hidden = false;
+        }
+        if (existingVote) updateVoteDisplay();
+        voteBtns.forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                if (existingVote) return;
+                var vid = this.dataset.vote;
+                existingVote = vid;
+                localStorage.setItem(voteKey, vid);
+                votes[vid] = (votes[vid] || 0) + 1;
+                localStorage.setItem('vote_counts_' + articleId, JSON.stringify(votes));
+                updateVoteDisplay();
+            });
+        });
     }
 
-    var hasSsr = document.getElementById('article-inline-content').querySelector('.article-text, .article-readflow') && ssrPersonas && ssrPersonas.length > 0;
-    if (hasSsr) {
+    // Load deep content via API if not SSR
+    var hasSsr = document.getElementById('article-inline-content').querySelector('.article-text, .article-readflow');
+    if (hasSsr && ssrPersonas && ssrPersonas.length > 0) {
         document.querySelectorAll('.persona-card').forEach(function(card, i) {
             var content = card.querySelector('.persona-content');
             var opinion = ssrPersonas[i] || '';
@@ -165,140 +279,53 @@ document.addEventListener('DOMContentLoaded', function() {
                 : '<p class="persona-error">取得できませんでした</p>';
         });
     } else {
-    fetch('/api/article/' + articleId + '/explanations')
-        .then(r => r.json())
-        .then(function(data) {
-            const el = document.getElementById('article-inline-content');
-            var navLabels = { facts: 'ニュース', background: '背景', impact: '影響範囲', prediction: '予測', caution: '注意' };
-            if (!data.blocks || data.blocks.length === 0) {
-                const fallback = el.dataset.fallback || '';
-                el.innerHTML = '<p>' + escapeHtml(fallback) + '</p>';
-            } else {
-                var isNavigator = data.blocks.length && data.blocks[0].type === 'navigator_section';
-                if (isNavigator) {
-                    var paras = [], asides = [];
-                    data.blocks.forEach(function(b) {
-                        if (b.type === 'navigator_section' && b.section && navLabels[b.section]) {
-                            var body = (b.content || '').trim() ? escapeHtml(b.content).replace(/\n/g, '<br>') : '';
-                            if (b.section === 'facts' && body) {
-                                paras = (b.content || '').trim().split(/\n\n+/).filter(function(p) { return p.trim(); });
-                            } else if (b.section !== 'facts' && body) {
-                                asides.push({ section: b.section, label: navLabels[b.section], body: body });
-                            }
-                        }
-                    });
-                    var factsHtml = '';
-                    if (paras.length) {
-                        factsHtml = '<div class="article-body">';
-                        paras.forEach(function(p, i) {
-                            factsHtml += '<p>' + escapeHtml(p).replace(/\n/g, '<br>') + '</p>';
-                            if (asides[i]) {
-                                var a = asides[i];
-                                factsHtml += '<div class="scroll-bubble-group"><div class="scroll-trigger" data-aside-index="' + i + '" aria-hidden="true"></div><div class="midorman-bubble-wrap" data-aside-index="' + i + '"><div class="midorman-aside midorman-aside-' + escapeHtml(a.section) + '"><span class="midorman-aside-label">' + escapeHtml(a.label) + '</span><div class="midorman-aside-body">' + a.body + '</div></div></div></div>';
-                            }
-                        });
-                        for (var j = paras.length; j < asides.length; j++) {
-                            var a = asides[j];
-                            factsHtml += '<div class="scroll-bubble-group"><div class="scroll-trigger" data-aside-index="' + j + '" aria-hidden="true"></div><div class="midorman-bubble-wrap" data-aside-index="' + j + '"><div class="midorman-aside midorman-aside-' + escapeHtml(a.section) + '"><span class="midorman-aside-label">' + escapeHtml(a.label) + '</span><div class="midorman-aside-body">' + a.body + '</div></div></div></div>';
-                        }
-                        factsHtml += '</div>';
-                    }
-                    el.innerHTML = '<div class="article-readflow">' + factsHtml + '</div>';
-                    if (asides.length) initScrollBubbles(el);
+        fetch('/api/article/' + articleId + '/explanations')
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                var el = document.getElementById('article-inline-content');
+                if (!data.blocks || data.blocks.length === 0) {
+                    el.innerHTML = '<p>' + escapeHtml(el.dataset.fallback || '') + '</p>';
                 } else {
-                    var html = '<div class="article-readflow article-with-bubbles">';
-                    var explainIdx = 0;
+                    var html = '';
                     data.blocks.forEach(function(b) {
-                        if (b.type === 'explain') {
-                            explainIdx++;
-                            var c = escapeHtml(b.content || '').replace(/\n/g, '<br>');
-                            html += '<h3 class="article-h3" id="explain-' + explainIdx + '">要点の解説</h3>';
-                            html += '<div class="scroll-bubble-group"><div class="scroll-trigger" aria-hidden="true"></div><div class="midorman-bubble-wrap"><div class="midorman-bubble-above"><span class="midorman-bubble-avatar" aria-hidden="true">🎙️</span><div class="midorman-bubble-inner"><p class="midorman-bubble-text">' + c + '</p></div></div></div></div>';
-                        } else if (b.type === 'text') {
+                        if (b.type === 'text' || b.type === 'navigator_section') {
                             var paras = (b.content || '').trim().split(/\n\n+/).filter(function(p) { return p.trim(); });
-                            if (paras.length) paras.forEach(function(p) {
+                            paras.forEach(function(p) {
                                 html += '<p class="article-text">' + escapeHtml(p).replace(/\n/g, '<br>') + '</p>';
                             });
+                        } else if (b.type === 'explain') {
+                            html += '<div class="explain-block"><p class="article-explain">' + escapeHtml(b.content || '').replace(/\n/g, '<br>') + '</p></div>';
                         }
                     });
-                    html += '</div>';
-                    el.innerHTML = html;
-                    initScrollBubbles(el);
-                    initMidormanFloat(el);
+                    el.innerHTML = html || '<p>' + escapeHtml(el.dataset.fallback || '') + '</p>';
                 }
-            }
-
-            // 5人格のデータをカードにセット（クリックで表示するだけ）
-            const personas = data.personas || [];
-            document.querySelectorAll('.persona-card').forEach(function(card, i) {
-                const content = card.querySelector('.persona-content');
-                const opinion = personas[i] || '';
-                content.dataset.loaded = 'true';
-                content.innerHTML = opinion
-                    ? '<p class="persona-opinion">' + escapeHtml(opinion).replace(/\n/g, '<br>') + '</p>'
-                    : '<p class="persona-error">取得できませんでした</p>';
+                var personas = data.personas || [];
+                document.querySelectorAll('.persona-card').forEach(function(card, i) {
+                    var content = card.querySelector('.persona-content');
+                    var opinion = personas[i] || '';
+                    content.dataset.loaded = 'true';
+                    content.innerHTML = opinion
+                        ? '<p class="persona-opinion">' + escapeHtml(opinion).replace(/\n/g, '<br>') + '</p>'
+                        : '<p class="persona-error">取得できませんでした</p>';
+                });
+            })
+            .catch(function() {
+                var el = document.getElementById('article-inline-content');
+                el.innerHTML = '<p>' + escapeHtml(el.dataset.fallback || '') + '</p>';
             });
-        })
-        .catch(function() {
-            const el = document.getElementById('article-inline-content');
-            el.innerHTML = '<p>' + escapeHtml(el.dataset.fallback || '') + '</p>';
-            document.querySelectorAll('.persona-content').forEach(function(c) {
-                c.innerHTML = '<p class="persona-error">取得に失敗しました</p>';
-            });
-        });
     }
 
-    // スクロール連動吹き出し（SSR時は初期HTMLに既にある）
-    var contentEl = document.getElementById('article-inline-content');
-    if (contentEl) {
-        initScrollBubbles(contentEl);
-        initMidormanFloat(contentEl);
-    }
-
-    // 5人格：クリックで表示/非表示（データは既に読み込み済み）
+    // Persona toggle
     document.querySelectorAll('.persona-card').forEach(function(card) {
-        const btn = card.querySelector('.persona-trigger');
-        const content = card.querySelector('.persona-content');
-
+        var btn = card.querySelector('.persona-trigger');
+        var content = card.querySelector('.persona-content');
         btn.addEventListener('click', function() {
-            const isOpen = btn.getAttribute('aria-expanded') === 'true';
-            if (isOpen) {
-                content.hidden = true;
-                btn.setAttribute('aria-expanded', 'false');
-                btn.querySelector('.persona-arrow').textContent = '▶';
-            } else {
-                content.hidden = false;
-                btn.setAttribute('aria-expanded', 'true');
-                btn.querySelector('.persona-arrow').textContent = '▼';
-            }
+            var isOpen = btn.getAttribute('aria-expanded') === 'true';
+            content.hidden = !isOpen;
+            btn.setAttribute('aria-expanded', isOpen ? 'false' : 'true');
+            btn.querySelector('.persona-arrow').textContent = isOpen ? '▶' : '▼';
         });
     });
-
-    // 記事を追加する：RSSの最新1件を読み込み、AIミドルマンが解説した記事を1件追加・再生成
-    const btnOneTake = document.getElementById('btn-one-take');
-    if (btnOneTake) {
-        btnOneTake.addEventListener('click', function() {
-            btnOneTake.disabled = true;
-            btnOneTake.textContent = '読み込み中...';
-            fetch('/api/article/force-add-one')
-                .then(function(r) { return r.json(); })
-                .then(function(data) {
-                    if (data.status === 'ok' && data.article_id) {
-                        window.location.href = '/?added=1';
-                    } else {
-                        btnOneTake.disabled = false;
-                        btnOneTake.textContent = '新しいリポートを1本追加';
-                        var errMsg = data.message || (typeof data.detail === 'string' ? data.detail : '') || (Array.isArray(data.detail) ? data.detail.map(function(d){ return d.msg || d.loc; }).filter(Boolean).join(', ') : '') || '取り込みに失敗しました';
-                        alert(errMsg);
-                    }
-                })
-                .catch(function() {
-                    btnOneTake.disabled = false;
-                    btnOneTake.textContent = '新しいリポートを1本追加';
-                    alert('取得に失敗しました');
-                });
-        });
-    }
 });
 </script>
 {% endblock %}

@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block title %}探す - 知リポAI{% endblock %}
+{% block content %}
+<section class="page-header">
+    <h1 class="page-title">🔍 探す</h1>
+</section>
+<div class="search-box">
+    <form action="/search" method="get" class="search-form">
+        <input type="search" name="q" value="{{ query|default('') }}" placeholder="キーワードで記事を検索..." class="search-input" autofocus>
+        <button type="submit" class="search-btn">検索</button>
+    </form>
+</div>
+{% if query %}
+<p class="search-result-count">「{{ query }}」の検索結果: {{ results|length }}件</p>
+{% endif %}
+<div class="news-grid" style="max-width:960px; margin:0 auto; padding:0 1rem;">
+    {% for item in results %}
+    <article class="news-card animate-fade-in">
+        <a href="/topic/{{ item.id }}" class="news-card-link">
+            <div class="news-card-image">
+                <img src="{{ item.image_url or 'https://picsum.photos/400/225' }}" alt="{{ item.title }}" loading="lazy">
+                <span class="news-card-category">{{ item.category }}</span>
+            </div>
+            <div class="news-card-body">
+                <h3 class="news-title">{{ item.title }}</h3>
+                <p class="news-summary-line">{{ item.summary[:100] }}...</p>
+            </div>
+        </a>
+    </article>
+    {% endfor %}
+</div>
+{% endblock %}

@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block title %}保存済み - 知リポAI{% endblock %}
+{% block content %}
+<section class="page-header">
+    <h1 class="page-title">⭐ 保存した記事</h1>
+    <p class="page-desc">あなたが保存した記事はここに表示されます</p>
+</section>
+<div id="saved-list" class="news-grid" style="max-width:960px; margin:0 auto; padding:0 1rem;">
+    <p id="saved-empty" class="empty-msg">保存した記事はありません。記事ページの ⭐ ボタンで保存できます。</p>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+(function() {
+    var saved = JSON.parse(localStorage.getItem('saved_articles') || '[]');
+    var grid = document.getElementById('saved-list');
+    var empty = document.getElementById('saved-empty');
+    if (!saved.length) return;
+    empty.style.display = 'none';
+    saved.reverse().forEach(function(a) {
+        var card = document.createElement('article');
+        card.className = 'news-card animate-fade-in';
+        card.innerHTML = '<a href="/topic/' + a.id + '" class="news-card-link"><div class="news-card-body"><h3 class="news-title">' + (a.title||'') + '</h3><p class="news-summary-line">' + (a.summary||'').substring(0,80) + '...</p></div></a>';
+        grid.appendChild(card);
+    });
+})();
+</script>
+{% endblock %}

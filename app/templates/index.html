@@ -3,262 +3,170 @@
 {% block meta_extra %}
     <meta property="og:type" content="website">
     <meta property="og:title" content="知リポAI - 最新ニュースをAIが知的に解説">
-    <meta property="og:description" content="信頼メディアの最新ニュースを収集し、AIが背景・ポイントを解説。知的ニュースレポートで、ニュースがもっと分かる。">
+    <meta property="og:description" content="信頼メディアの最新ニュースを収集し、AIが背景・ポイントを解説。">
     <meta property="og:image" content="{{ og_image|default('https://picsum.photos/1200/630') }}">
     <meta property="og:url" content="{{ site_url|default(request.url) }}/">
     <meta property="og:site_name" content="知リポAI">
-    <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:title" content="知リポAI - 最新ニュースをAIが知的に解説">
-    <meta name="twitter:description" content="信頼メディアの最新ニュースを収集し、AIが背景・ポイントを解説。知的ニュースレポートで、ニュースがもっと分かる。">
-    <meta name="twitter:image" content="{{ og_image|default('https://picsum.photos/1200/630') }}">
 {% endblock %}
 
 {% block content %}
-<div class="page-top">
-    <div class="hero">
-        <span class="hero-badge">AIが解説する知的リポート</span>
-        <h1>最新ニュースを、AIが解説</h1>
-        <p class="hero-desc">NHK・Reuters・読売など信頼メディアの最新ニュースを収集し、AIが背景やポイントを解説。ひとつのニュースを「知のリポート」として、分かりやすくお届けします。</p>
-        <div class="hero-buttons">
-            <button type="button" id="btn-add-article" class="btn-add-article">新しいリポートを追加</button>
-            <button type="button" id="btn-rss-one" class="btn-rss-one" title="RSSを取得して1件だけ記事化">手動でRSS取得（1件）</button>
-        </div>
-
-        <div class="added-one-box">
-            <h2 class="added-one-title">注目の1本</h2>
-            {% if added_one %}
-            <article class="added-one-card">
-                <a href="/topic/{{ added_one.id }}" class="added-one-link">
-                    <div class="added-one-image">
-                        <img src="{{ added_one.image_url or 'https://picsum.photos/400/225' }}" alt="{{ added_one.title }}" loading="lazy" onerror="this.src='https://picsum.photos/seed/{{ added_one.id }}/400/225'">
-                    </div>
-                    <div class="added-one-body">
-                        <span class="added-one-source">{{ added_one.source }}</span>
-                        <h3 class="added-one-heading">{{ added_one.title }}</h3>
-                        <p class="added-one-summary">{{ added_one.summary[:160] }}{% if added_one.summary|length > 160 %}...{% endif %}</p>
-                        <span class="added-one-badge">AI解説つき</span>
-                    </div>
-                </a>
-            </article>
-            {% else %}
-            <p class="added-one-empty">まだリポートがありません。「新しいリポートを追加」で最新ニュースをAI解説付きで取り込みます。</p>
-            {% endif %}
-        </div>
+<section class="hero-section">
+    <div class="hero-inner">
+        <span class="hero-badge animate-fade-in">AIが解説する知的リポート</span>
+        <h1 class="hero-title animate-slide-up">最新ニュースを、<br class="sp-only">AIが解説</h1>
+        <p class="hero-desc animate-slide-up delay-1">NHK・Reuters・読売など信頼メディアの最新ニュースを収集し、AIが背景やポイントを解説します。</p>
     </div>
+</section>
 
-    <aside class="trends-sidebar">
-        <h2 class="sidebar-title">
-            <span class="icon-fire">📈</span> いま検索されている
-        </h2>
-        <ul class="trends-list">
-            {% for t in trends %}
-            <li>
-                <a href="{% if t.source == 'twitter' %}https://twitter.com/search?q={{ t.keyword|urlencode }}{% else %}https://www.google.com/search?q={{ t.keyword|urlencode }}{% endif %}" target="_blank" rel="noopener">
-                    <span class="trend-source trend-{{ t.source }}">{{ '🐦' if t.source == 'twitter' else '🔍' }}</span>
-                    {{ t.keyword }}
-                </a>
-            </li>
-            {% else %}
-            <li class="trends-empty">再読込でトレンドを取得します</li>
-            {% endfor %}
-        </ul>
-    </aside>
-</div>
-
-<section class="news-section">
-    <p id="added-msg" class="added-msg" style="display:none; background:#d4edda; color:#155724; padding:0.5rem 1rem; border-radius:4px; margin-bottom:1rem;">新しいリポートを追加しました。上の「注目の1本」に表示されています。</p>
-
-    <h2 class="section-title">AI解説つきニュースリポート</h2>
-    <div class="genre-tabs-wrap" role="tablist" aria-label="ジャンルで絞り込み">
-        <div class="genre-tabs-scroll">
-            {% for category, items in news_by_category %}
-            <button type="button" class="genre-tab" role="tab" aria-selected="{% if loop.first %}true{% else %}false{% endif %}" aria-controls="panel-{{ category }}" id="tab-{{ category }}" data-cat="{{ category }}">{{ category }}</button>
-            {% else %}
-            <span class="category-empty" id="empty-state">読み込み中</span>
-            {% endfor %}
+<div class="page-layout">
+    <div class="content-main">
+        {% if search_keyword %}
+        <div class="search-result-header">
+            <p class="search-keyword-msg">「{{ search_keyword }}」の関連記事</p>
+            <a href="/" class="search-clear">× クリア</a>
         </div>
-    </div>
-    <div class="genre-panels">
-        {% for category, items in news_by_category %}
-        <div id="panel-{{ category }}" class="genre-panel" role="tabpanel" aria-labelledby="tab-{{ category }}" {% if not loop.first %}hidden{% endif %}>
-            <h3 class="category-heading">{{ category }}</h3>
-            <div class="news-grid news-grid-cards">
-                {% if not items %}
-                <p class="category-empty-msg">このジャンルにはまだ記事がありません。</p>
-                {% endif %}
-                {% for item in items %}
-                <article class="news-card">
-                    <a href="/topic/{{ item.id }}" class="news-card-link">
-                        <div class="news-card-image">
-                            <img src="{{ item.image_url or 'https://picsum.photos/400/225' }}" 
-                                 alt="{{ item.title }}" 
-                                 loading="lazy"
-                                 onerror="this.src='https://picsum.photos/seed/{{ item.id }}/400/225'">
-                        </div>
-                        <div class="news-card-body">
-                            <span class="news-source">{{ item.source }}</span>
-                            <h3 class="news-title">{{ item.title }}</h3>
-                            <p class="news-summary">{{ item.summary[:120] }}{% if item.summary|length > 120 %}...{% endif %}</p>
-                            <span class="news-badge">AI解説</span>
-                        </div>
-                    </a>
-                </article>
+        {% endif %}
+
+        <div class="genre-tabs-wrap" role="tablist" aria-label="ジャンルで絞り込み">
+            <div class="genre-tabs-scroll">
+                <button type="button" class="genre-tab is-active" role="tab" aria-selected="true" data-cat="all">すべて</button>
+                {% for category, items in news_by_category %}
+                <button type="button" class="genre-tab" role="tab" aria-selected="false" data-cat="{{ category }}">{{ category }}</button>
                 {% endfor %}
             </div>
         </div>
-        {% endfor %}
+
+        <div class="news-grid" id="news-grid">
+            {% for category, items in news_by_category %}
+            {% for item in items %}
+            <article class="news-card animate-fade-in" data-category="{{ item.category }}">
+                <a href="/topic/{{ item.id }}" class="news-card-link">
+                    <div class="news-card-image">
+                        <img src="{{ item.image_url or 'https://picsum.photos/400/225' }}" alt="{{ item.title }}" loading="lazy" onerror="this.src='https://picsum.photos/seed/{{ item.id }}/400/225'">
+                        <span class="news-card-category">{{ item.category }}</span>
+                    </div>
+                    <div class="news-card-body">
+                        <div class="news-card-meta">
+                            <span class="news-card-time">🕒 {{ item.published.strftime('%m/%d %H:%M') if item.published else '' }}</span>
+                            <span class="news-card-source">{{ item.source }}</span>
+                        </div>
+                        <h3 class="news-title">{{ item.title }}</h3>
+                        <p class="news-summary-line">👀 {{ item.summary[:80] }}{% if item.summary|length > 80 %}...{% endif %}</p>
+                        <div class="news-card-footer">
+                            <span class="news-card-ai">✍ AIが解説</span>
+                            <span class="news-badge">AI解説</span>
+                        </div>
+                    </div>
+                </a>
+            </article>
+            {% endfor %}
+            {% endfor %}
+        </div>
+
+        <div id="infinite-sentinel" style="height:1px;"></div>
+        <div id="infinite-loader" class="infinite-loader" style="display:none;">
+            <div class="loader-spinner"></div>
+            <p>読み込み中...</p>
+        </div>
+        <div id="infinite-end" class="infinite-end" style="display:none;">
+            <p>すべての記事を表示しました</p>
+        </div>
     </div>
 
-    {% if pagination and pagination.total_pages > 1 %}
-    <nav class="pagination" aria-label="ページネーション">
-        <div class="pagination-info">
-            {{ pagination.total }}件中 {{ (pagination.page - 1) * pagination.per_page + 1 }}–{{ [pagination.page * pagination.per_page, pagination.total]|min }}件目
+    <aside class="sidebar">
+        <div class="trends-box">
+            <h2 class="sidebar-title"><span class="icon-fire">📈</span> いま検索されている</h2>
+            <ul class="trends-list">
+                {% for t in trends %}
+                <li>
+                    <a href="/?keyword={{ t.keyword|urlencode }}" class="trend-link-internal">
+                        <span class="trend-source trend-{{ t.source }}">{{ '🐦' if t.source == 'twitter' else '🔍' }}</span>
+                        {{ t.keyword }}
+                    </a>
+                </li>
+                {% else %}
+                <li class="trends-empty">トレンドがありません</li>
+                {% endfor %}
+            </ul>
         </div>
-        <ul class="pagination-list">
-            {% if pagination.has_prev %}
-            <li><a href="/?page={{ pagination.page - 1 }}" class="pagination-prev">← 前へ</a></li>
-            {% endif %}
-            <li><span class="pagination-current" aria-current="page">{{ pagination.page }} / {{ pagination.total_pages }}</span></li>
-            {% if pagination.has_next %}
-            <li><a href="/?page={{ pagination.page + 1 }}" class="pagination-next">次へ →</a></li>
-            {% endif %}
-        </ul>
-    </nav>
-    {% endif %}
-</section>
+    </aside>
+</div>
 {% endblock %}
 
 {% block scripts %}
 <script>
 (function() {
-    if (window.location.search.indexOf('added=1') !== -1) {
-        var el = document.getElementById('added-msg');
-        if (el) el.style.display = 'block';
-        history.replaceState(null, '', window.location.pathname);
-    }
-
-    // ジャンルタブ切替 ＋ スワイプ
+    // Genre tab filtering
     var tabs = document.querySelectorAll('.genre-tab');
-    var panels = document.querySelectorAll('.genre-panel');
-    var scrollEl = document.querySelector('.genre-tabs-scroll');
-    if (tabs.length && panels.length) {
-        tabs.forEach(function(tab) {
-            tab.addEventListener('click', function() {
-                var cat = this.getAttribute('data-cat');
-                tabs.forEach(function(t) { t.setAttribute('aria-selected', t === tab ? 'true' : 'false'); t.classList.toggle('is-active', t === tab); });
-                panels.forEach(function(p) {
-                    var show = p.id === 'panel-' + cat;
-                    p.hidden = !show;
-                });
-                if (scrollEl) {
-                    var tabLeft = tab.offsetLeft;
-                    scrollEl.scrollTo({ left: tabLeft - scrollEl.offsetWidth / 2 + tab.offsetWidth / 2, behavior: 'smooth' });
+    var cards = document.querySelectorAll('.news-card');
+    tabs.forEach(function(tab) {
+        tab.addEventListener('click', function() {
+            var cat = this.getAttribute('data-cat');
+            tabs.forEach(function(t) { t.classList.remove('is-active'); t.setAttribute('aria-selected', 'false'); });
+            this.classList.add('is-active');
+            this.setAttribute('aria-selected', 'true');
+            cards.forEach(function(card) {
+                if (cat === 'all' || card.getAttribute('data-category') === cat) {
+                    card.style.display = '';
+                } else {
+                    card.style.display = 'none';
                 }
             });
         });
-        // スワイプ（タッチ）
-        var startX = 0, currentIdx = 0;
-        var panelList = Array.prototype.slice.call(panels);
-        document.querySelector('.genre-panels').addEventListener('touchstart', function(e) {
-            startX = e.touches[0].clientX;
-            currentIdx = panelList.findIndex(function(p) { return !p.hidden; });
-        }, { passive: true });
-        document.querySelector('.genre-panels').addEventListener('touchend', function(e) {
-            var dx = e.changedTouches[0].clientX - startX;
-            if (Math.abs(dx) < 50) return;
-            var next = dx < 0 ? Math.min(currentIdx + 1, tabs.length - 1) : Math.max(currentIdx - 1, 0);
-            if (next !== currentIdx && tabs[next]) tabs[next].click();
-        }, { passive: true });
-        // 初期アクティブ
-        document.querySelector('.genre-tab[aria-selected="true"]')?.classList.add('is-active');
+    });
+
+    // Infinite scroll
+    var page = {{ pagination.page }};
+    var totalPages = {{ pagination.total_pages }};
+    var loading = false;
+    var loader = document.getElementById('infinite-loader');
+    var endMsg = document.getElementById('infinite-end');
+    var grid = document.getElementById('news-grid');
+    var keyword = '{{ search_keyword|default("") }}';
+
+    if (page >= totalPages) {
+        if (endMsg && grid.children.length > 0) endMsg.style.display = 'block';
     }
 
-    // 記事を追加する：RSSの最新1件を読み込み、AIミドルマンが解説した記事を1件追加・再生成
-    var btnAdd = document.getElementById('btn-add-article');
-    if (btnAdd) {
-        btnAdd.addEventListener('click', function() {
-            btnAdd.disabled = true;
-            btnAdd.textContent = '最新ニュースを取得中...';
-            var slowMsg = setTimeout(function() {
-                if (btnAdd.disabled) btnAdd.textContent = 'AIが解説中（1〜2分かかることがあります）...';
-            }, 8000);
-            fetch('/api/article/force-add-one')
-                .then(function(r) { return r.json(); })
-                .then(function(data) {
-                    clearTimeout(slowMsg);
-                    if (data.status === 'ok' && data.article_id) {
-                        window.location.href = '/?added=1';
-                    } else {
-                        btnAdd.disabled = false;
-                        btnAdd.textContent = '新しいリポートを追加';
-                        var errMsg = data.message || (typeof data.detail === 'string' ? data.detail : '') || (Array.isArray(data.detail) ? data.detail.map(function(d){ return d.msg || d.loc; }).filter(Boolean).join(', ') : '') || '取り込みに失敗しました';
-                        alert(errMsg);
+    function loadMore() {
+        if (loading || page >= totalPages) return;
+        loading = true;
+        loader.style.display = 'flex';
+        page++;
+        var url = '/api/news/page?page=' + page;
+        if (keyword) url += '&keyword=' + encodeURIComponent(keyword);
+        fetch(url).then(function(r) { return r.json(); }).then(function(data) {
+            if (data.html) {
+                grid.insertAdjacentHTML('beforeend', data.html);
+                // Re-query cards for tab filtering
+                cards = document.querySelectorAll('.news-card');
+                var activeTab = document.querySelector('.genre-tab.is-active');
+                if (activeTab) {
+                    var cat = activeTab.getAttribute('data-cat');
+                    if (cat !== 'all') {
+                        cards.forEach(function(card) {
+                            if (card.getAttribute('data-category') !== cat) card.style.display = 'none';
+                        });
                     }
-                })
-                .catch(function() {
-                    clearTimeout(slowMsg);
-                    btnAdd.disabled = false;
-                    btnAdd.textContent = '新しいリポートを追加';
-                    alert('取得に失敗しました');
-                });
-        });
-    }
-
-    // 手動でRSS取得（1件だけ記事化）
-    var btnRssOne = document.getElementById('btn-rss-one');
-    if (btnRssOne) {
-        btnRssOne.addEventListener('click', function() {
-            btnRssOne.disabled = true;
-            btnRssOne.textContent = 'RSS取得中...';
-            var slowMsg = setTimeout(function() {
-                if (btnRssOne.disabled) btnRssOne.textContent = 'AI解説中...';
-            }, 5000);
-            fetch('/api/article/seed-one')
-                .then(function(r) {
-                    if (!r.ok) return r.text().then(function(t) { throw new Error(r.status + ': ' + (t || r.statusText)); });
-                    return r.json();
-                })
-                .then(function(data) {
-                    clearTimeout(slowMsg);
-                    btnRssOne.disabled = false;
-                    btnRssOne.textContent = '手動でRSS取得（1件）';
-                    if (data.status === 'ok' && data.article_id) {
-                        document.getElementById('added-msg').style.display = 'block';
-                        window.location.reload();
-                    } else if (data.status === 'none') {
-                        alert(data.message || '取り込める記事がありませんでした。');
-                    } else {
-                        alert(data.message || '取り込みに失敗しました');
-                    }
-                })
-                .catch(function(err) {
-                    clearTimeout(slowMsg);
-                    btnRssOne.disabled = false;
-                    btnRssOne.textContent = '手動でRSS取得（1件）';
-                    var msg = (err && err.message) ? err.message : '取得に失敗しました';
-                    if (msg === 'Failed to fetch' || msg.indexOf('NetworkError') !== -1) {
-                        msg = '取得に失敗しました（接続できませんでした。サーバーが停止しているか、タイムアウトの可能性があります）';
-                    }
-                    alert(msg);
-                });
-        });
-    }
-
-    var empty = document.getElementById('empty-state');
-    if (empty && document.querySelectorAll('.news-card').length === 0) {
-        setTimeout(function() {
-            fetch('/api/status').then(function(r) { return r.json(); }).then(function(d) {
-                if (d.displayable === 0) {
-                    var msg = 'リポートがありません。';
-                    if (!d.openai_key_set) {
-                        msg += '.envにOPENAI_API_KEYを設定してください。';
-                    } else {
-                        msg += ' 「新しいリポートを追加」で最新ニュースをAI解説付きで取り込めます。';
-                    }
-                    empty.innerHTML = msg;
                 }
-            });
-        }, 500);
+            }
+            if (page >= data.total_pages) {
+                endMsg.style.display = 'block';
+            }
+            loading = false;
+            loader.style.display = 'none';
+        }).catch(function() {
+            loading = false;
+            loader.style.display = 'none';
+        });
+    }
+
+    var sentinel = document.getElementById('infinite-sentinel');
+    if (sentinel && 'IntersectionObserver' in window) {
+        var obs = new IntersectionObserver(function(entries) {
+            if (entries[0].isIntersecting) loadMore();
+        }, { rootMargin: '600px' });
+        obs.observe(sentinel);
     }
 })();
 </script>

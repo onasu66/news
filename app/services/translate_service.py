@@ -6,9 +6,22 @@ from app.utils.openai_compat import create_with_retry
 FOREIGN_SOURCES = {"Reuters", "AP News", "BBC News", "共同通信", "World News International", "Le Monde"}
 
 
+def title_looks_english(title: str) -> bool:
+    """タイトルが英語主体か（日本語化の必要判定用）"""
+    if not title or len(title) < 3:
+        return False
+    ascii_count = sum(1 for c in title if ord(c) < 128 and c.isalpha())
+    letter_count = sum(1 for c in title if c.isalpha())
+    if letter_count < 3:
+        return False
+    return ascii_count / letter_count > 0.5
+
+
 def is_foreign_article(source: str, title: str, summary: str) -> bool:
     """海外ソースまたは英語コンテンツか"""
     if source in FOREIGN_SOURCES:
+        return True
+    if title_looks_english(title):
         return True
     text = f"{title} {summary}"
     if not text or len(text) < 5:

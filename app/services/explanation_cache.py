@@ -77,7 +77,7 @@ def get_cached(article_id: str) -> Optional[dict]:
     blocks = json.loads(row["inline_blocks"])
     if _is_bad_fallback_cache(blocks):
         return None
-    return {
+    result = {
         "blocks": blocks,
         "personas": [
             row["persona_0"] or "",
@@ -87,6 +87,11 @@ def get_cached(article_id: str) -> Optional[dict]:
             row["persona_4"] or "",
         ],
     }
+    extra = _get_extra(article_id)
+    if extra:
+        result["quick_understand"] = extra.get("quick_understand", {})
+        result["vote_data"] = extra.get("vote_data", {})
+    return result
 
 
 def delete_cache(article_id: str) -> bool:
@@ -101,11 +106,53 @@ def delete_cache(article_id: str) -> bool:
     return cur.rowcount > 0
 
 
-def save_cache(article_id: str, blocks: list, personas: list[str]):
+def _get_extra_db_path():
+    return Path(__file__).resolve().parent.parent.parent / "data" / "explanation_extra.db"
+
+
+def _get_extra_conn():
+    p = _get_extra_db_path()
+    p.parent.mkdir(parents=True, exist_ok=True)
+    conn = sqlite3.connect(str(p))
+    conn.row_factory = sqlite3.Row
+    conn.execute("""CREATE TABLE IF NOT EXISTS explanation_extra (
+        article_id TEXT PRIMARY KEY,
+        data TEXT NOT NULL
+    )""")
+    conn.commit()
+    return conn
+
+
+def _get_extra(article_id: str) -> Optional[dict]:
+    if _use_firestore():
+        return None
+    try:
+        with _get_extra_conn() as conn:
+            row = conn.execute("SELECT data FROM explanation_extra WHERE article_id = ?", (article_id,)).fetchone()
+        return json.loads(row["data"]) if row else None
+    except Exception:
+        return None
+
+
+def _save_extra(article_id: str, data: dict):
+    if _use_firestore():
+        return
+    try:
+        with _get_extra_conn() as conn:
+            conn.execute(
+                "INSERT OR REPLACE INTO explanation_extra (article_id, data) VALUES (?, ?)",
+                (article_id, json.dumps(data, ensure_ascii=False)),
+            )
+            conn.commit()
+    except Exception:
+        pass
+
+
+def save_cache(article_id: str, blocks: list, personas: list[str], *, quick_understand: dict | None = None, vote_data: dict | None = None):
     """キャッシュに保存"""
     if _use_firestore():
         from .firestore_store import firestore_save_cache
-        firestore_save_cache(article_id, blocks, personas)
+        firestore_save_cache(article_id, blocks, personas, quick_understand=quick_understand, vote_data=vote_data)
         return
     _init_db()
     while len(personas) < 5:
@@ -120,3 +167,10 @@ def save_cache(article_id: str, blocks: list, personas: list[str]):
             (article_id, json.dumps(blocks, ensure_ascii=False), *personas[:5]),
         )
         conn.commit()
+    extra = {}
+    if quick_understand:
+        extra["quick_understand"] = quick_understand
+    if vote_data:
+        extra["vote_data"] = vote_data
+    if extra:
+        _save_extra(article_id, extra)

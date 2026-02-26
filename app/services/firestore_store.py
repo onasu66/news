@@ -203,12 +203,16 @@ def firestore_get_cached(article_id: str) -> Optional[dict]:
     blocks = json.loads(d.get("inline_blocks", "[]"))
     if _is_bad_fallback_cache(blocks):
         return None
-    # personas 配列（新形式）または persona_0..4（旧形式）に対応
     if "personas" in d and isinstance(d["personas"], list):
         personas = (d["personas"] + [""] * 5)[:5]
     else:
         personas = [d.get(f"persona_{i}", "") or "" for i in range(5)]
-    return {"blocks": blocks, "personas": personas}
+    result = {"blocks": blocks, "personas": personas}
+    if d.get("quick_understand"):
+        result["quick_understand"] = d["quick_understand"] if isinstance(d["quick_understand"], dict) else json.loads(d["quick_understand"])
+    if d.get("vote_data"):
+        result["vote_data"] = d["vote_data"] if isinstance(d["vote_data"], dict) else json.loads(d["vote_data"])
+    return result
 
 
 def firestore_delete_cache(article_id: str) -> bool:
@@ -223,16 +227,20 @@ def firestore_delete_cache(article_id: str) -> bool:
     return False
 
 
-def firestore_save_cache(article_id: str, blocks: list, personas: list):
+def firestore_save_cache(article_id: str, blocks: list, personas: list, *, quick_understand: dict | None = None, vote_data: dict | None = None):
     while len(personas) < 5:
         personas.append("")
     personas_arr = personas[:5]
-    _explanations_collection().document(article_id).set({
+    doc_data = {
         "inline_blocks": json.dumps(blocks, ensure_ascii=False),
         "personas": personas_arr,
         "created_at": _server_timestamp(),
-    })
-    # articles に has_explanation を設定（get_cached_article_ids の最適化用）
+    }
+    if quick_understand:
+        doc_data["quick_understand"] = quick_understand
+    if vote_data:
+        doc_data["vote_data"] = vote_data
+    _explanations_collection().document(article_id).set(doc_data)
     art_ref = _articles_collection().document(article_id)
     if art_ref.get().exists:
         art_ref.update({"has_explanation": True})

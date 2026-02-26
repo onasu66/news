@@ -8,7 +8,7 @@
     {% block meta_extra %}{% endblock %}
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;600;700;900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/static/css/style.css">
 </head>
 <body>
@@ -18,12 +18,6 @@
                 <span class="logo"><span class="logo-icon">📰</span>知リポAI</span>
                 <span class="logo-tagline">AIが解説する知的ニュース</span>
             </a>
-            <nav class="nav-main">
-                <a href="/">トップ</a>
-                <a href="/confirm">確認用</a>
-                <a href="/admin/login" class="btn-login" title="管理者ログイン">ログイン</a>
-                <button type="button" class="btn-refresh" id="btn-refresh" title="最新のリポートを読み込む">再読込</button>
-            </nav>
         </div>
     </header>
 
@@ -37,19 +31,24 @@
         </div>
     </footer>
 
+    <nav class="mobile-bottom-bar" aria-label="モバイルナビ">
+        <a href="/" class="bottom-bar-item{% if request.url.path == '/' %} is-active{% endif %}">
+            <span class="bottom-bar-icon">🏠</span><span class="bottom-bar-label">ホーム</span>
+        </a>
+        <a href="/trend" class="bottom-bar-item{% if request.url.path == '/trend' %} is-active{% endif %}">
+            <span class="bottom-bar-icon">🔥</span><span class="bottom-bar-label">トレンド</span>
+        </a>
+        <a href="/ai" class="bottom-bar-item{% if request.url.path == '/ai' %} is-active{% endif %}">
+            <span class="bottom-bar-icon">🤖</span><span class="bottom-bar-label">AI</span>
+        </a>
+        <a href="/search" class="bottom-bar-item{% if request.url.path == '/search' %} is-active{% endif %}">
+            <span class="bottom-bar-icon">🔍</span><span class="bottom-bar-label">探す</span>
+        </a>
+        <a href="/saved" class="bottom-bar-item{% if request.url.path == '/saved' %} is-active{% endif %}">
+            <span class="bottom-bar-icon">⭐</span><span class="bottom-bar-label">保存</span>
+        </a>
+    </nav>
+
     {% block scripts %}{% endblock %}
-    <script>
-    document.getElementById('btn-refresh')?.addEventListener('click', function() {
-        var btn = this;
-        btn.disabled = true;
-        btn.textContent = '更新中...';
-        fetch('/api/news/refresh').then(function() {
-            location.reload();
-        }).catch(function() {
-            btn.disabled = false;
-            btn.textContent = '再読込';
-        });
-    });
-    </script>
 </body>
 </html>

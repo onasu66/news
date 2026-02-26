@@ -173,8 +173,10 @@ def score_keywords_autocomplete(keywords_1g: list[str], keywords_2g: list[str],
 # --- メインのスコアリングパイプライン ----------------------------------------
 
 def score_article(title: str, summary: str, category: str,
-                  trend_keywords: list[str] | None = None) -> float:
-    """記事1件のスコアを返す（高いほど良い）"""
+                  trend_keywords: list[str] | None = None,
+                  published=None) -> float:
+    """記事1件のスコアを返す（高いほど良い）。時系列ボーナス：新しいほど加点"""
+    from datetime import datetime
     kw_1g = extract_keywords(title, summary)
     kw_2g = make_ngrams(kw_1g)
     q_variants = add_question_variants(kw_1g)
@@ -188,7 +190,21 @@ def score_article(title: str, summary: str, category: str,
     if trend_keywords:
         trend_bonus = sum(5 for kw in trend_keywords if kw.lower() in text.lower())
 
-    return ac_score + hv_bonus + trend_bonus
+    recency_bonus = 0.0
+    if published is not None:
+        try:
+            now = datetime.now()
+            if hasattr(published, "timestamp"):
+                delta = (now - published).total_seconds()
+            else:
+                delta = 0
+            hours_ago = delta / 3600.0
+            # 24時間以内は最大+15点、それ以降は減衰（新しいニュースを優先）
+            recency_bonus = max(0.0, 15.0 - hours_ago * 0.5)
+        except Exception:
+            pass
+
+    return ac_score + hv_bonus + trend_bonus + recency_bonus
 
 
 def rank_and_filter_articles(
@@ -212,7 +228,8 @@ def rank_and_filter_articles(
     scored: list[tuple[float, object]] = []
     for item in filtered:
         try:
-            s = score_article(item.title, item.summary, item.category, trend_keywords)
+            pub = getattr(item, "published", None)
+            s = score_article(item.title, item.summary, item.category, trend_keywords, published=pub)
         except Exception:
             s = 0.0
         scored.append((s, item))
