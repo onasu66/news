@@ -1,7 +1,7 @@
 """RSS記事をAI解説付きのサイト記事に変換するパイプライン"""
 import re
 from .rss_service import NewsItem, sanitize_display_text
-from .translate_service import is_foreign_article, translate_and_rewrite
+from .translate_service import is_foreign_article, translate_and_rewrite, text_mainly_japanese
 from .ai_batch_service import generate_all_explanations
 from .explanation_cache import save_cache, get_cached, get_cached_article_ids
 from .article_cache import save_article, load_all
@@ -38,14 +38,19 @@ def process_rss_to_site_article(item: NewsItem, force: bool = False) -> bool:
     if not force and get_cached(item.id):
         return False  # 既にAI処理済み（force でなければスキップ）
 
-    # 海外記事はタイトル・要約を日本語に
-    if is_foreign_article(item.source, item.title, item.summary):
-        title_ja, summary_ja = translate_and_rewrite(item.title, item.summary)
+    # タイトル・要約が日本語でない場合は必ず日本語に変換（トップ・1分で読むで表示するため）
+    need_translate = is_foreign_article(item.source, item.title, item.summary or "")
+    if not need_translate and item.title and not text_mainly_japanese(item.title):
+        need_translate = True
+    if not need_translate and item.summary and not text_mainly_japanese(item.summary):
+        need_translate = True
+    if need_translate:
+        title_ja, summary_ja = translate_and_rewrite(item.title or "", item.summary or "")
         item = NewsItem(
             id=item.id,
-            title=title_ja,
+            title=title_ja or item.title,
             link=item.link,
-            summary=summary_ja,
+            summary=summary_ja or item.summary,
             published=item.published,
             source=item.source,
             category=item.category,

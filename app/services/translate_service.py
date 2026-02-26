@@ -17,11 +17,39 @@ def title_looks_english(title: str) -> bool:
     return ascii_count / letter_count > 0.5
 
 
+def summary_looks_english(summary: str) -> bool:
+    """要約が英語主体か（日本語化の必要判定用）"""
+    if not summary or len(summary) < 10:
+        return False
+    sample = summary[:600]
+    ascii_letters = sum(1 for c in sample if ord(c) < 128 and c.isalpha())
+    letters = sum(1 for c in sample if c.isalpha())
+    if letters < 5:
+        return False
+    return ascii_letters / letters > 0.4
+
+
+def text_mainly_japanese(text: str) -> bool:
+    """テキストが主に日本語か（ひらがな・カタカナ・漢字の割合）"""
+    if not text or len(text) < 5:
+        return True
+    sample = text[:500]
+    ja_count = sum(1 for c in sample if '\u3040' <= c <= '\u309f' or '\u30a0' <= c <= '\u30ff' or '\u4e00' <= c <= '\u9fff')
+    return ja_count / len(sample) > 0.3
+
+
 def is_foreign_article(source: str, title: str, summary: str) -> bool:
-    """海外ソースまたは英語コンテンツか"""
+    """海外ソースまたは英語コンテンツか（日本語訳が必要なら True）"""
     if source in FOREIGN_SOURCES:
         return True
     if title_looks_english(title):
+        return True
+    if summary and summary_looks_english(summary):
+        return True
+    # タイトル・要約のいずれかが主に日本語でなければ翻訳対象
+    if title and not text_mainly_japanese(title):
+        return True
+    if summary and not text_mainly_japanese(summary):
         return True
     text = f"{title} {summary}"
     if not text or len(text) < 5:

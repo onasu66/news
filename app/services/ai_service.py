@@ -136,16 +136,16 @@ def explain_article_long_with_bubbles(
 
     model = model or settings.OPENAI_MODEL
     client = OpenAI(api_key=settings.OPENAI_API_KEY)
-    user_prompt = f"""以下の記事を、友達に話すような喋り言葉で約3分で読める読み物にして。ところどころミドルマンの吹き出し（explain）も挟んで。
+    user_prompt = f"""以下の記事を、友達に話すような喋り言葉で約3分で読める読み物にし、必ず日本語だけで出力してください。ところどころミドルマンの吹き出し（explain）も挟んでください。
 
 【タイトル】{title}
 【本文】
 {content[:20000]}
 
 ■ やること
-1) 記事本文を喋り言葉で書く（「〜なんですよね」「〜ってわけです」等の口調）。約3分で読める分量（2500〜4500字）の複数 text ブロックで。短い入力なら背景・経緯を補足して膨らませる。
+1) 記事本文を喋り言葉で書く（「〜なんですよね」「〜ってわけです」等の口調）。約3分で読める分量（2500〜4500字）の複数 text ブロックで。短い入力なら背景・経緯を補足して膨らませる。入力が英語でもすべて日本語で出力すること。
 2) 適宜 explain ブロックでミドルマンが解説。記事の内容を補完するように、難しい部分を噛み砕いて教える。過去の関連事例があれば「前にも〇〇ってありましたよね」みたいに短く触れる。各 explain は1〜3文・2行前後に収め、一度に長い話はしない。
-3) blocks 配列のJSONのみ出力。"""
+3) blocks 配列のJSONのみ出力。すべて日本語で。"""
 
     raw = ""
     try:
@@ -204,7 +204,7 @@ def explain_article_long_with_bubbles(
 
 
 # 理解ナビゲーター：記事を5項目で再構成
-NAVIGATOR_ROLE = """あなたは「理解ナビゲーター」です。ニュース記事を読んで、読者が理解しやすいよう次の5項目で必ず再構成してください。
+NAVIGATOR_ROLE = """あなたは「理解ナビゲーター」です。ニュース記事を読んで、読者が理解しやすいよう次の5項目で必ず再構成してください。入力が英語でも、出力は必ず日本語のみにすること。
 ・何が起きたか（事実）：起きたことの要点を簡潔に。
 ・なぜ起きたか（背景）：原因・経緯・文脈を分かりやすく。
 ・誰に影響するか（影響範囲）：どのような人・業界・地域に影響するか。
@@ -473,8 +473,8 @@ def get_persona_opinion(
     p = PERSONAS[persona_id]
     client = OpenAI(api_key=settings.OPENAI_API_KEY)
     system_prompt = f"""あなたは「{p['name']}」という人格です。{p['role']}
-ニュース記事を読んで、この人格として短い意見（3〜5文程度）を述べてください。口語で親しみやすく。"""
-    user_prompt = f"【タイトル】{title}\n\n【本文抜粋】\n{content[:2000]}\n\n---\n上記のニュースについて、{p['name']}としての意見を書いてください。"
+ニュース記事を読んで、この人格として短い意見（3〜5文程度）を述べてください。口語で親しみやすく。必ず日本語のみで出力すること。"""
+    user_prompt = f"【タイトル】{title}\n\n【本文抜粋】\n{content[:2000]}\n\n---\n上記のニュースについて、{p['name']}としての意見を必ず日本語で書いてください。"
     try:
         response = create_with_retry(
             client,
@@ -504,8 +504,8 @@ def generate_quick_understand(title: str, content: str, model: str | None = None
             300,
             model=model,
             messages=[
-                {"role": "system", "content": "あなたはニュース速報の要約者です。以下の記事を3つの視点で各1文（30字以内）にまとめてください。\n\n出力はJSON形式で：\n{\"what\": \"何が起きたか\", \"why\": \"なぜ起きたか\", \"how\": \"今後どうなるか\"}\n\n日本語で、簡潔に。JSONのみ出力。"},
-                {"role": "user", "content": f"【タイトル】{title}\n\n【内容】\n{content[:2000]}"},
+                {"role": "system", "content": "あなたはニュース速報の要約者です。記事を3つの視点で各1文（30字以内）にまとめ、必ず日本語のみで出力してください。\n\n出力はJSON形式のみ：\n{\"what\": \"何が起きたか（日本語1文）\", \"why\": \"なぜ起きたか（日本語1文）\", \"how\": \"今後どうなるか（日本語1文）\"}\n\nwhat/why/how の値はすべて日本語で書くこと。英語は使わない。JSONのみ出力。"},
+                {"role": "user", "content": f"以下の記事を、必ず日本語で要約してください。\n\n【タイトル】{title}\n\n【内容】\n{content[:2000]}"},
             ],
             temperature=0.3,
         )
@@ -531,8 +531,8 @@ def generate_vote_question(title: str, content: str, model: str | None = None) -
             300,
             model=model,
             messages=[
-                {"role": "system", "content": "以下のニュース記事について、読者に問いかける投票質問を1つ作ってください。選択肢は3〜4個。\n\n出力はJSON形式で：\n{\"question\": \"質問文\", \"options\": [{\"id\": \"a\", \"label\": \"選択肢1\"}, {\"id\": \"b\", \"label\": \"選択肢2\"}, ...]}\n\n日本語で。JSONのみ出力。"},
-                {"role": "user", "content": f"【タイトル】{title}\n\n【内容】\n{content[:2000]}"},
+                {"role": "system", "content": "以下のニュース記事について、読者に問いかける投票質問を1つ作ってください。選択肢は3〜4個。\n\n必ず日本語のみで出力すること。question と各 options の label はすべて日本語で書くこと。英語は使わない。\n\n出力はJSON形式のみ：\n{\"question\": \"質問文（日本語）\", \"options\": [{\"id\": \"a\", \"label\": \"選択肢1（日本語）\"}, ...]}\n\nJSONのみ出力。"},
+                {"role": "user", "content": f"以下の記事について、投票の質問と選択肢を必ず日本語で作ってください。\n\n【タイトル】{title}\n\n【内容】\n{content[:2000]}"},
             ],
             temperature=0.5,
         )
