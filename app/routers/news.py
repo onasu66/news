@@ -78,6 +78,7 @@ async def index(request: Request, page: int = 1, keyword: str = ""):
     added_one = None
     for _, items in news_by_category:
         for item in items:
+            _ensure_japanese(item)
             if not item.image_url:
                 item.image_url = get_image_url(item.id, 400, 225)
             elif item.image_url and not item.image_url.startswith("http"):
@@ -117,6 +118,7 @@ async def api_news_page(page: int = 1, keyword: str = ""):
     start = (page - 1) * per_page
     items = news[start : start + per_page]
     for item in items:
+        _ensure_japanese(item)
         if not item.image_url:
             item.image_url = get_image_url(item.id, 400, 225)
         elif not item.image_url.startswith("http"):
@@ -155,6 +157,7 @@ async def trend_page(request: Request):
     scored.sort(key=lambda x: x[0], reverse=True)
     top_articles = [item for _, item in scored[:30]]
     for item in top_articles:
+        _ensure_japanese(item)
         if not item.image_url:
             item.image_url = get_image_url(item.id, 400, 225)
         elif not item.image_url.startswith("http"):
@@ -168,6 +171,7 @@ async def ai_page(request: Request):
     all_news = NewsAggregator.get_news()
     recommended = all_news[:6]
     for item in recommended:
+        _ensure_japanese(item)
         if not item.image_url:
             item.image_url = get_image_url(item.id, 400, 225)
         elif not item.image_url.startswith("http"):
@@ -195,6 +199,7 @@ async def search_page(request: Request, q: str = ""):
         ql = q.lower()
         results = [a for a in all_news if ql in (a.title or "").lower() or ql in (a.summary or "").lower()][:50]
         for item in results:
+            _ensure_japanese(item)
             if not item.image_url:
                 item.image_url = get_image_url(item.id, 400, 225)
             elif not item.image_url.startswith("http"):
@@ -227,6 +232,34 @@ async def confirm_page(request: Request):
     )
 
 
+_translate_cache: dict[str, tuple[str, str]] = {}
+
+
+def _ensure_japanese(item):
+    """表示時にタイトル・要約が英語の場合は日本語に翻訳（メモリキャッシュ付き）"""
+    from app.services.translate_service import text_mainly_japanese, translate_and_rewrite
+    title_ok = not item.title or text_mainly_japanese(item.title)
+    summary_ok = not item.summary or text_mainly_japanese(item.summary)
+    if title_ok and summary_ok:
+        return
+    if item.id in _translate_cache:
+        t, s = _translate_cache[item.id]
+        if t:
+            item.title = t
+        if s:
+            item.summary = s
+        return
+    try:
+        t, s = translate_and_rewrite(item.title or "", item.summary or "")
+        if t and not text_mainly_japanese(item.title):
+            item.title = t
+        if s and not text_mainly_japanese(item.summary or ""):
+            item.summary = s
+        _translate_cache[item.id] = (item.title, item.summary)
+    except Exception:
+        pass
+
+
 def _get_site_url(request: Request) -> str:
     """サイトの絶対URL（末尾スラッシュなし）"""
     base = getattr(settings, "SITE_URL", "").strip().rstrip("/")
@@ -252,6 +285,37 @@ def _meta_description_qa(title: str, summary: str | None, max_len: int = 160) ->
         return question[:max_len]
     answer = s[: max_len - len(question) - 4] + "..." if len(s) > max_len - len(question) - 2 else s
     return f"{question} {answer}"[:max_len]
+
+
+def _build_short_summary(blocks: list, fallback_summary: str | None) -> str:
+    """ブロックから「1分で理解」用の要点まとめHTMLを生成"""
+    import html as _html
+    if not blocks:
+        s = (fallback_summary or "").strip()
+        return f'<p class="article-text">{_html.escape(s)}</p>' if s else ""
+
+    points = []
+    is_nav = blocks and blocks[0].get("type") == "navigator_section"
+    if is_nav:
+        nav_labels = {"facts": "📌 事実", "background": "📖 背景", "impact": "🎯 影響", "prediction": "🔮 予測", "caution": "⚠ 注意"}
+        for b in blocks:
+            sec = b.get("section", "")
+            content = (b.get("content") or "").strip()
+            if sec in nav_labels and content:
+                label = nav_labels[sec]
+                safe = _html.escape(content[:300]).replace("\n", "<br>")
+                points.append(f'<div class="short-point"><span class="short-point-label">{label}</span><p>{safe}</p></div>')
+    else:
+        text_parts = []
+        for b in blocks:
+            if b.get("type") == "text":
+                text_parts.append((b.get("content") or "").strip())
+        combined = "\n\n".join(text_parts)
+        paras = [p.strip() for p in combined.split("\n\n") if p.strip()]
+        for p in paras[:5]:
+            safe = _html.escape(p[:250]).replace("\n", "<br>")
+            points.append(f'<p class="article-text">{safe}{"..." if len(p) > 250 else ""}</p>')
+    return "\n".join(points) if points else f'<p class="article-text">{_html.escape((fallback_summary or "")[:500])}</p>'
 
 
 def _blocks_to_html(blocks: list) -> str:
@@ -332,6 +396,7 @@ async def topic_detail(request: Request, topic_id: str):
     item = NewsAggregator.get_article(topic_id)
     if not item:
         raise HTTPException(status_code=404, detail="記事が見つかりません")
+    _ensure_japanese(item)
     image_url = item.image_url or get_image_url(item.id, 800, 450)
     if image_url and not image_url.startswith("http"):
         image_url = get_image_url(image_url, 800, 450)
@@ -346,6 +411,7 @@ async def topic_detail(request: Request, topic_id: str):
     quick_understand = cached.get("quick_understand") if cached else None
     vote_data = cached.get("vote_data") if cached else None
     body_html = _blocks_to_html(blocks) if blocks else ""
+    short_summary = _build_short_summary(blocks, item.summary)
     meta_desc = _meta_description_qa(item.title, item.summary)
 
     all_news = NewsAggregator.get_news()
@@ -376,6 +442,7 @@ async def topic_detail(request: Request, topic_id: str):
             "blocks": blocks,
             "personas_data": personas_data,
             "body_html": body_html,
+            "short_summary": short_summary,
             "meta_description": meta_desc,
             "next_article": next_article,
             "prev_article": prev_article,

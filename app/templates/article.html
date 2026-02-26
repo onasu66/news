@@ -56,14 +56,24 @@
     {% endif %}
 
     <div class="read-mode-switch">
-        <button type="button" class="read-mode-btn is-active" data-mode="short">📖 1分で読む</button>
+        <button type="button" class="read-mode-btn is-active" data-mode="short">📖 1分で理解</button>
         <button type="button" class="read-mode-btn" data-mode="deep">📚 3分で深掘り</button>
     </div>
 
     <div class="article-content-wrapper">
         <div class="article-main">
             <div id="article-short-content" class="article-read-content">
-                <p class="article-text">{{ article.summary|default('')|e }}</p>
+                {% if short_summary %}
+                <div class="short-summary-box">
+                    <h3 class="short-summary-heading">📝 要点まとめ</h3>
+                    {{ short_summary|safe }}
+                </div>
+                {% else %}
+                <div class="short-summary-box">
+                    <h3 class="short-summary-heading">📝 要点まとめ</h3>
+                    <p class="article-text">{{ article.summary|default('')|e }}</p>
+                </div>
+                {% endif %}
             </div>
             <div id="article-deep-content" class="article-read-content" style="display:none;">
                 <div id="article-inline-content" class="article-inline-content" data-fallback="{{ article.summary|e }}">
@@ -178,6 +188,13 @@
         </nav>
     </section>
 </article>
+
+<div id="midorman-float" class="midorman-float" aria-live="polite" hidden>
+    <span class="midorman-float-avatar" aria-hidden="true">🎙️</span>
+    <div class="midorman-float-inner">
+        <p class="midorman-float-text" id="midorman-float-text"></p>
+    </div>
+</div>
 {% endblock %}
 
 {% block scripts %}
@@ -267,9 +284,53 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // Load deep content via API if not SSR
-    var hasSsr = document.getElementById('article-inline-content').querySelector('.article-text, .article-readflow');
-    if (hasSsr && ssrPersonas && ssrPersonas.length > 0) {
+    // Scroll bubble + midorman float for deep content
+    function initScrollBubbles(container) {
+        if (!container) return;
+        var triggers = container.querySelectorAll('.scroll-trigger');
+        if (triggers.length === 0) return;
+        var observer = new IntersectionObserver(function(entries) {
+            entries.forEach(function(entry) {
+                if (!entry.isIntersecting) return;
+                var group = entry.target.closest('.scroll-bubble-group');
+                if (group) {
+                    var wrap = group.querySelector('.midorman-bubble-wrap');
+                    if (wrap) wrap.classList.add('is-visible');
+                }
+            });
+        }, { rootMargin: '0px 0px -15% 0px', threshold: 0 });
+        triggers.forEach(function(t) { observer.observe(t); });
+    }
+
+    function initMidormanFloat(container) {
+        var floatEl = document.getElementById('midorman-float');
+        var floatText = document.getElementById('midorman-float-text');
+        if (!floatEl || !floatText) return;
+        var wraps = container.querySelectorAll('.scroll-bubble-group .midorman-bubble-wrap');
+        if (wraps.length === 0) return;
+        var floatObserver = new IntersectionObserver(function(entries) {
+            entries.forEach(function(entry) {
+                if (!entry.isIntersecting) return;
+                var wrap = entry.target;
+                var textEl = wrap.querySelector('.midorman-bubble-text') || wrap.querySelector('.midorman-aside-body');
+                if (textEl) {
+                    floatText.innerHTML = textEl.innerHTML;
+                    floatEl.hidden = false;
+                }
+            });
+        }, { rootMargin: '-10% 0px -50% 0px', threshold: 0 });
+        wraps.forEach(function(w) { floatObserver.observe(w); });
+    }
+
+    // SSR content init
+    var contentEl = document.getElementById('article-inline-content');
+    if (contentEl) {
+        initScrollBubbles(contentEl);
+        initMidormanFloat(contentEl);
+    }
+
+    var hasSsr = contentEl && contentEl.querySelector('.article-text, .article-readflow') && ssrPersonas && ssrPersonas.length > 0;
+    if (hasSsr) {
         document.querySelectorAll('.persona-card').forEach(function(card, i) {
             var content = card.querySelector('.persona-content');
             var opinion = ssrPersonas[i] || '';
@@ -286,18 +347,47 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (!data.blocks || data.blocks.length === 0) {
                     el.innerHTML = '<p>' + escapeHtml(el.dataset.fallback || '') + '</p>';
                 } else {
-                    var html = '';
-                    data.blocks.forEach(function(b) {
-                        if (b.type === 'text' || b.type === 'navigator_section') {
-                            var paras = (b.content || '').trim().split(/\n\n+/).filter(function(p) { return p.trim(); });
-                            paras.forEach(function(p) {
-                                html += '<p class="article-text">' + escapeHtml(p).replace(/\n/g, '<br>') + '</p>';
-                            });
-                        } else if (b.type === 'explain') {
-                            html += '<div class="explain-block"><p class="article-explain">' + escapeHtml(b.content || '').replace(/\n/g, '<br>') + '</p></div>';
-                        }
-                    });
-                    el.innerHTML = html || '<p>' + escapeHtml(el.dataset.fallback || '') + '</p>';
+                    var navLabels = { facts: 'ニュース', background: '背景', impact: '影響範囲', prediction: '予測', caution: '注意' };
+                    var isNavigator = data.blocks[0].type === 'navigator_section';
+                    if (isNavigator) {
+                        var paras = [], asides = [];
+                        data.blocks.forEach(function(b) {
+                            if (b.type === 'navigator_section' && b.section && navLabels[b.section]) {
+                                var body = (b.content || '').trim() ? escapeHtml(b.content).replace(/\n/g, '<br>') : '';
+                                if (b.section === 'facts' && body) {
+                                    paras = (b.content || '').trim().split(/\n\n+/).filter(function(p) { return p.trim(); });
+                                } else if (b.section !== 'facts' && body) {
+                                    asides.push({ section: b.section, label: navLabels[b.section], body: body });
+                                }
+                            }
+                        });
+                        var html = '<div class="article-readflow"><div class="article-body">';
+                        paras.forEach(function(p, i) {
+                            html += '<p>' + escapeHtml(p).replace(/\n/g, '<br>') + '</p>';
+                            if (asides[i]) {
+                                var a = asides[i];
+                                html += '<div class="scroll-bubble-group"><div class="scroll-trigger" aria-hidden="true"></div><div class="midorman-bubble-wrap"><div class="midorman-aside midorman-aside-' + escapeHtml(a.section) + '"><span class="midorman-aside-label">' + escapeHtml(a.label) + '</span><div class="midorman-aside-body">' + a.body + '</div></div></div></div>';
+                            }
+                        });
+                        html += '</div></div>';
+                        el.innerHTML = html;
+                    } else {
+                        var html = '<div class="article-readflow article-with-bubbles">';
+                        data.blocks.forEach(function(b) {
+                            if (b.type === 'explain') {
+                                var c = escapeHtml(b.content || '').replace(/\n/g, '<br>');
+                                html += '<div class="scroll-bubble-group"><div class="scroll-trigger" aria-hidden="true"></div><div class="midorman-bubble-wrap"><div class="midorman-bubble-above"><span class="midorman-bubble-avatar" aria-hidden="true">🎙️</span><div class="midorman-bubble-inner"><p class="midorman-bubble-text">' + c + '</p></div></div></div></div>';
+                            } else if (b.type === 'text') {
+                                (b.content || '').trim().split(/\n\n+/).filter(function(p) { return p.trim(); }).forEach(function(p) {
+                                    html += '<p class="article-text">' + escapeHtml(p).replace(/\n/g, '<br>') + '</p>';
+                                });
+                            }
+                        });
+                        html += '</div>';
+                        el.innerHTML = html;
+                    }
+                    initScrollBubbles(el);
+                    initMidormanFloat(el);
                 }
                 var personas = data.personas || [];
                 document.querySelectorAll('.persona-card').forEach(function(card, i) {

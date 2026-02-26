@@ -2750,3 +2750,193 @@ body::after {
     margin: 0 auto;
     padding: 0.5rem 1.5rem;
 }
+
+/* ===== SHORT SUMMARY (1分で理解) ===== */
+.short-summary-box {
+    background: var(--color-card);
+    border-radius: 16px;
+    padding: 1.25rem 1.5rem;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.04);
+}
+.short-summary-heading {
+    font-size: 1.05rem;
+    font-weight: 800;
+    margin: 0 0 0.75rem;
+}
+.short-point {
+    margin-bottom: 0.75rem;
+    padding-left: 0.5rem;
+    border-left: 3px solid var(--color-accent);
+}
+.short-point-label {
+    display: block;
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: var(--color-accent);
+    margin-bottom: 0.2rem;
+}
+.short-point p {
+    margin: 0;
+    font-size: 0.92rem;
+    line-height: 1.65;
+}
+
+/* ===== MIDORMAN FLOAT ===== */
+.midorman-float {
+    position: fixed;
+    bottom: 5rem;
+    right: 1rem;
+    z-index: 900;
+    max-width: 320px;
+    background: rgba(255,255,255,0.97);
+    border: 2px solid var(--color-accent);
+    border-radius: 16px;
+    padding: 0.75rem 1rem;
+    box-shadow: 0 8px 32px rgba(99,102,241,0.18);
+    display: flex;
+    gap: 0.5rem;
+    align-items: flex-start;
+    animation: floatIn 0.4s ease-out;
+    backdrop-filter: blur(8px);
+}
+.midorman-float-avatar { font-size: 1.5rem; flex: 0 0 auto; }
+.midorman-float-inner { flex: 1; min-width: 0; }
+.midorman-float-text {
+    margin: 0;
+    font-size: 0.82rem;
+    line-height: 1.6;
+    color: #334155;
+}
+@keyframes floatIn {
+    from { opacity: 0; transform: translateY(20px) scale(0.95); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* ===== MOBILE HEADER ANIMATION ===== */
+@media (max-width: 768px) {
+    .site-header {
+        background: linear-gradient(135deg, #0f172a, #1e293b);
+        position: relative;
+        overflow: hidden;
+    }
+    .site-header::before {
+        content: '';
+        position: absolute;
+        inset: 0;
+        background:
+            radial-gradient(circle at 20% 50%, rgba(99,102,241,0.25) 0%, transparent 50%),
+            radial-gradient(circle at 80% 50%, rgba(168,85,247,0.15) 0%, transparent 50%);
+        animation: header-pulse 6s ease-in-out infinite alternate;
+    }
+    .site-header::after {
+        content: '';
+        position: absolute;
+        top: -50%;
+        left: -50%;
+        width: 200%;
+        height: 200%;
+        background: linear-gradient(45deg, transparent 40%, rgba(255,255,255,0.03) 50%, transparent 60%);
+        animation: header-shimmer 4s linear infinite;
+    }
+    @keyframes header-pulse {
+        0% { opacity: 0.5; transform: scale(1); }
+        100% { opacity: 1; transform: scale(1.05); }
+    }
+    @keyframes header-shimmer {
+        0% { transform: translateX(-100%) rotate(45deg); }
+        100% { transform: translateX(100%) rotate(45deg); }
+    }
+    .site-header .logo { color: #fff; }
+    .site-header .logo-tagline { color: #94a3b8; }
+    .site-header .header-inner { position: relative; z-index: 1; }
+
+    body {
+        background: #0f172a;
+        color: #e2e8f0;
+    }
+    body::before {
+        content: '';
+        position: fixed;
+        inset: 0;
+        z-index: -1;
+        background:
+            radial-gradient(ellipse at 20% 20%, rgba(99,102,241,0.08) 0%, transparent 50%),
+            radial-gradient(ellipse at 80% 80%, rgba(168,85,247,0.06) 0%, transparent 50%),
+            linear-gradient(180deg, #0f172a 0%, #1e293b 100%);
+        animation: bg-float 12s ease-in-out infinite alternate;
+    }
+    @keyframes bg-float {
+        0% { opacity: 0.8; }
+        100% { opacity: 1; }
+    }
+
+    .hero-section { padding: 1.5rem 1rem 1.25rem; }
+    .hero-title { font-size: 1.4rem; }
+    .hero-desc { font-size: 0.88rem; }
+
+    .news-card {
+        background: rgba(30,41,59,0.9);
+        border: 1px solid rgba(99,102,241,0.15);
+    }
+    .news-card .news-title { color: #e2e8f0; }
+    .news-card-meta { color: #94a3b8; }
+    .news-summary-line { color: #94a3b8; }
+
+    .genre-tab {
+        background: rgba(30,41,59,0.8);
+        border-color: rgba(99,102,241,0.2);
+        color: #94a3b8;
+    }
+    .genre-tab.is-active {
+        background: var(--color-accent);
+        color: #fff;
+        border-color: var(--color-accent);
+    }
+    .genre-tabs-wrap {
+        background: rgba(15,23,42,0.95);
+        backdrop-filter: blur(8px);
+    }
+
+    .search-keyword-msg { color: #93c5fd; }
+    .trends-box { background: rgba(30,41,59,0.9); }
+    .trend-link-internal { color: #e2e8f0; }
+    .trend-link-internal:hover { background: rgba(99,102,241,0.1); }
+
+    .article-detail { background: rgba(30,41,59,0.6); border-radius: 16px; padding: 1rem; margin: 0.5rem; }
+    .quick-understand { background: rgba(30,41,59,0.8); border-color: rgba(99,102,241,0.3); }
+    .short-summary-box { background: rgba(30,41,59,0.8); }
+    .read-mode-btn { background: rgba(30,41,59,0.8); border-color: rgba(99,102,241,0.2); color: #94a3b8; }
+    .read-mode-btn.is-active { background: var(--color-accent); color: #fff; border-color: var(--color-accent); }
+
+    .mobile-bottom-bar {
+        background: rgba(15,23,42,0.95);
+        backdrop-filter: blur(16px);
+        border-top: 1px solid rgba(99,102,241,0.15);
+    }
+    .bottom-bar-item { color: #64748b; }
+    .bottom-bar-item.is-active { color: #93c5fd; }
+
+    .site-footer { background: rgba(15,23,42,0.9); color: #64748b; }
+
+    .midorman-float {
+        bottom: 4.5rem;
+        right: 0.5rem;
+        left: 0.5rem;
+        max-width: none;
+        background: rgba(30,41,59,0.97);
+        border-color: rgba(99,102,241,0.4);
+    }
+    .midorman-float-text { color: #e2e8f0; }
+
+    .persona-card { background: rgba(30,41,59,0.8); border-radius: 12px; }
+    .persona-trigger { color: #e2e8f0; }
+    .vote-section { background: rgba(30,41,59,0.8); }
+    .vote-btn { background: rgba(15,23,42,0.6); border-color: rgba(99,102,241,0.2); color: #e2e8f0; }
+    .vote-btn:hover { border-color: var(--color-accent); }
+
+    .page-header { color: #e2e8f0; }
+    .page-desc { color: #94a3b8; }
+
+    .news-card-sm { background: rgba(30,41,59,0.8); }
+    .news-card-sm .news-title { color: #e2e8f0; }
+}
