@@ -46,11 +46,16 @@ def process_rss_to_site_article(item: NewsItem, force: bool = False) -> bool:
         need_translate = True
     if need_translate:
         title_ja, summary_ja = translate_and_rewrite(item.title or "", item.summary or "")
+        # 翻訳結果が日本語になったか確認。まだ英語なら再翻訳を試みる
+        if title_ja and not text_mainly_japanese(title_ja):
+            title_ja2, _ = translate_and_rewrite(item.title or "", "")
+            if title_ja2 and text_mainly_japanese(title_ja2):
+                title_ja = title_ja2
         item = NewsItem(
             id=item.id,
-            title=title_ja or item.title,
+            title=title_ja if title_ja and text_mainly_japanese(title_ja) else item.title,
             link=item.link,
-            summary=summary_ja or item.summary,
+            summary=summary_ja if summary_ja and text_mainly_japanese(summary_ja) else item.summary,
             published=item.published,
             source=item.source,
             category=item.category,

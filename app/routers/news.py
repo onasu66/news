@@ -236,8 +236,8 @@ _translate_cache: dict[str, tuple[str, str]] = {}
 
 
 def _ensure_japanese(item):
-    """表示時にタイトル・要約が英語の場合は日本語に翻訳（メモリキャッシュ付き）"""
-    from app.services.translate_service import text_mainly_japanese, translate_and_rewrite
+    """表示時にタイトル・要約が英語の場合は日本語に翻訳（メモリキャッシュ付き・バックグラウンド翻訳）"""
+    from app.services.translate_service import text_mainly_japanese
     title_ok = not item.title or text_mainly_japanese(item.title)
     summary_ok = not item.summary or text_mainly_japanese(item.summary)
     if title_ok and summary_ok:
@@ -249,15 +249,16 @@ def _ensure_japanese(item):
         if s:
             item.summary = s
         return
-    try:
-        t, s = translate_and_rewrite(item.title or "", item.summary or "")
-        if t and not text_mainly_japanese(item.title):
-            item.title = t
-        if s and not text_mainly_japanese(item.summary or ""):
-            item.summary = s
-        _translate_cache[item.id] = (item.title, item.summary)
-    except Exception:
-        pass
+    # バックグラウンドで翻訳をキック（ページ表示をブロックしない）
+    import threading
+    def _do_translate():
+        try:
+            from app.services.translate_service import translate_and_rewrite
+            t, s = translate_and_rewrite(item.title or "", item.summary or "")
+            _translate_cache[item.id] = (t or item.title, s or item.summary)
+        except Exception:
+            pass
+    threading.Thread(target=_do_translate, daemon=True).start()
 
 
 def _get_site_url(request: Request) -> str:
@@ -363,15 +364,11 @@ def _blocks_to_html(blocks: list) -> str:
                 f'<div class="midorman-aside-body">{a["body"]}</div></div></div></div>'
             )
         return '<div class="article-readflow">' + "".join(out) + "</div>" if out else ""
-    # text/explain 形式：本文と要点の解説を交互に配置（フローティング表示用）
+    # text/explain 形式：本文のみ表示、explainはミドルマン吹き出しとして横に出す
     html_parts = ['<div class="article-readflow article-with-bubbles">']
-    explain_index = 0
     for b in blocks:
         if b.get("type") == "explain":
-            explain_index += 1
             c = html.escape(b.get("content") or "").replace("\n", "<br>")
-            h3_id = f"explain-{explain_index}"
-            html_parts.append(f'<h3 class="article-h3" id="{h3_id}">要点の解説</h3>')
             bubble = (
                 f'<div class="midorman-bubble-above">'
                 f'<span class="midorman-bubble-avatar" aria-hidden="true">🎙️</span>'
