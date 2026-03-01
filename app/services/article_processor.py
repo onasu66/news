@@ -1,7 +1,7 @@
 """RSS記事をAI解説付きのサイト記事に変換するパイプライン"""
 import re
 from .rss_service import NewsItem, sanitize_display_text
-from .translate_service import is_foreign_article, translate_and_rewrite, text_mainly_japanese
+from .translate_service import is_foreign_article, translate_and_rewrite, translate_title_to_japanese, text_mainly_japanese
 from .ai_batch_service import generate_all_explanations
 from .explanation_cache import save_cache, get_cached, get_cached_article_ids
 from .article_cache import save_article, load_all
@@ -46,14 +46,13 @@ def process_rss_to_site_article(item: NewsItem, force: bool = False) -> bool:
         need_translate = True
     if need_translate:
         title_ja, summary_ja = translate_and_rewrite(item.title or "", item.summary or "")
-        # 翻訳結果が日本語になったか確認。まだ英語なら再翻訳を試みる
+        # タイトルがまだ日本語でない場合はタイトル専用翻訳で必ず日本語に
         if title_ja and not text_mainly_japanese(title_ja):
-            title_ja2, _ = translate_and_rewrite(item.title or "", "")
-            if title_ja2 and text_mainly_japanese(title_ja2):
-                title_ja = title_ja2
+            title_ja = translate_title_to_japanese(item.title or "")
+        final_title = title_ja if (title_ja and text_mainly_japanese(title_ja)) else translate_title_to_japanese(item.title or "") or item.title
         item = NewsItem(
             id=item.id,
-            title=title_ja if title_ja and text_mainly_japanese(title_ja) else item.title,
+            title=final_title,
             link=item.link,
             summary=summary_ja if summary_ja and text_mainly_japanese(summary_ja) else item.summary,
             published=item.published,
@@ -93,9 +92,10 @@ def process_rss_to_site_article(item: NewsItem, force: bool = False) -> bool:
     if not blocks:
         return False
 
-    save_cache(item.id, blocks, personas)
+    # 記事を先に保存してから解説を保存（Firestore で has_explanation を正しく付与するため）
     if not save_article(item):
         return False  # 記事の保存に失敗した場合は成功にしない
+    save_cache(item.id, blocks, personas)
     return True
 
 

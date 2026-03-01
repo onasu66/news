@@ -58,6 +58,42 @@ def is_foreign_article(source: str, title: str, summary: str) -> bool:
     return ascii_count / len(text) > 0.5
 
 
+def translate_title_to_japanese(english_title: str) -> str:
+    """タイトルだけを日本語に翻訳。必ず日本語のみで返す。"""
+    if not english_title or not english_title.strip():
+        return english_title
+    if text_mainly_japanese(english_title):
+        return english_title
+    try:
+        from openai import OpenAI
+        from app.config import settings
+        if not settings.OPENAI_API_KEY:
+            return english_title
+        client = OpenAI(api_key=settings.OPENAI_API_KEY)
+        model = settings.OPENAI_MODEL
+        prompt = f"""次のニュースのタイトルを日本語に翻訳してください。
+ルール：出力は日本語のタイトルだけを1行で返す。英語は1文字も含めない。カタカナ・漢字・ひらがなで書く。
+
+【元タイトル】
+{english_title[:400]}"""
+        resp = create_with_retry(
+            client,
+            200,
+            model=model,
+            messages=[
+                {"role": "system", "content": "あなたはニュースの見出しを日本語に翻訳するアシスタントです。出力は必ず日本語のみ。英語は使わない。"},
+                {"role": "user", "content": prompt},
+            ],
+            temperature=0.2,
+        )
+        raw = (resp.choices[0].message.content or "").strip()
+        if raw and text_mainly_japanese(raw):
+            return raw[:200]
+    except Exception:
+        pass
+    return english_title
+
+
 def translate_and_rewrite(title: str, summary: str) -> tuple[str, str]:
     """海外記事を日本語に訳し、独自の表現で言い換える（著作権配慮）"""
     try:
@@ -69,21 +105,20 @@ def translate_and_rewrite(title: str, summary: str) -> tuple[str, str]:
 
         client = OpenAI(api_key=settings.OPENAI_API_KEY)
         model = settings.OPENAI_MODEL
-        prompt = f"""以下の英語ニュースのタイトルと要約を、日本語に訳し、独自の表現で言い直してください。
-元の文章をそのまま訳すのではなく、意味を保ちながら別の言い方で書き直してください（著作権配慮）。
+        prompt = f"""以下の英語ニュースのタイトルと要約を、必ず日本語だけに訳し、独自の表現で言い直してください。
+重要：タイトルも要約も、日本語以外（英語など）は1文字も含めないこと。全てカタカナ・漢字・ひらがなで書く。
 
-■ タイトルは【】で囲んだインパクトのある短い語句から始めてください。
-  例：【ついに】〇〇が〇〇に、【なぜ】〇〇は〇〇なのか、【衝撃】〇〇が判明、【速報】〇〇を発表
-  ※【】の中は2〜5文字程度の短い語句。内容に合う自然なものにする。
+■ タイトルは【】で囲んだ短い語句から始める（【】の中も日本語。例：【衝撃】【速報】【なぜ】）。
+■ 【】の後の見出しも必ず日本語で。
 
 【元タイトル】{title[:300]}
 
 【元要約】
 {summary[:800]}
 
-以下の形式のみで返してください。
+以下の形式のみで返す。
 ===タイトル===
-（日本語のタイトルを1行で。【○○】から始める）
+（日本語のタイトルを1行だけ。【○○】から始め、全て日本語）
 ===要約===
 （日本語の要約を2〜4文で）"""
 
@@ -92,7 +127,7 @@ def translate_and_rewrite(title: str, summary: str) -> tuple[str, str]:
             500,
             model=model,
             messages=[
-                {"role": "system", "content": "ニュースを日本語で分かりやすく言い換えるアシスタント。元文をコピーせず独自表現で。"},
+                {"role": "system", "content": "ニュースを日本語で分かりやすく言い換えるアシスタント。出力は必ず日本語のみ。英語は使わない。"},
                 {"role": "user", "content": prompt},
             ],
             temperature=0.4,
@@ -105,7 +140,7 @@ def translate_and_rewrite(title: str, summary: str) -> tuple[str, str]:
             parts = raw.split("===タイトル===", 1)
             if len(parts) > 1:
                 rest = parts[1].split("===要約===", 1)
-                new_title = rest[0].strip()[:200] or title
+                new_title = rest[0].strip().strip('"').strip()[:200] or title
                 if len(rest) > 1:
                     new_summary = rest[1].strip()[:500] or summary
 
