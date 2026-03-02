@@ -180,6 +180,10 @@ def fetch_rss_news() -> list[NewsItem]:
         except Exception:
             continue
 
+    # 取得日と同じ日付の記事だけに絞る（公開日が今日のもののみ）
+    today = datetime.now().date()
+    all_news = [x for x in all_news if x.published.date() == today]
+
     # 日付でソート（新しい順＝人気度の代理）
     all_news.sort(key=lambda x: x.published, reverse=True)
     return all_news[:200]

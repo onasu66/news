@@ -38,41 +38,48 @@ def process_rss_to_site_article(item: NewsItem, force: bool = False) -> bool:
     if not force and get_cached(item.id):
         return False  # 既にAI処理済み（force でなければスキップ）
 
-    # タイトル・要約が日本語でない場合は必ず日本語に変換（トップ・1分で読むで表示するため）
+    # --- タイトル・要約を必ず日本語にしてから保存する ---
     need_translate = is_foreign_article(item.source, item.title, item.summary or "")
     if not need_translate and item.title and not text_mainly_japanese(item.title):
         need_translate = True
     if not need_translate and item.summary and not text_mainly_japanese(item.summary):
         need_translate = True
-    if need_translate:
-        title_ja, summary_ja = translate_and_rewrite(item.title or "", item.summary or "")
-        # タイトルがまだ日本語でない場合はタイトル専用翻訳で必ず日本語に
-        if title_ja and not text_mainly_japanese(title_ja):
-            title_ja = translate_title_to_japanese(item.title or "")
-        final_title = title_ja if (title_ja and text_mainly_japanese(title_ja)) else translate_title_to_japanese(item.title or "") or item.title
-        item = NewsItem(
-            id=item.id,
-            title=final_title,
-            link=item.link,
-            summary=summary_ja if summary_ja and text_mainly_japanese(summary_ja) else item.summary,
-            published=item.published,
-            source=item.source,
-            category=item.category,
-            image_url=item.image_url,
-        )
 
-    # 日本語記事もタイトルに【】が無ければ付与
-    if not item.title.startswith("【"):
-        item = NewsItem(
-            id=item.id,
-            title=_add_bracket_title(item.title),
-            link=item.link,
-            summary=item.summary,
-            published=item.published,
-            source=item.source,
-            category=item.category,
-            image_url=item.image_url,
-        )
+    title_ja = item.title or ""
+    summary_ja = item.summary or ""
+
+    if need_translate:
+        # 1) タイトル＋要約を一括翻訳
+        t, s = translate_and_rewrite(item.title or "", item.summary or "")
+        if t and text_mainly_japanese(t):
+            title_ja = t
+        if s and text_mainly_japanese(s):
+            summary_ja = s
+        # 2) タイトルがまだ日本語でなければタイトル専用翻訳（リトライ）
+        if not text_mainly_japanese(title_ja):
+            t2 = translate_title_to_japanese(item.title or "")
+            if t2 and text_mainly_japanese(t2):
+                title_ja = t2
+        # 3) 要約がまだ日本語でなければ再翻訳して Firestore には日本語で保存
+        if not text_mainly_japanese(summary_ja):
+            _, s2 = translate_and_rewrite(item.title or "", item.summary or "")
+            if s2 and text_mainly_japanese(s2):
+                summary_ja = s2
+
+    # 【】が既に付いていればそのまま、なければ AI で目を引く【】を付与
+    if not title_ja.startswith("【"):
+        title_ja = _add_bracket_title(title_ja)
+
+    item = NewsItem(
+        id=item.id,
+        title=title_ja,
+        link=item.link,
+        summary=summary_ja,
+        published=item.published,
+        source=item.source,
+        category=item.category,
+        image_url=item.image_url,
+    )
 
     # 記事URLから本文を取得して反映（取れればRSS要約より充実した内容に）
     body = fetch_article_body(item.link)
@@ -100,26 +107,62 @@ def process_rss_to_site_article(item: NewsItem, force: bool = False) -> bool:
 
 
 def _add_bracket_title(title: str) -> str:
-    """タイトルに【】付きのインパクト語句を先頭に付ける（SEO向け・「なぜ」「理由」「何」を入れる）"""
+    """タイトル先頭に【○○】を付ける。AIで内容に合った目を引くフレーズを生成。失敗時はルールベースで付与。"""
     import re
     if title.startswith("【"):
         return title
     t = title.strip()
+
+    # AI で【】の中身を生成
+    try:
+        from app.utils.openai_compat import create_with_retry
+        from openai import OpenAI
+        from app.config import settings
+        if settings.OPENAI_API_KEY:
+            client = OpenAI(api_key=settings.OPENAI_API_KEY)
+            resp = create_with_retry(
+                client,
+                50,
+                model=settings.OPENAI_MODEL,
+                messages=[
+                    {"role": "system", "content": "ニュース見出しの先頭に付ける【】の中身を1つだけ出力するアシスタント。"},
+                    {"role": "user", "content": f"""次のニュースタイトルに合う【】の中身を1つだけ出力してください。
+ルール：
+- 2〜4文字の日本語のみ（英語禁止）
+- 読者の目を引く・クリックしたくなる言葉
+- 例：なぜ、衝撃、驚き、速報、激震、転換、急展開、真相、裏側、本音、盲点、必見、要注意、朗報、悲報、異変、深層
+- 「解説」は使わない。もっとインパクトのある言葉を選ぶ
+- 【】は付けず中身だけ出力
+
+タイトル：{t[:200]}"""},
+                ],
+                temperature=0.7,
+            )
+            label = (resp.choices[0].message.content or "").strip().strip("【】「」").strip()
+            if label and 1 <= len(label) <= 6:
+                return f"【{label}】{t}"
+    except Exception:
+        pass
+
+    # フォールバック：ルールベース
     bracket_map = [
         (r"(なぜ|理由|原因|背景|どうして)", "なぜ"),
-        (r"(何|とは|どういう)", "何"),
-        (r"(発表|公開|開始|解禁|決定)", "発表"),
+        (r"(何|とは|どういう)", "真相"),
+        (r"(発表|公開|開始|解禁|決定)", "速報"),
         (r"(判明|発覚|明らかに)", "判明"),
-        (r"(初めて|史上初|世界初|日本初)", "初"),
-        (r"(急増|急落|急騰|暴落|高騰)", "速報"),
-        (r"(改正|法案|規制|制裁)", "注目"),
+        (r"(初めて|史上初|世界初|日本初)", "驚き"),
+        (r"(急増|急落|急騰|暴落|高騰)", "激震"),
+        (r"(改正|法案|規制|制裁)", "要注意"),
         (r"(危機|懸念|警告|リスク)", "警鐘"),
         (r"(合意|締結|連携|提携)", "注目"),
+        (r"(戦争|紛争|攻撃|侵攻)", "緊迫"),
+        (r"(逮捕|起訴|容疑|事件)", "衝撃"),
+        (r"(勝利|優勝|達成|記録)", "快挙"),
     ]
     for pattern, label in bracket_map:
         if re.search(pattern, t):
             return f"【{label}】{t}"
-    return f"【解説】{t}"
+    return f"【必見】{t}"
 
 
 def _select_diverse_batch(

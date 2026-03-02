@@ -232,33 +232,9 @@ async def confirm_page(request: Request):
     )
 
 
-_translate_cache: dict[str, tuple[str, str]] = {}
-
-
 def _ensure_japanese(item):
-    """表示時にタイトル・要約が英語の場合は日本語に翻訳（メモリキャッシュ付き・バックグラウンド翻訳）"""
-    from app.services.translate_service import text_mainly_japanese
-    title_ok = not item.title or text_mainly_japanese(item.title)
-    summary_ok = not item.summary or text_mainly_japanese(item.summary)
-    if title_ok and summary_ok:
-        return
-    if item.id in _translate_cache:
-        t, s = _translate_cache[item.id]
-        if t:
-            item.title = t
-        if s:
-            item.summary = s
-        return
-    # バックグラウンドで翻訳をキック（ページ表示をブロックしない）
-    import threading
-    def _do_translate():
-        try:
-            from app.services.translate_service import translate_and_rewrite
-            t, s = translate_and_rewrite(item.title or "", item.summary or "")
-            _translate_cache[item.id] = (t or item.title, s or item.summary)
-        except Exception:
-            pass
-    threading.Thread(target=_do_translate, daemon=True).start()
+    """保存時に日本語化済みのため、表示側では何もしない"""
+    pass
 
 
 def _get_site_url(request: Request) -> str:
