@@ -284,48 +284,35 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // Scroll bubble + midorman float for deep content
-    function initScrollBubbles(container) {
-        if (!container) return;
-        var triggers = container.querySelectorAll('.scroll-trigger');
-        if (triggers.length === 0) return;
-        var observer = new IntersectionObserver(function(entries) {
-            entries.forEach(function(entry) {
-                if (!entry.isIntersecting) return;
-                var group = entry.target.closest('.scroll-bubble-group');
-                if (group) {
-                    var wrap = group.querySelector('.midorman-bubble-wrap');
-                    if (wrap) wrap.classList.add('is-visible');
-                }
-            });
-        }, { rootMargin: '0px 0px -15% 0px', threshold: 0 });
-        triggers.forEach(function(t) { observer.observe(t); });
-    }
-
     function initMidormanFloat(container) {
         var floatEl = document.getElementById('midorman-float');
         var floatText = document.getElementById('midorman-float-text');
         if (!floatEl || !floatText) return;
-        var wraps = container.querySelectorAll('.scroll-bubble-group .midorman-bubble-wrap');
-        if (wraps.length === 0) return;
-        var floatObserver = new IntersectionObserver(function(entries) {
+        var dataEl = container.querySelector('.midorman-float-data');
+        if (!dataEl) return;
+        var items;
+        try { items = JSON.parse(dataEl.textContent); } catch(e) { return; }
+        if (!items || items.length === 0) return;
+        var paras = container.querySelectorAll('.article-text[data-para]');
+        if (paras.length === 0) return;
+        var currentIdx = -1;
+        var observer = new IntersectionObserver(function(entries) {
             entries.forEach(function(entry) {
                 if (!entry.isIntersecting) return;
-                var wrap = entry.target;
-                var textEl = wrap.querySelector('.midorman-bubble-text') || wrap.querySelector('.midorman-aside-body');
-                if (textEl) {
-                    floatText.innerHTML = textEl.innerHTML;
+                var idx = parseInt(entry.target.dataset.para, 10);
+                var explainIdx = Math.min(Math.floor(idx * items.length / paras.length), items.length - 1);
+                if (explainIdx !== currentIdx && explainIdx >= 0) {
+                    currentIdx = explainIdx;
+                    floatText.innerHTML = items[explainIdx].body;
                     floatEl.hidden = false;
                 }
             });
         }, { rootMargin: '-10% 0px -50% 0px', threshold: 0 });
-        wraps.forEach(function(w) { floatObserver.observe(w); });
+        paras.forEach(function(p) { observer.observe(p); });
     }
 
-    // SSR content init
     var contentEl = document.getElementById('article-inline-content');
     if (contentEl) {
-        initScrollBubbles(contentEl);
         initMidormanFloat(contentEl);
     }
 
@@ -349,44 +336,42 @@ document.addEventListener('DOMContentLoaded', function() {
                 } else {
                     var navLabels = { facts: 'ニュース', background: '背景', impact: '影響範囲', prediction: '予測', caution: '注意' };
                     var isNavigator = data.blocks[0].type === 'navigator_section';
+                    var textParts = [];
+                    var floatItems = [];
                     if (isNavigator) {
-                        var paras = [], asides = [];
                         data.blocks.forEach(function(b) {
-                            if (b.type === 'navigator_section' && b.section && navLabels[b.section]) {
-                                var body = (b.content || '').trim() ? escapeHtml(b.content).replace(/\n/g, '<br>') : '';
-                                if (b.section === 'facts' && body) {
-                                    paras = (b.content || '').trim().split(/\n\n+/).filter(function(p) { return p.trim(); });
-                                } else if (b.section !== 'facts' && body) {
-                                    asides.push({ section: b.section, label: navLabels[b.section], body: body });
-                                }
-                            }
-                        });
-                        var html = '<div class="article-readflow"><div class="article-body">';
-                        paras.forEach(function(p, i) {
-                            html += '<p>' + escapeHtml(p).replace(/\n/g, '<br>') + '</p>';
-                            if (asides[i]) {
-                                var a = asides[i];
-                                html += '<div class="scroll-bubble-group"><div class="scroll-trigger" aria-hidden="true"></div><div class="midorman-bubble-wrap"><div class="midorman-aside midorman-aside-' + escapeHtml(a.section) + '"><span class="midorman-aside-label">' + escapeHtml(a.label) + '</span><div class="midorman-aside-body">' + a.body + '</div></div></div></div>';
-                            }
-                        });
-                        html += '</div></div>';
-                        el.innerHTML = html;
-                    } else {
-                        var html = '<div class="article-readflow article-with-bubbles">';
-                        data.blocks.forEach(function(b) {
-                            if (b.type === 'explain') {
-                                var c = escapeHtml(b.content || '').replace(/\n/g, '<br>');
-                                html += '<div class="scroll-bubble-group"><div class="scroll-trigger" aria-hidden="true"></div><div class="midorman-bubble-wrap"><div class="midorman-bubble-above"><span class="midorman-bubble-avatar" aria-hidden="true">🎙️</span><div class="midorman-bubble-inner"><p class="midorman-bubble-text">' + c + '</p></div></div></div></div>';
-                            } else if (b.type === 'text') {
-                                (b.content || '').trim().split(/\n\n+/).filter(function(p) { return p.trim(); }).forEach(function(p) {
-                                    html += '<p class="article-text">' + escapeHtml(p).replace(/\n/g, '<br>') + '</p>';
+                            if (b.type !== 'navigator_section' || !b.section) return;
+                            var body = (b.content || '').trim();
+                            if (!body) return;
+                            if (b.section === 'facts') {
+                                body.split(/\n\n+/).filter(function(p) { return p.trim(); }).forEach(function(p) {
+                                    textParts.push(escapeHtml(p).replace(/\n/g, '<br>'));
                                 });
+                            } else if (navLabels[b.section]) {
+                                floatItems.push({ label: navLabels[b.section], body: escapeHtml(body).replace(/\n/g, '<br>') });
                             }
                         });
-                        html += '</div>';
-                        el.innerHTML = html;
+                    } else {
+                        data.blocks.forEach(function(b) {
+                            if (b.type === 'text') {
+                                (b.content || '').trim().split(/\n\n+/).filter(function(p) { return p.trim(); }).forEach(function(p) {
+                                    textParts.push(escapeHtml(p).replace(/\n/g, '<br>'));
+                                });
+                            } else if (b.type === 'explain') {
+                                var c = (b.content || '').trim();
+                                if (c) floatItems.push({ label: 'ミドルマン', body: escapeHtml(c).replace(/\n/g, '<br>') });
+                            }
+                        });
                     }
-                    initScrollBubbles(el);
+                    var html = '<div class="article-readflow">';
+                    textParts.forEach(function(p, i) {
+                        html += '<p class="article-text" data-para="' + i + '">' + p + '</p>';
+                    });
+                    if (floatItems.length > 0) {
+                        html += '<script type="application/json" class="midorman-float-data">' + JSON.stringify(floatItems) + '<\/script>';
+                    }
+                    html += '</div>';
+                    el.innerHTML = html;
                     initMidormanFloat(el);
                 }
                 var personas = data.personas || [];

@@ -313,76 +313,55 @@ def _build_short_summary(blocks: list, fallback_summary: str | None) -> str:
                 text_parts.append((b.get("content") or "").strip())
         combined = "\n\n".join(text_parts)
         paras = [p.strip() for p in combined.split("\n\n") if p.strip()]
-        for p in paras[:5]:
-            safe = _html.escape(p[:250]).replace("\n", "<br>")
-            points.append(f'<p class="article-text">{safe}{"..." if len(p) > 250 else ""}</p>')
+        for p in paras[:3]:
+            safe = _html.escape(p[:180]).replace("\n", "<br>")
+            points.append(f'<div class="short-point"><p>{safe}{"..." if len(p) > 180 else ""}</p></div>')
     return "\n".join(points) if points else f'<p class="article-text">{_html.escape((fallback_summary or "")[:500])}</p>'
 
 
 def _blocks_to_html(blocks: list) -> str:
-    """ブロックをHTMLに変換。本文とミドルマン解説をフローティング表示用の scroll-bubble-group で出力（SSR用・XSS対策済み）"""
+    """ブロックをHTMLに変換。本文のみ表示。ミドルマン解説はフローティング吹き出し用の JSON データとして埋め込む"""
     if not blocks:
         return ""
-    import html
-    out = []
+    import html as _h
+    import json as _json
+    text_parts: list[str] = []
+    float_items: list[dict] = []
     is_navigator = blocks and blocks[0].get("type") == "navigator_section"
     nav_labels = {"facts": "ニュース", "background": "背景", "impact": "影響範囲", "prediction": "予測", "caution": "注意"}
     if is_navigator:
-        paras, asides = [], []
         for b in blocks:
             if b.get("type") != "navigator_section" or not b.get("section"):
                 continue
             body = (b.get("content") or "").strip()
-            body_safe = html.escape(body).replace("\n", "<br>") if body else ""
-            if b.get("section") == "facts" and body:
-                paras = body.split("\n\n")
-                paras = [p.strip() for p in paras if p.strip()]
-            elif b.get("section") != "facts" and body:
-                asides.append({"section": b["section"], "label": nav_labels.get(b["section"], b["section"]), "body": body_safe})
-        # 段落と解説を交互に配置（フローティング表示用の scroll-bubble-group）
-        for i, p in enumerate(paras):
-            p_safe = html.escape(p).replace("\n", "<br>")
-            out.append(f'<p class="article-text">{p_safe}</p>')
-            if i < len(asides):
-                a = asides[i]
-                out.append(
-                    f'<div class="scroll-bubble-group">'
-                    f'<div class="scroll-trigger" aria-hidden="true"></div>'
-                    f'<div class="midorman-bubble-wrap">'
-                    f'<div class="midorman-aside midorman-aside-{html.escape(a["section"])}">'
-                    f'<span class="midorman-aside-label">{html.escape(a["label"])}</span>'
-                    f'<div class="midorman-aside-body">{a["body"]}</div></div></div></div>'
-                )
-        for j in range(len(paras), len(asides)):
-            a = asides[j]
-            out.append(
-                f'<div class="scroll-bubble-group">'
-                f'<div class="scroll-trigger" aria-hidden="true"></div>'
-                f'<div class="midorman-bubble-wrap">'
-                f'<div class="midorman-aside midorman-aside-{html.escape(a["section"])}">'
-                f'<span class="midorman-aside-label">{html.escape(a["label"])}</span>'
-                f'<div class="midorman-aside-body">{a["body"]}</div></div></div></div>'
-            )
-        return '<div class="article-readflow">' + "".join(out) + "</div>" if out else ""
-    # text/explain 形式：本文のみ表示、explainはミドルマン吹き出しとして横に出す
-    html_parts = ['<div class="article-readflow article-with-bubbles">']
-    for b in blocks:
-        if b.get("type") == "explain":
-            c = html.escape(b.get("content") or "").replace("\n", "<br>")
-            bubble = (
-                f'<div class="midorman-bubble-above">'
-                f'<span class="midorman-bubble-avatar" aria-hidden="true">🎙️</span>'
-                f'<div class="midorman-bubble-inner"><p class="midorman-bubble-text">{c}</p></div></div>'
-            )
-            html_parts.append(f'<div class="scroll-bubble-group"><div class="scroll-trigger" aria-hidden="true"></div><div class="midorman-bubble-wrap">{bubble}</div></div>')
-        elif b.get("type") == "text":
-            for p in (b.get("content") or "").strip().split("\n\n"):
-                p = p.strip()
-                if p:
-                    p_safe = html.escape(p).replace("\n", "<br>")
-                    html_parts.append(f'<p class="article-text">{p_safe}</p>')
-    html_parts.append("</div>")
-    return "".join(html_parts)
+            if not body:
+                continue
+            if b.get("section") == "facts":
+                for p in body.split("\n\n"):
+                    p = p.strip()
+                    if p:
+                        text_parts.append(_h.escape(p).replace("\n", "<br>"))
+            else:
+                label = nav_labels.get(b["section"], b["section"])
+                float_items.append({"label": label, "body": _h.escape(body).replace("\n", "<br>")})
+    else:
+        for b in blocks:
+            if b.get("type") == "text":
+                for p in (b.get("content") or "").strip().split("\n\n"):
+                    p = p.strip()
+                    if p:
+                        text_parts.append(_h.escape(p).replace("\n", "<br>"))
+            elif b.get("type") == "explain":
+                c = (b.get("content") or "").strip()
+                if c:
+                    float_items.append({"label": "ミドルマン", "body": _h.escape(c).replace("\n", "<br>")})
+    out = ['<div class="article-readflow">']
+    for i, p in enumerate(text_parts):
+        out.append(f'<p class="article-text" data-para="{i}">{p}</p>')
+    if float_items:
+        out.append(f'<script type="application/json" class="midorman-float-data">{_json.dumps(float_items, ensure_ascii=False)}</script>')
+    out.append("</div>")
+    return "".join(out)
 
 
 @router.get("/topic/{topic_id}", response_class=HTMLResponse)
