@@ -28,8 +28,18 @@ JST = ZoneInfo("Asia/Tokyo")
 
 
 def _scheduled_rss_fetch_and_article():
-    """指定時刻にRSS取得→記事化（9:30/12:30/20:00/0:00 JST で実行）"""
+    """指定時刻: RSS取得→新しい記事だけ良い記事を記事化（0:00/9:30/12:30）"""
     NewsAggregator.get_news(force_refresh=True)
+
+
+def _scheduled_2000_rss_and_ai_daily():
+    """20:00 JST: (1) RSS取得→記事化 (2) その後にAI日次コンテンツを1日1回だけ更新"""
+    NewsAggregator.get_news(force_refresh=True)
+    try:
+        from app.services.ai_daily import generate_daily_ai_content
+        generate_daily_ai_content()
+    except Exception as e:
+        logger.warning("AI日次コンテンツ生成に失敗: %s", e)
 
 
 def _seed_if_needed():
@@ -95,28 +105,22 @@ async def lifespan(app: FastAPI):
         id="refresh_trends",
     )
     if not rss_ai_disabled:
+        # 0:00 / 9:30 / 12:30: RSS取得→記事化のみ
         for job_id, hour, minute in [
             ("rss_00", 0, 0),
             ("rss_0930", 9, 30),
             ("rss_1230", 12, 30),
-            ("rss_2000", 20, 0),
         ]:
             scheduler.add_job(
                 _scheduled_rss_fetch_and_article,
                 CronTrigger(hour=hour, minute=minute, timezone=JST),
                 id=job_id,
             )
-        # AIページ日次コンテンツ（朝9時に1回）
-        def _generate_daily():
-            try:
-                from app.services.ai_daily import generate_daily_ai_content
-                generate_daily_ai_content()
-            except Exception as e:
-                logger.warning("Daily AI content generation failed: %s", e)
+        # 20:00: 記事更新のあと、AI日次コンテンツを1日1回だけ更新
         scheduler.add_job(
-            _generate_daily,
-            CronTrigger(hour=9, minute=0, timezone=JST),
-            id="ai_daily",
+            _scheduled_2000_rss_and_ai_daily,
+            CronTrigger(hour=20, minute=0, timezone=JST),
+            id="rss_2000_and_ai_daily",
         )
     scheduler.start()
     # 起動直後のメモリをログ（Render 512MB 制限の確認用）

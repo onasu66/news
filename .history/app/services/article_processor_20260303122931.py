@@ -298,69 +298,6 @@ def process_new_rss_articles(rss_items: list[NewsItem], max_per_run: int = 5, tr
     return count
 
 
-def translate_existing_articles_to_japanese(dry_run: bool = False) -> tuple[int, int]:
-    """
-    Firestore/SQLite に保存済みの記事のうち、タイトル・要約が英語のものを日本語に翻訳して上書き保存する。
-    戻り値: (翻訳対象件数, 更新した件数)。dry_run=True のときは更新せず (対象件数, 0) を返す。
-    """
-    from .article_cache import load_all, save_article
-
-    all_items = load_all()
-    need_translate: list[NewsItem] = []
-    for item in all_items:
-        if not item.title and not (item.summary or ""):
-            continue
-        if text_mainly_japanese(item.title or "") and text_mainly_japanese(item.summary or ""):
-            continue
-        if is_foreign_article(item.source, item.title or "", item.summary or ""):
-            need_translate.append(item)
-            continue
-        if (item.title and not text_mainly_japanese(item.title)) or (
-            item.summary and not text_mainly_japanese(item.summary)
-        ):
-            need_translate.append(item)
-
-    if not need_translate:
-        return 0, 0
-
-    updated = 0
-    for item in need_translate:
-        title_ja = item.title or ""
-        summary_ja = item.summary or ""
-
-        t, s = translate_and_rewrite(item.title or "", item.summary or "")
-        if t and text_mainly_japanese(t):
-            title_ja = t
-        if s and text_mainly_japanese(s):
-            summary_ja = s
-        if not text_mainly_japanese(title_ja):
-            t2 = translate_title_to_japanese(item.title or "")
-            if t2 and text_mainly_japanese(t2):
-                title_ja = t2
-        if not text_mainly_japanese(summary_ja):
-            _, s2 = translate_and_rewrite(item.title or "", item.summary or "")
-            if s2 and text_mainly_japanese(s2):
-                summary_ja = s2
-
-        if not title_ja.startswith("【"):
-            title_ja = _add_bracket_title(title_ja)
-
-        updated_item = NewsItem(
-            id=item.id,
-            title=title_ja,
-            link=item.link,
-            summary=summary_ja,
-            published=item.published,
-            source=item.source,
-            category=item.category,
-            image_url=item.image_url,
-        )
-        if not dry_run and save_article(updated_item):
-            updated += 1
-
-    return len(need_translate), updated
-
-
 def process_random_rss_articles(rss_items: list[NewsItem], count: int = 3) -> int:
     """
     RSS記事からランダムに count 件を選び、AI解説付きでFirestore/SQLiteに保存する。

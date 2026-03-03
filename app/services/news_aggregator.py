@@ -86,7 +86,8 @@ class NewsAggregator:
                     # トレンド（Google急上昇＋X）で精査し、合致した話題を優先して取り込む
                     trends = cls.get_trends(force_refresh=True)
                     trend_keywords = [t.keyword for t in trends]
-                    process_new_rss_articles(news, max_per_run=5, trend_keywords=trend_keywords)
+                    # 日本関連記事4本＋海外記事2本を優先（合計6本）
+                    process_new_rss_articles(news, max_per_run=6, trend_keywords=trend_keywords)
                 processed_ids = get_cached_article_ids()
             cls._news_cache = load_all_processed(processed_ids)[:PAGE_DISPLAY_LIMIT]
             cls._last_updated = datetime.now()

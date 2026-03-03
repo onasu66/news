@@ -2,11 +2,14 @@
 import html
 import re
 from urllib.parse import quote
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Optional
 from dataclasses import dataclass
+from zoneinfo import ZoneInfo
 import hashlib
 import feedparser
+
+JST = ZoneInfo("Asia/Tokyo")
 
 
 def _clean_summary(text: str, max_len: int = 18000) -> str:
@@ -99,13 +102,15 @@ def _extract_image(entry) -> Optional[str]:
 
 
 def _parse_datetime(published: str) -> datetime:
-    """公開日をパース（タイムゾーンは除去して比較可能に）"""
+    """公開日をパース。タイムゾーン付きならJSTに変換してからnaiveで返す（「取得日と同じ日」をJSTで判定するため）"""
     try:
         from dateutil import parser as date_parser
         dt = date_parser.parse(published)
-        return dt.replace(tzinfo=None) if dt.tzinfo else dt
+        if dt.tzinfo:
+            dt = dt.astimezone(JST).replace(tzinfo=None)
+        return dt
     except Exception:
-        return datetime.now()
+        return datetime.now(JST).replace(tzinfo=None)
 
 
 def _get_feed_url(original_url: str) -> str:
@@ -121,7 +126,7 @@ def _get_feed_url(original_url: str) -> str:
 
 
 def fetch_rss_news() -> list[NewsItem]:
-    """複数のRSSフィードからニュースを取得（Full-Text RSS 有効時は全文フィードに変換）"""
+    """複数のRSSフィードからニュースを取得。公開が「現在から6時間以内」の記事だけに絞る。"""
     all_news: list[NewsItem] = []
     seen_ids = set()
 
@@ -180,9 +185,10 @@ def fetch_rss_news() -> list[NewsItem]:
         except Exception:
             continue
 
-    # 取得日と同じ日付の記事だけに絞る（公開日が今日のもののみ）
-    today = datetime.now().date()
-    all_news = [x for x in all_news if x.published.date() == today]
+    # 各RSSの発信から6時間以内のニュースだけに絞る（日付だとアメリカ時間等とずれるため時刻で判定）
+    now_jst = datetime.now(JST).replace(tzinfo=None)
+    cutoff = now_jst - timedelta(hours=6)
+    all_news = [x for x in all_news if x.published >= cutoff]
 
     # 日付でソート（新しい順＝人気度の代理）
     all_news.sort(key=lambda x: x.published, reverse=True)
