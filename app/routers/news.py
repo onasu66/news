@@ -32,14 +32,9 @@ async def robots_txt(request: Request):
 
 @router.get("/sitemap.xml")
 async def sitemap_xml(request: Request):
-    """SEO用 sitemap.xml"""
-    from app.services.article_cache import load_all
-    from app.services.explanation_cache import get_cached_article_ids
-
+    """SEO用 sitemap.xml（一覧は NewsAggregator キャッシュ利用で Firestore 読取を抑える）"""
     site_url = _get_site_url(request)
-    all_articles = load_all()
-    processed = get_cached_article_ids()
-    articles = [a for a in all_articles if a.id in processed]
+    articles = NewsAggregator.get_news()
     lines = [
         '<?xml version="1.0" encoding="UTF-8"?>',
         '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">',
@@ -474,13 +469,11 @@ async def api_persona_opinion(article_id: str, persona_id: int):
 
 @router.get("/api/status")
 async def api_status():
-    """状態確認（記事数・DBパス等）"""
+    """状態確認（記事数・DBパス等）。一覧は NewsAggregator キャッシュ利用で Firestore 読取を抑える"""
     from app.services.explanation_cache import get_cached_article_ids
-    from app.services.article_cache import load_all
 
+    displayable = NewsAggregator.get_news()
     processed = get_cached_article_ids()
-    all_arts = load_all()
-    displayable = [a for a in all_arts if a.id in processed]
     try:
         from app.config import settings
         has_key = bool(getattr(settings, "OPENAI_API_KEY", ""))
@@ -488,7 +481,7 @@ async def api_status():
         has_key = False
 
     return {
-        "articles_in_db": len(all_arts),
+        "articles_in_db": len(displayable),
         "ai_processed": len(processed),
         "displayable": len(displayable),
         "openai_key_set": has_key,

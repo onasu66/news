@@ -1,7 +1,7 @@
 """RSS記事をAI解説付きのサイト記事に変換するパイプライン"""
 import re
 from .rss_service import NewsItem, sanitize_display_text
-from .translate_service import is_foreign_article, translate_and_rewrite, translate_title_to_japanese, text_mainly_japanese
+from .translate_service import is_foreign_article, translate_and_rewrite, translate_title_to_japanese, text_mainly_japanese, FOREIGN_SOURCES
 from .ai_batch_service import generate_all_explanations
 from .explanation_cache import save_cache, get_cached, get_cached_article_ids
 from .article_cache import save_article, load_all
@@ -38,7 +38,7 @@ def process_rss_to_site_article(item: NewsItem, force: bool = False) -> bool:
     if not force and get_cached(item.id):
         return False  # 既にAI処理済み（force でなければスキップ）
 
-    # --- タイトル・要約を必ず日本語にしてから保存する ---
+    # --- タイトル・要約を日本語に（APIは1回＋必要時のみタイトル1回に抑える）---
     need_translate = is_foreign_article(item.source, item.title, item.summary or "")
     if not need_translate and item.title and not text_mainly_japanese(item.title):
         need_translate = True
@@ -49,22 +49,17 @@ def process_rss_to_site_article(item: NewsItem, force: bool = False) -> bool:
     summary_ja = item.summary or ""
 
     if need_translate:
-        # 1) タイトル＋要約を一括翻訳
         t, s = translate_and_rewrite(item.title or "", item.summary or "")
         if t and text_mainly_japanese(t):
             title_ja = t
         if s and text_mainly_japanese(s):
             summary_ja = s
-        # 2) タイトルがまだ日本語でなければタイトル専用翻訳（リトライ）
         if not text_mainly_japanese(title_ja):
             t2 = translate_title_to_japanese(item.title or "")
             if t2 and text_mainly_japanese(t2):
                 title_ja = t2
-        # 3) 要約がまだ日本語でなければ再翻訳して Firestore には日本語で保存
-        if not text_mainly_japanese(summary_ja):
-            _, s2 = translate_and_rewrite(item.title or "", item.summary or "")
-            if s2 and text_mainly_japanese(s2):
-                summary_ja = s2
+    if item.source in FOREIGN_SOURCES and (not text_mainly_japanese(title_ja) or not text_mainly_japanese(summary_ja)):
+        return False  # 海外は日本語にならない場合は保存しない（無駄なAPI連打はしない）
 
     # 【】が既に付いていればそのまま、なければ AI で目を引く【】を付与
     if not title_ja.startswith("【"):
@@ -216,6 +211,58 @@ def _rank_by_trending(items: list[NewsItem], trend_keywords: list[str]) -> list[
     return sorted(items, key=score, reverse=True)
 
 
+def process_startup_articles(rss_items: list[NewsItem] | None = None, trend_keywords: list[str] | None = None) -> int:
+    """
+    起動時用: 日本関連記事1本＋海外記事1本を追加する（ルールは process_new_rss_articles と同じ）。
+    rss_items が None の場合は内部で fetch する。
+    """
+    from .rss_service import fetch_rss_news
+    from .keyword_scorer import rank_and_filter_articles
+
+    if rss_items is None:
+        rss_items = fetch_rss_news()
+    if not rss_items:
+        return 0
+
+    cached_ids = get_cached_article_ids()
+    uncached = [x for x in rss_items if x.id not in cached_ids]
+    if uncached:
+        ranked = rank_and_filter_articles(uncached, trend_keywords, max_articles=15)
+        force = False
+    else:
+        ranked = rank_and_filter_articles(rss_items, trend_keywords, max_articles=15)
+        force = True
+
+    existing_norm = {_normalize_title_for_dedup(a.title) for a in load_all()}
+    seen_norm: set[str] = set()
+    deduped: list[NewsItem] = []
+    for item in ranked:
+        norm = _normalize_title_for_dedup(item.title)
+        if norm in existing_norm or norm in seen_norm:
+            continue
+        seen_norm.add(norm)
+        deduped.append(item)
+
+    domestics = [x for x in deduped if not is_foreign_article(x.source, x.title, x.summary or "")]
+    foreigners = [x for x in deduped if is_foreign_article(x.source, x.title, x.summary or "")]
+
+    domestic_pick = _select_diverse_batch(domestics, 1, max_per_source=1, max_per_category=1)
+    foreign_pick = _select_diverse_batch(foreigners, 1, max_per_source=1, max_per_category=1)
+    to_process: list[NewsItem] = domestic_pick + foreign_pick
+
+    count = 0
+    for item in to_process:
+        try:
+            if process_rss_to_site_article(item, force=force):
+                count += 1
+                _log_save(item.id, item.title, True, source="startup")
+            else:
+                _log_save(item.id, item.title, False, error="スキップ（既存または生成失敗）", source="startup")
+        except Exception as e:
+            _log_save(item.id, item.title, False, error=str(e), source="startup")
+    return count
+
+
 def process_new_rss_articles(rss_items: list[NewsItem], max_per_run: int = 5, trend_keywords: list[str] | None = None) -> int:
     """
     RSS記事を Autocomplete スコアリング → 軽量フィルタ → 同一内容は1本に → 上位N件をAI処理して掲載。
@@ -296,69 +343,6 @@ def process_new_rss_articles(rss_items: list[NewsItem], max_per_run: int = 5, tr
         except Exception as e:
             _log_save(item.id, item.title, False, error=str(e), source="rss_seed")
     return count
-
-
-def translate_existing_articles_to_japanese(dry_run: bool = False) -> tuple[int, int]:
-    """
-    Firestore/SQLite に保存済みの記事のうち、タイトル・要約が英語のものを日本語に翻訳して上書き保存する。
-    戻り値: (翻訳対象件数, 更新した件数)。dry_run=True のときは更新せず (対象件数, 0) を返す。
-    """
-    from .article_cache import load_all, save_article
-
-    all_items = load_all()
-    need_translate: list[NewsItem] = []
-    for item in all_items:
-        if not item.title and not (item.summary or ""):
-            continue
-        if text_mainly_japanese(item.title or "") and text_mainly_japanese(item.summary or ""):
-            continue
-        if is_foreign_article(item.source, item.title or "", item.summary or ""):
-            need_translate.append(item)
-            continue
-        if (item.title and not text_mainly_japanese(item.title)) or (
-            item.summary and not text_mainly_japanese(item.summary)
-        ):
-            need_translate.append(item)
-
-    if not need_translate:
-        return 0, 0
-
-    updated = 0
-    for item in need_translate:
-        title_ja = item.title or ""
-        summary_ja = item.summary or ""
-
-        t, s = translate_and_rewrite(item.title or "", item.summary or "")
-        if t and text_mainly_japanese(t):
-            title_ja = t
-        if s and text_mainly_japanese(s):
-            summary_ja = s
-        if not text_mainly_japanese(title_ja):
-            t2 = translate_title_to_japanese(item.title or "")
-            if t2 and text_mainly_japanese(t2):
-                title_ja = t2
-        if not text_mainly_japanese(summary_ja):
-            _, s2 = translate_and_rewrite(item.title or "", item.summary or "")
-            if s2 and text_mainly_japanese(s2):
-                summary_ja = s2
-
-        if not title_ja.startswith("【"):
-            title_ja = _add_bracket_title(title_ja)
-
-        updated_item = NewsItem(
-            id=item.id,
-            title=title_ja,
-            link=item.link,
-            summary=summary_ja,
-            published=item.published,
-            source=item.source,
-            category=item.category,
-            image_url=item.image_url,
-        )
-        if not dry_run and save_article(updated_item):
-            updated += 1
-
-    return len(need_translate), updated
 
 
 def process_random_rss_articles(rss_items: list[NewsItem], count: int = 3) -> int:

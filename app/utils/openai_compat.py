@@ -1,4 +1,7 @@
 """OpenAI API 互換（max_completion_tokens / temperature）"""
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 def _clean_kwargs(kwargs: dict) -> dict:
@@ -25,6 +28,12 @@ def create_with_retry(client, max_tokens_val: int, **create_kwargs):
         err = str(e).lower()
         err_extra = str(getattr(e, "body", "") or getattr(e, "message", "") or "").lower()
         full_err = err + " " + err_extra
+        # 400 Bad Request などは原因をログに出す（モデル名・コンテンツポリシー等）
+        if "400" in err or "bad request" in err:
+            logger.warning("OpenAI API エラー（記事が保存されない原因の可能性）: %s", e)
+            body = getattr(e, "body", None) or (getattr(e, "response", None) and getattr(e.response, "text", None))
+            if body is not None:
+                logger.warning("OpenAI response body: %s", (str(body))[:500])
         # max_tokens 不可のモデル → 確実に max_tokens を外して再試行
         if "max_tokens" in full_err and "max_completion_tokens" in full_err:
             return client.chat.completions.create(

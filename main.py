@@ -54,6 +54,20 @@ def _seed_if_needed():
             process_new_rss_articles(news_list, max_per_run=5)
 
 
+def _startup_add_one_each():
+    """起動時に日本関連記事1本＋海外記事1本をFirestoreに追加（バックグラウンド実行）。
+    1本あたりRSS取得・翻訳・本文取得・解説生成のため目安2〜5分、2本で合計おおよそ4〜10分かかることがあります。"""
+    try:
+        from app.services.article_processor import process_startup_articles
+        from app.services.news_aggregator import NewsAggregator
+        added = process_startup_articles(rss_items=None, trend_keywords=None)
+        if added > 0:
+            NewsAggregator.get_news(force_refresh=True)
+            logger.info("起動時記事追加: %d 件（日本1＋海外1）", added)
+    except Exception as e:
+        logger.warning("起動時記事追加でエラー: %s", e)
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """起動時にスケジューラ開始。Firestore は初回アクセス時に遅延読み込み（512MB 制限で OOM にならないようにする）。"""
@@ -79,7 +93,10 @@ async def lifespan(app: FastAPI):
 
     # Firestore は起動時に import しない（firebase-admin が重く 512MB で OOM になるため）。初回の記事取得時に読み込まれる。
     if not rss_ai_disabled:
-        # 初回シードはブロックせずバックグラウンドで実行（RSS+AIで数分かかるため）
+        # 起動時に日本1本＋海外1本を追加（バックグラウンド）
+        t_startup = threading.Thread(target=_startup_add_one_each, daemon=True)
+        t_startup.start()
+        # キャッシュが少ないときだけ追加でシード（RSS+AIで数分かかるため）
         t_seed = threading.Thread(target=_seed_if_needed, daemon=True)
         t_seed.start()
 

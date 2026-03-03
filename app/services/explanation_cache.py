@@ -1,8 +1,15 @@
-"""AI解説・人格意見の永続キャッシュ（SQLite / Firestore）"""
+"""AI解説・人格意見の永続キャッシュ（SQLite / Firestore）。Firestore 利用時はメモリキャッシュで読み取り削減"""
 import json
 import sqlite3
+import time
 from pathlib import Path
 from typing import Optional
+
+# Firestore 時のメモリキャッシュ（無料枠 5万読/日 対策）
+_ids_cache: Optional[tuple[float, set[str]]] = None  # (cached_at, set of ids)
+_ids_cache_ttl_sec = 60
+_explanation_cache: dict[str, dict] = {}  # article_id -> 解説 dict
+_explanation_cache_max = 200
 
 def _use_firestore():
     try:
@@ -39,10 +46,16 @@ def _init_db():
 
 
 def get_cached_article_ids() -> set[str]:
-    """AI処理済み（ミドルマン解説あり）のarticle_id一覧"""
+    """AI処理済み（ミドルマン解説あり）のarticle_id一覧。Firestore 時はメモリで 60 秒キャッシュ"""
+    global _ids_cache
     if _use_firestore():
+        now = time.monotonic()
+        if _ids_cache is not None and (now - _ids_cache[0]) < _ids_cache_ttl_sec:
+            return _ids_cache[1]
         from .firestore_store import firestore_get_cached_article_ids
-        return firestore_get_cached_article_ids()
+        ids = firestore_get_cached_article_ids()
+        _ids_cache = (now, ids)
+        return ids
     _init_db()
     with _get_conn() as conn:
         rows = conn.execute("SELECT article_id FROM explanation_cache").fetchall()
@@ -62,10 +75,19 @@ def _is_bad_fallback_cache(blocks: list) -> bool:
 
 
 def get_cached(article_id: str) -> Optional[dict]:
-    """キャッシュから取得。なければNone。壊れたフォールバック結果はNone扱いで再生成させる"""
+    """キャッシュから取得。なければNone。Firestore 時はメモリキャッシュ（最大200件）で同一記事の再読を削減"""
+    global _explanation_cache
     if _use_firestore():
+        if article_id in _explanation_cache:
+            return _explanation_cache[article_id]
         from .firestore_store import firestore_get_cached
-        return firestore_get_cached(article_id)
+        result = firestore_get_cached(article_id)
+        if result is not None:
+            if len(_explanation_cache) >= _explanation_cache_max:
+                oldest = next(iter(_explanation_cache))
+                del _explanation_cache[oldest]
+            _explanation_cache[article_id] = result
+        return result
     _init_db()
     with _get_conn() as conn:
         row = conn.execute(
@@ -96,9 +118,13 @@ def get_cached(article_id: str) -> Optional[dict]:
 
 def delete_cache(article_id: str) -> bool:
     """指定記事の解説キャッシュを削除。存在したらTrue"""
+    global _ids_cache, _explanation_cache
     if _use_firestore():
         from .firestore_store import firestore_delete_cache
-        return firestore_delete_cache(article_id)
+        out = firestore_delete_cache(article_id)
+        _ids_cache = None
+        _explanation_cache.pop(article_id, None)
+        return out
     _init_db()
     with _get_conn() as conn:
         cur = conn.execute("DELETE FROM explanation_cache WHERE article_id = ?", (article_id,))
@@ -150,9 +176,11 @@ def _save_extra(article_id: str, data: dict):
 
 def save_cache(article_id: str, blocks: list, personas: list[str], *, quick_understand: dict | None = None, vote_data: dict | None = None):
     """キャッシュに保存"""
+    global _ids_cache
     if _use_firestore():
         from .firestore_store import firestore_save_cache
         firestore_save_cache(article_id, blocks, personas, quick_understand=quick_understand, vote_data=vote_data)
+        _ids_cache = None  # 次回 get_cached_article_ids で再取得
         return
     _init_db()
     while len(personas) < 5:

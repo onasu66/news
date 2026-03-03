@@ -1,4 +1,5 @@
-"""Firestore ストア - 記事・解説を Firestore に永続化（Render 等での永続化対応）"""
+"""Firestore ストア - 記事・解説を Firestore に永続化（Render 等での永続化対応）。
+無料枠（読 5万/日・書 2万/日）を考慮し、cached_article_ids はメタ1ドキュメントで管理・load_all は limit 付き。"""
 import json
 import logging
 from pathlib import Path
@@ -78,6 +79,14 @@ def _explanations_collection():
     return _get_client().collection("explanations")
 
 
+def _meta_doc():
+    """メタ情報用ドキュメント（cached_article_ids 等）。読み取り回数削減のため1ドキュメントで管理"""
+    return _get_client().collection("_meta").document("cache")
+
+
+# 一覧取得の上限（無料枠 5万読/日 を考慮。PAGE_DISPLAY_LIMIT と揃える）
+_LOAD_ALL_LIMIT = 2000
+
 # --- articles ---
 def firestore_load_by_id(article_id: str):
     from .rss_service import NewsItem, sanitize_display_text
@@ -102,9 +111,10 @@ def firestore_load_by_id(article_id: str):
 
 
 def firestore_load_all():
+    """保存済み記事を新しい順で取得。読み取り数削減のため上限あり"""
     from .rss_service import NewsItem, sanitize_display_text
     items = []
-    for doc in _articles_collection().order_by("added_at", direction="DESCENDING").stream():
+    for doc in _articles_collection().order_by("added_at", direction="DESCENDING").limit(_LOAD_ALL_LIMIT).stream():
         d = doc.to_dict()
         try:
             pub = datetime.fromisoformat(d.get("published", "")) if d.get("published") else datetime.now()
@@ -124,11 +134,11 @@ def firestore_load_all():
 
 
 def firestore_save_articles_batch(items) -> int:
-    count = 0
+    """記事を一括保存。読み取り削減のため get せず set（上書き含む）。戻り値は保存試行数"""
     col = _articles_collection()
+    count = 0
     for item in items:
         try:
-            ref = col.document(item.id)
             data = {
                 "title": item.title,
                 "link": item.link,
@@ -139,9 +149,8 @@ def firestore_save_articles_batch(items) -> int:
                 "image_url": item.image_url,
                 "added_at": _server_timestamp(),
             }
-            if not ref.get().exists:
-                ref.set(data)
-                count += 1
+            col.document(item.id).set(data)
+            count += 1
         except Exception:
             pass
     return count
@@ -185,14 +194,20 @@ def _is_bad_fallback_cache(blocks: list) -> bool:
 
 
 def firestore_get_cached_article_ids() -> set:
-    """AI処理済み記事ID。articles の has_explanation でクエリ（explanations 全件スキャン回避）"""
-    ids = set()
-    for doc in _articles_collection().where("has_explanation", "==", True).stream():
-        ids.add(doc.id)
-    # 後方互換: has_explanation 未設定の既存データ用に explanations も確認
-    for doc in _explanations_collection().stream():
-        ids.add(doc.id)
-    return ids
+    """AI処理済み記事ID。メタドキュメント1読で返す（explanations 全件ストリーム廃止・読み取り削減）"""
+    meta = _meta_doc().get()
+    if meta.exists:
+        ids = meta.to_dict().get("ids") or []
+        return set(ids)
+    # 初回またはメタ未構築: explanations を上限付きで1回だけスキャンしメタを構築
+    ids = []
+    for doc in _explanations_collection().limit(2000).stream():
+        ids.append(doc.id)
+    try:
+        _meta_doc().set({"ids": ids, "updated_at": _server_timestamp()})
+    except Exception:
+        pass
+    return set(ids)
 
 
 def firestore_get_cached(article_id: str) -> Optional[dict]:
@@ -217,12 +232,18 @@ def firestore_get_cached(article_id: str) -> Optional[dict]:
 
 def firestore_delete_cache(article_id: str) -> bool:
     ref = _explanations_collection().document(article_id)
+    meta_ref = _meta_doc()
     if ref.get().exists:
         ref.delete()
-        # articles の has_explanation を解除
-        art_ref = _articles_collection().document(article_id)
-        if art_ref.get().exists:
-            art_ref.update({"has_explanation": False})
+        _articles_collection().document(article_id).set({"has_explanation": False}, merge=True)
+        try:
+            meta = meta_ref.get()
+            ids = list(meta.to_dict().get("ids", [])) if meta.exists else []
+            if article_id in ids:
+                ids = [x for x in ids if x != article_id]
+                meta_ref.set({"ids": ids, "updated_at": _server_timestamp()})
+        except Exception:
+            pass
         return True
     return False
 
@@ -241,9 +262,17 @@ def firestore_save_cache(article_id: str, blocks: list, personas: list, *, quick
     if vote_data:
         doc_data["vote_data"] = vote_data
     _explanations_collection().document(article_id).set(doc_data)
-    art_ref = _articles_collection().document(article_id)
-    if art_ref.get().exists:
-        art_ref.update({"has_explanation": True})
+    _articles_collection().document(article_id).set({"has_explanation": True}, merge=True)
+    # メタの cached_article_ids を更新（1読1書）
+    try:
+        meta_ref = _meta_doc()
+        meta = meta_ref.get()
+        ids = list(meta.to_dict().get("ids", [])) if meta.exists else []
+        if article_id not in ids:
+            ids.append(article_id)
+            meta_ref.set({"ids": ids, "updated_at": _server_timestamp()})
+    except Exception:
+        pass
 
 
 def use_firestore() -> bool:
