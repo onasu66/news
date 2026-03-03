@@ -646,6 +646,31 @@ async def api_seed_articles():
     return {"status": "ok", "added": added, "total": total}
 
 
+@router.post("/api/admin/sync-meta")
+async def api_admin_sync_meta(
+    request: Request,
+    x_admin_secret: str | None = Header(None, alias="X-Admin-Secret"),
+):
+    """
+    Firestore の _meta/cache（表示対象の記事ID一覧）を explanations コレクションと同期する。
+    「記事は8件あるが表示は3件」のとき、explanations に8件あれば同期後に8件表示される。
+    管理者のみ。実行後に一覧キャッシュを強制更新する。
+    """
+    if not _is_admin(request, x_admin_secret):
+        raise HTTPException(status_code=403, detail="管理者のみ利用できます")
+    try:
+        from app.services.firestore_store import use_firestore, firestore_sync_meta_from_explanations
+        from app.services.explanation_cache import invalidate_ids_cache
+    except ImportError:
+        raise HTTPException(status_code=501, detail="Firestore 未使用のためこのAPIは利用できません")
+    if not use_firestore():
+        return {"status": "ok", "synced": 0, "message": "Firestore 未使用のためスキップしました"}
+    synced = firestore_sync_meta_from_explanations()
+    invalidate_ids_cache()
+    NewsAggregator.get_news(force_refresh=True)
+    return {"status": "ok", "synced": synced}
+
+
 def _do_seed_one_sync():
     """RSS取得→1件だけ記事化（重い処理を同期的に実行・スレッドから呼ぶ用）"""
     from app.services.rss_service import fetch_rss_news

@@ -275,6 +275,24 @@ def firestore_save_cache(article_id: str, blocks: list, personas: list, *, quick
         pass
 
 
+def firestore_sync_meta_from_explanations() -> int:
+    """
+    explanations コレクションの doc id 一覧で _meta/cache の ids を上書きする。
+    「記事は8件あるが表示は3件」のようなズレがあるときに実行すると解消する。
+    戻り値: 同期した id の個数
+    """
+    ids = []
+    for doc in _explanations_collection().limit(2000).stream():
+        ids.append(doc.id)
+    try:
+        _meta_doc().set({"ids": ids, "updated_at": _server_timestamp()})
+        logger.info("firestore_sync_meta_from_explanations: %d 件で _meta/cache を更新しました", len(ids))
+    except Exception as e:
+        logger.warning("firestore_sync_meta_from_explanations 失敗: %s", e)
+        return 0
+    return len(ids)
+
+
 def use_firestore() -> bool:
     """Firestore を使用するか（認証情報があり、かつ firebase_admin がインストールされている場合のみ）"""
     if _load_credential_dict() is None:

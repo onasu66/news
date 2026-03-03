@@ -45,6 +45,12 @@ def _init_db():
         conn.commit()
 
 
+def invalidate_ids_cache() -> None:
+    """Firestore 用のメモリキャッシュ（get_cached_article_ids）を無効化。同期API実行後に呼ぶ"""
+    global _ids_cache
+    _ids_cache = None
+
+
 def get_cached_article_ids() -> set[str]:
     """AI処理済み（ミドルマン解説あり）のarticle_id一覧。Firestore 時はメモリで 60 秒キャッシュ"""
     global _ids_cache
