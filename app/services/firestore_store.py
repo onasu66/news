@@ -218,11 +218,15 @@ def firestore_get_cached(article_id: str) -> Optional[dict]:
     blocks = json.loads(d.get("inline_blocks", "[]"))
     if _is_bad_fallback_cache(blocks):
         return None
-    if "personas" in d and isinstance(d["personas"], list):
-        personas = (d["personas"] + [""] * 5)[:5]
+    # 新形式: 表示用3人分のみ保存されている場合
+    if "display_persona_ids" in d and isinstance(d["display_persona_ids"], list) and len(d["display_persona_ids"]) == 3 and "personas" in d and isinstance(d["personas"], list) and len(d["personas"]) == 3:
+        result = {"blocks": blocks, "personas": list(d["personas"]), "display_persona_ids": list(d["display_persona_ids"])}
     else:
-        personas = [d.get(f"persona_{i}", "") or "" for i in range(5)]
-    result = {"blocks": blocks, "personas": personas}
+        if "personas" in d and isinstance(d["personas"], list):
+            personas = (d["personas"] + [""] * 14)[:14]
+        else:
+            personas = [d.get(f"persona_{i}", "") or "" for i in range(14)]
+        result = {"blocks": blocks, "personas": personas}
     if d.get("quick_understand"):
         result["quick_understand"] = d["quick_understand"] if isinstance(d["quick_understand"], dict) else json.loads(d["quick_understand"])
     if d.get("vote_data"):
@@ -248,15 +252,28 @@ def firestore_delete_cache(article_id: str) -> bool:
     return False
 
 
-def firestore_save_cache(article_id: str, blocks: list, personas: list, *, quick_understand: dict | None = None, vote_data: dict | None = None):
-    while len(personas) < 5:
-        personas.append("")
-    personas_arr = personas[:5]
-    doc_data = {
-        "inline_blocks": json.dumps(blocks, ensure_ascii=False),
-        "personas": personas_arr,
-        "created_at": _server_timestamp(),
-    }
+# 人格数（ai_service.PERSONAS の長さと一致させる）
+_PERSONAS_COUNT = 14
+
+
+def firestore_save_cache(article_id: str, blocks: list, personas: list, *, display_persona_ids: list | None = None, quick_understand: dict | None = None, vote_data: dict | None = None):
+    if display_persona_ids is not None and len(display_persona_ids) == 3 and len(personas) == 3:
+        personas_arr = list(personas)
+        doc_data = {
+            "inline_blocks": json.dumps(blocks, ensure_ascii=False),
+            "personas": personas_arr,
+            "display_persona_ids": list(display_persona_ids),
+            "created_at": _server_timestamp(),
+        }
+    else:
+        while len(personas) < _PERSONAS_COUNT:
+            personas.append("")
+        personas_arr = personas[:_PERSONAS_COUNT]
+        doc_data = {
+            "inline_blocks": json.dumps(blocks, ensure_ascii=False),
+            "personas": personas_arr,
+            "created_at": _server_timestamp(),
+        }
     if quick_understand:
         doc_data["quick_understand"] = quick_understand
     if vote_data:

@@ -91,7 +91,7 @@
     </div>
 
     <section class="personas-section">
-        <h2 class="personas-title">AIの多角的な視点 <span class="personas-hint">（クリックで表示）</span></h2>
+        <h2 class="personas-title">AIの多角的な視点 <span class="personas-hint">（この記事は3人分・クリックで表示）</span></h2>
         <div class="personas-grid">
             {% for p in personas %}
             <div class="persona-card" data-persona-id="{{ p.id }}" data-article-id="{{ article.id }}">
@@ -106,6 +106,16 @@
             </div>
             {% endfor %}
         </div>
+        {% if all_personas %}
+        <details class="personas-all-list" style="margin-top:1rem;">
+            <summary>全{{ all_personas|length }}人格一覧</summary>
+            <ul class="personas-all-ul" style="list-style:none;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:0.25rem;margin:0.5rem 0 0;">
+                {% for p in all_personas %}
+                <li><span class="persona-emoji">{{ p.emoji }}</span> {{ p.name }} <span style="font-size:0.75em;color:#666;">{{ '論理型' if p.type == 'logic' else 'エンタメ' }}</span></li>
+                {% endfor %}
+            </ul>
+        </details>
+        {% endif %}
     </section>
 
     {% if vote_data %}
@@ -202,6 +212,7 @@
 document.addEventListener('DOMContentLoaded', function() {
     var articleId = '{{ article.id }}';
     var ssrPersonas = {{ personas_data|tojson|safe }};
+    var displayPersonaIds = {{ display_persona_ids|tojson|default([])|safe }};
 
     function escapeHtml(s) {
         if (s == null) return '';
@@ -375,9 +386,11 @@ document.addEventListener('DOMContentLoaded', function() {
                     initMidormanFloat(el);
                 }
                 var personas = data.personas || [];
+                var ids = displayPersonaIds && displayPersonaIds.length ? displayPersonaIds : [0,1,2];
                 document.querySelectorAll('.persona-card').forEach(function(card, i) {
                     var content = card.querySelector('.persona-content');
-                    var opinion = personas[i] || '';
+                    var idx = ids[i] != null ? ids[i] : i;
+                    var opinion = personas[idx] || '';
                     content.dataset.loaded = 'true';
                     content.innerHTML = opinion
                         ? '<p class="persona-opinion">' + escapeHtml(opinion).replace(/\n/g, '<br>') + '</p>'

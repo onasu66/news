@@ -9,14 +9,26 @@ from app.config import settings
 from app.utils.openai_compat import create_with_retry
 
 
-# 5人格のAI - 記事へのコメント用
+# 14人格のAI - 記事へのコメント用。type: "logic"=論理型, "entertainment"=エンタメ（表示時は論理2+エンタメ1のランダム3人）
 PERSONAS = [
-    {"id": 0, "name": "慎重派の太郎", "emoji": "🧐", "role": "慎重で批判的に物事を見る。リスクや反対意見を指摘する。"},
-    {"id": 1, "name": "楽観的な花子", "emoji": "😊", "role": "前向きで可能性を信じる。良い面やチャンスを強調する。"},
-    {"id": 2, "name": "専門家の博士", "emoji": "👨‍🔬", "role": "専門家の視点で技術的・学術的な補足をする。"},
-    {"id": 3, "name": "庶民派の田中", "emoji": "🙂", "role": "一般人の感覚で、日常にどう影響するか分かりやすく話す。"},
-    {"id": 4, "name": "批判的な鈴木", "emoji": "🤔", "role": "メディアや情報のバイアスに敏感。別の角度から疑問を呈する。"},
+    {"id": 0, "name": "セミナ", "emoji": "📐", "role": "専門家タイプ。ニュースを見て思ったことを学術・技術観点のみで分析。因果関係とデータ重視。感情は禁止。口調は硬い文語。", "type": "logic"},
+    {"id": 1, "name": "ヴォルテ・アセット", "emoji": "📈", "role": "専門家タイプ。ニュースを見て思った。株・為替・暗号資産への影響を短期／中長期で分けて述べる。投資家口調で簡潔。お金が好き。投資家の用語を使う。", "type": "logic"},
+    {"id": 2, "name": "カゲロウ", "emoji": "🌑", "role": "ニュースを見て思った。発表の裏の意図と得失を推測する。断定しすぎない。口調は低く静か。", "type": "logic"},
+    {"id": 3, "name": "くらしあ", "emoji": "🏠", "role": "ニュースを見て思った。物価・税金・生活費や生活への影響を考えて語る。難語禁止。口調はやさしく現実的で主婦っぽい喋り方。", "type": "logic"},
+    {"id": 4, "name": "アルシエル", "emoji": "🔮", "role": "ニュースを見て思った。ベース・楽観・悲観などのシナリオを簡潔に示す。断定禁止で未来の話をする。口調は神秘的だが冷静。", "type": "entertainment"},
+    {"id": 5, "name": "クロニクル", "emoji": "📜", "role": "ニュースを見て思った。関連する陰謀論的視点を紹介するが断定しない。陰謀論者が良く使う用語を多用。悲壮的で自分だけ気付いてるような口ぶり。", "type": "entertainment"},
+    {"id": 6, "name": "ブレイズ", "emoji": "🔥", "role": "ニュースを見て思った。怒り感情を強く表現。論理より感情優先。過激だが暴力や差別は不可。感情に任せた怒り口調。", "type": "entertainment"},
+    {"id": 7, "name": "ノアフォール", "emoji": "🌧", "role": "ニュースを見て思った。不安・絶望・悲観を強く表現。世界の先行きを暗く見る。おどおどしてる口調。", "type": "entertainment"},
+    {"id": 8, "name": "そらみ", "emoji": "☁", "role": "ニュースを見て思った。小学生の視点で素朴に疑問を言ったり思ったことを言う。難しい言葉は禁止。短く率直に、小学生の喋るような口調。", "type": "entertainment"},
+    {"id": 9, "name": "レガリア", "emoji": "⚔", "role": "ニュースを見て思った。国家・秩序・安全保障重視。強めの語調だが過激発言は禁止。論理的に主張する。", "type": "entertainment"},
+    {"id": 10, "name": "リュミエ", "emoji": "✨", "role": "ニュースを見て思った。個人の自由・権利・多様性を最優先。理想主義寄り。攻撃的にならずに女性口調。", "type": "entertainment"},
+    {"id": 11, "name": "ジャスティア", "emoji": "⚖", "role": "ニュースを見て思った。格差・再分配・弱者保護を重視。社会正義の観点で語る。冷静さは保つ。口調は聖騎士風。", "type": "entertainment"},
+    {"id": 12, "name": "観測体オメガ", "emoji": "🔭", "role": "ニュースを見て思った。人間の反応構造や論点の分布を俯瞰する。感情や欲求を分析対象として扱う。超冷静。AI口調。", "type": "logic"},
+    {"id": 13, "name": "ゼロ・カオス", "emoji": "🌀", "role": "ニュースを見て思ったことをとりあえず否定から入る。あらゆる立場の矛盾を指摘していく。常に懐疑的。建設的提案はしない。差別や暴力は不可。", "type": "entertainment"},
 ]
+# 論理型・エンタメのid一覧（表示時に論理2+エンタメ1をランダムで選ぶ用）
+PERSONA_LOGIC_IDS = [p["id"] for p in PERSONAS if p.get("type") == "logic"]
+PERSONA_ENT_IDS = [p["id"] for p in PERSONAS if p.get("type") == "entertainment"]
 
 
 def get_image_url(path: str, width: int = 800, height: int = 450) -> str:
@@ -316,6 +328,146 @@ facts（何が起きたか・事実）, background（なぜ起きたか・背景
     ] + [{"type": "navigator_section", "section": s, "content": ""} for s in _NAVIGATOR_SECTION_ORDER[1:]]
 
 
+def _navigator_blocks_to_summary(navigator_blocks: list[dict]) -> str:
+    """理解ナビゲーターのブロックを1本の要約テキストに結合（他APIへの入力用）"""
+    parts = []
+    for b in navigator_blocks or []:
+        if isinstance(b, dict) and b.get("content"):
+            parts.append(b["content"].strip())
+    return "\n\n".join(parts) if parts else ""
+
+
+def expand_navigator_to_article(
+    navigator_blocks: list[dict[str, Any]],
+    title: str,
+    model: str | None = None,
+) -> list[dict[str, Any]]:
+    """
+    理解ナビゲーターの5項目（事実・背景・影響・予測・注意）をもとに、
+    読む用の記事（text/explain ブロック）を1回のAPIで生成する。
+    """
+    if not settings.OPENAI_API_KEY:
+        return [{"type": "text", "content": _navigator_blocks_to_summary(navigator_blocks)}, {"type": "explain", "content": "（APIキーが設定されていません）"}]
+    summary = _navigator_blocks_to_summary(navigator_blocks)
+    if not summary:
+        return [{"type": "text", "content": "（要約がありません）"}, {"type": "explain", "content": "（生成に失敗しました）"}]
+
+    from openai import OpenAI
+    model = model or settings.OPENAI_MODEL
+    client = OpenAI(api_key=settings.OPENAI_API_KEY)
+    user_prompt = f"""以下の「理解ナビゲーター」5項目の要約を元に、読者が約3分で読める記事にしてください。
+
+【タイトル】{title}
+
+【要約】
+{summary[:8000]}
+
+■ やること
+1) 上記5項目の内容を自然な流れで繋ぎ、text ブロックで記事本文を書く（喋り言葉・ですます調）。約3分で読める分量（2500〜4500字程度）。
+2) 適宜 explain ブロックでミドルマンの解説を挟む。難しい部分を噛み砕く。各 explain は1〜3文程度。
+3) blocks 配列のJSONのみ出力。すべて日本語。"""
+
+    raw = ""
+    try:
+        try:
+            response = create_with_retry(
+                client,
+                6000,
+                model=model,
+                messages=[
+                    {"role": "system", "content": LONG_ARTICLE_BUBBLES_ROLE + " 出力はJSONの blocks 配列のみ。余計な説明は不要です。"},
+                    {"role": "user", "content": user_prompt},
+                ],
+                response_format=_JSON_SCHEMA_BLOCKS,
+                temperature=0.2,
+            )
+            raw = response.choices[0].message.content or "{}"
+            data = json.loads(raw)
+            blocks = data.get("blocks", data if isinstance(data, list) else [])
+            if isinstance(blocks, list) and all(isinstance(x, dict) and x.get("type") in ("text", "explain") and "content" in x for x in blocks):
+                return blocks
+        except Exception as schema_err:
+            logger.info("expand_navigator strict schema スキップ: %s", str(schema_err)[:80])
+            raw = ""
+
+        response = create_with_retry(
+            client,
+            6000,
+            model=model,
+            messages=[
+                {"role": "system", "content": LONG_ARTICLE_BUBBLES_ROLE + " 出力はJSONの blocks 配列のみ。余計な説明は不要です。"},
+                {"role": "user", "content": user_prompt},
+            ],
+            temperature=0.2,
+        )
+        raw = response.choices[0].message.content or "[]"
+        if "```" in raw:
+            for p in raw.split("```"):
+                p = p.strip()
+                if p.lower().startswith("json"):
+                    p = p[4:].strip()
+                if p.startswith("["):
+                    raw = p
+                    break
+        m = re.search(r'\[[\s\S]*\]', raw.strip())
+        if m:
+            raw = m.group(0)
+        data = json.loads(raw.strip())
+        if isinstance(data, list):
+            return data
+        blocks = data.get("blocks", []) if isinstance(data, dict) else []
+        if isinstance(blocks, list) and all(isinstance(x, dict) and x.get("type") in ("text", "explain") and "content" in x for x in blocks):
+            return blocks
+    except (json.JSONDecodeError, Exception) as e:
+        logger.warning("expand_navigator パース失敗: %s", e)
+    return [{"type": "text", "content": summary[:3500]}, {"type": "explain", "content": "（展開に失敗しました）"}]
+
+
+def get_all_persona_opinions_from_summary(
+    summary_text: str,
+    title: str,
+    model: str | None = None,
+) -> list[str]:
+    """
+    要約テキストをもとに、5人格の意見を1回のAPIでまとめて取得する。
+    戻り値: 5要素のリスト（不足分は空文字）。
+    """
+    if not settings.OPENAI_API_KEY or not summary_text:
+        return [""] * 5
+    persona_names = [p["name"] for p in PERSONAS]
+    from openai import OpenAI
+    model = model or settings.OPENAI_MODEL
+    client = OpenAI(api_key=settings.OPENAI_API_KEY)
+    system_prompt = f"""あなたはニュース記事の要約を読んで、5人の人格それぞれが短い意見（3〜5文）を述べます。
+人格: {", ".join(persona_names)}
+必ず日本語のみで出力。出力はJSON配列のみで、5要素の文字列配列にしてください。
+例: ["慎重派の太郎としての意見文", "楽観的な花子としての意見文", ...]"""
+    user_prompt = f"【タイトル】{title}\n\n【要約】\n{summary_text[:3000]}\n\n---\n上記について、5人の人格それぞれの意見を1つずつ、順番通りにJSON配列で出力してください。"
+
+    try:
+        response = create_with_retry(
+            client,
+            2000,
+            model=model,
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt},
+            ],
+            temperature=0.7,
+        )
+        text = (response.choices[0].message.content or "").strip()
+        if text.startswith("```"):
+            text = text.split("\n", 1)[-1].rsplit("```", 1)[0].strip()
+        arr = json.loads(text)
+        if isinstance(arr, list) and len(arr) >= 5:
+            return [str(arr[i])[:2000] for i in range(5)]
+        if isinstance(arr, list):
+            return [str(arr[i])[:2000] if i < len(arr) else "" for i in range(5)]
+    except Exception as e:
+        logger.warning("get_all_persona_opinions_from_summary failed: %s", e)
+    return [""] * 5
+
+
 # 構造化出力用スキーマ（gpt-4o-mini等で使用）
 _JSON_SCHEMA_BLOCKS = {
     "type": "json_schema",
@@ -456,13 +608,16 @@ blocks配列のJSONのみ返す。"""
     return [{"type": "text", "content": content}, {"type": "explain", "content": "（構造化に失敗しました。しばらくしてから再度お試しください。）"}]
 
 
+PERSONA_COMMENT_MAX_LEN = 150
+
+
 def get_persona_opinion(
     title: str,
     content: str,
     persona_id: int,
     model: str | None = None
 ) -> str:
-    """指定された人格のAIが記事に対する意見を述べる"""
+    """指定された人格のAIが記事に対する意見を述べる。最大150文字程度。"""
     if not settings.OPENAI_API_KEY:
         return "（APIキーが設定されていません）"
     if persona_id < 0 or persona_id >= len(PERSONAS):
@@ -473,12 +628,12 @@ def get_persona_opinion(
     p = PERSONAS[persona_id]
     client = OpenAI(api_key=settings.OPENAI_API_KEY)
     system_prompt = f"""あなたは「{p['name']}」という人格です。{p['role']}
-ニュース記事を読んで、この人格として短い意見（3〜5文程度）を述べてください。口語で親しみやすく。必ず日本語のみで出力すること。"""
-    user_prompt = f"【タイトル】{title}\n\n【本文抜粋】\n{content[:2000]}\n\n---\n上記のニュースについて、{p['name']}としての意見を必ず日本語で書いてください。"
+ニュース記事を読んで、この人格として意見を述べてください。必ず日本語のみ。最大{PERSONA_COMMENT_MAX_LEN}文字以内で簡潔に。"""
+    user_prompt = f"【タイトル】{title}\n\n【本文抜粋】\n{content[:2000]}\n\n---\n上記のニュースについて、{p['name']}として{PERSONA_COMMENT_MAX_LEN}文字以内で意見を書いてください。"
     try:
         response = create_with_retry(
             client,
-            400,
+            200,
             model=model,
             messages=[
                 {"role": "system", "content": system_prompt},
@@ -486,7 +641,10 @@ def get_persona_opinion(
             ],
             temperature=0.7,
         )
-        return response.choices[0].message.content or ""
+        text = (response.choices[0].message.content or "").strip()
+        if len(text) > PERSONA_COMMENT_MAX_LEN:
+            text = text[: PERSONA_COMMENT_MAX_LEN - 1].rstrip() + "…"
+        return text
     except Exception as e:
         return f"（取得失敗: {str(e)}）"
 

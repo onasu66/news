@@ -16,6 +16,8 @@ from app.services.ai_service import (
     explain_article_with_ai,
     get_image_url,
     PERSONAS,
+    PERSONA_LOGIC_IDS,
+    PERSONA_ENT_IDS,
 )
 
 router = APIRouter()
@@ -354,7 +356,26 @@ async def topic_detail(request: Request, topic_id: str):
         og_image = get_image_url(item.id, 1200, 630)
     cached = get_cached(topic_id)
     blocks = _sanitize_blocks(cached["blocks"]) if cached and cached.get("blocks") else []
-    personas_data = cached.get("personas", []) if cached else []
+    # 新形式: キャッシュに表示用3人分だけ保存されている場合はそのまま使用（API節約）
+    if cached and cached.get("display_persona_ids") is not None and len(cached.get("personas", [])) == 3:
+        display_persona_ids = cached["display_persona_ids"]
+        display_personas = [PERSONAS[i] for i in display_persona_ids]
+        personas_data = cached["personas"]
+    else:
+        all_personas_data = cached.get("personas", []) if cached else []
+        import random as _rnd
+        logic_ids = list(PERSONA_LOGIC_IDS)
+        ent_ids = list(PERSONA_ENT_IDS)
+        if len(logic_ids) >= 2 and len(ent_ids) >= 1:
+            pick_logic = _rnd.sample(logic_ids, 2)
+            pick_ent = _rnd.sample(ent_ids, 1)
+            display_indices = pick_logic + pick_ent
+            _rnd.shuffle(display_indices)
+        else:
+            display_indices = list(range(min(3, len(PERSONAS))))
+        display_personas = [PERSONAS[i] for i in display_indices]
+        personas_data = [all_personas_data[i] if i < len(all_personas_data) else "" for i in display_indices]
+        display_persona_ids = display_indices
     quick_understand = cached.get("quick_understand") if cached else None
     vote_data = cached.get("vote_data") if cached else None
     body_html = _blocks_to_html(blocks) if blocks else ""
@@ -382,7 +403,9 @@ async def topic_detail(request: Request, topic_id: str):
             "request": request,
             "article": item,
             "image_url": image_url,
-            "personas": PERSONAS,
+            "personas": display_personas,
+            "display_persona_ids": display_persona_ids,
+            "all_personas": PERSONAS,
             "site_url": site_url,
             "article_url": article_url,
             "og_image": og_image,
@@ -445,25 +468,36 @@ async def api_explain_inline(article_id: str):
 
 @router.get("/api/article/{article_id}/explanations")
 async def api_all_explanations(article_id: str):
-    """ミドルマン解説＋5人格の意見を一括取得（キャッシュ優先・一括生成）"""
+    """ミドルマン解説＋人格の意見を一括取得（キャッシュ優先・表示用3人分のみ生成）"""
     item = NewsAggregator.get_article(article_id)
     if not item:
         raise HTTPException(status_code=404, detail="記事が見つかりません")
     content = f"{item.title}\n\n{item.summary}"
     data = generate_all_explanations(article_id, item.title, content)
+    # 新形式は3人分のみ→フロント互換のため14スロットで返す（該当3件のみ埋める）
+    if data.get("display_persona_ids") is not None and len(data.get("personas", [])) == 3:
+        full_personas = [""] * len(PERSONAS)
+        for i, pid in enumerate(data["display_persona_ids"]):
+            if 0 <= pid < len(full_personas):
+                full_personas[pid] = data["personas"][i]
+        return {"blocks": _sanitize_blocks(data["blocks"]), "personas": full_personas}
     return {"blocks": _sanitize_blocks(data["blocks"]), "personas": data["personas"]}
 
 
 @router.get("/api/article/{article_id}/opinion/{persona_id}")
 async def api_persona_opinion(article_id: str, persona_id: int):
-    """5人格のAIのうち1人の意見を取得（従来API・キャッシュ経由）"""
+    """表示用3人のうち1人の意見を取得（キャッシュ経由。当該記事で選ばれていない人格は空）"""
     if persona_id < 0 or persona_id >= len(PERSONAS):
         raise HTTPException(status_code=404, detail="人格が見つかりません")
     item = NewsAggregator.get_article(article_id)
     if not item:
         raise HTTPException(status_code=404, detail="記事が見つかりません")
     data = generate_all_explanations(article_id, item.title, f"{item.title}\n\n{item.summary}")
-    opinion = data["personas"][persona_id] if persona_id < len(data["personas"]) else ""
+    if data.get("display_persona_ids") is not None and persona_id in data["display_persona_ids"]:
+        idx = data["display_persona_ids"].index(persona_id)
+        opinion = data["personas"][idx] if idx < len(data["personas"]) else ""
+    else:
+        opinion = data["personas"][persona_id] if persona_id < len(data["personas"]) else ""
     return {"persona": PERSONAS[persona_id], "opinion": opinion}
 
 

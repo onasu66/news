@@ -28,6 +28,9 @@ def _get_conn():
     return conn
 
 
+PERSONAS_COUNT = 14  # ai_service.PERSONAS の長さ
+
+
 def _init_db():
     with _get_conn() as conn:
         conn.execute("""
@@ -42,6 +45,14 @@ def _init_db():
                 created_at TEXT DEFAULT CURRENT_TIMESTAMP
             )
         """)
+        try:
+            conn.execute("ALTER TABLE explanation_cache ADD COLUMN personas TEXT")
+        except Exception:
+            pass
+        try:
+            conn.execute("ALTER TABLE explanation_cache ADD COLUMN display_persona_ids TEXT")
+        except Exception:
+            pass
         conn.commit()
 
 
@@ -96,25 +107,47 @@ def get_cached(article_id: str) -> Optional[dict]:
         return result
     _init_db()
     with _get_conn() as conn:
-        row = conn.execute(
-            "SELECT inline_blocks, persona_0, persona_1, persona_2, persona_3, persona_4 FROM explanation_cache WHERE article_id = ?",
-            (article_id,),
-        ).fetchone()
+        try:
+            row = conn.execute(
+                "SELECT inline_blocks, persona_0, persona_1, persona_2, persona_3, persona_4, personas, display_persona_ids FROM explanation_cache WHERE article_id = ?",
+                (article_id,),
+            ).fetchone()
+        except Exception:
+            try:
+                row = conn.execute(
+                    "SELECT inline_blocks, persona_0, persona_1, persona_2, persona_3, persona_4, personas FROM explanation_cache WHERE article_id = ?",
+                    (article_id,),
+                ).fetchone()
+            except Exception:
+                row = conn.execute(
+                    "SELECT inline_blocks, persona_0, persona_1, persona_2, persona_3, persona_4 FROM explanation_cache WHERE article_id = ?",
+                    (article_id,),
+                ).fetchone()
     if not row:
         return None
+    try:
+        row = dict(row)
+    except Exception:
+        row = {k: row[k] for k in row.keys()}
     blocks = json.loads(row["inline_blocks"])
     if _is_bad_fallback_cache(blocks):
         return None
-    result = {
-        "blocks": blocks,
-        "personas": [
-            row["persona_0"] or "",
-            row["persona_1"] or "",
-            row["persona_2"] or "",
-            row["persona_3"] or "",
-            row["persona_4"] or "",
-        ],
-    }
+    try:
+        display_persona_ids = json.loads(row["display_persona_ids"]) if row.get("display_persona_ids") else None
+    except Exception:
+        display_persona_ids = None
+    try:
+        personas = json.loads(row["personas"]) if row.get("personas") else None
+    except Exception:
+        personas = None
+    if display_persona_ids is not None and isinstance(display_persona_ids, list) and len(display_persona_ids) == 3 and isinstance(personas, list) and len(personas) == 3:
+        result = {"blocks": blocks, "personas": personas, "display_persona_ids": display_persona_ids}
+    else:
+        if isinstance(personas, list) and len(personas) >= PERSONAS_COUNT:
+            personas = personas[:PERSONAS_COUNT]
+        else:
+            personas = [row.get("persona_0") or "", row.get("persona_1") or "", row.get("persona_2") or "", row.get("persona_3") or "", row.get("persona_4") or ""] + [""] * (PERSONAS_COUNT - 5)
+        result = {"blocks": blocks, "personas": personas}
     extra = _get_extra(article_id)
     if extra:
         result["quick_understand"] = extra.get("quick_understand", {})
@@ -180,27 +213,63 @@ def _save_extra(article_id: str, data: dict):
         pass
 
 
-def save_cache(article_id: str, blocks: list, personas: list[str], *, quick_understand: dict | None = None, vote_data: dict | None = None):
-    """キャッシュに保存"""
+def save_cache(article_id: str, blocks: list, personas: list[str], *, display_persona_ids: list[int] | None = None, quick_understand: dict | None = None, vote_data: dict | None = None):
+    """キャッシュに保存。display_persona_ids あり時は personas は3件のみ。"""
     global _ids_cache
     if _use_firestore():
         from .firestore_store import firestore_save_cache
-        firestore_save_cache(article_id, blocks, personas, quick_understand=quick_understand, vote_data=vote_data)
+        firestore_save_cache(article_id, blocks, personas, display_persona_ids=display_persona_ids, quick_understand=quick_understand, vote_data=vote_data)
         _ids_cache = None  # 次回 get_cached_article_ids で再取得
         return
     _init_db()
-    while len(personas) < 5:
-        personas.append("")
-    with _get_conn() as conn:
-        conn.execute(
-            """
-            INSERT OR REPLACE INTO explanation_cache
-            (article_id, inline_blocks, persona_0, persona_1, persona_2, persona_3, persona_4)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
-            """,
-            (article_id, json.dumps(blocks, ensure_ascii=False), *personas[:5]),
-        )
-        conn.commit()
+    if display_persona_ids is not None and len(display_persona_ids) == 3 and len(personas) == 3:
+        personas_json = json.dumps(personas, ensure_ascii=False)
+        ids_json = json.dumps(display_persona_ids, ensure_ascii=False)
+        p0, p1, p2 = (personas[0], personas[1], personas[2]) if len(personas) >= 3 else ("", "", "")
+        with _get_conn() as conn:
+            try:
+                conn.execute(
+                    """
+                    INSERT OR REPLACE INTO explanation_cache
+                    (article_id, inline_blocks, persona_0, persona_1, persona_2, persona_3, persona_4, personas, display_persona_ids)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    """,
+                    (article_id, json.dumps(blocks, ensure_ascii=False), p0, p1, p2, "", "", personas_json, ids_json),
+                )
+            except Exception:
+                conn.execute(
+                    """
+                    INSERT OR REPLACE INTO explanation_cache
+                    (article_id, inline_blocks, persona_0, persona_1, persona_2, persona_3, persona_4, personas)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                    """,
+                    (article_id, json.dumps(blocks, ensure_ascii=False), p0, p1, p2, "", "", personas_json),
+                )
+            conn.commit()
+    else:
+        while len(personas) < PERSONAS_COUNT:
+            personas.append("")
+        personas = personas[:PERSONAS_COUNT]
+        with _get_conn() as conn:
+            try:
+                conn.execute(
+                    """
+                    INSERT OR REPLACE INTO explanation_cache
+                    (article_id, inline_blocks, persona_0, persona_1, persona_2, persona_3, persona_4, personas)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                    """,
+                    (article_id, json.dumps(blocks, ensure_ascii=False), personas[0], personas[1], personas[2], personas[3], personas[4], json.dumps(personas, ensure_ascii=False)),
+                )
+            except Exception:
+                conn.execute(
+                    """
+                    INSERT OR REPLACE INTO explanation_cache
+                    (article_id, inline_blocks, persona_0, persona_1, persona_2, persona_3, persona_4)
+                    VALUES (?, ?, ?, ?, ?, ?, ?)
+                    """,
+                    (article_id, json.dumps(blocks, ensure_ascii=False), personas[0], personas[1], personas[2], personas[3], personas[4]),
+                )
+            conn.commit()
     extra = {}
     if quick_understand:
         extra["quick_understand"] = quick_understand

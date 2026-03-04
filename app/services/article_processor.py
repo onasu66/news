@@ -89,7 +89,8 @@ def process_rss_to_site_article(item: NewsItem, force: bool = False) -> bool:
         content = sanitize_display_text(f"{item.title}\n\n{item.summary}")
     data = generate_all_explanations(item.id, item.title, content)
     blocks = data.get("blocks", [])
-    personas = data.get("personas", [""] * 5)
+    personas = data.get("personas", [])
+    display_persona_ids = data.get("display_persona_ids")
 
     if not blocks:
         return False
@@ -97,7 +98,12 @@ def process_rss_to_site_article(item: NewsItem, force: bool = False) -> bool:
     # 記事を先に保存してから解説を保存（Firestore で has_explanation を正しく付与するため）
     if not save_article(item):
         return False  # 記事の保存に失敗した場合は成功にしない
-    save_cache(item.id, blocks, personas)
+    save_cache(
+        item.id, blocks, personas,
+        display_persona_ids=display_persona_ids,
+        quick_understand=data.get("quick_understand"),
+        vote_data=data.get("vote_data"),
+    )
     return True
 
 
