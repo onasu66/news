@@ -649,6 +649,45 @@ def get_persona_opinion(
         return f"（取得失敗: {str(e)}）"
 
 
+# 記事ジャンル分類で使う候補（news_aggregator.CATEGORY_ORDER と一致させる）
+ARTICLE_CATEGORIES = ["総合", "国内", "国際", "テクノロジー", "政治・社会", "スポーツ", "エンタメ"]
+
+
+def classify_article_category(title: str, summary: str, model: str | None = None) -> Optional[str]:
+    """記事のタイトルと要約からジャンルを1つだけ選ぶ。API未設定や失敗時は None（呼び出し元でRSSのジャンルをそのまま使う）。"""
+    if not settings.OPENAI_API_KEY:
+        return None
+    if not title and not summary:
+        return None
+    from openai import OpenAI
+    model = model or settings.OPENAI_MODEL
+    client = OpenAI(api_key=settings.OPENAI_API_KEY)
+    cats = "、".join(ARTICLE_CATEGORIES)
+    system = f"""あなたはニュースのジャンル分類担当です。記事のタイトルと要約だけを見て、次のいずれか1つだけを選んでください。
+{cats}
+必ず上記の文字列をそのまま1つだけ返してください。説明や句読点は不要。"""
+    user = f"【タイトル】\n{title[:500]}\n\n【要約】\n{(summary or '')[:800]}"
+    try:
+        response = create_with_retry(
+            client,
+            50,
+            model=model,
+            messages=[{"role": "system", "content": system}, {"role": "user", "content": user}],
+            temperature=0.2,
+        )
+        text = (response.choices[0].message.content or "").strip().split("\n")[0].strip()
+        if text in ARTICLE_CATEGORIES:
+            return text
+        # 微妙に違う表記を補正（余分な句読点など）
+        for c in ARTICLE_CATEGORIES:
+            if c in text or text in c:
+                return c
+        return None
+    except Exception as e:
+        logger.warning("classify_article_category failed: %s", e)
+        return None
+
+
 def generate_quick_understand(title: str, content: str, model: str | None = None) -> dict:
     """秒速理解：何が起きた・なぜ・どうなる の3行を生成"""
     if not settings.OPENAI_API_KEY:

@@ -65,6 +65,16 @@ def process_rss_to_site_article(item: NewsItem, force: bool = False) -> bool:
     if not title_ja.startswith("【"):
         title_ja = _add_bracket_title(title_ja)
 
+    # 記事内容に合わせてAIでジャンルを分類（RSSのフィード単位のジャンルより正確になる）
+    category_ja = item.category
+    try:
+        from app.services.ai_service import classify_article_category
+        ai_cat = classify_article_category(title_ja, summary_ja)
+        if ai_cat:
+            category_ja = ai_cat
+    except Exception:
+        pass
+
     item = NewsItem(
         id=item.id,
         title=title_ja,
@@ -72,7 +82,7 @@ def process_rss_to_site_article(item: NewsItem, force: bool = False) -> bool:
         summary=summary_ja,
         published=item.published,
         source=item.source,
-        category=item.category,
+        category=category_ja,
         image_url=item.image_url,
     )
 
