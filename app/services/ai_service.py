@@ -627,7 +627,12 @@ def get_persona_opinion(
     model = model or settings.OPENAI_MODEL
     p = PERSONAS[persona_id]
     client = OpenAI(api_key=settings.OPENAI_API_KEY)
+    extra_note = ""
+    if persona_id != 1:
+        # 投資家キャラ（ヴォルテ・アセット）以外は、投資・相場の話題に寄りすぎないようにする
+        extra_note = "株価や為替、投資・相場の専門的な話題には触れず、この人格ならではの視点に集中してください。"
     system_prompt = f"""あなたは「{p['name']}」という人格です。{p['role']}
+他の人格の口調や視点を真似せず、この人格の設定にだけ従ってください。{extra_note}
 ニュース記事を読んで、この人格としてニュースを見て思ったことや感じたことを率直に述べてください。必ず日本語のみ。最大{PERSONA_COMMENT_MAX_LEN}文字以内で簡潔に。"""
     user_prompt = f"【タイトル】{title}\n\n【本文抜粋】\n{content[:2000]}\n\n---\n上記のニュースについて、{p['name']}として{PERSONA_COMMENT_MAX_LEN}文字以内で思ったこと・感じたことを書いてください。"
     try:
