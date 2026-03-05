@@ -279,8 +279,8 @@ def _build_short_summary(blocks: list, fallback_summary: str | None) -> str:
                 label = nav_labels[sec]
                 snippet = content[:50]
                 safe = _html.escape(snippet).replace("\n", "<br>")
-                more = "…" if len(content) > 50 else ""
-                points.append(f'<div class="short-point"><span class="short-point-label">{label}</span><p>{safe}{more}</p></div>')
+                # 「…」での省略表示はせず、端的な一言として50文字以内で切る
+                points.append(f'<div class="short-point"><span class="short-point-label">{label}</span><p>{safe}</p></div>')
     else:
         text_parts = []
         for b in blocks:
@@ -291,8 +291,7 @@ def _build_short_summary(blocks: list, fallback_summary: str | None) -> str:
         for p in paras[:3]:
             snippet = p[:50]
             safe = _html.escape(snippet).replace("\n", "<br>")
-            more = "…" if len(p) > 50 else ""
-            points.append(f'<div class="short-point"><p>{safe}{more}</p></div>')
+            points.append(f'<div class="short-point"><p>{safe}</p></div>')
     return "\n".join(points) if points else f'<p class="article-text">{_html.escape((fallback_summary or "")[:500])}</p>'
 
 
