@@ -262,37 +262,70 @@ def _meta_description_qa(title: str, summary: str | None, max_len: int = 160) ->
 
 
 def _build_short_summary(blocks: list, fallback_summary: str | None) -> str:
-    """ブロックから「1分で理解」用の要点まとめHTMLを生成"""
-    import html as _html
-    if not blocks:
-        s = (fallback_summary or "").strip()
-        return f'<p class="article-text">{_html.escape(s)}</p>' if s else ""
+    """ブロックから「1分で理解」用の要点まとめHTMLを生成
 
-    points = []
-    is_nav = blocks and blocks[0].get("type") == "navigator_section"
+    方針:
+    - 記事の「事実」に相当する文だけを短く要点化する
+    - 先頭50文字を単純に切るのではなく、文単位で区切って一文ずつ表示
+    - ナビゲーター形式があれば facts セクションのみを対象にする
+    """
+    import html as _html
+    import re as _re
+
+    def _sentences(text: str) -> list[str]:
+        text = (text or "").replace("\n", " ").strip()
+        if not text:
+            return []
+        parts = [_s.strip() for _s in _re.split(r"[。.!?]", text) if _s.strip()]
+        out: list[str] = []
+        for s in parts:
+            if len(s) > 50:
+                out.append(s[:50])
+            else:
+                out.append(s)
+        return out
+
+    # ナビゲーター形式（facts セクション）から事実だけを要点化
+    points: list[str] = []
+    is_nav = blocks and isinstance(blocks[0], dict) and blocks[0].get("type") == "navigator_section"
     if is_nav:
-        nav_labels = {"facts": "📌 事実", "background": "📖 背景", "impact": "🎯 影響", "prediction": "🔮 予測", "caution": "⚠ 注意"}
+        facts_texts: list[str] = []
         for b in blocks:
-            sec = b.get("section", "")
-            content = (b.get("content") or "").strip()
-            if sec in nav_labels and content:
-                label = nav_labels[sec]
-                snippet = content[:50]
-                safe = _html.escape(snippet).replace("\n", "<br>")
-                # 「…」での省略表示はせず、端的な一言として50文字以内で切る
-                points.append(f'<div class="short-point"><span class="short-point-label">{label}</span><p>{safe}</p></div>')
+            if not isinstance(b, dict):
+                continue
+            if b.get("type") == "navigator_section" and b.get("section") == "facts":
+                body = (b.get("content") or "").strip()
+                if body:
+                    facts_texts.append(body)
+        combined = "\n".join(facts_texts)
+        sents = _sentences(combined)[:3]  # 最大3文
+        for s in sents:
+            safe = _html.escape(s).replace("\n", "<br>")
+            points.append(f'<div class="short-point"><span class="short-point-label">📌 事実</span><p>{safe}</p></div>')
     else:
-        text_parts = []
+        # 通常本文から事実寄りの文を抽出（text ブロックのみ対象）
+        text_parts: list[str] = []
         for b in blocks:
-            if b.get("type") == "text":
-                text_parts.append((b.get("content") or "").strip())
-        combined = "\n\n".join(text_parts)
-        paras = [p.strip() for p in combined.split("\n\n") if p.strip()]
-        for p in paras[:3]:
-            snippet = p[:50]
-            safe = _html.escape(snippet).replace("\n", "<br>")
+            if isinstance(b, dict) and b.get("type") == "text" and b.get("content"):
+                text_parts.append(str(b["content"]))
+        combined = "\n".join(text_parts)
+        sents = _sentences(combined)[:3]
+        for s in sents:
+            safe = _html.escape(s).replace("\n", "<br>")
             points.append(f'<div class="short-point"><p>{safe}</p></div>')
-    return "\n".join(points) if points else f'<p class="article-text">{_html.escape((fallback_summary or "")[:500])}</p>'
+
+    if points:
+        return "\n".join(points)
+
+    # ブロックから要点が取れなかった場合は、fallback のサマリをそのまま1文として表示
+    s = (fallback_summary or "").replace("\n", " ").strip()
+    if not s:
+        return ""
+    fsent = _sentences(s)
+    if not fsent:
+        return f'<p class="article-text">{_html.escape(s)}</p>'
+    safe = _html.escape(fsent[0]).replace("\n", "<br>")
+    return f'<p class="article-text">{safe}</p>'
 
 
 def _blocks_to_html(blocks: list) -> str:
