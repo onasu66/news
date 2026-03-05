@@ -628,8 +628,8 @@ def get_persona_opinion(
     p = PERSONAS[persona_id]
     client = OpenAI(api_key=settings.OPENAI_API_KEY)
     system_prompt = f"""あなたは「{p['name']}」という人格です。{p['role']}
-ニュース記事を読んで、この人格として意見を述べてください。必ず日本語のみ。最大{PERSONA_COMMENT_MAX_LEN}文字以内で簡潔に。"""
-    user_prompt = f"【タイトル】{title}\n\n【本文抜粋】\n{content[:2000]}\n\n---\n上記のニュースについて、{p['name']}として{PERSONA_COMMENT_MAX_LEN}文字以内で意見を書いてください。"
+ニュース記事を読んで、この人格としてニュースを見て思ったことや感じたことを率直に述べてください。必ず日本語のみ。最大{PERSONA_COMMENT_MAX_LEN}文字以内で簡潔に。"""
+    user_prompt = f"【タイトル】{title}\n\n【本文抜粋】\n{content[:2000]}\n\n---\n上記のニュースについて、{p['name']}として{PERSONA_COMMENT_MAX_LEN}文字以内で思ったこと・感じたことを書いてください。"
     try:
         response = create_with_retry(
             client,
@@ -701,8 +701,14 @@ def generate_quick_understand(title: str, content: str, model: str | None = None
             300,
             model=model,
             messages=[
-                {"role": "system", "content": "あなたはニュース速報の要約者です。記事を3つの視点で各1文（30字以内）にまとめ、必ず日本語のみで出力してください。\n\n出力はJSON形式のみ：\n{\"what\": \"何が起きたか（日本語1文）\", \"why\": \"なぜ起きたか（日本語1文）\", \"how\": \"今後どうなるか（日本語1文）\"}\n\nwhat/why/how の値はすべて日本語で書くこと。英語は使わない。JSONのみ出力。"},
-                {"role": "user", "content": f"以下の記事を、必ず日本語で要約してください。\n\n【タイトル】{title}\n\n【内容】\n{content[:2000]}"},
+                {
+                    "role": "system",
+                    "content": "あなたはニュース速報の要約者です。記事を3つの視点で各1文（25字以内）にまとめ、必ず日本語のみで出力してください。\n\n出力はJSON形式のみ：\n{\"what\": \"何が起きたか（日本語1文）\", \"why\": \"なぜ起きたか（日本語1文）\", \"how\": \"今後どうなるか（日本語1文）\"}\n\nwhat/why/how の値はすべて日本語で書くこと。英語は使わない。JSONのみ出力。",
+                },
+                {
+                    "role": "user",
+                    "content": f"以下の記事を、必ず日本語で要約してください。\n\n【タイトル】{title}\n\n【内容】\n{content[:2000]}",
+                },
             ],
             temperature=0.3,
         )

@@ -277,8 +277,10 @@ def _build_short_summary(blocks: list, fallback_summary: str | None) -> str:
             content = (b.get("content") or "").strip()
             if sec in nav_labels and content:
                 label = nav_labels[sec]
-                safe = _html.escape(content[:300]).replace("\n", "<br>")
-                points.append(f'<div class="short-point"><span class="short-point-label">{label}</span><p>{safe}</p></div>')
+                snippet = content[:50]
+                safe = _html.escape(snippet).replace("\n", "<br>")
+                more = "…" if len(content) > 50 else ""
+                points.append(f'<div class="short-point"><span class="short-point-label">{label}</span><p>{safe}{more}</p></div>')
     else:
         text_parts = []
         for b in blocks:
@@ -287,8 +289,10 @@ def _build_short_summary(blocks: list, fallback_summary: str | None) -> str:
         combined = "\n\n".join(text_parts)
         paras = [p.strip() for p in combined.split("\n\n") if p.strip()]
         for p in paras[:3]:
-            safe = _html.escape(p[:180]).replace("\n", "<br>")
-            points.append(f'<div class="short-point"><p>{safe}{"..." if len(p) > 180 else ""}</p></div>')
+            snippet = p[:50]
+            safe = _html.escape(snippet).replace("\n", "<br>")
+            more = "…" if len(p) > 50 else ""
+            points.append(f'<div class="short-point"><p>{safe}{more}</p></div>')
     return "\n".join(points) if points else f'<p class="article-text">{_html.escape((fallback_summary or "")[:500])}</p>'
 
 

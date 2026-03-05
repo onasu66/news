@@ -1,6 +1,7 @@
 """RSS記事をAI解説付きのサイト記事に変換するパイプライン"""
 import re
-from .rss_service import NewsItem, sanitize_display_text
+from datetime import datetime
+from .rss_service import NewsItem, sanitize_display_text, JST
 from .translate_service import is_foreign_article, translate_and_rewrite, translate_title_to_japanese, text_mainly_japanese, FOREIGN_SOURCES
 from .ai_batch_service import generate_all_explanations
 from .explanation_cache import save_cache, get_cached, get_cached_article_ids
@@ -75,12 +76,14 @@ def process_rss_to_site_article(item: NewsItem, force: bool = False) -> bool:
     except Exception:
         pass
 
+    # 公開日時は「記事として取り込んだ時刻」を使う（元のRSSが古い日時でも、サイト上では追加順に並ぶようにする）
+    published_dt = datetime.now(JST).replace(tzinfo=None)
     item = NewsItem(
         id=item.id,
         title=title_ja,
         link=item.link,
         summary=summary_ja,
-        published=item.published,
+        published=published_dt,
         source=item.source,
         category=category_ja,
         image_url=item.image_url,

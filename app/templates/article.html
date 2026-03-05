@@ -37,24 +37,6 @@
         <img src="{{ image_url }}" alt="{{ article.title }}" class="article-image">
     </div>
 
-    {% if quick_understand %}
-    <div class="quick-understand animate-fade-in">
-        <h2 class="quick-understand-title">⚡ 秒速理解</h2>
-        <div class="quick-understand-item">
-            <span class="quick-understand-label">✅ 何が起きた</span>
-            <span>{{ quick_understand.what }}</span>
-        </div>
-        <div class="quick-understand-item">
-            <span class="quick-understand-label">❓ なぜ</span>
-            <span>{{ quick_understand.why }}</span>
-        </div>
-        <div class="quick-understand-item">
-            <span class="quick-understand-label">🔮 どうなる</span>
-            <span>{{ quick_understand.how }}</span>
-        </div>
-    </div>
-    {% endif %}
-
     <div class="read-mode-switch">
         <button type="button" class="read-mode-btn is-active" data-mode="short">📖 1分で理解</button>
         <button type="button" class="read-mode-btn" data-mode="deep">📚 3分で深掘り</button>
