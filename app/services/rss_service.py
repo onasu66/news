@@ -49,17 +49,34 @@ class NewsItem:
     image_url: Optional[str] = None
 
 
-# RSSフィード (URL, 表示名, ジャンル) — NHK・共同通信・Reuters・AP・Yahoo!・BBC・読売・World News International・Le Monde
+# RSSフィード (URL, 表示名, ジャンル)
+# 既存の総合ニュース＋テック系・ビジネス系・サイエンス系をまとめて扱う。
 RSS_FEEDS = [
+    # 日本の総合・国内ニュース（NHK・共同・読売・Yahoo! などをすべて「国内」扱いに統一）
     ("https://www.nhk.or.jp/rss/news/cat0.xml", "NHK", "国内"),
-    ("https://english.kyodonews.net/list/feed/rss4kyodonews-fzone", "共同通信", "国際"),
+    ("https://english.kyodonews.net/list/feed/rss4kyodonews-fzone", "共同通信", "国内"),
     ("https://feeds.reuters.com/reuters/topNews", "Reuters", "国際"),
     ("http://hosted2.ap.org/atom/APDEFAULT/3d281c11a96b4ad082fe88aa0db04305", "AP News", "国際"),
-    ("https://news.yahoo.co.jp/rss/topics/top-picks.xml", "Yahoo!ニュース", "総合"),
+    ("https://news.yahoo.co.jp/rss/topics/top-picks.xml", "Yahoo!ニュース", "国内"),
     ("http://feeds.bbci.co.uk/news/rss.xml", "BBC News", "国際"),
-    ("https://rss.yomiuri.co.jp/f/yol_topstories", "読売新聞オンライン", "政治・社会"),
+    ("https://rss.yomiuri.co.jp/f/yol_topstories", "読売新聞オンライン", "国内"),
     ("https://www.worldnewsintl.org/feed", "World News International", "国際"),
     ("https://www.lemonde.fr/rss/une.xml", "Le Monde", "国際"),
+
+    # テック系（テクノロジー）
+    ("http://feeds.arstechnica.com/arstechnica/index", "Ars Technica", "テクノロジー"),
+    ("https://techcrunch.com/feed/", "TechCrunch", "テクノロジー"),
+    ("https://news.ycombinator.com/rss", "Hacker News", "テクノロジー"),
+    ("https://www.theverge.com/rss/index.xml", "The Verge", "テクノロジー"),
+
+    # ビジネス系（国際経済ニュース扱い）
+    ("https://www.ft.com/?format=rss", "Financial Times", "国際"),
+    ("https://www.cnbc.com/id/100003114/device/rss/rss.html", "CNBC", "国際"),
+    ("https://feeds.bloomberg.com/markets/news.rss", "Bloomberg Markets", "国際"),
+
+    # 科学・宇宙系（テクノロジー扱い）
+    ("https://www.sciencedaily.com/rss/all.xml", "ScienceDaily", "テクノロジー"),
+    ("https://www.nasa.gov/rss/dyn/breaking_news.rss", "NASA", "テクノロジー"),
 ]
 
 # タイトルキーワードでジャンルを上書き（総合ソース向け）

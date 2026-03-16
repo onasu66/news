@@ -66,16 +66,7 @@ def process_rss_to_site_article(item: NewsItem, force: bool = False) -> bool:
     if not title_ja.startswith("【"):
         title_ja = _add_bracket_title(title_ja)
 
-    # 記事内容に合わせてAIでジャンルを分類（RSSのフィード単位のジャンルより正確になる）
-    category_ja = item.category
-    try:
-        from app.services.ai_service import classify_article_category
-        ai_cat = classify_article_category(title_ja, summary_ja)
-        if ai_cat:
-            category_ja = ai_cat
-    except Exception:
-        pass
-
+    # ジャンルはRSSごとの設定（＋総合ソースはタイトルキーワード補正）のまま使う。AI分類は使わない。
     # 公開日時は「記事として取り込んだ時刻」を使う（元のRSSが古い日時でも、サイト上では追加順に並ぶようにする）
     published_dt = datetime.now(JST).replace(tzinfo=None)
     item = NewsItem(
@@ -85,7 +76,7 @@ def process_rss_to_site_article(item: NewsItem, force: bool = False) -> bool:
         summary=summary_ja,
         published=published_dt,
         source=item.source,
-        category=category_ja,
+        category=item.category,
         image_url=item.image_url,
     )
 
