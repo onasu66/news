@@ -316,71 +316,39 @@ def _meta_description_qa(title: str, summary: str | None, max_len: int = 160) ->
     return f"{question} {answer}"[:max_len]
 
 
-def _build_short_summary(blocks: list, fallback_summary: str | None) -> str:
-    """ブロックから「1分で理解」用の要点まとめHTMLを生成
+def _build_short_summary(quick_understand: dict | None, fallback_summary: str | None) -> str:
+    """「1分で理解」用の要点まとめHTMLを生成。
 
     方針:
-    - 記事の「事実」に相当する文だけを短く要点化する
-    - 先頭50文字を単純に切るのではなく、文単位で区切って一文ずつ表示
-    - ナビゲーター形式があれば facts セクションのみを対象にする
+    - AIが生成した quick_understand（what/why/how）のうち what を優先表示
+    - 取れない場合のみ fallback_summary を使う
+    - シンプルな1文（〜120文字程度）で表示
     """
     import html as _html
     import re as _re
 
-    def _sentences(text: str) -> list[str]:
-        text = (text or "").replace("\n", " ").strip()
-        if not text:
-            return []
-        parts = [_s.strip() for _s in _re.split(r"[。.!?]", text) if _s.strip()]
-        out: list[str] = []
-        for s in parts:
-            if len(s) > 50:
-                out.append(s[:50])
-            else:
-                out.append(s)
-        return out
+    def _one_line(text: str, max_len: int = 120) -> str:
+        t = (text or "").replace("\n", " ").strip()
+        t = _re.sub(r"\s+", " ", t).strip()
+        if not t:
+            return ""
+        return (t[:max_len] + "…") if len(t) > max_len else t
 
-    # ナビゲーター形式（facts セクション）から事実だけを要点化
-    points: list[str] = []
-    is_nav = blocks and isinstance(blocks[0], dict) and blocks[0].get("type") == "navigator_section"
-    if is_nav:
-        facts_texts: list[str] = []
-        for b in blocks:
-            if not isinstance(b, dict):
-                continue
-            if b.get("type") == "navigator_section" and b.get("section") == "facts":
-                body = (b.get("content") or "").strip()
-                if body:
-                    facts_texts.append(body)
-        combined = "\n".join(facts_texts)
-        sents = _sentences(combined)[:3]  # 最大3文
-        for s in sents:
-            safe = _html.escape(s).replace("\n", "<br>")
-            points.append(f'<div class="short-point"><span class="short-point-label">📌 事実</span><p>{safe}</p></div>')
-    else:
-        # 通常本文から事実寄りの文を抽出（text ブロックのみ対象）
-        text_parts: list[str] = []
-        for b in blocks:
-            if isinstance(b, dict) and b.get("type") == "text" and b.get("content"):
-                text_parts.append(str(b["content"]))
-        combined = "\n".join(text_parts)
-        sents = _sentences(combined)[:3]
-        for s in sents:
-            safe = _html.escape(s).replace("\n", "<br>")
-            points.append(f'<div class="short-point"><p>{safe}</p></div>')
+    candidate = ""
+    if isinstance(quick_understand, dict):
+        candidate = (quick_understand.get("what") or "").strip()
+        if not candidate:
+            # what が無い場合は why/how を連結して最低限の要点にする
+            parts = [p.strip() for p in [quick_understand.get("why") or "", quick_understand.get("how") or ""] if p.strip()]
+            candidate = " / ".join(parts)
 
-    if points:
-        return "\n".join(points)
+    if not candidate:
+        candidate = (fallback_summary or "").strip()
 
-    # ブロックから要点が取れなかった場合は、fallback のサマリをそのまま1文として表示
-    s = (fallback_summary or "").replace("\n", " ").strip()
-    if not s:
+    one = _one_line(candidate)
+    if not one:
         return ""
-    fsent = _sentences(s)
-    if not fsent:
-        return f'<p class="article-text">{_html.escape(s)}</p>'
-    safe = _html.escape(fsent[0]).replace("\n", "<br>")
-    return f'<p class="article-text">{safe}</p>'
+    return f'<p class="article-text">{_html.escape(one)}</p>'
 
 
 def _blocks_to_html(blocks: list) -> str:
@@ -470,7 +438,7 @@ async def topic_detail(request: Request, topic_id: str):
     quick_understand = cached.get("quick_understand") if cached else None
     vote_data = cached.get("vote_data") if cached else None
     body_html = _blocks_to_html(blocks) if blocks else ""
-    short_summary = _build_short_summary(blocks, item.summary)
+    short_summary = _build_short_summary(quick_understand, item.summary)
     meta_desc = _meta_description_qa(item.title, item.summary)
 
     all_news = NewsAggregator.get_news()

@@ -195,6 +195,7 @@ document.addEventListener('DOMContentLoaded', function() {
     var articleId = '{{ article.id }}';
     var ssrPersonas = {{ personas_data|tojson|safe }};
     var displayPersonaIds = {{ display_persona_ids|tojson|default([])|safe }};
+    var floatEl = document.getElementById('midorman-float');
 
     function escapeHtml(s) {
         if (s == null) return '';
@@ -215,9 +216,13 @@ document.addEventListener('DOMContentLoaded', function() {
             if (mode === 'short') {
                 shortContent.style.display = '';
                 deepContent.style.display = 'none';
+                if (floatEl) floatEl.hidden = true; // 1分で理解ではミドルマン吹き出し無し
             } else {
                 shortContent.style.display = 'none';
                 deepContent.style.display = '';
+                // deep 表示時に初期化（short時は初期化しない）
+                var contentEl2 = document.getElementById('article-inline-content');
+                if (contentEl2) initMidormanFloat(contentEl2);
             }
         });
     });
@@ -278,6 +283,8 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function initMidormanFloat(container) {
+        // 1分で理解では吹き出しを出さない（deep表示中のみ）
+        if (deepContent && deepContent.style.display === 'none') return;
         var floatEl = document.getElementById('midorman-float');
         var floatText = document.getElementById('midorman-float-text');
         if (!floatEl || !floatText) return;
@@ -305,9 +312,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     var contentEl = document.getElementById('article-inline-content');
-    if (contentEl) {
-        initMidormanFloat(contentEl);
-    }
+    // 初期表示は short のため、ここでは吹き出し初期化しない
 
     var hasSsr = contentEl && contentEl.querySelector('.article-text, .article-readflow') && ssrPersonas && ssrPersonas.length > 0;
     if (hasSsr) {

@@ -284,12 +284,25 @@ def process_new_rss_articles(
 
     from .keyword_scorer import rank_and_filter_articles
 
-    if uncached:
-        ranked = rank_and_filter_articles(uncached, trend_keywords, max_articles=max_per_run * 3)
-        force = False
-    else:
-        ranked = rank_and_filter_articles(rss_items, trend_keywords, max_articles=max_per_run * 3)
-        force = True
+    # 新規候補があれば新規を優先、なければ既存も含めて上書き取り込み（force=True）
+    base_candidates = uncached if uncached else rss_items
+    force = False if uncached else True
+
+    # 論文を増やしたい要件のため「論文とニュースを同じ上位N件で奪い合う」方式は避け、
+    # 論文を先に別枠で確保→残り枠をニュースで埋める。
+    paper_candidates = [x for x in base_candidates if x.category == "研究・論文"]
+    news_candidates = [x for x in base_candidates if x.category != "研究・論文"]
+
+    ranked_papers = (
+        rank_and_filter_articles(paper_candidates, trend_keywords, max_articles=max(80, max_per_run * 10))
+        if paper_candidates
+        else []
+    )
+    ranked_news = (
+        rank_and_filter_articles(news_candidates, trend_keywords, max_articles=max(60, max_per_run * 6))
+        if news_candidates
+        else []
+    )
 
     # 既存掲載記事の正規化タイトル（同じ内容は1本だけにするため）。渡されていれば load_all() しない
     existing_norm = set()
@@ -300,17 +313,23 @@ def process_new_rss_articles(
         for a in load_all():
             existing_norm.add(_normalize_title_for_dedup(a.title))
 
-    # 候補内で正規化タイトルが重複しているものはスコア上位1件だけ残す
-    seen_norm = set()
-    deduped: list[NewsItem] = []
-    for item in ranked:
-        norm = _normalize_title_for_dedup(item.title)
-        if norm in existing_norm:
-            continue
-        if norm in seen_norm:
-            continue
-        seen_norm.add(norm)
-        deduped.append(item)
+    # 候補内で正規化タイトルが重複しているものはスコア上位1件だけ残す（論文・ニュース別に）
+    def _dedup(items: list[NewsItem]) -> list[NewsItem]:
+        seen_norm: set[str] = set()
+        out: list[NewsItem] = []
+        for item in items:
+            norm = _normalize_title_for_dedup(item.title)
+            if norm in existing_norm:
+                continue
+            if norm in seen_norm:
+                continue
+            seen_norm.add(norm)
+            out.append(item)
+        return out
+
+    deduped_papers = _dedup(ranked_papers)
+    deduped_news = _dedup(ranked_news)
+    deduped: list[NewsItem] = deduped_papers + deduped_news
 
     # --- まず論文（研究・論文）をドメインごとに1本ずつ確保する ---
     PAPER_DOMAIN_ORDER = [
@@ -340,9 +359,11 @@ def process_new_rss_articles(
         "Sensors (MDPI)": "工学・応用",
     }
 
-    papers = [x for x in deduped if x.category == "研究・論文"]
-    non_papers = [x for x in deduped if x.category != "研究・論文"]
+    papers = deduped_papers
+    non_papers = deduped_news
 
+    # 各時間で論文は最低3本（候補がある限り）入れる
+    min_papers_per_run = 3
     paper_capacity = min(len(PAPER_DOMAIN_ORDER), max_per_run)
     picked_domains: set[str] = set()
     paper_picks: list[NewsItem] = []
@@ -354,6 +375,18 @@ def process_new_rss_articles(
             continue
         picked_domains.add(dom)
         paper_picks.append(item)
+
+    # 候補があるのに min_papers_per_run に届かない場合は、
+    # 「未マッピングソース」は総合科学に寄せてでも埋める（ただしドメイン重複は避ける）
+    if len(paper_picks) < min_papers_per_run:
+        for item in papers:
+            if len(paper_picks) >= min_papers_per_run or len(paper_picks) >= paper_capacity:
+                break
+            dom = SOURCE_TO_PAPER_DOMAIN.get(item.source, "総合科学")
+            if dom in picked_domains:
+                continue
+            picked_domains.add(dom)
+            paper_picks.append(item)
 
     remaining_slots = max_per_run - len(paper_picks)
 

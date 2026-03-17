@@ -8,7 +8,8 @@ from .article_processor import process_new_rss_articles
 from .explanation_cache import get_cached_article_ids, invalidate_ids_cache
 
 # ジャンル表示順（研究・論文は論文専用ページで表示）
-CATEGORY_ORDER = ["総合", "国内", "国際", "テクノロジー", "政治・社会", "スポーツ", "エンタメ", "研究・論文"]
+# 「総合」はRSS由来で基本付与されないため、タブを出さない（管理者手動記事などは「すべて」から見える想定）
+CATEGORY_ORDER = ["国内", "国際", "テクノロジー", "政治・社会", "スポーツ", "エンタメ", "研究・論文"]
 
 # 論文ページ用：上位ジャンル（ドメイン）の表示順
 # - 💪 筋肉・スポーツ・身体
