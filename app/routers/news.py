@@ -140,9 +140,64 @@ async def api_news_page(page: int = 1, keyword: str = ""):
     return {"html": cards_html, "page": page, "total_pages": total_pages}
 
 
+@router.get("/api/papers/page")
+async def api_papers_page(page: int = 1):
+    """論文ページ用・無限スクロール：指定ページの論文カードHTMLを返す"""
+    papers_by_category, pagination = NewsAggregator.get_papers_by_category(page=page)
+    import html as html_mod
+    cards_html = ""
+    for domain, items in papers_by_category:
+        for item in items:
+            _ensure_japanese(item)
+            if not item.image_url:
+                item.image_url = get_image_url(item.id, 400, 225)
+            elif not item.image_url.startswith("http"):
+                item.image_url = get_image_url(item.image_url, 400, 225)
+            pub = item.published.strftime('%m/%d %H:%M') if item.published else ''
+            title_safe = html_mod.escape(item.title or "")
+            raw_summary = item.summary or ""
+            summary_safe = html_mod.escape(raw_summary[:80])
+            domain_safe = html_mod.escape(domain or "")
+            source_safe = html_mod.escape(item.source or "")
+            ellipsis = "..." if len(raw_summary) > 80 else ""
+            cards_html += f'''<article class="news-card animate-fade-in" data-category="{domain_safe}">
+<a href="/topic/{item.id}" class="news-card-link">
+<div class="news-card-image"><img src="{item.image_url or 'https://picsum.photos/400/225'}" alt="{title_safe}" loading="lazy"><span class="news-card-category">{domain_safe}</span></div>
+<div class="news-card-body">
+<div class="news-card-meta"><span class="news-card-time">🕒 {pub}</span><span class="news-card-source">{source_safe}</span></div>
+<h3 class="news-title">{title_safe}</h3>
+<p class="news-summary-line">👀 {summary_safe}{ellipsis}</p>
+<div class="news-card-footer"><span class="news-card-ai">✍ AIが解説</span><span class="news-badge">AI解説</span></div>
+</div></a></article>'''
+    return {"html": cards_html, "page": pagination["page"], "total_pages": pagination["total_pages"]}
+
+
+@router.get("/papers", response_class=HTMLResponse)
+async def papers_page(request: Request, page: int = 1):
+    """論文専用ページ：研究・論文を上位ジャンル（ドメイン）ごとに表示（ニュース一覧と同じUI）"""
+    papers_by_category, pagination = NewsAggregator.get_papers_by_category(page=page)
+    for _, items in papers_by_category:
+        for item in items:
+            _ensure_japanese(item)
+            if not item.image_url:
+                item.image_url = get_image_url(item.id, 400, 225)
+            elif not item.image_url.startswith("http"):
+                item.image_url = get_image_url(item.image_url, 400, 225)
+    has_papers = any(items for _, items in papers_by_category)
+    return templates.TemplateResponse(
+        "papers.html",
+        {
+            "request": request,
+            "papers_by_category": papers_by_category,
+            "pagination": pagination,
+            "has_papers": has_papers,
+        },
+    )
+
+
 @router.get("/trend", response_class=HTMLResponse)
 async def trend_page(request: Request):
-    """トレンドページ：スコアが高い記事"""
+    """トレンドページ：スコアが高い記事（従来どおり）"""
     all_news = NewsAggregator.get_news()
     trends = NewsAggregator.get_trends()
     trend_keywords = [t.keyword for t in trends]

@@ -313,34 +313,82 @@ def process_new_rss_articles(rss_items: list[NewsItem], max_per_run: int = 5, tr
         seen_norm.add(norm)
         deduped.append(item)
 
-    # 日本関連の記事 4本 + 海外記事 2本を優先して選ぶ（max_per_run >= 6 の場合）
-    if max_per_run >= 6:
-        domestics: list[NewsItem] = []
-        foreigners: list[NewsItem] = []
-        for x in deduped:
-            if is_foreign_article(x.source, x.title, x.summary or ""):
-                foreigners.append(x)
-            else:
-                domestics.append(x)
+    # --- まず論文（研究・論文）をドメインごとに1本ずつ確保する ---
+    PAPER_DOMAIN_ORDER = [
+        "筋肉・スポーツ・身体",
+        "医療・ヘルスケア",
+        "AI・テック",
+        "物理・宇宙",
+        "経済・ビジネス",
+        "総合科学",
+        "工学・応用",
+    ]
+    SOURCE_TO_PAPER_DOMAIN = {
+        "Nature": "総合科学",
+        "Science Magazine": "総合科学",
+        "arXiv cs.AI": "AI・テック",
+        "arXiv cs.LG": "AI・テック",
+        "arXiv cs.CL": "AI・テック",
+        "arXiv cs.CV": "AI・テック",
+        "Frontiers in Artificial Intelligence": "AI・テック",
+        "arXiv astro-ph": "物理・宇宙",
+        "arXiv quant-ph": "物理・宇宙",
+        "Frontiers in Sports and Active Living": "筋肉・スポーツ・身体",
+        "PLOS ONE": "医療・ヘルスケア",
+        "BMJ Open": "医療・ヘルスケア",
+        "SSRN": "経済・ビジネス",
+        "IDEAS/RePEc": "経済・ビジネス",
+        "Sensors (MDPI)": "工学・応用",
+    }
 
-        domestic_pick = _select_diverse_batch(domestics, 4, max_per_source=2, max_per_category=2)
-        foreign_pick = _select_diverse_batch(foreigners, 2, max_per_source=2, max_per_category=2)
+    papers = [x for x in deduped if x.category == "研究・論文"]
+    non_papers = [x for x in deduped if x.category != "研究・論文"]
 
-        to_process: list[NewsItem] = domestic_pick + foreign_pick
+    paper_capacity = min(len(PAPER_DOMAIN_ORDER), max_per_run)
+    picked_domains: set[str] = set()
+    paper_picks: list[NewsItem] = []
+    for item in papers:
+        if len(paper_picks) >= paper_capacity:
+            break
+        dom = SOURCE_TO_PAPER_DOMAIN.get(item.source)
+        if not dom or dom in picked_domains:
+            continue
+        picked_domains.add(dom)
+        paper_picks.append(item)
 
-        # 足りない分は全体の候補から多様性を見つつ補充
-        if len(to_process) < max_per_run:
-            remaining = [x for x in deduped if x not in to_process]
-            extra = _select_diverse_batch(
-                remaining,
-                max_per_run - len(to_process),
-                max_per_source=2,
-                max_per_category=2,
-            )
-            to_process.extend(extra)
-        to_process = to_process[:max_per_run]
-    else:
-        to_process = _select_diverse_batch(deduped, max_per_run, max_per_source=2, max_per_category=2)
+    remaining_slots = max_per_run - len(paper_picks)
+
+    # --- 残り枠でニュース記事を選ぶ（従来ロジックを非論文だけに適用） ---
+    news_picks: list[NewsItem] = []
+    if remaining_slots > 0:
+        if remaining_slots >= 6:
+            domestics: list[NewsItem] = []
+            foreigners: list[NewsItem] = []
+            for x in non_papers:
+                if is_foreign_article(x.source, x.title, x.summary or ""):
+                    foreigners.append(x)
+                else:
+                    domestics.append(x)
+
+            domestic_pick = _select_diverse_batch(domestics, 4, max_per_source=2, max_per_category=2)
+            foreign_pick = _select_diverse_batch(foreigners, 2, max_per_source=2, max_per_category=2)
+
+            news_picks = domestic_pick + foreign_pick
+
+            if len(news_picks) < remaining_slots:
+                remaining = [x for x in non_papers if x not in news_picks]
+                extra = _select_diverse_batch(
+                    remaining,
+                    remaining_slots - len(news_picks),
+                    max_per_source=2,
+                    max_per_category=2,
+                )
+                news_picks.extend(extra)
+            news_picks = news_picks[:remaining_slots]
+        else:
+            news_picks = _select_diverse_batch(non_papers, remaining_slots, max_per_source=2, max_per_category=2)
+
+    to_process = paper_picks + news_picks
 
     count = 0
     for item in to_process:

@@ -7,8 +7,137 @@ from .article_cache import load_all, load_all_processed, load_by_id, save_articl
 from .article_processor import process_new_rss_articles
 from .explanation_cache import get_cached_article_ids, invalidate_ids_cache
 
-# ジャンル表示順
-CATEGORY_ORDER = ["総合", "国内", "国際", "テクノロジー", "政治・社会", "スポーツ", "エンタメ"]
+# ジャンル表示順（研究・論文は論文専用ページで表示）
+CATEGORY_ORDER = ["総合", "国内", "国際", "テクノロジー", "政治・社会", "スポーツ", "エンタメ", "研究・論文"]
+
+# 論文ページ用：上位ジャンル（ドメイン）の表示順
+# - 💪 筋肉・スポーツ・身体
+# - 🧬 医療・ヘルスケア
+# - AI・テック
+# - ⚛️ 物理・宇宙
+# - 💰 経済・ビジネス
+# - 🧪 総合科学
+# - 🔬 工学・応用
+PAPER_DOMAIN_ORDER = [
+    "筋肉・スポーツ・身体",
+    "医療・ヘルスケア",
+    "AI・テック",
+    "物理・宇宙",
+    "経済・ビジネス",
+    "総合科学",
+    "工学・応用",
+]
+
+# 論文用：ソース名 → 上位ジャンルのマッピング
+SOURCE_TO_PAPER_DOMAIN: dict[str, str] = {
+    # 総合科学
+    "Nature": "総合科学",
+    "Science Magazine": "総合科学",
+    # AI・テック
+    "arXiv cs.AI": "AI・テック",
+    "arXiv cs.LG": "AI・テック",
+    "arXiv cs.CL": "AI・テック",
+    "arXiv cs.CV": "AI・テック",
+    "Frontiers in Artificial Intelligence": "AI・テック",
+    # 物理・宇宙
+    "arXiv astro-ph": "物理・宇宙",
+    "arXiv quant-ph": "物理・宇宙",
+    # 筋肉・スポーツ・身体
+    "Frontiers in Sports and Active Living": "筋肉・スポーツ・身体",
+    # 医療・ヘルスケア
+    "PLOS ONE": "医療・ヘルスケア",
+    "BMJ Open": "医療・ヘルスケア",
+    # 経済・ビジネス
+    "SSRN": "経済・ビジネス",
+    "IDEAS/RePEc": "経済・ビジネス",
+    # 工学・応用
+    "Sensors (MDPI)": "工学・応用",
+}
+
+# 論文フィルター（A〜I）用キーワード定義（タイトル・要約からタグ付け）
+PAPER_FILTER_KEYWORDS: dict[str, dict[str, list[str]]] = {
+    "筋肉・スポーツ・身体": {
+        "A": ["hypertrophy", "筋肥大"],
+        "B": ["strength", "筋力", "1rm", "one-repetition maximum"],
+        "C": ["endurance", "持久力", "vo2max", "vo2 max"],
+        "D": ["protein", "タンパク", "たんぱく", "diet", "栄養"],
+        "E": ["supplement", "サプリ", "creatine", "クレアチン", "beta-alanine", "ベータアラニン"],
+        "F": ["sleep", "睡眠", "recovery", "回復"],
+        "G": ["fat loss", "脂肪減少", "weight loss", "減量", "ダイエット"],
+        "H": ["testosterone", "ホルモン", "cortisol", "テストステロン"],
+        "I": ["injury", "ケガ", "傷害", "rehabilitation", "リハビリ"],
+    },
+    "医療・ヘルスケア": {
+        "A": ["treatment", "治療", "therapy"],
+        "B": ["prevention", "予防"],
+        "C": ["epidemiology", "疫学"],
+        "D": ["vaccine", "ワクチン", "drug", "新薬"],
+        "E": ["diabetes", "糖尿病", "hypertension", "高血圧", "chronic"],
+        "F": ["mental health", "メンタル", "うつ", "depression", "anxiety"],
+        "G": ["longevity", "寿命", "aging", "アンチエイジング"],
+        "H": ["lifestyle", "生活習慣", "diet", "運動", "exercise"],
+        "I": ["diagnosis", "診断", "ai diagnosis"],
+    },
+    "AI・テック": {
+        "A": ["gpt", "llm", "large language model"],
+        "B": ["diffusion", "stable diffusion", "image generation"],
+        "C": ["video generation", "video diffusion"],
+        "D": ["reinforcement learning", "強化学習"],
+        "E": ["robot", "robotics"],
+        "F": ["application", "ビジネス", "use case"],
+        "G": ["breakthrough", "state-of-the-art", "sota"],
+        "H": ["benchmark", "performance comparison", "accuracy"],
+        "I": ["ethics", "倫理", "safety", "安全性"],
+    },
+    "物理・宇宙": {
+        "A": ["galaxy", "銀河", "planet", "惑星", "exoplanet"],
+        "B": ["black hole", "ブラックホール"],
+        "C": ["quantum", "量子力学"],
+        "D": ["cosmology", "ビッグバン", "cosmic"],
+        "E": ["particle", "粒子物理"],
+        "F": ["telescope", "観測技術"],
+        "G": ["mystery", "謎", "unexplained", "new discovery"],
+    },
+    "経済・ビジネス": {
+        "A": ["inflation", "インフレ", "interest rate", "金利"],
+        "B": ["stock market", "株式市場", "equity"],
+        "C": ["crypto", "cryptocurrency", "bitcoin"],
+        "D": ["policy", "中央銀行", "federal reserve", "政府"],
+        "E": ["corporate strategy", "企業戦略", "m&a"],
+        "F": ["consumer", "行動経済学", "behavioral"],
+        "G": ["labor", "雇用", "失業"],
+        "H": ["global economy", "グローバル経済", "world economy"],
+    },
+    "総合科学": {
+        # 総合寄りの記事は細かい軸を持たないのでゆるくタグ付け
+        "G": ["breakthrough", "新発見", "landmark"],
+    },
+    "工学・応用": {
+        "A": ["robot", "robotics", "automation"],
+        "B": ["ai engineering", "control"],
+        "C": ["material", "materials", "nanomaterial"],
+        "D": ["battery", "solar", "fuel cell"],
+        "E": ["semiconductor", "chip"],
+        "F": ["5g", "6g", "network"],
+        "G": ["mechanical", "fluid"],
+        "H": ["infrastructure", "earthquake", "構造"],
+        "I": ["biomedical", "bioengineering"],
+        "J": ["manufacturing", "3d printing"],
+    },
+}
+
+
+def _detect_paper_filter(domain: str, title: str, summary: str) -> str:
+    """論文1件に対して A〜I などのフィルターコードを1つ付与（最初にマッチしたもの）"""
+    conf = PAPER_FILTER_KEYWORDS.get(domain)
+    if not conf:
+        return ""
+    text = f"{title or ''} {summary or ''}".lower()
+    for code, keywords in conf.items():
+        for kw in keywords:
+            if kw.lower() in text:
+                return code
+    return ""
 
 
 def _score_article_by_trends(item: NewsItem, trend_keywords: list[str]) -> int:
@@ -95,8 +224,8 @@ class NewsAggregator:
                     # トレンド（Google急上昇＋X）で精査し、合致した話題を優先して取り込む
                     trends = cls.get_trends(force_refresh=True)
                     trend_keywords = [t.keyword for t in trends]
-                    # 日本関連記事4本＋海外記事2本を優先（合計6本）
-                    process_new_rss_articles(news, max_per_run=6, trend_keywords=trend_keywords)
+                    # 論文: 各ドメインから最大1本ずつ + ニュース: 残り枠（合計最大10本）
+                    process_new_rss_articles(news, max_per_run=10, trend_keywords=trend_keywords)
                 processed_ids = get_cached_article_ids()
             cls._news_cache = load_all_processed(processed_ids)[:PAGE_DISPLAY_LIMIT]
             cls._last_updated = datetime.now()
@@ -134,6 +263,42 @@ class NewsAggregator:
             "has_next": page < total_pages,
         }
         return news_by_category, pagination
+
+    @classmethod
+    def get_papers_by_category(cls, force_refresh: bool = False, page: int = 1) -> tuple[list[tuple[str, list[NewsItem]]], dict]:
+        """
+        論文（研究・論文ジャンル）を上位ジャンル（ドメイン）ごとにグループ化。
+        戻り値: (papers_by_category, pagination_info)
+        papers_by_category は (domain_name, list[NewsItem]) のリスト（表示順は PAPER_DOMAIN_ORDER）。
+        """
+        news = cls.get_news(force_refresh)
+        papers = [a for a in news if a.category == "研究・論文"]
+        papers.sort(key=lambda x: x.published or datetime.min, reverse=True)
+        total = len(papers)
+        per_page = ITEMS_PER_PAGE
+        total_pages = max(1, (total + per_page - 1) // per_page)
+        page = max(1, min(page, total_pages))
+        start = (page - 1) * per_page
+        page_items = papers[start : start + per_page]
+        # どの上位ジャンルに属するか（ソース → ドメイン）でグルーピング
+        domains_with_articles = {SOURCE_TO_PAPER_DOMAIN.get(p.source, "総合科学") for p in papers}
+        domains_order = [d for d in PAPER_DOMAIN_ORDER if d in domains_with_articles]
+        by_domain: dict[str, list[NewsItem]] = {}
+        for item in page_items:
+            domain = SOURCE_TO_PAPER_DOMAIN.get(item.source, "総合科学")
+            # 細かいフィルター（A〜I）をタイトル・要約から判定
+            item.paper_filter_code = _detect_paper_filter(domain, item.title, item.summary)
+            by_domain.setdefault(domain, []).append(item)
+        papers_by_category = [(dom, by_domain.get(dom, [])) for dom in domains_order]
+        pagination = {
+            "page": page,
+            "per_page": per_page,
+            "total": total,
+            "total_pages": total_pages,
+            "has_prev": page > 1,
+            "has_next": page < total_pages,
+        }
+        return papers_by_category, pagination
 
     @classmethod
     def get_trends(cls, force_refresh: bool = False) -> list[TrendItem]:

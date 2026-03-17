@@ -77,6 +77,36 @@ RSS_FEEDS = [
     # 科学・宇宙系（テクノロジー扱い）
     ("https://www.sciencedaily.com/rss/all.xml", "ScienceDaily", "テクノロジー"),
     ("https://www.nasa.gov/rss/dyn/breaking_news.rss", "NASA", "テクノロジー"),
+
+    # 研究・論文（論文専用ページで表示）
+    # 総合科学（当たり率が高い）
+    ("https://www.nature.com/nature.rss", "Nature", "研究・論文"),
+    ("https://www.science.org/action/showFeed?type=etoc&feed=rss&jc=science", "Science Magazine", "研究・論文"),
+
+    # AI・テック（arXiv + Frontiers AI）
+    ("https://export.arxiv.org/rss/cs.AI", "arXiv cs.AI", "研究・論文"),
+    ("https://export.arxiv.org/rss/cs.LG", "arXiv cs.LG", "研究・論文"),
+    ("https://export.arxiv.org/rss/cs.CL", "arXiv cs.CL", "研究・論文"),
+    ("https://export.arxiv.org/rss/cs.CV", "arXiv cs.CV", "研究・論文"),
+    ("https://www.frontiersin.org/journals/artificial-intelligence/rss", "Frontiers in Artificial Intelligence", "研究・論文"),
+
+    # 物理・宇宙（arXiv astro-ph / quant-ph）
+    ("https://export.arxiv.org/rss/astro-ph", "arXiv astro-ph", "研究・論文"),
+    ("https://export.arxiv.org/rss/quant-ph", "arXiv quant-ph", "研究・論文"),
+
+    # 筋肉・スポーツ・身体（Frontiers sports / PLOS ONE）
+    ("https://www.frontiersin.org/journals/sports-and-active-living/rss", "Frontiers in Sports and Active Living", "研究・論文"),
+    ("https://journals.plos.org/plosone/feed/atom", "PLOS ONE", "研究・論文"),
+
+    # 医学・健康（BMJ Open など）
+    ("https://bmjopen.bmj.com/rss/current.xml", "BMJ Open", "研究・論文"),
+
+    # 経済・ビジネス
+    ("https://www.ssrn.com/index.cfm/en/rss/", "SSRN", "研究・論文"),
+    ("https://ideas.repec.org/rss/rss.xml", "IDEAS/RePEc", "研究・論文"),
+
+    # 工学・応用
+    ("https://www.mdpi.com/rss/journal/sensors", "Sensors (MDPI)", "研究・論文"),
 ]
 
 # タイトルキーワードでジャンルを上書き（総合ソース向け）

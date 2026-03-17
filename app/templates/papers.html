@@ -1,0 +1,162 @@
+{% extends "base.html" %}
+{% block title %}論文 - 知リポAI{% endblock %}
+{% block meta_extra %}
+    <meta property="og:type" content="website">
+    <meta property="og:title" content="論文 - 知リポAI">
+    <meta property="og:description" content="Nature・Science・arXivなど最新の研究論文をAIが解説。">
+{% endblock %}
+{% block content %}
+<section class="page-header">
+    <h1 class="page-title">📄 論文</h1>
+    <p class="page-desc">Nature・Science・arXivなど最新の研究をジャンル別に、AIが解説</p>
+</section>
+<div class="page-layout">
+    <div class="content-main">
+        {% if has_papers %}
+        <div class="genre-tabs-wrap" role="tablist" aria-label="論文ジャンルで絞り込み">
+            <div class="genre-tabs-scroll">
+                <button type="button" class="genre-tab is-active" role="tab" aria-selected="true" data-cat="all">すべて</button>
+                {% for domain, items in papers_by_category %}
+                <button type="button" class="genre-tab" role="tab" aria-selected="false" data-cat="{{ domain }}">{{ domain }}</button>
+                {% endfor %}
+            </div>
+        </div>
+        <div class="paper-filter-wrap">
+            <label for="paper-filter-select">細かいフィルター:</label>
+            <select id="paper-filter-select">
+                <option value="">すべて</option>
+                <option value="A">A</option>
+                <option value="B">B</option>
+                <option value="C">C</option>
+                <option value="D">D</option>
+                <option value="E">E</option>
+                <option value="F">F</option>
+                <option value="G">G</option>
+                <option value="H">H</option>
+                <option value="I">I</option>
+            </select>
+        </div>
+        {% endif %}
+
+        <div class="news-grid" id="papers-grid">
+            {% if not has_papers %}
+            <p class="empty-msg">論文の記事がまだありません。RSS取り込み後に表示されます。</p>
+            {% else %}
+            {% for domain, items in papers_by_category %}
+            {% for item in items %}
+            <article class="news-card animate-fade-in" data-category="{{ domain }}" data-filter="{{ item.paper_filter_code or '' }}">
+                <a href="/topic/{{ item.id }}" class="news-card-link">
+                    <div class="news-card-image">
+                        <img src="{{ item.image_url or 'https://picsum.photos/400/225' }}" alt="{{ item.title }}" loading="lazy" onerror="this.src='https://picsum.photos/seed/{{ item.id }}/400/225'">
+                        <span class="news-card-category">{{ domain }}</span>
+                    </div>
+                    <div class="news-card-body">
+                        <div class="news-card-meta">
+                            <span class="news-card-time">🕒 {{ item.published.strftime('%m/%d %H:%M') if item.published else '' }}</span>
+                            <span class="news-card-source">{{ item.source }}</span>
+                        </div>
+                        <h3 class="news-title">{{ item.title }}</h3>
+                        <p class="news-summary-line">👀 {{ (item.summary or '')[:80] }}{% if (item.summary or '')|length > 80 %}...{% endif %}</p>
+                        <div class="news-card-footer">
+                            <span class="news-card-ai">✍ AIが解説</span>
+                            <span class="news-badge">AI解説</span>
+                        </div>
+                    </div>
+                </a>
+            </article>
+            {% endfor %}
+            {% endfor %}
+            {% endif %}
+        </div>
+
+        {% if has_papers %}
+        <div id="papers-sentinel" style="height:1px;"></div>
+        <div id="papers-loader" class="infinite-loader" style="display:none;">
+            <div class="loader-spinner"></div>
+            <p>読み込み中...</p>
+        </div>
+        <div id="papers-end" class="infinite-end" style="display:none;">
+            <p>すべての論文を表示しました</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function() {
+    var tabs = document.querySelectorAll('.genre-tab');
+    var filterSelect = document.getElementById('paper-filter-select');
+    var cards = document.querySelectorAll('#papers-grid .news-card');
+    var activeDomain = 'all';
+    var activeFilter = '';
+
+    function applyFilters() {
+        cards.forEach(function(card) {
+            var dom = card.getAttribute('data-category') || '';
+            var f = card.getAttribute('data-filter') || '';
+            var domainOk = (activeDomain === 'all' || dom === activeDomain);
+            var filterOk = (!activeFilter || f === activeFilter);
+            card.style.display = (domainOk && filterOk) ? '' : 'none';
+        });
+    }
+
+    tabs.forEach(function(tab) {
+        tab.addEventListener('click', function() {
+            activeDomain = this.getAttribute('data-cat');
+            tabs.forEach(function(t) { t.classList.remove('is-active'); t.setAttribute('aria-selected', 'false'); });
+            this.classList.add('is-active');
+            this.setAttribute('aria-selected', 'true');
+            applyFilters();
+        });
+    });
+
+    if (filterSelect) {
+        filterSelect.addEventListener('change', function() {
+            activeFilter = this.value || '';
+            applyFilters();
+        });
+    }
+
+    var page = {{ pagination.page }};
+    var totalPages = {{ pagination.total_pages }};
+    var loading = false;
+    var loader = document.getElementById('papers-loader');
+    var endMsg = document.getElementById('papers-end');
+    var grid = document.getElementById('papers-grid');
+
+    if (page >= totalPages && grid && grid.children.length > 0) {
+        if (endMsg) endMsg.style.display = 'block';
+    }
+
+    function loadMore() {
+        if (loading || page >= totalPages) return;
+        loading = true;
+        if (loader) loader.style.display = 'flex';
+        page++;
+        fetch('/api/papers/page?page=' + page).then(function(r) { return r.json(); }).then(function(data) {
+            if (data.html && grid) {
+                grid.insertAdjacentHTML('beforeend', data.html);
+                cards = document.querySelectorAll('#papers-grid .news-card');
+                applyFilters();
+            }
+            if (page >= data.total_pages && endMsg) endMsg.style.display = 'block';
+            loading = false;
+            if (loader) loader.style.display = 'none';
+        }).catch(function() {
+            loading = false;
+            if (loader) loader.style.display = 'none';
+        });
+    }
+
+    var sentinel = document.getElementById('papers-sentinel');
+    if (sentinel && 'IntersectionObserver' in window) {
+        var obs = new IntersectionObserver(function(entries) {
+            if (entries[0].isIntersecting) loadMore();
+        }, { rootMargin: '600px' });
+        obs.observe(sentinel);
+    }
+})();
+</script>
+{% endblock %}

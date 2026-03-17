@@ -93,9 +93,6 @@ async def lifespan(app: FastAPI):
 
     # Firestore は起動時に import しない（firebase-admin が重く 512MB で OOM になるため）。初回の記事取得時に読み込まれる。
     if not rss_ai_disabled:
-        # 起動時に日本1本＋海外1本を追加（バックグラウンド）
-        t_startup = threading.Thread(target=_startup_add_one_each, daemon=True)
-        t_startup.start()
         # キャッシュが少ないときだけ追加でシード（RSS+AIで数分かかるため）
         t_seed = threading.Thread(target=_seed_if_needed, daemon=True)
         t_seed.start()
