@@ -215,14 +215,28 @@ def explain_article_long_with_bubbles(
     return [{"type": "text", "content": content[:3500]}, {"type": "explain", "content": "（生成に失敗しました。しばらくしてから再度お試しください。）"}]
 
 
-# 理解ナビゲーター：記事を5項目で再構成
-NAVIGATOR_ROLE = """あなたは「理解ナビゲーター」です。ニュース記事を読んで、読者が理解しやすいよう次の5項目で必ず再構成してください。入力が英語でも、出力は必ず日本語のみにすること。
+# ニュース記事用：理解ナビゲーター（ニュース編集者人格）
+NAVIGATOR_ROLE_NEWS = """あなたはニュース編集者です。最新の出来事を正確かつ簡潔に伝えることが役割です。
+事実を重視し、誇張せず、主観を入れすぎないようにしてください。
+読者が理解しやすいよう、ニュース記事を次の5項目で必ず再構成します。入力が英語でも、出力は必ず日本語のみとします。
 ・何が起きたか（事実）：起きたことの要点を簡潔に。
 ・なぜ起きたか（背景）：原因・経緯・文脈を分かりやすく。
 ・誰に影響するか（影響範囲）：どのような人・業界・地域に影響するか。
 ・次に何が起きそうか（予測）：今後の見通し・想定される動き（不確実な場合は「〜の可能性がある」などと表現）。
 ・誤解しやすい点（注意）：よくある誤解や注意すべき解釈を簡潔に。
-各項目は2〜5文程度。事実に基づき、平易な日本語で。煽らず、推測は「〜とみられる」等で示す。"""
+各項目は2〜5文程度。結論から書き、事実に基づき、平易な日本語で。煽らず、推測は「〜とみられる」等で示してください。"""
+
+# 論文記事用：理解ナビゲーター（研究解説者人格）
+NAVIGATOR_ROLE_PAPER = """あなたは研究解説者（リサーチアナリスト）です。様々な分野の論文を一般読者向けに分かりやすく解説します。
+分野に依存せず本質を捉え、新規性と実用性の両方を見ます。誇張せず客観的に伝えてください。
+専門用語はかみ砕き、一般人でも理解できる日本語で書きます。
+論文の内容を次の5項目で必ず再構成してください。入力が英語でも、出力は必ず日本語のみにします。
+・何が起きたか（事実）：研究で何をしたのか、何が分かったのかを簡潔に。
+・なぜ起きたか（背景）：従来の状況・課題・研究の文脈を分かりやすく。
+・誰に影響するか（影響範囲）：どのような分野・業界・人々に関係しそうか。
+・次に何が起きそうか（予測）：今後の研究や応用の方向性（「〜の可能性がある」など控えめな表現）。
+・誤解しやすい点（注意）：過大評価しやすい点や、まだ分かっていないこと。
+各項目は2〜5文程度。「何が新しいのか」「従来と何が違うのか」「どんな価値があるのか」を意識しつつ、断定しすぎない表現を使ってください。"""
 
 _NAVIGATOR_SECTION_ORDER = ("facts", "background", "impact", "prediction", "caution")
 
@@ -251,8 +265,11 @@ def explain_article_as_navigator(
     title: str,
     content: str,
     model: str | None = None,
+    *,
+    is_paper: bool = False,
 ) -> list[dict[str, Any]]:
-    """記事を「理解ナビゲーター」の5項目（事実・背景・影響・予測・注意）で再構成してブロック配列で返す"""
+    """記事を「理解ナビゲーター」の5項目（事実・背景・影響・予測・注意）で再構成してブロック配列で返す。
+    is_paper=True のときは論文向け（研究解説者）人格で解説する。"""
     if not settings.OPENAI_API_KEY:
         return [
             {"type": "navigator_section", "section": "facts", "content": "（APIキーが設定されていません）"},
@@ -281,7 +298,7 @@ facts（何が起きたか・事実）, background（なぜ起きたか・背景
                 5000,
                 model=model,
                 messages=[
-                    {"role": "system", "content": NAVIGATOR_ROLE},
+                    {"role": "system", "content": NAVIGATOR_ROLE_PAPER if is_paper else NAVIGATOR_ROLE_NEWS},
                     {"role": "user", "content": user_prompt},
                 ],
                 response_format=_JSON_SCHEMA_NAVIGATOR,
@@ -297,7 +314,11 @@ facts（何が起きたか・事実）, background（なぜ起きたか・背景
                 5000,
                 model=model,
                 messages=[
-                    {"role": "system", "content": NAVIGATOR_ROLE + " 出力はJSONのみ。facts, background, impact, prediction, caution の5キーを必ず含めてください。"},
+                    {
+                        "role": "system",
+                        "content": (NAVIGATOR_ROLE_PAPER if is_paper else NAVIGATOR_ROLE_NEWS)
+                        + " 出力はJSONのみ。facts, background, impact, prediction, caution の5キーを必ず含めてください。",
+                    },
                     {"role": "user", "content": user_prompt},
                 ],
                 temperature=0.2,

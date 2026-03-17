@@ -43,15 +43,18 @@ def _scheduled_2000_rss_and_ai_daily():
 
 
 def _seed_if_needed():
-    """キャッシュが少ないときだけRSS取得→記事化（重いのでバックグラウンドで実行）"""
+    """キャッシュが少ないときだけRSS取得→記事化。Firestore 読取削減のため existing_articles を渡す。"""
     from app.services.explanation_cache import get_cached_article_ids
+    from app.services.article_cache import load_all
     from app.services.rss_service import fetch_rss_news
     from app.services.article_processor import process_new_rss_articles
     cached_ids = get_cached_article_ids()
-    if len(cached_ids) < 20:
-        news_list = fetch_rss_news()
-        if news_list:
-            process_new_rss_articles(news_list, max_per_run=5)
+    if len(cached_ids) >= 20:
+        return
+    all_items = load_all()
+    news_list = fetch_rss_news()
+    if news_list:
+        process_new_rss_articles(news_list, max_per_run=5, existing_articles=all_items)
 
 
 def _startup_add_one_each():
@@ -93,9 +96,12 @@ async def lifespan(app: FastAPI):
 
     # Firestore は起動時に import しない（firebase-admin が重く 512MB で OOM になるため）。初回の記事取得時に読み込まれる。
     if not rss_ai_disabled:
-        # キャッシュが少ないときだけ追加でシード（RSS+AIで数分かかるため）
-        t_seed = threading.Thread(target=_seed_if_needed, daemon=True)
-        t_seed.start()
+        # シードは _init 完了後に実行（同時の load_all で Firestore 読取バーストを防ぐ）
+        def _run_seed_delayed():
+            import time
+            time.sleep(90)
+            _seed_if_needed()
+        threading.Thread(target=_run_seed_delayed, daemon=True).start()
 
     def _init():
         NewsAggregator.get_news(force_refresh=not rss_ai_disabled)

@@ -553,7 +553,7 @@ async def api_explain_inline(article_id: str):
     item = NewsAggregator.get_article(article_id)
     if not item:
         raise HTTPException(status_code=404, detail="記事が見つかりません")
-    data = generate_all_explanations(article_id, item.title, f"{item.title}\n\n{item.summary}")
+    data = generate_all_explanations(article_id, item.title, f"{item.title}\n\n{item.summary}", category=item.category)
     return {"blocks": _sanitize_blocks(data["blocks"])}
 
 
@@ -564,7 +564,7 @@ async def api_all_explanations(article_id: str):
     if not item:
         raise HTTPException(status_code=404, detail="記事が見つかりません")
     content = f"{item.title}\n\n{item.summary}"
-    data = generate_all_explanations(article_id, item.title, content)
+    data = generate_all_explanations(article_id, item.title, content, category=item.category)
     # 新形式は3人分のみ→フロント互換のため14スロットで返す（該当3件のみ埋める）
     if data.get("display_persona_ids") is not None and len(data.get("personas", [])) == 3:
         full_personas = [""] * len(PERSONAS)
@@ -583,7 +583,7 @@ async def api_persona_opinion(article_id: str, persona_id: int):
     item = NewsAggregator.get_article(article_id)
     if not item:
         raise HTTPException(status_code=404, detail="記事が見つかりません")
-    data = generate_all_explanations(article_id, item.title, f"{item.title}\n\n{item.summary}")
+    data = generate_all_explanations(article_id, item.title, f"{item.title}\n\n{item.summary}", category=item.category)
     if data.get("display_persona_ids") is not None and persona_id in data["display_persona_ids"]:
         idx = data["display_persona_ids"].index(persona_id)
         opinion = data["personas"][idx] if idx < len(data["personas"]) else ""
@@ -680,7 +680,7 @@ def _do_create_manual_article_sync(title: str, summary: str, link: str = "", sou
     """手動記事をAIで生成して保存（同期・スレッド実行用）。generate_all_explanations 内で save_cache 済み"""
     article_id = "manual-" + uuid.uuid4().hex[:16]
     content = sanitize_display_text(f"{title}\n\n{summary}")[:20000]
-    data = generate_all_explanations(article_id, title, content)
+    data = generate_all_explanations(article_id, title, content, category="総合")
     blocks = data.get("blocks", [])
     if not blocks:
         return {"status": "error", "article_id": None, "message": "AIによる記事生成に失敗しました"}

@@ -62,9 +62,10 @@ def process_rss_to_site_article(item: NewsItem, force: bool = False) -> bool:
     if item.source in FOREIGN_SOURCES and (not text_mainly_japanese(title_ja) or not text_mainly_japanese(summary_ja)):
         return False  # 海外は日本語にならない場合は保存しない（無駄なAPI連打はしない）
 
-    # 【】が既に付いていればそのまま、なければ AI で目を引く【】を付与
-    if not title_ja.startswith("【"):
-        title_ja = _add_bracket_title(title_ja)
+    # タイトルは「元のタイトルをベースに、事実を変えず、誇張せず、必要なら少しだけ分かりやすく」整える
+    # 論文（研究・論文）は見出し加工を避け、元タイトルを基本そのまま使う
+    if item.category != "研究・論文":
+        title_ja = _rewrite_news_title(title_ja)
 
     # ジャンルはRSSごとの設定（＋総合ソースはタイトルキーワード補正）のまま使う。AI分類は使わない。
     # 公開日時は「記事として取り込んだ時刻」を使う（元のRSSが古い日時でも、サイト上では追加順に並ぶようにする）
@@ -91,7 +92,7 @@ def process_rss_to_site_article(item: NewsItem, force: bool = False) -> bool:
         content = sanitize_display_text(f"{item.title}\n\n{item.summary}\n\n{body_clean}")
     else:
         content = sanitize_display_text(f"{item.title}\n\n{item.summary}")
-    data = generate_all_explanations(item.id, item.title, content)
+    data = generate_all_explanations(item.id, item.title, content, category=item.category)
     blocks = data.get("blocks", [])
     personas = data.get("personas", [])
     display_persona_ids = data.get("display_persona_ids")
@@ -111,63 +112,55 @@ def process_rss_to_site_article(item: NewsItem, force: bool = False) -> bool:
     return True
 
 
-def _add_bracket_title(title: str) -> str:
-    """タイトル先頭に【○○】を付ける。AIで内容に合った目を引くフレーズを生成。失敗時はルールベースで付与。"""
-    import re
-    if title.startswith("【"):
-        return title
-    t = title.strip()
+def _rewrite_news_title(title: str) -> str:
+    """ニュース用タイトルを編集方針で整形（誇張せず、事実を変えず、必要な範囲で分かりやすく）。"""
+    t = (title or "").strip()
+    if not t:
+        return ""
 
-    # AI で【】の中身を生成
+    # すでに【】が付いていても、煽りを避けるため外す（必要ならAIで自然なタイトルに戻す）
+    if t.startswith("【") and "】" in t[:12]:
+        t = t.split("】", 1)[1].strip()
+
+    # 長すぎる場合のみ短縮（まずはルールベースで）
+    def _shorten(s: str, max_len: int = 55) -> str:
+        s = " ".join(s.split())
+        return s if len(s) <= max_len else (s[:max_len] + "…")
+
+    # AI が使える場合は「編集者リライト」を1回だけ試す
     try:
-        from app.utils.openai_compat import create_with_retry
-        from openai import OpenAI
         from app.config import settings
         if settings.OPENAI_API_KEY:
+            from openai import OpenAI
+            from app.utils.openai_compat import create_with_retry
             client = OpenAI(api_key=settings.OPENAI_API_KEY)
+            system_prompt = """あなたはニュース編集者です。見出しを整えます。
+ルール：
+- 元のタイトルをベースにする
+- 事実を変えない
+- 誇張しない（煽り語禁止：衝撃/激震/悲報/朗報/必見/真相/裏側 など）
+- 必要なら少しだけ分かりやすくする
+- 長すぎる場合のみ短縮する
+- 目を引くが、あくまで事実ベースで落ち着いた表現
+- 出力はタイトル1行のみ（引用符や説明不要）"""
+            user_prompt = f"元タイトル：{t}\n\n上のルールで、自然な日本語の見出しに整えてください。"
             resp = create_with_retry(
                 client,
-                50,
+                120,
                 model=settings.OPENAI_MODEL,
                 messages=[
-                    {"role": "system", "content": "ニュース見出しの先頭に付ける【】の中身を1つだけ出力するアシスタント。"},
-                    {"role": "user", "content": f"""次のニュースタイトルに合う【】の中身を1つだけ出力してください。
-ルール：
-- 2〜4文字の日本語のみ（英語禁止）
-- 読者の目を引く・クリックしたくなる言葉
-- 例：なぜ、衝撃、驚き、速報、激震、転換、急展開、真相、裏側、本音、盲点、必見、要注意、朗報、悲報、異変、深層
-- 「解説」は使わない。もっとインパクトのある言葉を選ぶ
-- 【】は付けず中身だけ出力
-
-タイトル：{t[:200]}"""},
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": user_prompt},
                 ],
-                temperature=0.7,
+                temperature=0.2,
             )
-            label = (resp.choices[0].message.content or "").strip().strip("【】「」").strip()
-            if label and 1 <= len(label) <= 6:
-                return f"【{label}】{t}"
+            out = (resp.choices[0].message.content or "").strip().strip("「」\"'")
+            if out:
+                return _shorten(out)
     except Exception:
         pass
 
-    # フォールバック：ルールベース
-    bracket_map = [
-        (r"(なぜ|理由|原因|背景|どうして)", "なぜ"),
-        (r"(何|とは|どういう)", "真相"),
-        (r"(発表|公開|開始|解禁|決定)", "速報"),
-        (r"(判明|発覚|明らかに)", "判明"),
-        (r"(初めて|史上初|世界初|日本初)", "驚き"),
-        (r"(急増|急落|急騰|暴落|高騰)", "激震"),
-        (r"(改正|法案|規制|制裁)", "要注意"),
-        (r"(危機|懸念|警告|リスク)", "警鐘"),
-        (r"(合意|締結|連携|提携)", "注目"),
-        (r"(戦争|紛争|攻撃|侵攻)", "緊迫"),
-        (r"(逮捕|起訴|容疑|事件)", "衝撃"),
-        (r"(勝利|優勝|達成|記録)", "快挙"),
-    ]
-    for pattern, label in bracket_map:
-        if re.search(pattern, t):
-            return f"【{label}】{t}"
-    return f"【必見】{t}"
+    return _shorten(t)
 
 
 def _select_diverse_batch(
@@ -273,14 +266,16 @@ def process_startup_articles(rss_items: list[NewsItem] | None = None, trend_keyw
     return count
 
 
-def process_new_rss_articles(rss_items: list[NewsItem], max_per_run: int = 5, trend_keywords: list[str] | None = None) -> int:
+def process_new_rss_articles(
+    rss_items: list[NewsItem],
+    max_per_run: int = 5,
+    trend_keywords: list[str] | None = None,
+    existing_articles: list[NewsItem] | None = None,
+) -> int:
     """
     RSS記事を Autocomplete スコアリング → 軽量フィルタ → 同一内容は1本に → 上位N件をAI処理して掲載。
 
-    1. 軽量フィルタで低価値記事を除外（文字数・ジャンル・キーワード）
-    2. Google Autocomplete + トレンド + 高価値キーワードでスコアリング
-    3. 既存記事・候補内で「同じ内容」（正規化タイトル一致）は1本だけに除外
-    4. スコア上位 max_per_run 件を AI 解説付きで記事化
+    existing_articles を渡すと load_all() を呼ばずに既存タイトルで重複排除（Firestore 読取削減）。
     """
     if not rss_items:
         return 0
@@ -296,10 +291,14 @@ def process_new_rss_articles(rss_items: list[NewsItem], max_per_run: int = 5, tr
         ranked = rank_and_filter_articles(rss_items, trend_keywords, max_articles=max_per_run * 3)
         force = True
 
-    # 既存掲載記事の正規化タイトル（同じ内容は1本だけにするため）
+    # 既存掲載記事の正規化タイトル（同じ内容は1本だけにするため）。渡されていれば load_all() しない
     existing_norm = set()
-    for a in load_all():
-        existing_norm.add(_normalize_title_for_dedup(a.title))
+    if existing_articles is not None:
+        for a in existing_articles:
+            existing_norm.add(_normalize_title_for_dedup(a.title))
+    else:
+        for a in load_all():
+            existing_norm.add(_normalize_title_for_dedup(a.title))
 
     # 候補内で正規化タイトルが重複しているものはスコア上位1件だけ残す
     seen_norm = set()

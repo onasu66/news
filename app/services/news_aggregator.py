@@ -213,7 +213,9 @@ class NewsAggregator:
             invalidate_ids_cache()  # 処理済みID一覧も捨てて、再取得で最新を取る
         if force_refresh or not cls._news_cache:
             processed_ids = get_cached_article_ids()
-            cached = load_all_processed(processed_ids)[:PAGE_DISPLAY_LIMIT]
+            # 読み取り削減: load_all は1回だけ行い、force_refresh 時は process に渡して再読を避ける
+            all_items = load_all()
+            cached = [x for x in all_items if x.id in processed_ids][:PAGE_DISPLAY_LIMIT]
             if cached and not force_refresh:
                 cls._news_cache = cached
                 cls._last_updated = datetime.now()
@@ -221,13 +223,14 @@ class NewsAggregator:
             if force_refresh:
                 news = fetch_rss_news()
                 if news:
-                    # トレンド（Google急上昇＋X）で精査し、合致した話題を優先して取り込む
                     trends = cls.get_trends(force_refresh=True)
                     trend_keywords = [t.keyword for t in trends]
-                    # 論文: 各ドメインから最大1本ずつ + ニュース: 残り枠（合計最大10本）
-                    process_new_rss_articles(news, max_per_run=10, trend_keywords=trend_keywords)
+                    process_new_rss_articles(
+                        news, max_per_run=10, trend_keywords=trend_keywords, existing_articles=all_items
+                    )
                 processed_ids = get_cached_article_ids()
-            cls._news_cache = load_all_processed(processed_ids)[:PAGE_DISPLAY_LIMIT]
+                all_items = load_all()
+            cls._news_cache = [x for x in all_items if x.id in processed_ids][:PAGE_DISPLAY_LIMIT]
             cls._last_updated = datetime.now()
         return cls._news_cache
 

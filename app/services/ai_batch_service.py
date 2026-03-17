@@ -38,7 +38,7 @@ def _quick_understand_from_navigator(navigator_blocks: list) -> dict:
     }
 
 
-def generate_all_explanations(article_id: str, title: str, content: str) -> dict:
+def generate_all_explanations(article_id: str, title: str, content: str, category: str | None = None) -> dict:
     """
     理解を1回（理解ナビゲーター）だけ行い、その結果を記事・秒速理解・投票に流用。
     人格は先にランダムで3人（論理2＋エンタメ1）を選び、その3人分だけAPI呼び出し。
@@ -49,7 +49,8 @@ def generate_all_explanations(article_id: str, title: str, content: str) -> dict
         return cached
 
     # 1) 理解は1回だけ：理解ナビゲーター（事実・背景・影響・予測・注意）
-    navigator_blocks = explain_article_as_navigator(title, content)
+    is_paper = category == "研究・論文"
+    navigator_blocks = explain_article_as_navigator(title, content, is_paper=is_paper)
     summary_text = _navigator_summary(navigator_blocks)
     quick_understand = _quick_understand_from_navigator(navigator_blocks)
 
