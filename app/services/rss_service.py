@@ -173,7 +173,8 @@ def _get_feed_url(original_url: str) -> str:
 
 
 def fetch_rss_news() -> list[NewsItem]:
-    """複数のRSSフィードからニュースを取得。公開が「現在から6時間以内」の記事だけに絞る。"""
+    """複数のRSSフィードからニュースを取得。
+    研究・論文は24時間以内、それ以外は6時間以内の記事に絞る。同一記事（link+title）は1本だけ。"""
     all_news: list[NewsItem] = []
     seen_ids = set()
 
@@ -216,8 +217,11 @@ def fetch_rss_news() -> list[NewsItem]:
                     continue
                 seen_ids.add(item_id)
 
-                # 総合ソースはタイトルからジャンルを推定
-                final_category = _detect_category_from_title(title, category)
+                # 総合ソースのみタイトルからジャンル推定。研究・論文はRSSの設定をそのまま使う
+                if category == "研究・論文":
+                    final_category = category
+                else:
+                    final_category = _detect_category_from_title(title, category)
 
                 all_news.append(NewsItem(
                     id=item_id,
@@ -232,11 +236,19 @@ def fetch_rss_news() -> list[NewsItem]:
         except Exception:
             continue
 
-    # 各RSSの発信から6時間以内のニュースだけに絞る（日付だとアメリカ時間等とずれるため時刻で判定）
+    # 研究・論文は24時間以内、それ以外は6時間以内に絞る（同じ記事はlink+titleでid重複排除済み）
     now_jst = datetime.now(JST).replace(tzinfo=None)
-    cutoff = now_jst - timedelta(hours=6)
-    all_news = [x for x in all_news if x.published >= cutoff]
+    cutoff_6h = now_jst - timedelta(hours=6)
+    cutoff_24h = now_jst - timedelta(hours=24)
+    filtered: list[NewsItem] = []
+    for x in all_news:
+        if x.category == "研究・論文":
+            if x.published >= cutoff_24h:
+                filtered.append(x)
+        else:
+            if x.published >= cutoff_6h:
+                filtered.append(x)
 
     # 日付でソート（新しい順＝人気度の代理）
-    all_news.sort(key=lambda x: x.published, reverse=True)
-    return all_news[:200]
+    filtered.sort(key=lambda x: x.published, reverse=True)
+    return filtered[:200]
