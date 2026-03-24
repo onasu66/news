@@ -35,25 +35,29 @@ HIGH_VALUE_KEYWORDS = {
     "政策", "法案", "経済", "規制", "金利", "インフレ", "GDP", "予算", "制裁",
     "半導体", "AI", "量子", "脱炭素", "再生可能エネルギー", "外交", "安全保障",
     "サミット", "条約", "改革", "選挙", "判決", "裁判", "汚職", "調査",
+    "体重", "筋肉", "老化", "健康", "運動", "栄養", "睡眠", "予防",
     "policy", "regulation", "economy", "inflation", "legislation", "sanctions",
     "semiconductor", "quantum", "climate", "diplomacy", "summit", "reform",
     "election", "ruling", "investigation",
+    "muscle", "aging", "protein", "exercise", "diet", "health", "longevity",
 }
 
 QUESTION_WORDS = ["何", "とは", "いつ", "どうして", "なぜ", "どう", "どこ", "誰"]
 
 
 def lightweight_filter(title: str, summary: str, category: str) -> bool:
-    """低価値記事なら False を返す。残すべきなら True。"""
+    """低価値記事なら False を返す。残すべきなら True。
+    研究・論文はLOW_VALUE_TITLE_PATTERNS（results/score等）を適用しない。学術論文では一般的な語のため。"""
     text = f"{title} {summary}"
     if len(text.strip()) < MIN_CONTENT_LENGTH:
         return False
-    if LOW_VALUE_TITLE_PATTERNS.search(title):
-        if not any(kw in text for kw in HIGH_VALUE_KEYWORDS):
-            return False
-    if category in LOW_VALUE_CATEGORIES:
-        if not any(kw in text for kw in HIGH_VALUE_KEYWORDS):
-            return False
+    if category != "研究・論文":
+        if LOW_VALUE_TITLE_PATTERNS.search(title):
+            if not any(kw in text for kw in HIGH_VALUE_KEYWORDS):
+                return False
+        if category in LOW_VALUE_CATEGORIES:
+            if not any(kw in text for kw in HIGH_VALUE_KEYWORDS):
+                return False
     return True
 
 
@@ -184,7 +188,7 @@ def score_article(title: str, summary: str, category: str,
     ac_score = score_keywords_autocomplete(kw_1g, kw_2g, q_variants)
 
     text = f"{title} {summary}"
-    hv_bonus = sum(3 for kw in HIGH_VALUE_KEYWORDS if kw in text)
+    hv_bonus = sum(1 for kw in HIGH_VALUE_KEYWORDS if kw in text)  # 軽め（1キーワード=+1点）
 
     trend_bonus = 0
     if trend_keywords:

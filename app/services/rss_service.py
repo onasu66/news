@@ -101,6 +101,13 @@ RSS_FEEDS = [
     # 医学・健康（BMJ Open など）
     ("https://bmjopen.bmj.com/rss/current.xml", "BMJ Open", "研究・論文"),
 
+    # PubMed（検索RSS・心理学系クエリ）— 論文ページの「心理学」ドメイン
+    (
+        "https://pubmed.ncbi.nlm.nih.gov/rss/search/1-ajL1qsWMIPAynykj-5p51mqo0z8KMu2pLHqtsHzN8gipbsyg/?limit=15&utm_campaign=pubmed-2",
+        "PubMed (心理学)",
+        "研究・論文",
+    ),
+
     # 経済・ビジネス
     ("https://www.ssrn.com/index.cfm/en/rss/", "SSRN", "研究・論文"),
     ("https://ideas.repec.org/rss/rss.xml", "IDEAS/RePEc", "研究・論文"),
@@ -161,7 +168,9 @@ def _parse_datetime(published: str) -> datetime:
 
 
 def _get_feed_url(original_url: str) -> str:
-    """Full-Text RSS が有効なら全文取得用URLに差し替える"""
+    """Full-Text RSS が有効なら全文取得用URLに差し替える（PubMed RSS はそのまま）"""
+    if "pubmed.ncbi.nlm.nih.gov" in original_url:
+        return original_url
     try:
         from app.config import settings
         base = getattr(settings, "FULLTEXT_RSS_BASE_URL", "") or ""
@@ -174,7 +183,8 @@ def _get_feed_url(original_url: str) -> str:
 
 def fetch_rss_news() -> list[NewsItem]:
     """複数のRSSフィードからニュースを取得。
-    研究・論文は24時間以内、それ以外は6時間以内の記事に絞る。同一記事（link+title）は1本だけ。"""
+    研究・論文は source ごとにフィルタ時間を切り替えて絞り込み（例：Nature/Science/Frontiers sports=1週間）。
+    それ以外は6時間以内。過去に同一記事（link+title）の重複は除外済み。"""
     all_news: list[NewsItem] = []
     seen_ids = set()
 
@@ -236,14 +246,28 @@ def fetch_rss_news() -> list[NewsItem]:
         except Exception:
             continue
 
-    # 研究・論文は24時間以内、それ以外は6時間以内に絞る（同じ記事はlink+titleでid重複排除済み）
+    # 研究・論文は source 別にフィルタ時間を切り替える
+    # - Nature / Science Magazine / Frontiers Sports: 1週間（週1〜週2〜週4の想定）
+    # - BMJ Open: 48時間
+    # - その他の研究・論文: 24時間（現状ロジックのデフォルト）
     now_jst = datetime.now(JST).replace(tzinfo=None)
     cutoff_6h = now_jst - timedelta(hours=6)
-    cutoff_24h = now_jst - timedelta(hours=24)
+    cutoff_default_24h = now_jst - timedelta(hours=24)
+
+    SOURCE_TO_CUTOFF_HOURS: dict[str, int] = {
+        "Nature": 24 * 7,
+        "Science Magazine": 24 * 7,
+        "Frontiers in Sports and Active Living": 24 * 7,
+        "BMJ Open": 48,
+        "PubMed (心理学)": 48,
+    }
+
     filtered: list[NewsItem] = []
     for x in all_news:
         if x.category == "研究・論文":
-            if x.published >= cutoff_24h:
+            hours = SOURCE_TO_CUTOFF_HOURS.get(x.source, 24)
+            cutoff = now_jst - timedelta(hours=hours)
+            if x.published >= cutoff:
                 filtered.append(x)
         else:
             if x.published >= cutoff_6h:
@@ -251,4 +275,4 @@ def fetch_rss_news() -> list[NewsItem]:
 
     # 日付でソート（新しい順＝人気度の代理）
     filtered.sort(key=lambda x: x.published, reverse=True)
-    return filtered[:200]
+    return filtered[:260]

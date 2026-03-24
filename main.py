@@ -54,7 +54,7 @@ def _seed_if_needed():
     all_items = load_all()
     news_list = fetch_rss_news()
     if news_list:
-        process_new_rss_articles(news_list, max_per_run=5, existing_articles=all_items)
+        process_new_rss_articles(news_list, max_per_run=7, existing_articles=all_items)
 
 
 def _startup_add_one_each():

@@ -293,17 +293,6 @@ def process_new_rss_articles(
     paper_candidates = [x for x in base_candidates if x.category == "研究・論文"]
     news_candidates = [x for x in base_candidates if x.category != "研究・論文"]
 
-    ranked_papers = (
-        rank_and_filter_articles(paper_candidates, trend_keywords, max_articles=max(80, max_per_run * 10))
-        if paper_candidates
-        else []
-    )
-    ranked_news = (
-        rank_and_filter_articles(news_candidates, trend_keywords, max_articles=max(60, max_per_run * 6))
-        if news_candidates
-        else []
-    )
-
     # 既存掲載記事の正規化タイトル（同じ内容は1本だけにするため）。渡されていれば load_all() しない
     existing_norm = set()
     if existing_articles is not None:
@@ -313,7 +302,7 @@ def process_new_rss_articles(
         for a in load_all():
             existing_norm.add(_normalize_title_for_dedup(a.title))
 
-    # 候補内で正規化タイトルが重複しているものはスコア上位1件だけ残す（論文・ニュース別に）
+    # 候補内で正規化タイトルが重複しているものはスコア上位1件だけ残す
     def _dedup(items: list[NewsItem]) -> list[NewsItem]:
         seen_norm: set[str] = set()
         out: list[NewsItem] = []
@@ -327,20 +316,6 @@ def process_new_rss_articles(
             out.append(item)
         return out
 
-    deduped_papers = _dedup(ranked_papers)
-    deduped_news = _dedup(ranked_news)
-    deduped: list[NewsItem] = deduped_papers + deduped_news
-
-    # --- まず論文（研究・論文）をドメインごとに1本ずつ確保する ---
-    PAPER_DOMAIN_ORDER = [
-        "筋肉・スポーツ・身体",
-        "医療・ヘルスケア",
-        "AI・テック",
-        "物理・宇宙",
-        "経済・ビジネス",
-        "総合科学",
-        "工学・応用",
-    ]
     SOURCE_TO_PAPER_DOMAIN = {
         "Nature": "総合科学",
         "Science Magazine": "総合科学",
@@ -354,39 +329,47 @@ def process_new_rss_articles(
         "Frontiers in Sports and Active Living": "筋肉・スポーツ・身体",
         "PLOS ONE": "医療・ヘルスケア",
         "BMJ Open": "医療・ヘルスケア",
+        "PubMed (心理学)": "心理学",
         "SSRN": "経済・ビジネス",
         "IDEAS/RePEc": "経済・ビジネス",
         "Sensors (MDPI)": "工学・応用",
     }
+    PAPER_DOMAIN_ORDER = [
+        "筋肉・スポーツ・身体",
+        "医療・ヘルスケア",
+        "心理学",
+        "AI・テック",
+        "物理・宇宙",
+        "経済・ビジネス",
+        "総合科学",
+        "工学・応用",
+    ]
 
-    papers = deduped_papers
-    non_papers = deduped_news
-
-    # 各時間で論文は最低3本（候補がある限り）入れる
-    min_papers_per_run = 3
-    paper_capacity = min(len(PAPER_DOMAIN_ORDER), max_per_run)
-    picked_domains: set[str] = set()
+    # 論文はドメインごとにランキング→各ドメインから1本ずつ選ぶ（AI偏重を防ぎ多様性を確保）
+    deduped_papers = _dedup(paper_candidates)
     paper_picks: list[NewsItem] = []
-    for item in papers:
+    paper_capacity = min(len(PAPER_DOMAIN_ORDER), max_per_run)
+    for domain in PAPER_DOMAIN_ORDER:
         if len(paper_picks) >= paper_capacity:
             break
-        dom = SOURCE_TO_PAPER_DOMAIN.get(item.source)
-        if not dom or dom in picked_domains:
+        domain_items = [x for x in deduped_papers if SOURCE_TO_PAPER_DOMAIN.get(x.source) == domain]
+        if not domain_items:
             continue
-        picked_domains.add(dom)
-        paper_picks.append(item)
+        ranked = rank_and_filter_articles(domain_items, trend_keywords, max_articles=3)
+        if ranked:
+            paper_picks.append(ranked[0])
+            # 選んだ論文を次ドメインの候補から除外（同じ論文が別ドメインで選ばれないよう）
+            picked_id = ranked[0].id
+            deduped_papers = [x for x in deduped_papers if x.id != picked_id]
 
-    # 候補があるのに min_papers_per_run に届かない場合は、
-    # 「未マッピングソース」は総合科学に寄せてでも埋める（ただしドメイン重複は避ける）
-    if len(paper_picks) < min_papers_per_run:
-        for item in papers:
-            if len(paper_picks) >= min_papers_per_run or len(paper_picks) >= paper_capacity:
-                break
-            dom = SOURCE_TO_PAPER_DOMAIN.get(item.source, "総合科学")
-            if dom in picked_domains:
-                continue
-            picked_domains.add(dom)
-            paper_picks.append(item)
+    # ニュースは従来どおり全体ランキング→上位から選ぶ
+    ranked_news = (
+        rank_and_filter_articles(news_candidates, trend_keywords, max_articles=max(60, max_per_run * 6))
+        if news_candidates
+        else []
+    )
+    deduped_news = _dedup(ranked_news)
+    non_papers = deduped_news
 
     remaining_slots = max_per_run - len(paper_picks)
 

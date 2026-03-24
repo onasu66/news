@@ -17,11 +17,13 @@ CATEGORY_ORDER = ["国内", "国際", "テクノロジー", "政治・社会", "
 # - AI・テック
 # - ⚛️ 物理・宇宙
 # - 💰 経済・ビジネス
+# - 🧠 心理学（PubMed 検索RSS）
 # - 🧪 総合科学
 # - 🔬 工学・応用
 PAPER_DOMAIN_ORDER = [
     "筋肉・スポーツ・身体",
     "医療・ヘルスケア",
+    "心理学",
     "AI・テック",
     "物理・宇宙",
     "経済・ビジネス",
@@ -67,6 +69,17 @@ PAPER_FILTER_KEYWORDS: dict[str, dict[str, list[str]]] = {
         "G": ["fat loss", "脂肪減少", "weight loss", "減量", "ダイエット"],
         "H": ["testosterone", "ホルモン", "cortisol", "テストステロン"],
         "I": ["injury", "ケガ", "傷害", "rehabilitation", "リハビリ"],
+    },
+    "心理学": {
+        "A": ["randomized", "rct", "randomised", "臨床試験"],
+        "B": ["meta-analysis", "systematic review", "メタアナリシス"],
+        "C": ["cognitive", "認知", "memory", "記憶"],
+        "D": ["depression", "うつ", "anxiety", "不安", "ptsd"],
+        "E": ["motivation", "動機", "habit", "習慣", "behavior", "行動"],
+        "F": ["stress", "ストレス", "resilience", "レジリエンス"],
+        "G": ["adolescent", "青年", "child", "児童"],
+        "H": ["intervention", "介入", "therapy", "心理療法"],
+        "I": ["neuroimaging", "fmri", "eeg", "脳"],
     },
     "医療・ヘルスケア": {
         "A": ["treatment", "治療", "therapy"],
@@ -227,7 +240,7 @@ class NewsAggregator:
                     trends = cls.get_trends(force_refresh=True)
                     trend_keywords = [t.keyword for t in trends]
                     process_new_rss_articles(
-                        news, max_per_run=10, trend_keywords=trend_keywords, existing_articles=all_items
+                        news, max_per_run=14, trend_keywords=trend_keywords, existing_articles=all_items
                     )
                 processed_ids = get_cached_article_ids()
                 all_items = load_all()
