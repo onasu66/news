@@ -10,3 +10,5 @@ beautifulsoup4==4.12.3
 readability-lxml==0.8.1
 openai>=1.55.0
 apscheduler==3.10.4
+
+# NOTE: Render build時の依存解決のためのダミー更新（実体の依存追加なし）
