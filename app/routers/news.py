@@ -48,9 +48,12 @@ async def sitemap_xml(request: Request):
     return Response(content="\n".join(lines), media_type="application/xml; charset=utf-8")
 
 
-@router.get("/", response_class=HTMLResponse)
+@router.api_route("/", methods=["GET", "POST"])
 async def index(request: Request, page: int = 1, keyword: str = ""):
     """トップページ（ジャンル別表示・ページネーション対応）。keyword 指定時は関連記事のみ表示"""
+    if request.method == "POST":
+        # Render/Cloudflare のヘルスチェック等で POST が飛んできても 405 にしない
+        return {"message": "ok"}
     from app.services.news_aggregator import CATEGORY_ORDER, ITEMS_PER_PAGE
     keyword = (keyword or "").strip()
     if keyword:
