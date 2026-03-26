@@ -28,7 +28,15 @@ templates = Jinja2Templates(directory=str(Path(__file__).resolve().parent.parent
 async def robots_txt(request: Request):
     """検索エンジン向け robots.txt"""
     site_url = _get_site_url(request)
-    body = f"User-agent: *\nAllow: /\nDisallow: /admin\nDisallow: /confirm\n\nSitemap: {site_url}/sitemap.xml\n"
+    # keyword パラメータ付きページ（例: /?keyword=...）は重複になりやすいのでクロール抑制
+    body = (
+        f"User-agent: *\n"
+        f"Allow: /\n"
+        f"Disallow: /admin\n"
+        f"Disallow: /confirm\n"
+        f"Disallow: /?keyword=\n\n"
+        f"Sitemap: {site_url}/sitemap.xml\n"
+    )
     return Response(content=body, media_type="text/plain; charset=utf-8")
 
 
@@ -41,6 +49,7 @@ async def sitemap_xml(request: Request):
         '<?xml version="1.0" encoding="UTF-8"?>',
         '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">',
         f"  <url><loc>{site_url}/</loc><changefreq>hourly</changefreq><priority>1.0</priority></url>",
+        f"  <url><loc>{site_url}/papers</loc><changefreq>weekly</changefreq><priority>0.6</priority></url>",
     ]
     for a in articles[:5000]:
         lines.append(f"  <url><loc>{site_url}/topic/{a.id}</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>")
@@ -196,6 +205,8 @@ async def papers_page(request: Request, page: int = 1):
             "papers_by_category": papers_by_category,
             "pagination": pagination,
             "has_papers": has_papers,
+            "site_url": _get_site_url(request),
+            "page": page,
         },
     )
 

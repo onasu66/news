@@ -1,6 +1,11 @@
 {% extends "base.html" %}
 {% block title %}知リポAI - 最新ニュースをAIが知的に解説{% endblock %}
 {% block meta_extra %}
+    {# キーワード付きURLは重複になりやすいので正規URLへ統一 + noindex 寄せ #}
+    <link rel="canonical" href="{{ site_url }}/">
+    {% if search_keyword %}
+    <meta name="robots" content="noindex,follow">
+    {% endif %}
     <meta property="og:type" content="website">
     <meta property="og:title" content="知リポAI - 最新ニュースをAIが知的に解説">
     <meta property="og:description" content="信頼メディアの最新ニュースを収集し、AIが背景・ポイントを解説。">
