@@ -18,6 +18,7 @@
                 <span class="logo"><span class="logo-icon">📰</span>知リポAI</span>
                 <span class="logo-tagline">AIが解説する知的ニュース</span>
             </a>
+            <button type="button" id="theme-toggle" class="theme-toggle" aria-label="ダークモード切替">🌙</button>
         </div>
     </header>
 
@@ -28,6 +29,7 @@
     <footer class="site-footer">
         <div class="footer-inner">
             <p>知リポAI — 最新ニュースをAIが解説する、知的ニュースレポート</p>
+            <div class="tiny-links"><a href="/about">運営者</a> · <a href="/authors">著者</a></div>
         </div>
     </footer>
 
@@ -49,6 +51,28 @@
         </a>
     </nav>
 
+    <script>
+    (function() {
+        var root = document.documentElement;
+        var savedTheme = localStorage.getItem('theme_mode');
+        if (savedTheme === 'dark') root.setAttribute('data-theme', 'dark');
+        var btn = document.getElementById('theme-toggle');
+        if (!btn) return;
+        btn.textContent = root.getAttribute('data-theme') === 'dark' ? '☀️' : '🌙';
+        btn.addEventListener('click', function() {
+            var dark = root.getAttribute('data-theme') === 'dark';
+            if (dark) {
+                root.removeAttribute('data-theme');
+                localStorage.setItem('theme_mode', 'light');
+                btn.textContent = '🌙';
+            } else {
+                root.setAttribute('data-theme', 'dark');
+                localStorage.setItem('theme_mode', 'dark');
+                btn.textContent = '☀️';
+            }
+        });
+    })();
+    </script>
     {% block scripts %}{% endblock %}
 </body>
 </html>

@@ -64,6 +64,13 @@
                         </div>
                         <h3 class="news-title">{{ item.title }}</h3>
                         <p class="news-summary-line">👀 {{ (item.summary or '')[:80] }}{% if (item.summary or '')|length > 80 %}...{% endif %}</p>
+                        {% if item.related_tags %}
+                        <div class="tag-list">
+                            {% for tag in item.related_tags[:3] %}
+                            <span class="news-badge">{{ tag }}</span>
+                            {% endfor %}
+                        </div>
+                        {% endif %}
                         <div class="news-card-footer">
                             <span class="news-card-ai">✍ AIが解説</span>
                             <span class="news-badge">AI解説</span>

@@ -152,6 +152,9 @@ def get_cached(article_id: str) -> Optional[dict]:
     if extra:
         result["quick_understand"] = extra.get("quick_understand", {})
         result["vote_data"] = extra.get("vote_data", {})
+        result["paper_graph"] = extra.get("paper_graph", {})
+        result["paper_quiz"] = extra.get("paper_quiz", {})
+        result["deep_insights"] = extra.get("deep_insights", {})
     return result
 
 
@@ -213,12 +216,33 @@ def _save_extra(article_id: str, data: dict):
         pass
 
 
-def save_cache(article_id: str, blocks: list, personas: list[str], *, display_persona_ids: list[int] | None = None, quick_understand: dict | None = None, vote_data: dict | None = None):
+def save_cache(
+    article_id: str,
+    blocks: list,
+    personas: list[str],
+    *,
+    display_persona_ids: list[int] | None = None,
+    quick_understand: dict | None = None,
+    vote_data: dict | None = None,
+    paper_graph: dict | None = None,
+    paper_quiz: dict | None = None,
+    deep_insights: dict | None = None,
+):
     """キャッシュに保存。display_persona_ids あり時は personas は3件のみ。"""
     global _ids_cache
     if _use_firestore():
         from .firestore_store import firestore_save_cache
-        firestore_save_cache(article_id, blocks, personas, display_persona_ids=display_persona_ids, quick_understand=quick_understand, vote_data=vote_data)
+        firestore_save_cache(
+            article_id,
+            blocks,
+            personas,
+            display_persona_ids=display_persona_ids,
+            quick_understand=quick_understand,
+            vote_data=vote_data,
+            paper_graph=paper_graph,
+            paper_quiz=paper_quiz,
+            deep_insights=deep_insights,
+        )
         _ids_cache = None  # 次回 get_cached_article_ids で再取得
         return
     _init_db()
@@ -275,5 +299,11 @@ def save_cache(article_id: str, blocks: list, personas: list[str], *, display_pe
         extra["quick_understand"] = quick_understand
     if vote_data:
         extra["vote_data"] = vote_data
+    if paper_graph:
+        extra["paper_graph"] = paper_graph
+    if paper_quiz:
+        extra["paper_quiz"] = paper_quiz
+    if deep_insights:
+        extra["deep_insights"] = deep_insights
     if extra:
         _save_extra(article_id, extra)

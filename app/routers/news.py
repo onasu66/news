@@ -161,6 +161,7 @@ async def api_papers_page(page: int = 1):
     import html as html_mod
     cards_html = ""
     for domain, items in papers_by_category:
+        _attach_paper_related_tags(items)
         for item in items:
             _ensure_japanese(item)
             if not item.image_url:
@@ -173,6 +174,8 @@ async def api_papers_page(page: int = 1):
             summary_safe = html_mod.escape(raw_summary[:80])
             domain_safe = html_mod.escape(domain or "")
             source_safe = html_mod.escape(item.source or "")
+            tags = getattr(item, "related_tags", []) or []
+            chips = "".join([f'<span class="news-badge">{html_mod.escape(t)}</span>' for t in tags[:3]])
             ellipsis = "..." if len(raw_summary) > 80 else ""
             cards_html += f'''<article class="news-card animate-fade-in" data-category="{domain_safe}">
 <a href="/topic/{item.id}" class="news-card-link">
@@ -181,6 +184,7 @@ async def api_papers_page(page: int = 1):
 <div class="news-card-meta"><span class="news-card-time">🕒 {pub}</span><span class="news-card-source">{source_safe}</span></div>
 <h3 class="news-title">{title_safe}</h3>
 <p class="news-summary-line">👀 {summary_safe}{ellipsis}</p>
+<div class="tag-list">{chips}</div>
 <div class="news-card-footer"><span class="news-card-ai">✍ AIが解説</span><span class="news-badge">AI解説</span></div>
 </div></a></article>'''
     return {"html": cards_html, "page": pagination["page"], "total_pages": pagination["total_pages"]}
@@ -191,6 +195,7 @@ async def papers_page(request: Request, page: int = 1):
     """論文専用ページ：研究・論文を上位ジャンル（ドメイン）ごとに表示（ニュース一覧と同じUI）"""
     papers_by_category, pagination = NewsAggregator.get_papers_by_category(page=page)
     for _, items in papers_by_category:
+        _attach_paper_related_tags(items)
         for item in items:
             _ensure_japanese(item)
             if not item.image_url:
@@ -255,6 +260,18 @@ async def ai_page(request: Request):
     except Exception:
         pass
     return templates.TemplateResponse("ai.html", {"request": request, "recommended": recommended, "ai_memo": ai_memo, "ai_personas": ai_personas})
+
+
+@router.get("/about", response_class=HTMLResponse)
+async def about_page(request: Request):
+    """運営者情報ページ"""
+    return templates.TemplateResponse("about.html", {"request": request})
+
+
+@router.get("/authors", response_class=HTMLResponse)
+async def authors_page(request: Request):
+    """著者情報ページ"""
+    return templates.TemplateResponse("authors.html", {"request": request})
 
 
 @router.get("/search", response_class=HTMLResponse)
@@ -367,6 +384,27 @@ def _build_short_summary(quick_understand: dict | None, fallback_summary: str | 
     return f'<p class="article-text">{_html.escape(one)}</p>'
 
 
+def _attach_paper_related_tags(items: list) -> None:
+    """論文一覧カード向けに関連タグを付与（最大3件）"""
+    if not items:
+        return
+    try:
+        from app.services.explanation_cache import get_cached
+    except Exception:
+        return
+    for item in items:
+        tags = []
+        try:
+            cached = get_cached(item.id)
+            graph = cached.get("paper_graph") if cached else {}
+            raw_tags = graph.get("related_tags") if isinstance(graph, dict) else []
+            if isinstance(raw_tags, list):
+                tags = [str(t).strip() for t in raw_tags if str(t).strip()][:3]
+        except Exception:
+            tags = []
+        setattr(item, "related_tags", tags)
+
+
 def _blocks_to_html(blocks: list) -> str:
     """ブロックをHTMLに変換。本文のみ表示。ミドルマン解説はフローティング吹き出し用の JSON データとして埋め込む"""
     if not blocks:
@@ -453,9 +491,15 @@ async def topic_detail(request: Request, topic_id: str):
         display_persona_ids = display_indices
     quick_understand = cached.get("quick_understand") if cached else None
     vote_data = cached.get("vote_data") if cached else None
+    paper_graph = cached.get("paper_graph") if cached else {}
+    paper_quiz = cached.get("paper_quiz") if cached else {}
+    deep_insights = cached.get("deep_insights") if cached else {}
     body_html = _blocks_to_html(blocks) if blocks else ""
     short_summary = _build_short_summary(quick_understand, item.summary)
     meta_desc = _meta_description_qa(item.title, item.summary)
+    # 見た目演出用（記事ごとに安定した値）
+    readers_now = 20 + (abs(hash(topic_id)) % 130)
+    article_score = 60 + (abs(hash(topic_id + (item.category or ""))) % 41)
 
     all_news = NewsAggregator.get_news()
     next_article = prev_article = None
@@ -496,6 +540,11 @@ async def topic_detail(request: Request, topic_id: str):
             "ai_recommended": ai_recommended,
             "quick_understand": quick_understand,
             "vote_data": vote_data,
+            "paper_graph": paper_graph,
+            "paper_quiz": paper_quiz,
+            "deep_insights": deep_insights,
+            "readers_now": readers_now,
+            "article_score": article_score,
         }
     )
 

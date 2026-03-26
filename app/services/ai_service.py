@@ -783,6 +783,148 @@ def generate_vote_question(title: str, content: str, model: str | None = None) -
         return {}
 
 
+def generate_paper_knowledge_graph(title: str, content: str, model: str | None = None) -> dict:
+    """論文向け: 関連タグ(3-5個)と過去/未来をつなぐ1文メッセージを生成"""
+    if not settings.OPENAI_API_KEY:
+        return {}
+    from openai import OpenAI
+    model = model or settings.OPENAI_MODEL
+    client = OpenAI(api_key=settings.OPENAI_API_KEY)
+    try:
+        response = create_with_retry(
+            client,
+            400,
+            model=model,
+            messages=[
+                {
+                    "role": "system",
+                    "content": (
+                        "あなたは論文の知識グラフ設計者です。"
+                        "必ず日本語のみで、JSONのみを返してください。"
+                        "形式: {\"related_tags\": [\"タグ1\", \"タグ2\", \"タグ3\"], "
+                        "\"timeline_message\": \"過去と未来をつなぐ1文\"}\n"
+                        "related_tags は3〜5個。timeline_message は1文で80文字以内。"
+                    ),
+                },
+                {
+                    "role": "user",
+                    "content": f"【タイトル】{title}\n\n【内容】\n{content[:3500]}",
+                },
+            ],
+            temperature=0.3,
+        )
+        text = (response.choices[0].message.content or "").strip()
+        if text.startswith("```"):
+            text = text.split("\n", 1)[-1].rsplit("```", 1)[0].strip()
+        data = json.loads(text)
+        tags = data.get("related_tags", [])
+        msg = (data.get("timeline_message") or "").strip()
+        if not isinstance(tags, list):
+            tags = []
+        tags = [str(t).strip() for t in tags if str(t).strip()][:5]
+        if len(tags) < 3:
+            return {}
+        return {"related_tags": tags, "timeline_message": msg[:120]}
+    except Exception as e:
+        logger.warning("paper_knowledge_graph generation failed: %s", e)
+        return {}
+
+
+def generate_paper_quiz(title: str, content: str, model: str | None = None) -> dict:
+    """論文向け: 3択クイズ1問と解説を生成"""
+    if not settings.OPENAI_API_KEY:
+        return {}
+    from openai import OpenAI
+    model = model or settings.OPENAI_MODEL
+    client = OpenAI(api_key=settings.OPENAI_API_KEY)
+    try:
+        response = create_with_retry(
+            client,
+            400,
+            model=model,
+            messages=[
+                {
+                    "role": "system",
+                    "content": (
+                        "論文内容に基づいて3択クイズを1問作成してください。"
+                        "必ず日本語のみで、JSONのみを返します。"
+                        "形式: {\"question\":\"...\", \"options\":[{\"id\":\"a\",\"label\":\"...\"},"
+                        "{\"id\":\"b\",\"label\":\"...\"},{\"id\":\"c\",\"label\":\"...\"}],"
+                        "\"answer_id\":\"a|b|c\", \"explanation\":\"...\"}"
+                    ),
+                },
+                {"role": "user", "content": f"【タイトル】{title}\n\n【内容】\n{content[:3500]}"},
+            ],
+            temperature=0.4,
+        )
+        text = (response.choices[0].message.content or "").strip()
+        if text.startswith("```"):
+            text = text.split("\n", 1)[-1].rsplit("```", 1)[0].strip()
+        data = json.loads(text)
+        options = data.get("options", [])
+        if not isinstance(options, list) or len(options) != 3:
+            return {}
+        answer_id = (data.get("answer_id") or "").strip()
+        if answer_id not in {"a", "b", "c"}:
+            return {}
+        return {
+            "question": (data.get("question") or "").strip(),
+            "options": options,
+            "answer_id": answer_id,
+            "explanation": (data.get("explanation") or "").strip(),
+        }
+    except Exception as e:
+        logger.warning("paper_quiz generation failed: %s", e)
+        return {}
+
+
+def generate_deep_insights(title: str, content: str, model: str | None = None) -> dict:
+    """深掘り回答を事前生成: 3行メリット/リスク/将来予測"""
+    if not settings.OPENAI_API_KEY:
+        return {}
+    from openai import OpenAI
+    model = model or settings.OPENAI_MODEL
+    client = OpenAI(api_key=settings.OPENAI_API_KEY)
+    try:
+        response = create_with_retry(
+            client,
+            500,
+            model=model,
+            messages=[
+                {
+                    "role": "system",
+                    "content": (
+                        "ニュース分析アシスタントです。日本語のみでJSONのみを返してください。"
+                        "形式: {\"merits\":[\"...\",\"...\",\"...\"],\"risks\":[\"...\",\"...\",\"...\"],"
+                        "\"future_prediction\":\"...\"}"
+                    ),
+                },
+                {"role": "user", "content": f"【タイトル】{title}\n\n【内容】\n{content[:3500]}"},
+            ],
+            temperature=0.4,
+        )
+        text = (response.choices[0].message.content or "").strip()
+        if text.startswith("```"):
+            text = text.split("\n", 1)[-1].rsplit("```", 1)[0].strip()
+        data = json.loads(text)
+        merits = data.get("merits", [])
+        risks = data.get("risks", [])
+        if not isinstance(merits, list):
+            merits = []
+        if not isinstance(risks, list):
+            risks = []
+        merits = [str(x).strip() for x in merits if str(x).strip()][:3]
+        risks = [str(x).strip() for x in risks if str(x).strip()][:3]
+        return {
+            "merits": merits,
+            "risks": risks,
+            "future_prediction": (data.get("future_prediction") or "").strip(),
+        }
+    except Exception as e:
+        logger.warning("deep_insights generation failed: %s", e)
+        return {}
+
+
 def explain_paragraph_with_ai(
     paragraph: str,
     context_title: str = "",

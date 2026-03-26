@@ -9,6 +9,9 @@ from app.services.ai_service import (
     expand_navigator_to_article,
     get_persona_opinion,
     generate_vote_question,
+    generate_paper_knowledge_graph,
+    generate_paper_quiz,
+    generate_deep_insights,
     PERSONA_LOGIC_IDS,
     PERSONA_ENT_IDS,
 )
@@ -64,7 +67,7 @@ def generate_all_explanations(article_id: str, title: str, content: str, categor
         from app.services.ai_service import PERSONAS
         display_persona_ids = list(range(min(3, len(PERSONAS))))
 
-    # 3) 記事展開・3人格・投票を並列で生成
+    # 3) 記事展開・3人格・投票・深掘り（論文時は知識グラフ/クイズ）を並列生成
     def do_blocks():
         return expand_navigator_to_article(navigator_blocks, title)
 
@@ -74,14 +77,29 @@ def generate_all_explanations(article_id: str, title: str, content: str, categor
     def do_vote():
         return generate_vote_question(title, summary_text)
 
+    def do_deep():
+        return generate_deep_insights(title, summary_text)
+
+    def do_paper_graph():
+        return generate_paper_knowledge_graph(title, summary_text)
+
+    def do_paper_quiz():
+        return generate_paper_quiz(title, summary_text)
+
     blocks = []
     personas_3 = [""] * 3
     vote_data = {}
+    paper_graph = {}
+    paper_quiz = {}
+    deep_insights = {}
 
     with ThreadPoolExecutor(max_workers=16) as ex:
         fut_blocks = ex.submit(do_blocks)
         fut_personas = {ex.submit(do_persona, pid): i for i, pid in enumerate(display_persona_ids)}
         fut_vote = ex.submit(do_vote)
+        fut_deep = ex.submit(do_deep)
+        fut_paper_graph = ex.submit(do_paper_graph) if is_paper else None
+        fut_paper_quiz = ex.submit(do_paper_quiz) if is_paper else None
 
         blocks = fut_blocks.result()
         for f in as_completed(fut_personas):
@@ -94,6 +112,20 @@ def generate_all_explanations(article_id: str, title: str, content: str, categor
             vote_data = fut_vote.result() or {}
         except Exception:
             pass
+        try:
+            deep_insights = fut_deep.result() or {}
+        except Exception:
+            pass
+        if fut_paper_graph is not None:
+            try:
+                paper_graph = fut_paper_graph.result() or {}
+            except Exception:
+                pass
+        if fut_paper_quiz is not None:
+            try:
+                paper_quiz = fut_paper_quiz.result() or {}
+            except Exception:
+                pass
 
     result = {
         "blocks": blocks,
@@ -101,11 +133,17 @@ def generate_all_explanations(article_id: str, title: str, content: str, categor
         "display_persona_ids": display_persona_ids,
         "quick_understand": quick_understand,
         "vote_data": vote_data,
+        "paper_graph": paper_graph,
+        "paper_quiz": paper_quiz,
+        "deep_insights": deep_insights,
     }
     save_cache(
         article_id, blocks, personas_3,
         display_persona_ids=display_persona_ids,
         quick_understand=quick_understand,
         vote_data=vote_data,
+        paper_graph=paper_graph,
+        paper_quiz=paper_quiz,
+        deep_insights=deep_insights,
     )
     return result

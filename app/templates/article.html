@@ -30,7 +30,9 @@
             <button type="button" class="save-article-btn" id="btn-save" data-id="{{ article.id }}" data-title="{{ article.title|e }}" data-summary="{{ (article.summary or '')[:100]|e }}">
                 ⭐ 保存
             </button>
+            <button type="button" class="save-article-btn" id="btn-copy-share">🔗 コピー</button>
         </div>
+        <p class="live-readers">今 <span class="animated-number" data-target="{{ readers_now|default(42) }}">0</span> 人が読んでいます</p>
     </header>
 
     <div class="article-hero">
@@ -45,6 +47,7 @@
     <div class="article-content-wrapper">
         <div class="article-main">
             <div id="article-short-content" class="article-read-content">
+                <h3 class="article-fixed-section-title">👀 概要</h3>
                 {% if short_summary %}
                 <div class="short-summary-box">
                     <h3 class="short-summary-heading">📝 要点まとめ</h3>
@@ -58,6 +61,7 @@
                 {% endif %}
             </div>
             <div id="article-deep-content" class="article-read-content" style="display:none;">
+                <h3 class="article-fixed-section-title">✍ AI解説</h3>
                 <div id="article-inline-content" class="article-inline-content" data-fallback="{{ article.summary|e }}">
                     {% if body_html %}
                     {{ body_html|safe }}
@@ -66,6 +70,22 @@
                     {% endif %}
                 </div>
             </div>
+            <section class="impact-box">
+                <h3 class="article-fixed-section-title">💡 社会への影響</h3>
+                {% if deep_insights and deep_insights.risks %}
+                <ul class="insight-list">
+                    {% for r in deep_insights.risks[:3] %}
+                    <li>{{ r }}</li>
+                    {% endfor %}
+                </ul>
+                {% else %}
+                <p class="article-text">生活・産業・制度への影響を注視する必要があります。</p>
+                {% endif %}
+            </section>
+            <section class="score-box">
+                <h3 class="article-fixed-section-title">📊 スコア表示</h3>
+                <p class="score-value"><span class="animated-number" data-target="{{ article_score|default(72) }}">0</span> / 100</p>
+            </section>
             <div class="article-actions" style="display:flex;justify-content:space-between;align-items:center;gap:0.75rem;">
                 <a href="/topic/{{ article.id }}?mode=deep#article-deep-content" class="read-original">📚 3分で詳しく解説を見る</a>
                 <a
@@ -78,6 +98,54 @@
             </div>
         </div>
     </div>
+
+    {% if paper_graph and paper_graph.related_tags %}
+    <section class="vote-section">
+        <h2 class="vote-question">🧩 ナレッジグラフ（論文）</h2>
+        <p class="article-text">{{ paper_graph.timeline_message }}</p>
+        <div class="tag-list">
+            {% for t in paper_graph.related_tags %}
+            <span class="news-badge">{{ t }}</span>
+            {% endfor %}
+        </div>
+    </section>
+    {% endif %}
+
+    {% if paper_quiz and paper_quiz.options %}
+    <section class="vote-section" id="paper-quiz">
+        <h2 class="vote-question">📝 3択クイズ（論文）</h2>
+        <p class="article-text">{{ paper_quiz.question }}</p>
+        <div class="vote-options">
+            {% for opt in paper_quiz.options %}
+            <button type="button" class="vote-btn paper-quiz-option" data-answer="{{ opt.id }}">{{ opt.label }}</button>
+            {% endfor %}
+        </div>
+        <p id="paper-quiz-result" class="article-text" style="display:none;"></p>
+    </section>
+    {% endif %}
+
+    {% if deep_insights %}
+    <section class="vote-section">
+        <h2 class="vote-question">🤖 AIに聞く（事前生成）</h2>
+        <button type="button" class="btn-one-take" id="btn-ai-comment">AIに聞く</button>
+        <div id="ai-comment-box" style="display:none;margin-top:0.75rem;">
+            <h4>3行メリット</h4>
+            <ul class="insight-list">
+                {% for m in deep_insights.merits[:3] %}
+                <li>{{ m }}</li>
+                {% endfor %}
+            </ul>
+            <h4>リスク</h4>
+            <ul class="insight-list">
+                {% for r in deep_insights.risks[:3] %}
+                <li>{{ r }}</li>
+                {% endfor %}
+            </ul>
+            <h4>将来予測</h4>
+            <p class="article-text">{{ deep_insights.future_prediction }}</p>
+        </div>
+    </section>
+    {% endif %}
 
     <section class="personas-section">
         <h2 class="personas-title">AIの多角的な視点 <span class="personas-hint">（この記事は3人分・クリックで表示）</span></h2>
@@ -209,6 +277,55 @@ document.addEventListener('DOMContentLoaded', function() {
         var div = document.createElement('div');
         div.textContent = s;
         return div.innerHTML;
+    }
+
+    document.querySelectorAll('.animated-number').forEach(function(el) {
+        var target = parseInt(el.getAttribute('data-target') || '0', 10);
+        var cur = 0;
+        var step = Math.max(1, Math.floor(target / 25));
+        var timer = setInterval(function() {
+            cur += step;
+            if (cur >= target) {
+                cur = target;
+                clearInterval(timer);
+            }
+            el.textContent = String(cur);
+        }, 24);
+    });
+
+    var copyBtn = document.getElementById('btn-copy-share');
+    if (copyBtn) {
+        copyBtn.addEventListener('click', function() {
+            var text = 'AI要約: ' + ({{ (short_summary|striptags|default(article.summary|default("")))|tojson|safe }}) + '\n' + window.location.href;
+            navigator.clipboard.writeText(text).then(function() {
+                copyBtn.textContent = '✅ コピー済み';
+                setTimeout(function() { copyBtn.textContent = '🔗 コピー'; }, 1200);
+            });
+        });
+    }
+
+    var quizOptions = document.querySelectorAll('.paper-quiz-option');
+    if (quizOptions.length > 0) {
+        var answerId = '{{ paper_quiz.answer_id if paper_quiz else "" }}';
+        var explain = {{ (paper_quiz.explanation if paper_quiz else "")|tojson|safe }};
+        var out = document.getElementById('paper-quiz-result');
+        quizOptions.forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                var ok = btn.getAttribute('data-answer') === answerId;
+                if (out) {
+                    out.style.display = '';
+                    out.textContent = (ok ? '正解です。' : '不正解です。') + ' ' + explain;
+                }
+            });
+        });
+    }
+
+    var aiCommentBtn = document.getElementById('btn-ai-comment');
+    var aiCommentBox = document.getElementById('ai-comment-box');
+    if (aiCommentBtn && aiCommentBox) {
+        aiCommentBtn.addEventListener('click', function() {
+            aiCommentBox.style.display = aiCommentBox.style.display === 'none' ? '' : 'none';
+        });
     }
 
     // Read mode switch

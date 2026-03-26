@@ -231,6 +231,12 @@ def firestore_get_cached(article_id: str) -> Optional[dict]:
         result["quick_understand"] = d["quick_understand"] if isinstance(d["quick_understand"], dict) else json.loads(d["quick_understand"])
     if d.get("vote_data"):
         result["vote_data"] = d["vote_data"] if isinstance(d["vote_data"], dict) else json.loads(d["vote_data"])
+    if d.get("paper_graph"):
+        result["paper_graph"] = d["paper_graph"] if isinstance(d["paper_graph"], dict) else json.loads(d["paper_graph"])
+    if d.get("paper_quiz"):
+        result["paper_quiz"] = d["paper_quiz"] if isinstance(d["paper_quiz"], dict) else json.loads(d["paper_quiz"])
+    if d.get("deep_insights"):
+        result["deep_insights"] = d["deep_insights"] if isinstance(d["deep_insights"], dict) else json.loads(d["deep_insights"])
     return result
 
 
@@ -256,7 +262,18 @@ def firestore_delete_cache(article_id: str) -> bool:
 _PERSONAS_COUNT = 14
 
 
-def firestore_save_cache(article_id: str, blocks: list, personas: list, *, display_persona_ids: list | None = None, quick_understand: dict | None = None, vote_data: dict | None = None):
+def firestore_save_cache(
+    article_id: str,
+    blocks: list,
+    personas: list,
+    *,
+    display_persona_ids: list | None = None,
+    quick_understand: dict | None = None,
+    vote_data: dict | None = None,
+    paper_graph: dict | None = None,
+    paper_quiz: dict | None = None,
+    deep_insights: dict | None = None,
+):
     if display_persona_ids is not None and len(display_persona_ids) == 3 and len(personas) == 3:
         personas_arr = list(personas)
         doc_data = {
@@ -278,6 +295,12 @@ def firestore_save_cache(article_id: str, blocks: list, personas: list, *, displ
         doc_data["quick_understand"] = quick_understand
     if vote_data:
         doc_data["vote_data"] = vote_data
+    if paper_graph:
+        doc_data["paper_graph"] = paper_graph
+    if paper_quiz:
+        doc_data["paper_quiz"] = paper_quiz
+    if deep_insights:
+        doc_data["deep_insights"] = deep_insights
     _explanations_collection().document(article_id).set(doc_data)
     _articles_collection().document(article_id).set({"has_explanation": True}, merge=True)
     # メタの cached_article_ids を更新（1読1書）
