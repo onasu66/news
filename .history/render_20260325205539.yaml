@@ -1,0 +1,24 @@
+# Render Blueprint - ニュースサイト
+# https://dashboard.render.com/ で New > Blueprint からこのファイルを指定してデプロイ
+
+services:
+  - type: web
+    name: newsite
+    runtime: python
+
+    buildCommand: pip install -r requirements.txt
+    startCommand: bash start.sh
+
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.11.7"
+      # Render で Firestore を使うには必須（未設定だと SQLite＝空で記事が表示されない）
+      # - key: FIREBASE_SERVICE_ACCOUNT_JSON
+      #   sync: false
+      # 以下は任意。Render ダッシュボードの Environment で設定
+      # - key: OPENAI_API_KEY
+      #   sync: false
+      # - key: ADMIN_SECRET
+      #   sync: false
+      # - key: NEWS_REFRESH_INTERVAL
+      #   value: "240"
