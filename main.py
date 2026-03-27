@@ -110,14 +110,9 @@ async def lifespan(app: FastAPI):
     t.start()
 
     scheduler = BackgroundScheduler(timezone=JST)
-    # RSS→記事化は 0:00/9:30/12:30/20:00 JST のみ。interval はトレンド更新のみ
-    if not rss_ai_disabled:
-        scheduler.add_job(
-            lambda: NewsAggregator.get_news(force_refresh=False),
-            "interval",
-            minutes=INTERVAL_MIN,
-            id="refresh_news",
-        )
+    # 記事一覧は閲覧時TTL破棄をしない運用に変更したため、
+    # interval での get_news(force_refresh=False) は行わない。
+    # 記事更新は cron（force_refresh=True）時のみ実行する。
     scheduler.add_job(
         lambda: NewsAggregator.get_trends(force_refresh=True),
         "interval",

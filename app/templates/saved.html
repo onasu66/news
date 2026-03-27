@@ -1,5 +1,9 @@
 {% extends "base.html" %}
 {% block title %}保存済み - 知リポAI{% endblock %}
+{% block meta_extra %}
+    <meta name="robots" content="noindex,follow">
+    <link rel="canonical" href="{{ request.base_url }}">
+{% endblock %}
 {% block content %}
 <section class="page-header">
     <h1 class="page-title">⭐ 保存した記事</h1>

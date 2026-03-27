@@ -34,6 +34,7 @@ async def robots_txt(request: Request):
         f"Allow: /\n"
         f"Disallow: /admin\n"
         f"Disallow: /confirm\n"
+        f"Disallow: /saved\n"
         f"Disallow: /?keyword=\n\n"
         f"Sitemap: {site_url}/sitemap.xml\n"
     )

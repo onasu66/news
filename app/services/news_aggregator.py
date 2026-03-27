@@ -5,7 +5,7 @@ from .rss_service import fetch_rss_news, NewsItem
 from .trends_service import fetch_trending_searches, TrendItem
 from .article_cache import load_all, load_all_processed, load_by_id, save_article
 from .article_processor import process_new_rss_articles
-from .explanation_cache import get_cached_article_ids, invalidate_ids_cache
+from .explanation_cache import get_cached_article_ids
 
 # ジャンル表示順（研究・論文は論文専用ページで表示）
 # 「総合」はRSS由来で基本付与されないため、タブを出さない（管理者手動記事などは「すべて」から見える想定）
@@ -200,9 +200,10 @@ def _pick_best_trending_article(
 ITEMS_PER_PAGE = 24
 # キャッシュ上の最大件数（全件取得してページネーション）
 PAGE_DISPLAY_LIMIT = 2000
-# 一覧キャッシュの有効時間（超えたら次回表示時に Firestore から再取得）。
-# 短くしすぎると「5分ごとに誰かが一覧を開くたび 1+記事数 読む」となり読取が膨らむため 15 分にしている。
-NEWS_CACHE_MAX_AGE = timedelta(minutes=15)
+# 閲覧時の一覧キャッシュは期限で破棄しない（更新イベント時のみ再取得）
+# - 通常閲覧時の Firestore 読み取りを最小化する
+# - 再起動時・force_refresh 実行時には再取得される
+CACHE_NEVER_EXPIRE = True
 
 
 class NewsAggregator:
@@ -217,14 +218,9 @@ class NewsAggregator:
         """
         AI処理済みのサイト記事のみ表示。
         通常リクエスト時はDBから即返却（ブロックしない）。
-        force_refresh時のみRSS取得→AI処理を実行。
-        キャッシュは NEWS_CACHE_MAX_AGE（15分）を超えると古いとみなし、次回表示で Firestore から再取得する
-        （デプロイしなくても他プロセスで追加された記事が表示される。15分にしているのは読取回数抑制のため）。
+        force_refresh時のみRSS取得→AI処理を実行し、一覧を再取得する。
+        閲覧時はTTLで破棄しない（更新イベント駆動）。
         """
-        now = datetime.now()
-        if cls._news_cache and cls._last_updated and (now - cls._last_updated) > NEWS_CACHE_MAX_AGE:
-            cls._news_cache = []  # 古いキャッシュは破棄し、以下で Firestore から再取得する
-            invalidate_ids_cache()  # 処理済みID一覧も捨てて、再取得で最新を取る
         if force_refresh or not cls._news_cache:
             processed_ids = get_cached_article_ids()
             # 読み取り削減: load_all は1回だけ行い、force_refresh 時は process に渡して再読を避ける
