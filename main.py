@@ -104,7 +104,7 @@ async def lifespan(app: FastAPI):
         threading.Thread(target=_run_seed_delayed, daemon=True).start()
 
     def _init():
-        NewsAggregator.get_news(force_refresh=not rss_ai_disabled)
+        # 起動直後は軽い処理だけ先に実行して、API応答を阻害しない
         NewsAggregator.get_trends(force_refresh=True)
     t = threading.Thread(target=_init, daemon=True)
     t.start()
@@ -337,4 +337,4 @@ async def debug_page():
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run("main:app", host="0.0.0.0", port=8001, reload=True)
+    uvicorn.run("main:app", host="0.0.0.0", port=8001, reload=False)

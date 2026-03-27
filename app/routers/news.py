@@ -628,10 +628,11 @@ async def api_persona_opinion(article_id: str, persona_id: int):
 
 @router.get("/api/status")
 async def api_status():
-    """状態確認（記事数・DBパス等）。一覧は NewsAggregator キャッシュ利用で Firestore 読取を抑える"""
+    """状態確認（高速）。Firestorm/DBへの重い読取を避ける"""
     from app.services.explanation_cache import get_cached_article_ids
 
-    displayable = NewsAggregator.get_news()
+    # API疎通確認用エンドポイントは軽量に保つ（重いDB読取はしない）
+    displayable = len(getattr(NewsAggregator, "_news_cache", []) or [])
     processed = get_cached_article_ids()
     try:
         from app.config import settings
@@ -640,9 +641,9 @@ async def api_status():
         has_key = False
 
     return {
-        "articles_in_db": len(displayable),
+        "articles_in_db": displayable,
         "ai_processed": len(processed),
-        "displayable": len(displayable),
+        "displayable": displayable,
         "openai_key_set": has_key,
     }
 

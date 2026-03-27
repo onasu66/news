@@ -227,7 +227,7 @@ class NewsAggregator:
             all_items = load_all()
             cached = [x for x in all_items if x.id in processed_ids][:PAGE_DISPLAY_LIMIT]
             if cached and not force_refresh:
-                cls._news_cache = cached
+                cls._news_cache = sorted(cached, key=lambda x: x.published or datetime.min, reverse=True)
                 cls._last_updated = datetime.now()
                 return cls._news_cache
             if force_refresh:
@@ -240,7 +240,11 @@ class NewsAggregator:
                     )
                 processed_ids = get_cached_article_ids()
                 all_items = load_all()
-            cls._news_cache = [x for x in all_items if x.id in processed_ids][:PAGE_DISPLAY_LIMIT]
+            cls._news_cache = sorted(
+                [x for x in all_items if x.id in processed_ids][:PAGE_DISPLAY_LIMIT],
+                key=lambda x: x.published or datetime.min,
+                reverse=True,
+            )
             cls._last_updated = datetime.now()
         return cls._news_cache
 
