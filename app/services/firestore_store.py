@@ -193,13 +193,8 @@ def _is_bad_fallback_cache(blocks: list) -> bool:
     return any(p in explain_content for p in bad_phrases)
 
 
-def firestore_get_cached_article_ids() -> set:
-    """AI処理済み記事ID。メタドキュメント1読で返す（explanations 全件ストリーム廃止・読み取り削減）"""
-    meta = _meta_doc().get()
-    if meta.exists:
-        ids = meta.to_dict().get("ids") or []
-        return set(ids)
-    # 初回またはメタ未構築: explanations を上限付きで1回だけスキャンしメタを構築
+def _rebuild_cached_article_ids_meta() -> set:
+    """explanations をスキャンして _meta/cache の ids を書き直す（初回・不整合修復用）"""
     ids = []
     for doc in _explanations_collection().limit(2000).stream():
         ids.append(doc.id)
@@ -208,6 +203,27 @@ def firestore_get_cached_article_ids() -> set:
     except Exception:
         pass
     return set(ids)
+
+
+def firestore_get_cached_article_ids() -> set:
+    """AI処理済み記事ID。メタドキュメント1読で返す（explanations 全件ストリーム廃止・読み取り削減）"""
+    meta = _meta_doc().get()
+    if meta.exists:
+        ids = meta.to_dict().get("ids") or []
+        if ids:
+            return set(ids)
+        # メタはあるのに ids が空: コンソール編集・古い不整合で「記事があるのに一覧0件」になる。
+        # explanations に1件でもあればフルスキャンしてメタを修復する。
+        try:
+            if not any(_explanations_collection().limit(1).stream()):
+                return set()
+        except Exception:
+            return set()
+        logger.warning(
+            "_meta/cache の ids が空だが explanations にデータがあります。メタを explanations から再構築します。"
+        )
+        return _rebuild_cached_article_ids_meta()
+    return _rebuild_cached_article_ids_meta()
 
 
 def firestore_get_cached(article_id: str) -> Optional[dict]:
