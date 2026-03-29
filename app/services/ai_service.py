@@ -638,7 +638,58 @@ blocks配列のJSONのみ返す。"""
     return [{"type": "text", "content": content}, {"type": "explain", "content": "（構造化に失敗しました。しばらくしてから再度お試しください。）"}]
 
 
-PERSONA_COMMENT_MAX_LEN = 160
+# 人格コメントはこの文字数以下に収める（プロンプトで厳守させ、APIトークンも十分に確保して途中打ち切りを防ぐ）
+PERSONA_COMMENT_MAX_LEN = 200
+# 出力が200文字程度でも日本語で完結するまで生成できるよう余裕を持たせる
+PERSONA_COMMENT_MAX_COMPLETION_TOKENS = 500
+
+
+def _fit_persona_comment_to_max(text: str, max_len: int) -> str:
+    """200字超のとき、句読点で区切れるならそこまでに収めて文を完結させる（単純な中間切断を避ける）。"""
+    text = (text or "").strip()
+    if len(text) <= max_len:
+        return text
+    chunk = text[:max_len]
+    for sep in ("。", "！", "？", "．"):
+        i = chunk.rfind(sep)
+        if i >= max_len // 5:
+            return text[: i + 1].strip()
+    i = chunk.rfind("、")
+    if i >= max_len // 3:
+        return text[: i].strip() + "。"
+    return text[:max_len].rstrip()
+
+
+def _shorten_persona_comment_retry(
+    client,
+    model: str,
+    persona_name: str,
+    long_text: str,
+    max_len: int,
+) -> str:
+    """初回が長すぎたとき、人格を保ったまま max_len 以下に言い直させる。"""
+    try:
+        response = create_with_retry(
+            client,
+            400,
+            model=model,
+            messages=[
+                {
+                    "role": "system",
+                    "content": (
+                        f"あなたは編集者です。与えられたコメントを、話者「{persona_name}」の口調・視点は変えずに、"
+                        f"厳密に{max_len}文字以下の日本語に整えてください。"
+                        "完結した1〜3文にし、途中で文が切れないようにしてください。"
+                        "前置きや説明は書かず、修正後の本文のみを出力してください。"
+                    ),
+                },
+                {"role": "user", "content": long_text[:800]},
+            ],
+            temperature=0.3,
+        )
+        return (response.choices[0].message.content or "").strip()
+    except Exception:
+        return long_text
 
 
 def get_persona_opinion(
@@ -647,7 +698,7 @@ def get_persona_opinion(
     persona_id: int,
     model: str | None = None
 ) -> str:
-    """指定された人格のAIが記事に対する意見を述べる。最大160文字程度。"""
+    """指定された人格のAIが記事に対する意見を述べる。最大200文字以下で完結させる。"""
     if not settings.OPENAI_API_KEY:
         return "（APIキーが設定されていません）"
     if persona_id < 0 or persona_id >= len(PERSONAS):
@@ -661,14 +712,27 @@ def get_persona_opinion(
     if persona_id != 1:
         # 投資家キャラ（ヴォルテ・アセット）以外は、投資・相場の話題に寄りすぎないようにする
         extra_note = "株価や為替、投資・相場の専門的な話題には触れず、この人格ならではの視点に集中してください。"
+    max_len = PERSONA_COMMENT_MAX_LEN
     system_prompt = f"""あなたは「{p['name']}」という人格です。{p['role']}
 他の人格の口調や視点を真似せず、この人格の設定にだけ従ってください。{extra_note}
-ニュース記事を読んで、この人格としてニュースを見て思ったことや感じたことを率直に述べてください。必ず日本語のみ。箇条書きではなく自然な短文で、最大{PERSONA_COMMENT_MAX_LEN}文字以内に収めてください。"""
-    user_prompt = f"【タイトル】{title}\n\n【本文抜粋】\n{content[:2000]}\n\n---\n上記のニュースについて、{p['name']}として箇条書きではない自然な短文で、{PERSONA_COMMENT_MAX_LEN}文字以内に収めて書いてください。"
+ニュース記事を読んで、この人格として思ったことを述べてください。必ず日本語のみ。
+厳守: 出力は本文のみ（見出し・「コメント:」等は付けない）。箇条書きにしない。
+厳守: 出力全体を必ず{max_len}文字以下に収める。長い思考プロセスは書かず、要点だけを1〜3文で完結させる（文末まで書き切る。生成を途中で切らない）。
+思考プロセスの列挙は出力に含めず、結論としての短いコメントだけを書くこと。"""
+    user_prompt = f"""【タイトル】{title}
+
+【本文抜粋】
+{content[:2000]}
+
+---
+上記について{p['name']}としてコメントしてください。
+・{max_len}文字以下
+・最後の文は必ず句点「。」で終える
+・{max_len}字を超えないよう、短く済ませる"""
     try:
         response = create_with_retry(
             client,
-            200,
+            PERSONA_COMMENT_MAX_COMPLETION_TOKENS,
             model=model,
             messages=[
                 {"role": "system", "content": system_prompt},
@@ -677,8 +741,11 @@ def get_persona_opinion(
             temperature=0.7,
         )
         text = (response.choices[0].message.content or "").strip()
-        if len(text) > PERSONA_COMMENT_MAX_LEN:
-            text = text[: PERSONA_COMMENT_MAX_LEN - 1].rstrip() + "…"
+        if len(text) > max_len:
+            text = _shorten_persona_comment_retry(client, model, p["name"], text, max_len)
+        text = _fit_persona_comment_to_max(text, max_len)
+        if len(text) > max_len:
+            text = text[:max_len].rstrip()
         return text
     except Exception as e:
         return f"（取得失敗: {str(e)}）"
