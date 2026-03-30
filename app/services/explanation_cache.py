@@ -2,6 +2,7 @@
 import json
 import sqlite3
 import time
+import threading
 from pathlib import Path
 from typing import Optional
 
@@ -10,6 +11,7 @@ _ids_cache: Optional[tuple[float, set[str]]] = None  # (cached_at, set of ids)
 _ids_cache_ttl_sec = 60
 _explanation_cache: dict[str, dict] = {}  # article_id -> 解説 dict
 _explanation_cache_max = 200
+_explanation_cache_lock = threading.Lock()
 
 def _use_firestore():
     try:
@@ -95,15 +97,18 @@ def get_cached(article_id: str) -> Optional[dict]:
     """キャッシュから取得。なければNone。Firestore 時はメモリキャッシュ（最大200件）で同一記事の再読を削減"""
     global _explanation_cache
     if _use_firestore():
-        if article_id in _explanation_cache:
-            return _explanation_cache[article_id]
+        with _explanation_cache_lock:
+            cached = _explanation_cache.get(article_id)
+        if cached is not None:
+            return cached
         from .firestore_store import firestore_get_cached
         result = firestore_get_cached(article_id)
         if result is not None:
-            if len(_explanation_cache) >= _explanation_cache_max:
-                oldest = next(iter(_explanation_cache))
-                del _explanation_cache[oldest]
-            _explanation_cache[article_id] = result
+            with _explanation_cache_lock:
+                if len(_explanation_cache) >= _explanation_cache_max:
+                    oldest = next(iter(_explanation_cache))
+                    del _explanation_cache[oldest]
+                _explanation_cache[article_id] = result
         return result
     _init_db()
     with _get_conn() as conn:
