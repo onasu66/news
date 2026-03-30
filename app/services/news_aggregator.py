@@ -265,6 +265,58 @@ class NewsAggregator:
         return cls._news_cache
 
     @classmethod
+    def sync_list_cache_from_db(cls) -> None:
+        """
+        RSS・AI は回さず、解説付き ID（Firestore なら _meta/cache 1 読）で一覧キャッシュを揃える。
+        ID 集合が前回と同じなら記事ドキュメントは読まない。増えた ID だけ load_by_id し、
+        load_all（最大 ~2000 読）を毎回避けて無料枠を守る。
+        """
+        try:
+            from .explanation_cache import invalidate_ids_cache
+
+            invalidate_ids_cache()
+        except Exception:
+            pass
+        processed_ids = get_cached_article_ids()
+        if not processed_ids:
+            cls._news_cache = []
+            cls._last_updated = datetime.now()
+            return
+
+        cached_ids = {x.id for x in cls._news_cache}
+        if processed_ids == cached_ids and cls._news_cache:
+            cls._last_updated = datetime.now()
+            return
+
+        if not cls._news_cache:
+            items = []
+            for nid in processed_ids:
+                item = load_by_id(nid)
+                if item:
+                    items.append(item)
+            cls._news_cache = sorted(
+                items,
+                key=lambda x: x.published or datetime.min,
+                reverse=True,
+            )[:PAGE_DISPLAY_LIMIT]
+            cls._last_updated = datetime.now()
+            return
+
+        new_ids = processed_ids - cached_ids
+        gone_ids = cached_ids - processed_ids
+        items = [x for x in cls._news_cache if x.id not in gone_ids]
+        for nid in new_ids:
+            item = load_by_id(nid)
+            if item:
+                items.append(item)
+        cls._news_cache = sorted(
+            items,
+            key=lambda x: x.published or datetime.min,
+            reverse=True,
+        )[:PAGE_DISPLAY_LIMIT]
+        cls._last_updated = datetime.now()
+
+    @classmethod
     def get_news_by_category(cls, force_refresh: bool = False, page: int = 1) -> tuple[list[tuple[str, list[NewsItem]]], dict]:
         """
         ジャンルごとにグループ化したニュース一覧。

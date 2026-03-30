@@ -20,8 +20,10 @@ from app.services.news_aggregator import NewsAggregator
 try:
     from app.config import settings, is_rss_and_ai_disabled
     INTERVAL_MIN = settings.NEWS_REFRESH_INTERVAL
+    LIST_CACHE_SYNC_MIN = int(getattr(settings, "NEWS_LIST_CACHE_SYNC_MINUTES", 15))
 except Exception:
     INTERVAL_MIN = 240
+    LIST_CACHE_SYNC_MIN = 15
     is_rss_and_ai_disabled = lambda: False
 
 JST = ZoneInfo("Asia/Tokyo")
@@ -40,6 +42,14 @@ def _scheduled_2000_rss_and_ai_daily():
         generate_daily_ai_content()
     except Exception as e:
         logger.warning("AI日次コンテンツ生成に失敗: %s", e)
+
+
+def _scheduled_sync_list_cache_from_db():
+    """一覧メモリキャッシュを DB から再構築（再起動なしで新着を表示させる）"""
+    try:
+        NewsAggregator.sync_list_cache_from_db()
+    except Exception as e:
+        logger.warning("一覧キャッシュ同期に失敗: %s", e)
 
 
 def _seed_if_needed():
@@ -110,15 +120,22 @@ async def lifespan(app: FastAPI):
     t.start()
 
     scheduler = BackgroundScheduler(timezone=JST)
-    # 記事一覧は閲覧時TTL破棄をしない運用に変更したため、
-    # interval での get_news(force_refresh=False) は行わない。
-    # 記事更新は cron（force_refresh=True）時のみ実行する。
+    # 記事一覧は閲覧時TTL破棄をしない運用。RSS 取り込みは cron（force_refresh=True）のみ。
+    # 別途 NEWS_LIST_CACHE_SYNC_MINUTES ごとに DB だけ再読みしてメモリ一覧を同期する。
     scheduler.add_job(
         lambda: NewsAggregator.get_trends(force_refresh=True),
         "interval",
         minutes=INTERVAL_MIN,
         id="refresh_trends",
     )
+    if LIST_CACHE_SYNC_MIN > 0:
+        scheduler.add_job(
+            _scheduled_sync_list_cache_from_db,
+            "interval",
+            minutes=LIST_CACHE_SYNC_MIN,
+            id="sync_news_list_cache",
+        )
+        logger.info("一覧キャッシュを DB から %d 分ごとに同期します。", LIST_CACHE_SYNC_MIN)
     if not rss_ai_disabled:
         # 0:00 / 9:30 / 12:30: RSS取得→記事化のみ
         for job_id, hour, minute in [

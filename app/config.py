@@ -17,6 +17,8 @@ class Settings:
     OPENAI_MODEL: str = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
     CDN_BASE_URL: str = os.getenv("CDN_BASE_URL", "https://picsum.photos")
     NEWS_REFRESH_INTERVAL: int = int(os.getenv("NEWS_REFRESH_INTERVAL", "240"))
+    # 一覧メモリキャッシュを DB と照合する間隔（分）。0 で無効。短すぎると Firestore 読取が増えるため既定は 15。
+    NEWS_LIST_CACHE_SYNC_MINUTES: int = int(os.getenv("NEWS_LIST_CACHE_SYNC_MINUTES", "15"))
     DAILY_ARTICLE_LIMIT: int = int(os.getenv("DAILY_ARTICLE_LIMIT", "6"))
     # 1回の RSS 強制更新で目標とする最小追加本数（候補・AI失敗で未達の場合あり）。0 で従来どおり1バッチのみ
     RSS_MIN_ADDED_PER_REFRESH: int = int(os.getenv("RSS_MIN_ADDED_PER_REFRESH", "10"))
