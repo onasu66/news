@@ -1033,7 +1033,7 @@ body::after {
 
 /* ========== 記事詳細 ========== */
 .article-detail {
-    max-width: 800px;
+    max-width: 1200px;
     margin: 0 auto;
 }
 
@@ -1128,11 +1128,11 @@ body::after {
 }
 
 .article-main {
-    background: var(--color-surface);
-    padding: 1.5rem;
-    border-radius: var(--radius-lg);
-    box-shadow: var(--shadow-sm);
-    border: 1px solid var(--color-border-light);
+    background: transparent;
+    padding: 0;
+    border-radius: 0;
+    box-shadow: none;
+    border: none;
 }
 
 .article-inline-content .loading {
@@ -1143,8 +1143,8 @@ body::after {
 /* 記事本文：主役。読みやすく大きく */
 .article-with-bubbles .article-text {
     font-size: 1.05rem;
-    line-height: 1.7;
-    margin: 0 0 1rem 0;
+    line-height: 1.6;
+    margin: 0 0 0.85rem 0;
     color: var(--color-text);
 }
 
@@ -1210,8 +1210,8 @@ body::after {
 
 .article-text {
     font-size: 1.05rem;
-    line-height: 1.7;
-    margin: 0 0 1rem 0;
+    line-height: 1.6;
+    margin: 0 0 0.85rem 0;
     color: var(--color-text);
 }
 
@@ -1276,9 +1276,9 @@ body::after {
 /* メイン本文＝ニュース（事実）。一体感のある読み物として */
 .article-body {
     font-size: 1.05rem;
-    line-height: 1.7;
+    line-height: 1.6;
     color: var(--color-text);
-    margin: 0 0 1.5rem 0;
+    margin: 0 0 1.25rem 0;
     letter-spacing: 0.02em;
 }
 
@@ -2291,34 +2291,30 @@ body::after {
 /* ===== ENHANCED NEWS CARDS (横長レイアウト) ===== */
 .news-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(440px, 1fr));
-    gap: 1rem;
+    grid-template-columns: 1fr;
+    gap: 0.9rem;
 }
 .news-card {
-    background: var(--color-card);
-    border-radius: 14px;
-    overflow: hidden;
-    box-shadow: 0 2px 12px rgba(0,0,0,0.06);
-    transition: transform 0.25s ease, box-shadow 0.25s ease;
+    background: transparent;
+    border-radius: 0;
+    overflow: visible;
+    box-shadow: none;
+    transition: none;
+    border: none;
+    border-bottom: 1px solid var(--color-border-light);
 }
 .news-card:hover {
-    transform: translateY(-3px);
-    box-shadow: 0 8px 30px rgba(0,0,0,0.12);
+    transform: none;
+    box-shadow: none;
 }
 .news-card-link {
-    display: flex;
-    flex-direction: row;
-    align-items: stretch;
+    display: block;
     text-decoration: none;
     color: inherit;
-    min-height: 0;
+    padding: 0.85rem 0;
 }
 .news-card-image {
-    position: relative;
-    width: 200px;
-    min-width: 200px;
-    overflow: hidden;
-    flex-shrink: 0;
+    display: none;
 }
 .news-card-image img {
     width: 100%;
@@ -2342,12 +2338,8 @@ body::after {
     backdrop-filter: blur(4px);
 }
 .news-card-body {
-    padding: 0.6rem 0.85rem;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    flex: 1;
-    min-width: 0;
+    padding: 0;
+    display: block;
 }
 .news-card-meta {
     display: flex;
@@ -2371,7 +2363,7 @@ body::after {
 .news-summary-line {
     font-size: 0.9rem;
     color: #64748b;
-    line-height: 1.5;
+    line-height: 1.4;
     margin: 0 0 0.25rem;
     display: -webkit-box;
     -webkit-line-clamp: 2;

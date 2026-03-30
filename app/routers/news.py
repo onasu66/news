@@ -500,7 +500,6 @@ async def topic_detail(request: Request, topic_id: str):
     meta_desc = _meta_description_qa(item.title, item.summary)
     # 見た目演出用（記事ごとに安定した値）
     readers_now = 20 + (abs(hash(topic_id)) % 130)
-    article_score = 60 + (abs(hash(topic_id + (item.category or ""))) % 41)
 
     all_news = NewsAggregator.get_news()
     next_article = prev_article = None
@@ -545,7 +544,6 @@ async def topic_detail(request: Request, topic_id: str):
             "paper_quiz": paper_quiz,
             "deep_insights": deep_insights,
             "readers_now": readers_now,
-            "article_score": article_score,
         }
     )
 
