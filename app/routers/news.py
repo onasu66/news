@@ -1,6 +1,7 @@
 """ニュース関連ルート"""
 import uuid
 from datetime import datetime
+import threading
 
 from fastapi import APIRouter, Request, HTTPException, Form, Header
 from fastapi.responses import HTMLResponse, RedirectResponse, Response
@@ -22,6 +23,11 @@ from app.services.ai_service import (
 
 router = APIRouter()
 templates = Jinja2Templates(directory=str(Path(__file__).resolve().parent.parent / "templates"))
+
+# /papers 一覧で何度も叩かれやすい「関連タグ」をメモリキャッシュ
+# （記事は基本的に静的なので、DB/Firestore 読みを抑える目的）
+_PAPER_RELATED_TAGS_CACHE: dict[str, list[str]] = {}
+_PAPER_RELATED_TAGS_LOCK = threading.Lock()
 
 
 @router.get("/robots.txt")
@@ -389,13 +395,30 @@ def _attach_paper_related_tags(items: list) -> None:
     """論文一覧カード向けに関連タグを付与（最大3件）"""
     if not items:
         return
-    try:
-        from app.services.explanation_cache import get_cached
-    except Exception:
+
+    article_ids = [getattr(item, "id", "") for item in items if getattr(item, "id", "")]
+    if not article_ids:
+        for item in items:
+            setattr(item, "related_tags", [])
         return
 
-    # Firestore の場合、`get_cached()` がドキュメント読取になるためカード数ぶん遅くなりやすい。
-    # そこで一覧向けに paper_graph.related_tags だけをバルクリードする。
+    # まずはメモリキャッシュから引く（/papers は同じ記事を何度も表示するため）
+    with _PAPER_RELATED_TAGS_LOCK:
+        cached_map = {aid: _PAPER_RELATED_TAGS_CACHE.get(aid, None) for aid in set(article_ids)}
+    missing_ids = [aid for aid in article_ids if cached_map.get(aid) is None]
+    missing_ids = list(dict.fromkeys(missing_ids))  # 順序維持＋重複排除
+
+    def _apply_tags_to_items(tags_map: dict[str, list[str]]) -> None:
+        for item in items:
+            aid = getattr(item, "id", "")
+            setattr(item, "related_tags", tags_map.get(aid, []))
+
+    if not missing_ids:
+        tags_map = {aid: cached_map[aid] for aid in cached_map if cached_map[aid] is not None}
+        _apply_tags_to_items(tags_map)
+        return
+
+    # Firestore の場合、関連タグだけバルクリードする
     try:
         from app.services.firestore_store import use_firestore, firestore_get_related_tags_bulk
 
@@ -404,30 +427,34 @@ def _attach_paper_related_tags(items: list) -> None:
         firestore_mode = False
         firestore_get_related_tags_bulk = None
 
+    tags_by_id: dict[str, list[str]] = {}
     if firestore_mode and firestore_get_related_tags_bulk:
-        article_ids = [getattr(item, "id", "") for item in items if getattr(item, "id", "")]
-        tags_by_id = firestore_get_related_tags_bulk(article_ids, max_tags_per_article=3)
-        for item in items:
-            article_id = getattr(item, "id", "")
-            setattr(item, "related_tags", tags_by_id.get(article_id, []))
-        return
-
-    # SQLite など Firestore でない場合は従来どおり（ただし例外は潰す）
-    for item in items:
-        article_id = getattr(item, "id", "")
-        tags: list[str] = []
-        if not article_id:
-            setattr(item, "related_tags", tags)
-            continue
+        tags_by_id = firestore_get_related_tags_bulk(missing_ids, max_tags_per_article=3)
+    else:
+        # SQLite などは explanation_cache からまとめ読み
         try:
-            cached = get_cached(article_id)
-            graph = cached.get("paper_graph") if cached else {}
-            raw_tags = graph.get("related_tags") if isinstance(graph, dict) else []
-            if isinstance(raw_tags, list):
-                tags = [str(t).strip() for t in raw_tags if str(t).strip()][:3]
+            from app.services.explanation_cache import get_cached_many
+
+            cached_graph_map = get_cached_many(missing_ids)
+            for aid, cached in (cached_graph_map or {}).items():
+                graph = cached.get("paper_graph") if cached else {}
+                raw_tags = graph.get("related_tags") if isinstance(graph, dict) else []
+                if isinstance(raw_tags, list):
+                    tags_by_id[aid] = [str(t).strip() for t in raw_tags if str(t).strip()][:3]
         except Exception:
-            tags = []
-        setattr(item, "related_tags", tags)
+            tags_by_id = {}
+
+    # メモリキャッシュへ反映（見つからなかったIDは [] として保持して再読取を防ぐ）
+    with _PAPER_RELATED_TAGS_LOCK:
+        for aid in missing_ids:
+            _PAPER_RELATED_TAGS_CACHE[aid] = tags_by_id.get(aid, [])
+
+    # 併合して適用
+    full_map: dict[str, list[str]] = {}
+    with _PAPER_RELATED_TAGS_LOCK:
+        for aid in set(article_ids):
+            full_map[aid] = _PAPER_RELATED_TAGS_CACHE.get(aid, [])
+    _apply_tags_to_items(full_map)
 
 
 def _blocks_to_html(blocks: list) -> str:

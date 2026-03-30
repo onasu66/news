@@ -6,6 +6,10 @@ from datetime import datetime
 
 from .rss_service import NewsItem, sanitize_display_text
 
+# 性能対策: 一覧表示は最大 2000 件程度に制限しているため、
+# SQLite 側も limit 付きで読み込んで初回遷移を高速化する。
+_LOAD_ALL_LIMIT = 2000
+
 def _use_firestore():
     try:
         from .firestore_store import use_firestore
@@ -86,8 +90,13 @@ def load_all() -> list[NewsItem]:
     _init_db()
     items = []
     with _get_conn() as conn:
+        # published の降順で limit 付き取得（Firestore と挙動を揃えて無限に重くならないようにする）
         rows = conn.execute(
-            "SELECT id, title, link, summary, published, source, category, image_url FROM articles ORDER BY added_at DESC"
+            "SELECT id, title, link, summary, published, source, category, image_url "
+            "FROM articles "
+            "ORDER BY published DESC, added_at DESC "
+            "LIMIT ?",
+            (_LOAD_ALL_LIMIT,),
         ).fetchall()
     for row in rows:
         try:
@@ -104,7 +113,7 @@ def load_all() -> list[NewsItem]:
             category=row["category"] or "総合",
             image_url=row["image_url"],
         ))
-    return items
+        return items
 
 
 def save_articles_batch(items: list[NewsItem]) -> int:

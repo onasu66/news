@@ -163,6 +163,75 @@ def get_cached(article_id: str) -> Optional[dict]:
     return result
 
 
+def get_cached_many(article_ids: list[str]) -> dict[str, dict]:
+    """
+    複数 article_id をまとめてキャッシュから取得（SQLite 用の直列削減）
+    Firestore は既存 get_cached がメモリキャッシュを持っているため、ここでは利用者側で呼び分ける前提。
+    """
+    if not article_ids:
+        return {}
+
+    # Firestore は別途行う（必要なら caller 側で Firestore バルクリードを使う）
+    if _use_firestore():
+        out: dict[str, dict] = {}
+        for aid in article_ids:
+            d = get_cached(aid)
+            if d is not None:
+                out[str(aid)] = d
+        return out
+
+    _init_db()
+    # SQLite では最大パラメータ数があるので分割
+    # （ただし今回の用途は papers カード数=せいぜい数十件なので基本的に安全）
+    ids = list({str(x) for x in article_ids if x})
+    if not ids:
+        return {}
+
+    out: dict[str, dict] = {}
+    chunk_size = 500
+    with _get_conn() as conn:
+        for i in range(0, len(ids), chunk_size):
+            chunk = ids[i : i + chunk_size]
+            placeholders = ",".join(["?"] * len(chunk))
+            rows = conn.execute(
+                f"""
+                SELECT article_id, inline_blocks, persona_0, persona_1, persona_2, persona_3, persona_4,
+                       personas, display_persona_ids
+                FROM explanation_cache
+                WHERE article_id IN ({placeholders})
+                """,
+                tuple(chunk),
+            ).fetchall()
+            for row in rows:
+                try:
+                    d = dict(row)
+                    blocks = json.loads(d.get("inline_blocks", "[]"))
+                    if _is_bad_fallback_cache(blocks):
+                        continue
+                    display_persona_ids = json.loads(d["display_persona_ids"]) if d.get("display_persona_ids") else None
+                    personas = json.loads(d["personas"]) if d.get("personas") else None
+                    if display_persona_ids is not None and isinstance(display_persona_ids, list) and len(display_persona_ids) == 3 and isinstance(personas, list) and len(personas) == 3:
+                        result = {"blocks": blocks, "personas": personas, "display_persona_ids": display_persona_ids}
+                    else:
+                        if isinstance(personas, list) and len(personas) >= PERSONAS_COUNT:
+                            personas = personas[:PERSONAS_COUNT]
+                        elif not isinstance(personas, list):
+                            personas = [d.get("persona_0", "") or "", d.get("persona_1", "") or "", d.get("persona_2", "") or "", d.get("persona_3", "") or "", d.get("persona_4", "") or ""] + [""] * (PERSONAS_COUNT - 5)
+                        result = {"blocks": blocks, "personas": personas}
+                    extra = _get_extra(row["article_id"])
+                    if extra:
+                        result["quick_understand"] = extra.get("quick_understand", {})
+                        result["vote_data"] = extra.get("vote_data", {})
+                        result["paper_graph"] = extra.get("paper_graph", {})
+                        result["paper_quiz"] = extra.get("paper_quiz", {})
+                        result["deep_insights"] = extra.get("deep_insights", {})
+                    out[str(row["article_id"])] = result
+                except Exception:
+                    continue
+
+    return out
+
+
 def delete_cache(article_id: str) -> bool:
     """指定記事の解説キャッシュを削除。存在したらTrue"""
     global _ids_cache, _explanation_cache
