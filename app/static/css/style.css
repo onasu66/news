@@ -1085,7 +1085,7 @@ body::after {
 }
 
 .article-title {
-    font-size: clamp(1.5rem, 4vw, 1.95rem);
+    font-size: clamp(1.3rem, 3.6vw, 1.7rem);
     font-weight: 800;
     line-height: 1.4;
     margin: 0.5rem 0 0 0;
@@ -1094,7 +1094,7 @@ body::after {
 }
 
 .article-h2 {
-    font-size: 1.15rem;
+    font-size: 1.0rem;
     font-weight: 700;
     color: var(--color-text-secondary);
     margin: 0.5rem 0 0 0;
@@ -1102,7 +1102,7 @@ body::after {
 }
 
 .article-h3 {
-    font-size: 1.05rem;
+    font-size: 0.95rem;
     font-weight: 700;
     color: var(--color-primary);
     margin: 1.25rem 0 0.5rem 0;
@@ -1111,10 +1111,10 @@ body::after {
 
 .article-hero {
     margin-bottom: 1.25rem;
-    border-radius: var(--radius-lg);
+    border-radius: 0;
     overflow: hidden;
-    box-shadow: var(--shadow-md);
-    border: 1px solid var(--color-border-light);
+    box-shadow: none;
+    border: none;
 }
 
 .article-image {
@@ -1142,9 +1142,9 @@ body::after {
 
 /* 記事本文：主役。読みやすく大きく */
 .article-with-bubbles .article-text {
-    font-size: 1.05rem;
-    line-height: 1.6;
-    margin: 0 0 0.85rem 0;
+    font-size: 0.95rem;
+    line-height: 1.55;
+    margin: 0 0 0.65rem 0;
     color: var(--color-text);
 }
 
@@ -1209,9 +1209,9 @@ body::after {
 }
 
 .article-text {
-    font-size: 1.05rem;
-    line-height: 1.6;
-    margin: 0 0 0.85rem 0;
+    font-size: 0.95rem;
+    line-height: 1.55;
+    margin: 0 0 0.65rem 0;
     color: var(--color-text);
 }
 
@@ -1469,25 +1469,27 @@ body::after {
     display: inline-flex;
     align-items: center;
     gap: 0.35rem;
-    margin-top: 1.25rem;
+    margin-top: 0.5rem;
     color: var(--color-accent);
     font-weight: 600;
     text-decoration: none;
-    font-size: 0.9rem;
-    padding: 0.5rem 0;
+    font-size: 0.82rem;
+    padding: 0.25rem 0;
+    opacity: 0.45;
     transition: gap 0.2s;
 }
 
 .read-original:hover {
     gap: 0.5rem;
+    opacity: 0.65;
 }
 
 .article-actions {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
-    gap: 1rem;
-    margin-top: 1.25rem;
+    gap: 0.5rem;
+    margin-top: 0.75rem;
 }
 
 .btn-one-take {
@@ -1910,13 +1912,13 @@ body::after {
     }
 
     .article-title {
-        font-size: 1.45rem;
-        line-height: 1.4;
+        font-size: 1.25rem;
+        line-height: 1.35;
     }
 
     .article-hero {
         margin-bottom: 1.25rem;
-        border-radius: 14px;
+        border-radius: 0;
     }
 
     .article-image {
@@ -1924,14 +1926,14 @@ body::after {
     }
 
     .article-main {
-        padding: 1.5rem 1.25rem;
-        border-radius: 14px;
+        padding: 1rem 0.9rem;
+        border-radius: 0;
     }
 
     .article-with-bubbles .article-text,
     .article-text {
-        font-size: 1.05rem;
-        line-height: 1.95;
+        font-size: 0.92rem;
+        line-height: 1.65;
     }
 
     .article-with-bubbles .scroll-bubble-group {
@@ -1966,17 +1968,17 @@ body::after {
     /* 記事アクション：親指で届く大きなボタン */
     .article-actions {
         flex-direction: column;
-        gap: 0.75rem;
-        margin-top: 1.5rem;
+        gap: 0.55rem;
+        margin-top: 1rem;
     }
 
     .read-original, .btn-one-take {
         width: 100%;
         justify-content: center;
-        min-height: 52px;
-        padding: 0.85rem 1.25rem;
-        font-size: 1rem;
-        border-radius: 12px;
+        min-height: 44px;
+        padding: 0.7rem 1rem;
+        font-size: 0.92rem;
+        border-radius: 10px;
     }
 
     /* パーソナカード：見やすく開きやすく */
@@ -2887,20 +2889,20 @@ body::after {
 
 /* ===== SHORT SUMMARY (1分で理解) ===== */
 .short-summary-box {
-    background: var(--color-card);
-    border-radius: 16px;
-    padding: 1.25rem 1.5rem;
-    box-shadow: 0 2px 12px rgba(0,0,0,0.04);
+    background: transparent;
+    border-radius: 0;
+    padding: 0;
+    box-shadow: none;
 }
 .short-summary-heading {
-    font-size: 1.05rem;
+    font-size: 0.98rem;
     font-weight: 800;
-    margin: 0 0 0.75rem;
+    margin: 0 0 0.55rem;
 }
 .short-point {
-    margin-bottom: 0.75rem;
-    padding-left: 0.5rem;
-    border-left: 3px solid var(--color-accent);
+    margin-bottom: 0.55rem;
+    padding-left: 0.45rem;
+    border-left: 2px solid var(--color-accent);
 }
 .short-point-label {
     display: block;
@@ -2911,8 +2913,8 @@ body::after {
 }
 .short-point p {
     margin: 0;
-    font-size: 0.92rem;
-    line-height: 1.65;
+    font-size: 0.9rem;
+    line-height: 1.6;
 }
 
 /* ===== MIDORMAN FLOAT ===== */
@@ -2983,9 +2985,9 @@ body::after {
     .genre-tab.is-active { background: var(--color-accent); color: #fff; border-color: var(--color-accent); }
     .genre-tabs-wrap { background: rgba(248,250,252,0.95); backdrop-filter: blur(8px); }
 
-    .article-detail { background: #fff; border-radius: 16px; padding: 1rem; margin: 0.5rem; box-shadow: 0 1px 4px rgba(0,0,0,0.06); }
+    .article-detail { background: transparent; border-radius: 0; padding: 0; margin: 0; box-shadow: none; }
     .quick-understand { background: #f0f9ff; border-color: #bfdbfe; }
-    .short-summary-box { background: #fff; border: 1px solid #e2e8f0; }
+    .short-summary-box { background: transparent; border: none; padding: 0; box-shadow: none; }
 
     .mobile-bottom-bar {
         background: rgba(255,255,255,0.97);
