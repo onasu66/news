@@ -1653,7 +1653,7 @@ body::after {
 
     /* セーフエリア（ノッチ・ホームインジケータ対応） */
     .main-content {
-        padding: 1.25rem 1rem;
+        padding: 1rem 0.75rem;
         padding-bottom: max(1.5rem, env(safe-area-inset-bottom));
     }
 
@@ -2321,6 +2321,7 @@ body::after {
     position: relative;
     width: 104px;
     min-width: 104px;
+    height: 58px;
     aspect-ratio: 16 / 9;
     overflow: hidden;
     border-radius: 8px;
@@ -2784,7 +2785,7 @@ body::after {
     main.main-content { padding-bottom: 5rem; }
     .news-grid { grid-template-columns: 1fr; gap: 0.5rem; }
     .news-card-link { gap: 0.6rem; padding: 0.55rem 0; }
-    .news-card-image { width: 92px; min-width: 92px; }
+    .news-card-image { width: 92px; min-width: 92px; height: 52px; }
     .news-card-body { padding: 0.3rem 0.45rem; justify-content: flex-start; }
     .news-card-meta { font-size: 0.72rem; }
     .news-card-category { top: 0.35rem; left: 0.35rem; font-size: 0.62rem; padding: 0.12rem 0.42rem; }

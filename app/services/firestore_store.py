@@ -226,6 +226,56 @@ def firestore_get_cached_article_ids() -> set:
     return _rebuild_cached_article_ids_meta()
 
 
+def firestore_get_related_tags_bulk(article_ids: list[str], *, max_tags_per_article: int = 3) -> dict[str, list[str]]:
+    """
+    複数 article_id に対して explanations/doc を一括取得し、
+    paper_graph.related_tags だけを抜き出して返す。
+
+    目的: /papers 一覧で get_cached() をカード数ぶん直列実行するのではなく、
+    Firestore のバッチ読取（get_all）で待ち時間を短縮する。
+    """
+    if not article_ids:
+        return {}
+
+    client = _get_client()
+    refs = [_explanations_collection().document(aid) for aid in article_ids]
+    results: dict[str, list[str]] = {}
+
+    # Firestore client has get_all(); ない場合はフォールバックでループ
+    try:
+        docs = client.get_all(refs)
+    except Exception:
+        docs = []
+        for ref in refs:
+            try:
+                docs.append(ref.get())
+            except Exception:
+                pass
+
+    for doc in docs:
+        try:
+            if not doc.exists:
+                continue
+            d = doc.to_dict() or {}
+            pg = d.get("paper_graph")
+            if isinstance(pg, str):
+                try:
+                    pg = json.loads(pg)
+                except Exception:
+                    pg = None
+            if not isinstance(pg, dict):
+                continue
+            raw_tags = pg.get("related_tags", [])
+            if not isinstance(raw_tags, list):
+                continue
+            tags = [str(t).strip() for t in raw_tags if str(t).strip()][:max_tags_per_article]
+            results[doc.id] = tags
+        except Exception:
+            continue
+
+    return results
+
+
 def firestore_get_cached(article_id: str) -> Optional[dict]:
     doc = _explanations_collection().document(article_id).get()
     if not doc.exists:

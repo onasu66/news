@@ -394,44 +394,39 @@ def _attach_paper_related_tags(items: list) -> None:
     except Exception:
         return
 
-    # Firestore の場合、`get_cached()` がドキュメント読取になるため直列だと遅くなりやすい。
-    # そこで取得部分だけ並列化して体感速度を改善する（SQLite は現状のまま）。
+    # Firestore の場合、`get_cached()` がドキュメント読取になるためカード数ぶん遅くなりやすい。
+    # そこで一覧向けに paper_graph.related_tags だけをバルクリードする。
     try:
-        from app.services.firestore_store import use_firestore
+        from app.services.firestore_store import use_firestore, firestore_get_related_tags_bulk
 
         firestore_mode = bool(use_firestore())
     except Exception:
         firestore_mode = False
+        firestore_get_related_tags_bulk = None
 
-    def _safe_fetch_tags(article_id: str) -> list[str]:
-        try:
-            cached = get_cached(article_id)
-            graph = cached.get("paper_graph") if cached else {}
-            raw_tags = graph.get("related_tags") if isinstance(graph, dict) else []
-            if isinstance(raw_tags, list):
-                return [str(t).strip() for t in raw_tags if str(t).strip()][:3]
-        except Exception:
-            pass
-        return []
-
-    if firestore_mode and len(items) >= 8:
-        from concurrent.futures import ThreadPoolExecutor
-
-        tags_by_id: dict[str, list[str]] = {}
-        max_workers = min(8, len(items))
-        with ThreadPoolExecutor(max_workers=max_workers) as ex:
-            futures = {ex.submit(_safe_fetch_tags, getattr(item, "id", "")): item for item in items}
-            for fut, item in futures.items():
-                article_id = getattr(item, "id", "")
-                tags_by_id[article_id] = fut.result()
+    if firestore_mode and firestore_get_related_tags_bulk:
+        article_ids = [getattr(item, "id", "") for item in items if getattr(item, "id", "")]
+        tags_by_id = firestore_get_related_tags_bulk(article_ids, max_tags_per_article=3)
         for item in items:
             article_id = getattr(item, "id", "")
             setattr(item, "related_tags", tags_by_id.get(article_id, []))
         return
 
+    # SQLite など Firestore でない場合は従来どおり（ただし例外は潰す）
     for item in items:
         article_id = getattr(item, "id", "")
-        tags = _safe_fetch_tags(article_id) if article_id else []
+        tags: list[str] = []
+        if not article_id:
+            setattr(item, "related_tags", tags)
+            continue
+        try:
+            cached = get_cached(article_id)
+            graph = cached.get("paper_graph") if cached else {}
+            raw_tags = graph.get("related_tags") if isinstance(graph, dict) else []
+            if isinstance(raw_tags, list):
+                tags = [str(t).strip() for t in raw_tags if str(t).strip()][:3]
+        except Exception:
+            tags = []
         setattr(item, "related_tags", tags)
 
 
