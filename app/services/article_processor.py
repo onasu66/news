@@ -408,11 +408,22 @@ def process_new_rss_articles(
     count = 0
     for item in to_process:
         try:
-            if process_rss_to_site_article(item, force=force):
+            ok = process_rss_to_site_article(item, force=force)
+            # force=false のままだと「実際には既存キャッシュがある/途中状態」が原因でスキップ扱いになることがある。
+            # 選んだ分は記事化する方針に寄せるため、失敗時は force=true で1回だけ上書き再試行する。
+            if not ok and not force:
+                ok = process_rss_to_site_article(item, force=True)
+            if ok:
                 count += 1
                 _log_save(item.id, item.title, True, source="rss_seed")
             else:
-                _log_save(item.id, item.title, False, error="スキップ（既存または生成失敗）", source="rss_seed")
+                _log_save(
+                    item.id,
+                    item.title,
+                    False,
+                    error="スキップ（既存/生成失敗）※force=true再試行でも失敗",
+                    source="rss_seed",
+                )
         except Exception as e:
             _log_save(item.id, item.title, False, error=str(e), source="rss_seed")
     return count

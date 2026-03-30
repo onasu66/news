@@ -13,7 +13,7 @@
 {% if query %}
 <p class="search-result-count">「{{ query }}」の検索結果: {{ results|length }}件</p>
 {% endif %}
-<div class="news-grid" style="max-width:960px; margin:0 auto; padding:0 1rem;">
+<div class="news-grid" id="news-grid">
     {% for item in results %}
     <article class="news-card animate-fade-in">
         <a href="/topic/{{ item.id }}" class="news-card-link">

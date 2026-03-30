@@ -261,9 +261,9 @@ body::after {
 
 /* ========== メイン ========== */
 .main-content {
-    max-width: 1200px;
+    max-width: 1400px;
     margin: 0 auto;
-    padding: 2rem 1.5rem;
+    padding: 1.25rem 1rem;
 }
 
 /* ========== トップレイアウト・ヒーロー ========== */
@@ -836,19 +836,19 @@ body::after {
 .next-article-nav {
     display: flex;
     flex-wrap: wrap;
-    gap: 0.75rem;
-    margin-top: 2.5rem;
-    padding-top: 1.75rem;
+    gap: 0.6rem;
+    margin-top: 1.25rem;
+    padding-top: 1rem;
     border-top: 2px dashed var(--color-border-light);
 }
 
 .next-article-link {
     display: inline-flex;
     align-items: center;
-    padding: 0.75rem 1.25rem;
+    padding: 0.65rem 1rem;
     border-radius: var(--radius);
     font-weight: 600;
-    font-size: 0.95rem;
+    font-size: 0.98rem;
     text-decoration: none;
     transition: background 0.2s, color 0.2s, box-shadow 0.2s;
 }
@@ -1110,7 +1110,7 @@ body::after {
 }
 
 .article-hero {
-    margin-bottom: 2rem;
+    margin-bottom: 1.25rem;
     border-radius: var(--radius-lg);
     overflow: hidden;
     box-shadow: var(--shadow-md);
@@ -1129,7 +1129,7 @@ body::after {
 
 .article-main {
     background: var(--color-surface);
-    padding: 2.25rem;
+    padding: 1.5rem;
     border-radius: var(--radius-lg);
     box-shadow: var(--shadow-sm);
     border: 1px solid var(--color-border-light);
@@ -1142,9 +1142,9 @@ body::after {
 
 /* 記事本文：主役。読みやすく大きく */
 .article-with-bubbles .article-text {
-    font-size: 1.1rem;
-    line-height: 1.9;
-    margin: 0 0 1.25rem 0;
+    font-size: 1.05rem;
+    line-height: 1.7;
+    margin: 0 0 1rem 0;
     color: var(--color-text);
 }
 
@@ -1209,9 +1209,9 @@ body::after {
 }
 
 .article-text {
-    font-size: 1.1rem;
-    line-height: 1.9;
-    margin: 0 0 1.25rem 0;
+    font-size: 1.05rem;
+    line-height: 1.7;
+    margin: 0 0 1rem 0;
     color: var(--color-text);
 }
 
@@ -1275,10 +1275,10 @@ body::after {
 
 /* メイン本文＝ニュース（事実）。一体感のある読み物として */
 .article-body {
-    font-size: 1.1rem;
-    line-height: 1.95;
+    font-size: 1.05rem;
+    line-height: 1.7;
     color: var(--color-text);
-    margin: 0 0 2rem 0;
+    margin: 0 0 1.5rem 0;
     letter-spacing: 0.02em;
 }
 
@@ -2280,19 +2280,19 @@ body::after {
 /* ===== PAGE LAYOUT ===== */
 .page-layout {
     display: grid;
-    grid-template-columns: 1fr 280px;
-    gap: 2rem;
-    max-width: 1200px;
-    margin: 0 auto;
-    padding: 2rem 1.5rem;
+    grid-template-columns: 1fr 260px;
+    gap: 1.25rem;
+    max-width: 100%;
+    margin: 0;
+    padding: 0.75rem 0;
 }
 .content-main { min-width: 0; }
 
 /* ===== ENHANCED NEWS CARDS (横長レイアウト) ===== */
 .news-grid {
     display: grid;
-    grid-template-columns: 1fr;
-    gap: 0.75rem;
+    grid-template-columns: repeat(auto-fill, minmax(440px, 1fr));
+    gap: 1rem;
 }
 .news-card {
     background: var(--color-card);
@@ -2342,7 +2342,7 @@ body::after {
     backdrop-filter: blur(4px);
 }
 .news-card-body {
-    padding: 0.75rem 1rem;
+    padding: 0.6rem 0.85rem;
     display: flex;
     flex-direction: column;
     justify-content: center;
@@ -2354,25 +2354,25 @@ body::after {
     align-items: center;
     gap: 0.6rem;
     margin-bottom: 0.3rem;
-    font-size: 0.75rem;
+    font-size: 0.82rem;
     color: #64748b;
 }
 .news-card-time { white-space: nowrap; }
 .news-card .news-title {
-    font-size: 0.95rem;
+    font-size: 1.02rem;
     font-weight: 700;
     line-height: 1.5;
-    margin: 0 0 0.3rem;
+    margin: 0 0 0.2rem;
     display: -webkit-box;
     -webkit-line-clamp: 2;
     -webkit-box-orient: vertical;
     overflow: hidden;
 }
 .news-summary-line {
-    font-size: 0.8rem;
+    font-size: 0.9rem;
     color: #64748b;
     line-height: 1.5;
-    margin: 0 0 0.35rem;
+    margin: 0 0 0.25rem;
     display: -webkit-box;
     -webkit-line-clamp: 2;
     -webkit-box-orient: vertical;
@@ -2384,7 +2384,7 @@ body::after {
     justify-content: space-between;
 }
 .news-card-ai {
-    font-size: 0.75rem;
+    font-size: 0.82rem;
     color: var(--color-accent);
     font-weight: 600;
 }
@@ -2721,15 +2721,15 @@ body::after {
 
 /* ===== ARTICLE: NAVIGATION / RELATED ===== */
 .article-navigation {
-    margin-top: 2.5rem;
+    margin-top: 1.5rem;
     border-top: 2px solid #f1f5f9;
-    padding-top: 2rem;
+    padding-top: 1.25rem;
 }
-.article-nav-section { margin-bottom: 2rem; }
+.article-nav-section { margin-bottom: 1.25rem; }
 .article-nav-title {
-    font-size: 1.1rem;
+    font-size: 1.05rem;
     font-weight: 800;
-    margin: 0 0 1rem;
+    margin: 0 0 0.6rem;
 }
 
 /* ===== RESPONSIVE ===== */
@@ -2741,11 +2741,11 @@ body::after {
     .mobile-bottom-bar { display: flex; }
     .site-footer { padding-bottom: calc(4rem + env(safe-area-inset-bottom, 0px)); }
     main.main-content { padding-bottom: 5rem; }
-    .news-grid { grid-template-columns: 1fr; gap: 0.6rem; }
+    .news-grid { grid-template-columns: 1fr; gap: 0.55rem; }
     .news-card-image { width: 110px; min-width: 110px; }
-    .news-card-body { padding: 0.55rem 0.75rem; }
-    .news-card .news-title { font-size: 0.88rem; -webkit-line-clamp: 2; }
-    .news-summary-line { font-size: 0.75rem; -webkit-line-clamp: 1; }
+    .news-card-body { padding: 0.5rem 0.7rem; }
+    .news-card .news-title { font-size: 0.92rem; -webkit-line-clamp: 2; }
+    .news-summary-line { font-size: 0.82rem; -webkit-line-clamp: 1; }
     .news-card-footer { display: none; }
     .sp-only { display: inline; }
     .genre-tabs-wrap { top: 48px; }

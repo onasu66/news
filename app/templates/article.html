@@ -70,18 +70,6 @@
                     {% endif %}
                 </div>
             </div>
-            <section class="impact-box">
-                <h3 class="article-fixed-section-title">💡 社会への影響</h3>
-                {% if deep_insights and deep_insights.risks %}
-                <ul class="insight-list">
-                    {% for r in deep_insights.risks[:3] %}
-                    <li>{{ r }}</li>
-                    {% endfor %}
-                </ul>
-                {% else %}
-                <p class="article-text">生活・産業・制度への影響を注視する必要があります。</p>
-                {% endif %}
-            </section>
             <section class="score-box">
                 <h3 class="article-fixed-section-title">📊 スコア表示</h3>
                 <p class="score-value"><span class="animated-number" data-target="{{ article_score|default(72) }}">0</span> / 100</p>
