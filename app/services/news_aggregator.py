@@ -356,6 +356,40 @@ class NewsAggregator:
         戻り値: (papers_by_category, pagination_info)
         papers_by_category は (domain_name, list[NewsItem]) のリスト（表示順は PAPER_DOMAIN_ORDER）。
         """
+        # Firestore なら /papers は get_news() 経由で load_all(最大2000件) しない。
+        # has_explanation & category で直接クエリしてページングすることで、初回遷移を速くする。
+        if not force_refresh:
+            try:
+                from .firestore_store import use_firestore, firestore_query_papers_page
+
+                if use_firestore():
+                    per_page = ITEMS_PER_PAGE
+                    page_items, total = firestore_query_papers_page(page=page, per_page=per_page)
+                    total_pages = max(1, (int(total) + per_page - 1) // per_page) if total else 1
+                    page = max(1, min(int(page), total_pages))
+
+                    by_domain: dict[str, list[NewsItem]] = {}
+                    for item in page_items:
+                        domain = SOURCE_TO_PAPER_DOMAIN.get(item.source, "総合科学")
+                        item.paper_filter_code = _detect_paper_filter(domain, item.title, item.summary)
+                        by_domain.setdefault(domain, []).append(item)
+
+                    domains_order = [d for d in PAPER_DOMAIN_ORDER if d in by_domain]
+                    papers_by_category = [(dom, by_domain.get(dom, [])) for dom in domains_order]
+
+                    pagination = {
+                        "page": page,
+                        "per_page": per_page,
+                        "total": int(total) if total else len(page_items),
+                        "total_pages": total_pages,
+                        "has_prev": page > 1,
+                        "has_next": page < total_pages,
+                    }
+                    return papers_by_category, pagination
+            except Exception:
+                # Firestore 側で何か起きても、従来の挙動へフォールバック
+                pass
+
         news = cls.get_news(force_refresh)
         papers = [a for a in news if a.category == "研究・論文"]
         papers.sort(key=lambda x: x.published or datetime.min, reverse=True)
@@ -365,13 +399,11 @@ class NewsAggregator:
         page = max(1, min(page, total_pages))
         start = (page - 1) * per_page
         page_items = papers[start : start + per_page]
-        # どの上位ジャンルに属するか（ソース → ドメイン）でグルーピング
         domains_with_articles = {SOURCE_TO_PAPER_DOMAIN.get(p.source, "総合科学") for p in papers}
         domains_order = [d for d in PAPER_DOMAIN_ORDER if d in domains_with_articles]
         by_domain: dict[str, list[NewsItem]] = {}
         for item in page_items:
             domain = SOURCE_TO_PAPER_DOMAIN.get(item.source, "総合科学")
-            # 細かいフィルター（A〜I）をタイトル・要約から判定
             item.paper_filter_code = _detect_paper_filter(domain, item.title, item.summary)
             by_domain.setdefault(domain, []).append(item)
         papers_by_category = [(dom, by_domain.get(dom, [])) for dom in domains_order]

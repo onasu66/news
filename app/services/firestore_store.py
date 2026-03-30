@@ -276,6 +276,77 @@ def firestore_get_related_tags_bulk(article_ids: list[str], *, max_tags_per_arti
     return results
 
 
+def firestore_query_papers_page(page: int, per_page: int) -> tuple[list["NewsItem"], int]:
+    """
+    /papers 用: has_explanation=True & category=研究・論文 を published 降順でページング取得。
+
+    目的: /papers 初回表示時に get_news() 経由で load_all(最大2000件) を回さない。
+    """
+    from .rss_service import NewsItem, sanitize_display_text
+
+    page = max(1, int(page or 1))
+    per_page = max(1, int(per_page or 1))
+    start = (page - 1) * per_page
+
+    q = (
+        _articles_collection()
+        .where("category", "==", "研究・論文")
+        .where("has_explanation", "==", True)
+        .order_by("published", direction="DESCENDING")
+        .offset(start)
+        .limit(per_page)
+    )
+
+    items: list[NewsItem] = []
+    for doc in q.stream():
+        d = doc.to_dict() or {}
+        try:
+            pub = datetime.fromisoformat(d.get("published", "")) if d.get("published") else datetime.now()
+        except Exception:
+            pub = datetime.now()
+        items.append(
+            NewsItem(
+                id=doc.id,
+                title=d.get("title", ""),
+                link=d.get("link", ""),
+                summary=sanitize_display_text(d.get("summary") or ""),
+                published=pub,
+                source=d.get("source", ""),
+                category=d.get("category", "研究・論文"),
+                image_url=d.get("image_url"),
+            )
+        )
+
+    # total_count は count() が使えればそれ、ダメなら前半だけフォールバック（表示上限の範囲）
+    total_count = 0
+    try:
+        base = (
+            _articles_collection()
+            .where("category", "==", "研究・論文")
+            .where("has_explanation", "==", True)
+        )
+        # Firestore の aggregation API が使える場合
+        agg = base.count().get()
+        # 返却形式はバージョン差があるので複数パターン対応
+        total_count = int(getattr(agg, "value", None) or agg[0].value or agg[0].get("count") or 0)
+    except Exception:
+        try:
+            # 最悪: 一旦ページ上限分だけ読む（papers 自体はニュース全体より少ない想定）
+            total_count = 0
+            for _ in (
+                _articles_collection()
+                .where("category", "==", "研究・論文")
+                .where("has_explanation", "==", True)
+                .limit(per_page * 100)  # かなり広め（通常は収まる想定）
+                .stream()
+            ):
+                total_count += 1
+        except Exception:
+            total_count = len(items)
+
+    return items, total_count
+
+
 def firestore_get_cached(article_id: str) -> Optional[dict]:
     doc = _explanations_collection().document(article_id).get()
     if not doc.exists:
