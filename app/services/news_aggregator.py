@@ -233,26 +233,29 @@ class NewsAggregator:
                 cls._last_updated = datetime.now()
                 return cls._news_cache
             if force_refresh:
-                news = fetch_rss_news()
-                if news:
-                    trends = cls.get_trends(force_refresh=True)
-                    trend_keywords = [t.keyword for t in trends]
-                    min_added = max(0, getattr(settings, "RSS_MIN_ADDED_PER_REFRESH", 10))
-                    max_loops = max(1, getattr(settings, "RSS_REFRESH_MAX_LOOPS", 8))
-                    added_run = 0
-                    for _ in range(max_loops):
-                        all_items = load_all()
-                        batch = process_new_rss_articles(
-                            news,
-                            max_per_run=14,
-                            trend_keywords=trend_keywords,
-                            existing_articles=all_items,
-                        )
-                        added_run += batch
-                        if min_added <= 0 or added_run >= min_added or batch == 0:
-                            break
-                processed_ids = get_cached_article_ids()
-                all_items = load_all()
+                # RSS/AI の途中で例外が出ても、ここまで保存された記事を一覧に載せる（finally で必ず再読込）
+                try:
+                    news = fetch_rss_news()
+                    if news:
+                        trends = cls.get_trends(force_refresh=True)
+                        trend_keywords = [t.keyword for t in trends]
+                        min_added = max(0, getattr(settings, "RSS_MIN_ADDED_PER_REFRESH", 10))
+                        max_loops = max(1, getattr(settings, "RSS_REFRESH_MAX_LOOPS", 8))
+                        added_run = 0
+                        for _ in range(max_loops):
+                            all_items = load_all()
+                            batch = process_new_rss_articles(
+                                news,
+                                max_per_run=14,
+                                trend_keywords=trend_keywords,
+                                existing_articles=all_items,
+                            )
+                            added_run += batch
+                            if min_added <= 0 or added_run >= min_added or batch == 0:
+                                break
+                finally:
+                    processed_ids = get_cached_article_ids()
+                    all_items = load_all()
             cls._news_cache = sorted(
                 [x for x in all_items if x.id in processed_ids][:PAGE_DISPLAY_LIMIT],
                 key=lambda x: x.published or datetime.min,
