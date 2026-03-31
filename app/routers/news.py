@@ -374,12 +374,20 @@ def _build_short_summary(quick_understand: dict | None, fallback_summary: str | 
             return ""
         return (t[:max_len] + "…") if len(t) > max_len else t
 
+    def _safe_text(v) -> str:
+        return v.strip() if isinstance(v, str) else ""
+
     candidate = ""
     if isinstance(quick_understand, dict):
-        candidate = (quick_understand.get("what") or "").strip()
+        candidate = _safe_text(quick_understand.get("what"))
         if not candidate:
             # what が無い場合は why/how を連結して最低限の要点にする
-            parts = [p.strip() for p in [quick_understand.get("why") or "", quick_understand.get("how") or ""] if p.strip()]
+            parts = [
+                p for p in [
+                    _safe_text(quick_understand.get("why")),
+                    _safe_text(quick_understand.get("how")),
+                ] if p
+            ]
             candidate = " / ".join(parts)
 
     if not candidate:
@@ -393,10 +401,13 @@ def _build_short_summary(quick_understand: dict | None, fallback_summary: str | 
 
 def _quick_points_non_empty(quick_understand: dict | None) -> bool:
     """1分で理解用の3要点（what/why/how）が1つ以上あるか"""
+    def _safe_text(v) -> str:
+        return v.strip() if isinstance(v, str) else ""
+
     if not isinstance(quick_understand, dict):
         return False
     for k in ("what", "why", "how"):
-        if (quick_understand.get(k) or "").strip():
+        if _safe_text(quick_understand.get(k)):
             return True
     return False
 
@@ -422,10 +433,13 @@ def _build_article_lead_smartnews(quick_understand: dict | None, fallback_summar
     """3要点が無いときのリード1段落（参照UIの下線強調に近づける）。"""
     import re as _re
 
+    def _safe_text(v) -> str:
+        return v.strip() if isinstance(v, str) else ""
+
     parts: list[str] = []
     if isinstance(quick_understand, dict):
         for k in ("what", "why"):
-            t = (quick_understand.get(k) or "").strip()
+            t = _safe_text(quick_understand.get(k))
             if t:
                 parts.append(t)
     raw = " ".join(parts) if parts else ""
@@ -607,7 +621,8 @@ async def topic_detail(request: Request, topic_id: str):
     quick_rows: dict[str, str] = {}
     if show_quick_points and isinstance(quick_understand, dict):
         for k in ("what", "why", "how"):
-            t = (quick_understand.get(k) or "").strip()
+            v = quick_understand.get(k)
+            t = v.strip() if isinstance(v, str) else ""
             if t:
                 quick_rows[k] = _highlight_stats_in_text(t)
     meta_desc = _meta_description_qa(item.title, item.summary)
