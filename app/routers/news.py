@@ -1,4 +1,6 @@
 """ニュース関連ルート"""
+import json
+import logging
 import uuid
 from datetime import datetime
 import threading
@@ -23,6 +25,111 @@ from app.services.ai_service import (
 
 router = APIRouter()
 templates = Jinja2Templates(directory=str(Path(__file__).resolve().parent.parent / "templates"))
+logger = logging.getLogger(__name__)
+
+
+def _json_safe_for_template(obj):
+    """Jinja の |tojson が扱えない型（Decimal, DatetimeWithNanoseconds 等）を落とさないよう正規化。"""
+    if obj is None:
+        return None
+    try:
+        return json.loads(json.dumps(obj, ensure_ascii=False, default=str))
+    except Exception:
+        return None
+
+
+def _coerce_mapping(val):
+    """キャッシュ・Firestore 由来の値を dict に（JSON文字列も許容）。"""
+    if val is None:
+        return None
+    if isinstance(val, dict):
+        return val
+    if isinstance(val, str):
+        s = val.strip()
+        if not s:
+            return None
+        try:
+            out = json.loads(s)
+            return out if isinstance(out, dict) else None
+        except Exception:
+            return None
+    return None
+
+
+def _sanitize_quick_understand_for_page(val):
+    d = _coerce_mapping(val)
+    if not d:
+        return None
+    return _json_safe_for_template(d)
+
+
+def _sanitize_vote_data_for_page(val):
+    d = _coerce_mapping(val)
+    if not d:
+        return None
+    d = _json_safe_for_template(d)
+    if not isinstance(d, dict):
+        return None
+    opts = d.get("options")
+    if not isinstance(opts, list) or len(opts) == 0:
+        return None
+    return d
+
+
+def _sanitize_paper_graph_for_page(val):
+    d = _coerce_mapping(val)
+    if not d:
+        return {}
+    d = _json_safe_for_template(d)
+    if not isinstance(d, dict):
+        return {}
+    tags = d.get("related_tags")
+    if not isinstance(tags, list):
+        d["related_tags"] = []
+    tm = d.get("timeline_message")
+    if tm is not None and not isinstance(tm, str):
+        d["timeline_message"] = str(tm)
+    return d
+
+
+def _sanitize_paper_quiz_for_page(val):
+    d = _coerce_mapping(val)
+    if not d:
+        return {}
+    d = _json_safe_for_template(d)
+    if not isinstance(d, dict):
+        return {}
+    if not isinstance(d.get("options"), list):
+        d["options"] = []
+    return d
+
+
+def _sanitize_deep_insights_for_page(val):
+    d = _coerce_mapping(val)
+    if not d:
+        return None
+    d = _json_safe_for_template(d)
+    if not isinstance(d, dict):
+        return None
+    mer = d.get("merits")
+    if mer is None:
+        mer = []
+    elif not isinstance(mer, list):
+        mer = [str(mer)]
+    risk = d.get("risks")
+    if risk is None:
+        risk = []
+    elif not isinstance(risk, list):
+        risk = [str(risk)]
+    fp = d.get("future_prediction")
+    if fp is None:
+        fp = ""
+    elif not isinstance(fp, str):
+        fp = str(fp)
+    out = {"merits": mer, "risks": risk, "future_prediction": fp}
+    if not mer and not risk and not fp.strip():
+        return None
+    return out
 
 # /papers 一覧で何度も叩かれやすい「関連タグ」をメモリキャッシュ
 # （記事は基本的に静的なので、DB/Firestore 読みを抑える目的）
@@ -624,11 +731,15 @@ async def topic_detail(request: Request, topic_id: str):
             for i in display_indices
         ]
         display_persona_ids = display_indices
-    quick_understand = cached.get("quick_understand") if cached else None
-    vote_data = cached.get("vote_data") if cached else None
-    paper_graph = cached.get("paper_graph") if cached else {}
-    paper_quiz = cached.get("paper_quiz") if cached else {}
-    deep_insights = cached.get("deep_insights") if cached else {}
+    # Firestore の Decimal 等で Jinja |tojson が落ちるのを防ぐ＋型崩れを正規化
+    ps_wrapped = _json_safe_for_template(personas_data)
+    if isinstance(ps_wrapped, list):
+        personas_data = [str(x) if x is not None else "" for x in ps_wrapped]
+    quick_understand = _sanitize_quick_understand_for_page(cached.get("quick_understand") if cached else None)
+    vote_data = _sanitize_vote_data_for_page(cached.get("vote_data") if cached else None)
+    paper_graph = _sanitize_paper_graph_for_page(cached.get("paper_graph") if cached else None)
+    paper_quiz = _sanitize_paper_quiz_for_page(cached.get("paper_quiz") if cached else None)
+    deep_insights = _sanitize_deep_insights_for_page(cached.get("deep_insights") if cached else None)
     body_html = _blocks_to_html(blocks) if blocks else ""
     short_summary = _build_short_summary(quick_understand, item.summary)
     show_quick_points = _quick_points_non_empty(quick_understand)
@@ -648,7 +759,11 @@ async def topic_detail(request: Request, topic_id: str):
     # 見た目演出用（記事ごとに安定した値）
     readers_now = 20 + (abs(hash(topic_id)) % 130)
 
-    all_news = NewsAggregator.get_news()
+    try:
+        all_news = NewsAggregator.get_news()
+    except Exception as e:
+        logger.warning("topic_detail: get_news に失敗したため関連欄を省略します: %s", e)
+        all_news = []
     next_article = prev_article = None
     for i, a in enumerate(all_news):
         if a.id == topic_id:

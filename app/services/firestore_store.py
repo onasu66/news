@@ -352,7 +352,11 @@ def firestore_get_cached(article_id: str) -> Optional[dict]:
     if not doc.exists:
         return None
     d = doc.to_dict()
-    blocks = json.loads(d.get("inline_blocks", "[]"))
+    try:
+        blocks = json.loads(d.get("inline_blocks", "[]"))
+    except Exception:
+        logger.warning("firestore_get_cached: inline_blocks が不正 article_id=%s", article_id)
+        return None
     if _is_bad_fallback_cache(blocks):
         return None
     # 新形式: 表示用3人分のみ保存されている場合
@@ -364,16 +368,20 @@ def firestore_get_cached(article_id: str) -> Optional[dict]:
         else:
             personas = [d.get(f"persona_{i}", "") or "" for i in range(14)]
         result = {"blocks": blocks, "personas": personas}
-    if d.get("quick_understand"):
-        result["quick_understand"] = d["quick_understand"] if isinstance(d["quick_understand"], dict) else json.loads(d["quick_understand"])
-    if d.get("vote_data"):
-        result["vote_data"] = d["vote_data"] if isinstance(d["vote_data"], dict) else json.loads(d["vote_data"])
-    if d.get("paper_graph"):
-        result["paper_graph"] = d["paper_graph"] if isinstance(d["paper_graph"], dict) else json.loads(d["paper_graph"])
-    if d.get("paper_quiz"):
-        result["paper_quiz"] = d["paper_quiz"] if isinstance(d["paper_quiz"], dict) else json.loads(d["paper_quiz"])
-    if d.get("deep_insights"):
-        result["deep_insights"] = d["deep_insights"] if isinstance(d["deep_insights"], dict) else json.loads(d["deep_insights"])
+    def _merge_optional_dict_field(key: str) -> None:
+        raw = d.get(key)
+        if raw is None or raw == "":
+            return
+        try:
+            if isinstance(raw, dict):
+                result[key] = raw
+            elif isinstance(raw, str):
+                result[key] = json.loads(raw)
+        except Exception:
+            logger.warning("firestore_get_cached: %s の解釈に失敗（スキップ） article_id=%s", key, article_id)
+
+    for _k in ("quick_understand", "vote_data", "paper_graph", "paper_quiz", "deep_insights"):
+        _merge_optional_dict_field(_k)
     return result
 
 
