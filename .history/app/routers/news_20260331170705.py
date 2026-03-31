@@ -73,10 +73,6 @@ def _sanitize_vote_data_for_page(val):
     opts = d.get("options")
     if not isinstance(opts, list) or len(opts) == 0:
         return None
-    # Jinja: キー欠落だと vote_data.answer_id が Undefined になり |tojson で落ちるため必ず文字列化
-    for _k in ("answer_id", "explanation", "learning_point", "key_term", "key_term_note", "question"):
-        v = d.get(_k)
-        d[_k] = "" if v is None else str(v)
     return d
 
 
@@ -105,9 +101,6 @@ def _sanitize_paper_quiz_for_page(val):
         return {}
     if not isinstance(d.get("options"), list):
         d["options"] = []
-    for _k in ("answer_id", "explanation", "question"):
-        v = d.get(_k)
-        d[_k] = "" if v is None else str(v)
     return d
 
 

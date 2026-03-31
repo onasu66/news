@@ -16,29 +16,49 @@
 {% endblock %}
 
 {% block content %}
-<article class="article-detail article-detail--smartnews">
-    <div class="article-sn-toolbar">
+<article class="article-detail">
+    <header class="article-header">
         <a href="/" class="back-link">← 一覧に戻る</a>
-        <div class="article-sn-toolbar-actions">
-            <button type="button" class="save-article-btn save-article-btn--icon" id="btn-save" data-id="{{ article.id }}" data-title="{{ article.title|e }}" data-summary="{{ (article.summary or '')[:100]|e }}" title="保存">⭐</button>
-            <button type="button" class="save-article-btn save-article-btn--icon" id="btn-copy-share" title="リンクをコピー">🔗</button>
+        <div class="article-meta">
+            <span class="article-source">{{ article.source }}</span>
+            <span class="article-date">🕒 {{ published_text|default('') }}</span>
+            <span class="article-cat-badge">🏷 {{ article.category }}</span>
+            <span class="article-badge">AI解説つきリポート</span>
         </div>
-    </div>
+        <h1 class="article-title">{{ article.title }}</h1>
+        <div class="article-header-actions">
+            <button type="button" class="save-article-btn" id="btn-save" data-id="{{ article.id }}" data-title="{{ article.title|e }}" data-summary="{{ (article.summary or '')[:100]|e }}">⭐ 保存</button>
+            <button type="button" class="save-article-btn" id="btn-copy-share" title="要約とURLをコピー">🔗 コピー</button>
+        </div>
+    </header>
 
     <div class="article-hero">
         <img src="{{ image_url }}" alt="{{ article.title }}" class="article-image">
     </div>
 
-    <header class="article-header article-header--below-hero">
-        <div class="article-meta">
-            <span class="article-date">🕒 {{ published_text|default('') }}</span>
-            <span class="article-source">{{ article.source }}</span>
-            <span class="article-cat-badge">🏷 {{ article.category }}</span>
-            <span class="article-badge">AI解説</span>
+    {% if quick_understand and (quick_understand.what or quick_understand.why or quick_understand.how) %}
+    <div class="quick-understand animate-fade-in">
+        <h2 class="quick-understand-title">⚡ 秒速理解</h2>
+        {% if quick_understand.what %}
+        <div class="quick-understand-item">
+            <span class="quick-understand-label">📌 何が起きた</span>
+            <span>{{ quick_understand.what|e }}</span>
         </div>
-        <h1 class="article-title">{{ article.title }}</h1>
-        <p class="live-readers">今 <span class="animated-number" data-target="{{ readers_now|default(42) }}">0</span> 人が読んでいます</p>
-    </header>
+        {% endif %}
+        {% if quick_understand.why %}
+        <div class="quick-understand-item">
+            <span class="quick-understand-label">❓ なぜ</span>
+            <span>{{ quick_understand.why|e }}</span>
+        </div>
+        {% endif %}
+        {% if quick_understand.how %}
+        <div class="quick-understand-item">
+            <span class="quick-understand-label">🔮 どうなる</span>
+            <span>{{ quick_understand.how|e }}</span>
+        </div>
+        {% endif %}
+    </div>
+    {% endif %}
 
     <div class="read-mode-switch">
         <button type="button" class="read-mode-btn is-active" data-mode="short">📖 1分で理解</button>
@@ -48,50 +68,19 @@
     <div class="article-content-wrapper">
         <div class="article-main">
             <div id="article-short-content" class="article-read-content">
-                {% if show_quick_points and quick_rows %}
-                <section class="three-points-card" aria-label="3つのポイント">
-                    <div class="three-points-card-head">
-                        <span class="three-points-mascot" aria-hidden="true">📌</span>
-                        <h2 class="three-points-title">3つのポイント</h2>
-                    </div>
-                    <div class="three-points-rows">
-                        {% if 'what' in quick_rows %}
-                        <div class="three-points-row">
-                            <span class="three-points-q three-points-q--red" aria-hidden="true">何が起きた？</span>
-                            <p class="three-points-a">{{ quick_rows['what']|safe }}</p>
-                        </div>
-                        {% endif %}
-                        {% if 'why' in quick_rows %}
-                        <div class="three-points-row">
-                            <span class="three-points-q three-points-q--orange" aria-hidden="true">ほかには？</span>
-                            <p class="three-points-a">{{ quick_rows['why']|safe }}</p>
-                        </div>
-                        {% endif %}
-                        {% if 'how' in quick_rows %}
-                        <div class="three-points-row">
-                            <span class="three-points-q three-points-q--green" aria-hidden="true">今後の注目は？</span>
-                            <p class="three-points-a">{{ quick_rows['how']|safe }}</p>
-                        </div>
-                        {% endif %}
-                    </div>
-                </section>
-                {% elif article_lead_html %}
-                <div class="short-summary-box short-summary-box--lead-only">
-                    {{ article_lead_html|safe }}
+                {% if short_summary %}
+                <div class="short-summary-box">
+                    <h3 class="short-summary-heading">📝 要点まとめ</h3>
+                    {{ short_summary|safe }}
                 </div>
                 {% else %}
                 <div class="short-summary-box">
                     <h3 class="short-summary-heading">📝 要点まとめ</h3>
-                    {% if short_summary %}
-                    {{ short_summary|safe }}
-                    {% else %}
                     <p class="article-text">{{ article.summary|default('')|e }}</p>
-                    {% endif %}
                 </div>
                 {% endif %}
             </div>
             <div id="article-deep-content" class="article-read-content" style="display:none;">
-                <h3 class="article-fixed-section-title">✍ AI解説</h3>
                 <div id="article-inline-content" class="article-inline-content" data-fallback="{{ article.summary|e }}">
                     {% if body_html %}
                     {{ body_html|safe }}
@@ -101,12 +90,7 @@
                 </div>
             </div>
             <div class="article-actions">
-                <a
-                    href="{{ article.link }}"
-                    target="_blank"
-                    rel="noopener"
-                    class="read-original read-original--pill"
-                ><span class="read-original-source">{{ article.source }}</span><span class="read-original-mid">で詳しく読む</span><span class="read-original-chev" aria-hidden="true">›</span></a>
+                <a href="{{ article.link }}" target="_blank" rel="noopener" class="read-original">出典を読む →</a>
             </div>
         </div>
     </div>
@@ -160,7 +144,7 @@
     {% endif %}
 
     <section class="personas-section">
-        <h2 class="personas-title">AIの多角的な視点 <span class="personas-hint">（この記事は3人分・クリックで表示）</span></h2>
+        <h2 class="personas-title">AIの多角的な視点 <span class="personas-hint">（クリックで表示）</span></h2>
         <div class="personas-grid">
             {% for p in personas %}
             <div class="persona-card" data-persona-id="{{ p.id }}" data-article-id="{{ article.id }}">
@@ -175,21 +159,11 @@
             </div>
             {% endfor %}
         </div>
-        {% if all_personas %}
-        <details class="personas-all-list" style="margin-top:1rem;">
-            <summary>全{{ all_personas|length }}人格一覧</summary>
-            <ul class="personas-all-ul" style="list-style:none;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:0.25rem;margin:0.5rem 0 0;">
-                {% for p in all_personas %}
-                <li><span class="persona-emoji">{{ p.emoji }}</span> {{ p.name }} <span style="font-size:0.75em;color:#666;">{{ '論理型' if p.type == 'logic' else 'エンタメ' }}</span></li>
-                {% endfor %}
-            </ul>
-        </details>
-        {% endif %}
     </section>
 
     {% if vote_data %}
     <section class="vote-section" id="vote-section">
-        <h2 class="vote-question">📝 クイズ: {{ vote_data.question }}</h2>
+        <h2 class="vote-question">💭 {{ vote_data.question }}</h2>
         <div class="vote-options" id="vote-options">
             {% for opt in vote_data.options %}
             <button type="button" class="vote-btn" data-vote="{{ opt.id }}">
@@ -293,20 +267,6 @@ document.addEventListener('DOMContentLoaded', function() {
         return div.innerHTML;
     }
 
-    document.querySelectorAll('.animated-number').forEach(function(el) {
-        var target = parseInt(el.getAttribute('data-target') || '0', 10);
-        var cur = 0;
-        var step = Math.max(1, Math.floor(target / 25));
-        var timer = setInterval(function() {
-            cur += step;
-            if (cur >= target) {
-                cur = target;
-                clearInterval(timer);
-            }
-            el.textContent = String(cur);
-        }, 24);
-    });
-
     var copyBtn = document.getElementById('btn-copy-share');
     if (copyBtn) {
         copyBtn.addEventListener('click', function() {
@@ -320,8 +280,8 @@ document.addEventListener('DOMContentLoaded', function() {
 
     var quizOptions = document.querySelectorAll('.paper-quiz-option');
     if (quizOptions.length > 0) {
-        var answerId = '{{ (paper_quiz.answer_id|default("", true) if paper_quiz else "")|e }}';
-        var explain = {{ (paper_quiz.explanation|default("", true) if paper_quiz else "")|tojson|safe }};
+        var answerId = '{{ paper_quiz.answer_id if paper_quiz else "" }}';
+        var explain = {{ (paper_quiz.explanation if paper_quiz else "")|tojson|safe }};
         var out = document.getElementById('paper-quiz-result');
         quizOptions.forEach(function(btn) {
             btn.addEventListener('click', function() {
@@ -407,8 +367,8 @@ document.addEventListener('DOMContentLoaded', function() {
     var voteSection = document.getElementById('vote-section');
     if (voteSection) {
         var voteBtns = voteSection.querySelectorAll('.vote-btn');
-        var answerId = {{ (vote_data.answer_id|default("", true) if vote_data else "")|tojson|safe }};
-        var explainText = {{ (vote_data.explanation|default("", true) if vote_data else "")|tojson|safe }};
+        var answerId = {{ (vote_data.answer_id if vote_data else "")|tojson|safe }};
+        var explainText = {{ (vote_data.explanation if vote_data else "")|tojson|safe }};
         var learningPoint = {{ (vote_data.learning_point|default("", true) if vote_data else "")|tojson|safe }};
         var keyTerm = {{ (vote_data.key_term|default("", true) if vote_data else "")|tojson|safe }};
         var keyTermNote = {{ (vote_data.key_term_note|default("", true) if vote_data else "")|tojson|safe }};

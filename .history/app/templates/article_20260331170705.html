@@ -320,8 +320,8 @@ document.addEventListener('DOMContentLoaded', function() {
 
     var quizOptions = document.querySelectorAll('.paper-quiz-option');
     if (quizOptions.length > 0) {
-        var answerId = '{{ (paper_quiz.answer_id|default("", true) if paper_quiz else "")|e }}';
-        var explain = {{ (paper_quiz.explanation|default("", true) if paper_quiz else "")|tojson|safe }};
+        var answerId = '{{ paper_quiz.answer_id if paper_quiz else "" }}';
+        var explain = {{ (paper_quiz.explanation if paper_quiz else "")|tojson|safe }};
         var out = document.getElementById('paper-quiz-result');
         quizOptions.forEach(function(btn) {
             btn.addEventListener('click', function() {
@@ -407,8 +407,8 @@ document.addEventListener('DOMContentLoaded', function() {
     var voteSection = document.getElementById('vote-section');
     if (voteSection) {
         var voteBtns = voteSection.querySelectorAll('.vote-btn');
-        var answerId = {{ (vote_data.answer_id|default("", true) if vote_data else "")|tojson|safe }};
-        var explainText = {{ (vote_data.explanation|default("", true) if vote_data else "")|tojson|safe }};
+        var answerId = {{ (vote_data.answer_id if vote_data else "")|tojson|safe }};
+        var explainText = {{ (vote_data.explanation if vote_data else "")|tojson|safe }};
         var learningPoint = {{ (vote_data.learning_point|default("", true) if vote_data else "")|tojson|safe }};
         var keyTerm = {{ (vote_data.key_term|default("", true) if vote_data else "")|tojson|safe }};
         var keyTermNote = {{ (vote_data.key_term_note|default("", true) if vote_data else "")|tojson|safe }};
