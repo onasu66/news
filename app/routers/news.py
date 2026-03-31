@@ -585,13 +585,29 @@ async def topic_detail(request: Request, topic_id: str):
         og_image = get_image_url(item.id, 1200, 630)
     cached = get_cached(topic_id)
     blocks = _sanitize_blocks(cached["blocks"]) if cached and cached.get("blocks") else []
+    def _normalize_persona_ids(ids) -> list[int]:
+        if not isinstance(ids, list):
+            return []
+        out: list[int] = []
+        for v in ids:
+            try:
+                i = int(v)
+            except Exception:
+                continue
+            if 0 <= i < len(PERSONAS):
+                out.append(i)
+        return out
+
     # 新形式: キャッシュに表示用3人分だけ保存されている場合はそのまま使用（API節約）
-    if cached and cached.get("display_persona_ids") is not None and len(cached.get("personas", [])) == 3:
-        display_persona_ids = cached["display_persona_ids"]
+    cached_ids = _normalize_persona_ids(cached.get("display_persona_ids") if cached else None)
+    cached_personas = cached.get("personas", []) if cached else []
+    if cached_ids and isinstance(cached_personas, list) and len(cached_personas) == 3:
+        display_persona_ids = cached_ids[:3]
         display_personas = [PERSONAS[i] for i in display_persona_ids]
-        personas_data = cached["personas"]
+        personas_data = [str(x) if x is not None else "" for x in cached_personas[:3]]
     else:
-        all_personas_data = cached.get("personas", []) if cached else []
+        raw_personas = cached.get("personas", []) if cached else []
+        all_personas_data = raw_personas if isinstance(raw_personas, list) else []
         import random as _rnd
         logic_ids = list(PERSONA_LOGIC_IDS)
         ent_ids = list(PERSONA_ENT_IDS)
@@ -603,7 +619,10 @@ async def topic_detail(request: Request, topic_id: str):
         else:
             display_indices = list(range(min(3, len(PERSONAS))))
         display_personas = [PERSONAS[i] for i in display_indices]
-        personas_data = [all_personas_data[i] if i < len(all_personas_data) else "" for i in display_indices]
+        personas_data = [
+            str(all_personas_data[i]) if i < len(all_personas_data) and all_personas_data[i] is not None else ""
+            for i in display_indices
+        ]
         display_persona_ids = display_indices
     quick_understand = cached.get("quick_understand") if cached else None
     vote_data = cached.get("vote_data") if cached else None
@@ -644,6 +663,17 @@ async def topic_detail(request: Request, topic_id: str):
     other_cat = [a for a in all_news if a.category != item.category and a.id != topic_id]
     ai_recommended = _rnd.sample(other_cat, min(3, len(other_cat))) if other_cat else []
 
+    published_text = ""
+    try:
+        if getattr(item, "published", None):
+            p = item.published
+            if hasattr(p, "strftime"):
+                published_text = p.strftime("%Y/%m/%d %H:%M")
+            else:
+                published_text = str(p)[:16]
+    except Exception:
+        published_text = ""
+
     return templates.TemplateResponse(
         "article.html",
         {
@@ -675,6 +705,7 @@ async def topic_detail(request: Request, topic_id: str):
             "paper_quiz": paper_quiz,
             "deep_insights": deep_insights,
             "readers_now": readers_now,
+            "published_text": published_text,
         }
     )
 

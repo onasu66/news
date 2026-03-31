@@ -31,7 +31,7 @@
 
     <header class="article-header article-header--below-hero">
         <div class="article-meta">
-            <span class="article-date">🕒 {{ article.published.strftime('%Y/%m/%d %H:%M') if article.published else '' }}</span>
+            <span class="article-date">🕒 {{ published_text|default('') }}</span>
             <span class="article-source">{{ article.source }}</span>
             <span class="article-cat-badge">🏷 {{ article.category }}</span>
             <span class="article-badge">AI解説</span>
