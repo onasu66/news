@@ -56,11 +56,42 @@ def _coerce_mapping(val):
     return None
 
 
+def _normalize_quiz_options(raw) -> list[dict[str, str]]:
+    """過去データ互換: options が [{id,label}] でも文字列配列でも受け付ける"""
+    if not isinstance(raw, list):
+        return []
+    out: list[dict[str, str]] = []
+    for opt in raw:
+        if isinstance(opt, dict):
+            oid = opt.get("id")
+            lab = opt.get("label")
+            oid_s = "" if oid is None else str(oid).strip()
+            lab_s = "" if lab is None else str(lab).strip()
+            if lab_s or oid_s:
+                out.append({"id": oid_s, "label": lab_s or oid_s})
+        elif opt is not None:
+            s = str(opt).strip()
+            if s:
+                out.append({"id": s, "label": s})
+    return out
+
+
 def _sanitize_quick_understand_for_page(val):
     d = _coerce_mapping(val)
     if not d:
         return None
-    return _json_safe_for_template(d)
+    d = _json_safe_for_template(d)
+    if not isinstance(d, dict):
+        return None
+    for k in ("what", "why", "how"):
+        v = d.get(k)
+        if isinstance(v, str):
+            d[k] = v.strip()
+        elif v is None:
+            d[k] = ""
+        else:
+            d[k] = str(v).strip()
+    return d
 
 
 def _sanitize_vote_data_for_page(val):
@@ -70,9 +101,10 @@ def _sanitize_vote_data_for_page(val):
     d = _json_safe_for_template(d)
     if not isinstance(d, dict):
         return None
-    opts = d.get("options")
-    if not isinstance(opts, list) or len(opts) == 0:
+    opts = _normalize_quiz_options(d.get("options"))
+    if not opts:
         return None
+    d["options"] = opts
     # Jinja: キー欠落だと vote_data.answer_id が Undefined になり |tojson で落ちるため必ず文字列化
     for _k in ("answer_id", "explanation", "learning_point", "key_term", "key_term_note", "question"):
         v = d.get(_k)
@@ -103,8 +135,7 @@ def _sanitize_paper_quiz_for_page(val):
     d = _json_safe_for_template(d)
     if not isinstance(d, dict):
         return {}
-    if not isinstance(d.get("options"), list):
-        d["options"] = []
+    d["options"] = _normalize_quiz_options(d.get("options"))
     for _k in ("answer_id", "explanation", "question"):
         v = d.get(_k)
         d[_k] = "" if v is None else str(v)
@@ -122,12 +153,16 @@ def _sanitize_deep_insights_for_page(val):
     if mer is None:
         mer = []
     elif not isinstance(mer, list):
-        mer = [str(mer)]
+        mer = [str(mer).strip()] if str(mer).strip() else []
+    else:
+        mer = [str(x).strip() for x in mer if x is not None and str(x).strip()]
     risk = d.get("risks")
     if risk is None:
         risk = []
     elif not isinstance(risk, list):
-        risk = [str(risk)]
+        risk = [str(risk).strip()] if str(risk).strip() else []
+    else:
+        risk = [str(x).strip() for x in risk if x is not None and str(x).strip()]
     fp = d.get("future_prediction")
     if fp is None:
         fp = ""
@@ -470,6 +505,16 @@ def _meta_description_qa(title: str, summary: str | None, max_len: int = 160) ->
     return f"{question} {answer}"[:max_len]
 
 
+def _plain_text_for_copy(html_or_text: str | None, max_len: int = 1200) -> str:
+    """コピー用に HTML タグを除いたプレーンテキスト（|striptags|tojson より型事故が少ない）"""
+    import re as _re
+    if not html_or_text:
+        return ""
+    t = _re.sub(r"<[^>]+>", " ", str(html_or_text))
+    t = _re.sub(r"\s+", " ", t).strip()
+    return t[:max_len] if len(t) > max_len else t
+
+
 def _build_short_summary(quick_understand: dict | None, fallback_summary: str | None) -> str:
     """「1分で理解」用の要点まとめHTMLを生成。
 
@@ -637,16 +682,17 @@ def _attach_paper_related_tags(items: list) -> None:
 
 def _blocks_to_html(blocks: list) -> str:
     """ブロックをHTMLに変換。本文のみ表示。ミドルマン解説はフローティング吹き出し用の JSON データとして埋め込む"""
-    if not blocks:
+    safe = [b for b in (blocks or []) if isinstance(b, dict)]
+    if not safe:
         return ""
     import html as _h
     import json as _json
     text_parts: list[str] = []
     float_items: list[dict] = []
-    is_navigator = blocks and blocks[0].get("type") == "navigator_section"
+    is_navigator = safe[0].get("type") == "navigator_section"
     nav_labels = {"facts": "ニュース", "background": "背景", "impact": "影響範囲", "prediction": "予測", "caution": "注意"}
     if is_navigator:
-        for b in blocks:
+        for b in safe:
             if b.get("type") != "navigator_section" or not b.get("section"):
                 continue
             body = (b.get("content") or "").strip()
@@ -661,7 +707,7 @@ def _blocks_to_html(blocks: list) -> str:
                 label = nav_labels.get(b["section"], b["section"])
                 float_items.append({"label": label, "body": _h.escape(body).replace("\n", "<br>")})
     else:
-        for b in blocks:
+        for b in safe:
             if b.get("type") == "text":
                 for p in (b.get("content") or "").strip().split("\n\n"):
                     p = p.strip()
@@ -765,6 +811,7 @@ async def topic_detail(request: Request, topic_id: str):
     meta_desc = _meta_description_qa(item.title, item.summary)
     # 見た目演出用（記事ごとに安定した値）
     readers_now = 20 + (abs(hash(topic_id)) % 130)
+    copy_blurb = _plain_text_for_copy(short_summary) or (item.summary or "").strip()
 
     try:
         all_news = NewsAggregator.get_news()
@@ -828,6 +875,7 @@ async def topic_detail(request: Request, topic_id: str):
             "deep_insights": deep_insights,
             "readers_now": readers_now,
             "published_text": published_text,
+            "copy_blurb": copy_blurb,
         }
     )
 
@@ -846,7 +894,9 @@ def _sanitize_blocks(blocks: list) -> list:
     """ブロックのcontentからHTML断片を除去（キャッシュ済み悪データ対策）"""
     out = []
     for b in (blocks or []):
-        if isinstance(b, dict) and "content" in b and b.get("content"):
+        if not isinstance(b, dict):
+            continue
+        if "content" in b and b.get("content"):
             b = {**b, "content": sanitize_display_text(str(b["content"]))}
         out.append(b)
     return out

@@ -114,7 +114,7 @@
     {% if paper_graph and paper_graph.related_tags %}
     <section class="vote-section">
         <h2 class="vote-question">🧩 ナレッジグラフ（論文）</h2>
-        <p class="article-text">{{ paper_graph.timeline_message }}</p>
+        <p class="article-text">{{ paper_graph.timeline_message|default('')|e }}</p>
         <div class="tag-list">
             {% for t in paper_graph.related_tags %}
             <span class="news-badge">{{ t }}</span>
@@ -126,10 +126,10 @@
     {% if paper_quiz and paper_quiz.options %}
     <section class="vote-section" id="paper-quiz">
         <h2 class="vote-question">📝 3択クイズ（論文）</h2>
-        <p class="article-text">{{ paper_quiz.question }}</p>
+        <p class="article-text">{{ paper_quiz.question|default('')|e }}</p>
         <div class="vote-options">
             {% for opt in paper_quiz.options %}
-            <button type="button" class="vote-btn paper-quiz-option" data-answer="{{ opt.id }}">{{ opt.label }}</button>
+            <button type="button" class="vote-btn paper-quiz-option" data-answer="{{ opt.id|default('')|e }}">{{ opt.label|default('')|e }}</button>
             {% endfor %}
         </div>
         <p id="paper-quiz-result" class="article-text" style="display:none;"></p>
@@ -143,18 +143,18 @@
         <div id="ai-comment-box" style="display:none;margin-top:0.75rem;">
             <h4>3行メリット</h4>
             <ul class="insight-list">
-                {% for m in deep_insights.merits[:3] %}
-                <li>{{ m }}</li>
+                {% for m in (deep_insights.merits|default([]))[:3] %}
+                <li>{{ m|e }}</li>
                 {% endfor %}
             </ul>
             <h4>リスク</h4>
             <ul class="insight-list">
-                {% for r in deep_insights.risks[:3] %}
-                <li>{{ r }}</li>
+                {% for r in (deep_insights.risks|default([]))[:3] %}
+                <li>{{ r|e }}</li>
                 {% endfor %}
             </ul>
             <h4>将来予測</h4>
-            <p class="article-text">{{ deep_insights.future_prediction }}</p>
+            <p class="article-text">{{ deep_insights.future_prediction|default('')|e }}</p>
         </div>
     </section>
     {% endif %}
@@ -189,11 +189,11 @@
 
     {% if vote_data %}
     <section class="vote-section" id="vote-section">
-        <h2 class="vote-question">📝 クイズ: {{ vote_data.question }}</h2>
+        <h2 class="vote-question">📝 クイズ: {{ vote_data.question|default('')|e }}</h2>
         <div class="vote-options" id="vote-options">
             {% for opt in vote_data.options %}
-            <button type="button" class="vote-btn" data-vote="{{ opt.id }}">
-                <span class="vote-label">{{ opt.label }}</span>
+            <button type="button" class="vote-btn" data-vote="{{ opt.id|default('')|e }}">
+                <span class="vote-label">{{ opt.label|default('')|e }}</span>
                 <span class="vote-bar"><span class="vote-bar-fill" style="width:0%"></span></span>
                 <span class="vote-pct">-</span>
             </button>
@@ -282,8 +282,8 @@
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     var articleId = '{{ article.id }}';
-    var ssrPersonas = {{ personas_data|tojson|safe }};
-    var displayPersonaIds = {{ display_persona_ids|tojson|default([])|safe }};
+    var ssrPersonas = {{ (personas_data|default([]))|tojson|safe }};
+    var displayPersonaIds = {{ (display_persona_ids|default([]))|tojson|safe }};
     var floatEl = document.getElementById('midorman-float');
 
     function escapeHtml(s) {
@@ -310,7 +310,7 @@ document.addEventListener('DOMContentLoaded', function() {
     var copyBtn = document.getElementById('btn-copy-share');
     if (copyBtn) {
         copyBtn.addEventListener('click', function() {
-            var text = 'AI要約: ' + ({{ (short_summary|striptags|default(article.summary|default("")))|tojson|safe }}) + '\n' + window.location.href;
+            var text = 'AI要約: ' + ({{ copy_blurb|default("")|tojson|safe }}) + '\n' + window.location.href;
             navigator.clipboard.writeText(text).then(function() {
                 copyBtn.textContent = '✅ コピー済み';
                 setTimeout(function() { copyBtn.textContent = '🔗 コピー'; }, 1200);
