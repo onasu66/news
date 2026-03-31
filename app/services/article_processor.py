@@ -346,6 +346,7 @@ def process_new_rss_articles(
     ]
 
     # 論文はドメインごとにランキング→各ドメインから1本ずつ選ぶ（AI偏重を防ぎ多様性を確保）
+    # ランキングで落ちる場合もあるため、空ならドメイン先頭をフォールバックで拾う。
     deduped_papers = _dedup(paper_candidates)
     paper_picks: list[NewsItem] = []
     paper_capacity = min(len(PAPER_DOMAIN_ORDER), max_per_run)
@@ -356,10 +357,11 @@ def process_new_rss_articles(
         if not domain_items:
             continue
         ranked = rank_and_filter_articles(domain_items, trend_keywords, max_articles=3)
-        if ranked:
-            paper_picks.append(ranked[0])
+        picked = ranked[0] if ranked else domain_items[0]
+        if picked:
+            paper_picks.append(picked)
             # 選んだ論文を次ドメインの候補から除外（同じ論文が別ドメインで選ばれないよう）
-            picked_id = ranked[0].id
+            picked_id = picked.id
             deduped_papers = [x for x in deduped_papers if x.id != picked_id]
 
     # ニュースは従来どおり全体ランキング→上位から選ぶ
@@ -404,6 +406,27 @@ def process_new_rss_articles(
             news_picks = _select_diverse_batch(non_papers, remaining_slots, max_per_source=2, max_per_category=2)
 
     to_process = paper_picks + news_picks
+
+    # 14本を狙うため、足りない場合は条件を緩めて補充する。
+    # 1) まだ未選出のニュース候補（dedup済み）から順に補充
+    # 2) それでも不足なら、論文候補の残りから補充
+    selected_ids = {x.id for x in to_process}
+    if len(to_process) < max_per_run:
+        for x in non_papers:
+            if len(to_process) >= max_per_run:
+                break
+            if x.id in selected_ids:
+                continue
+            to_process.append(x)
+            selected_ids.add(x.id)
+    if len(to_process) < max_per_run:
+        for x in deduped_papers:
+            if len(to_process) >= max_per_run:
+                break
+            if x.id in selected_ids:
+                continue
+            to_process.append(x)
+            selected_ids.add(x.id)
 
     count = 0
     for item in to_process:

@@ -16,28 +16,29 @@
 {% endblock %}
 
 {% block content %}
-<article class="article-detail">
-    <header class="article-header">
+<article class="article-detail article-detail--smartnews">
+    <div class="article-sn-toolbar">
         <a href="/" class="back-link">← 一覧に戻る</a>
-        <div class="article-meta">
-            <span class="article-source">{{ article.source }}</span>
-            <span class="article-date">🕒 {{ article.published.strftime('%Y/%m/%d %H:%M') if article.published else '' }}</span>
-            <span class="article-cat-badge">🏷 {{ article.category }}</span>
-            <span class="article-badge">AI解説つきリポート</span>
+        <div class="article-sn-toolbar-actions">
+            <button type="button" class="save-article-btn save-article-btn--icon" id="btn-save" data-id="{{ article.id }}" data-title="{{ article.title|e }}" data-summary="{{ (article.summary or '')[:100]|e }}" title="保存">⭐</button>
+            <button type="button" class="save-article-btn save-article-btn--icon" id="btn-copy-share" title="リンクをコピー">🔗</button>
         </div>
-        <h1 class="article-title">{{ article.title }}</h1>
-        <div class="article-header-actions">
-            <button type="button" class="save-article-btn" id="btn-save" data-id="{{ article.id }}" data-title="{{ article.title|e }}" data-summary="{{ (article.summary or '')[:100]|e }}">
-                ⭐ 保存
-            </button>
-            <button type="button" class="save-article-btn" id="btn-copy-share">🔗 コピー</button>
-        </div>
-        <p class="live-readers">今 <span class="animated-number" data-target="{{ readers_now|default(42) }}">0</span> 人が読んでいます</p>
-    </header>
+    </div>
 
     <div class="article-hero">
         <img src="{{ image_url }}" alt="{{ article.title }}" class="article-image">
     </div>
+
+    <header class="article-header article-header--below-hero">
+        <div class="article-meta">
+            <span class="article-date">🕒 {{ article.published.strftime('%Y/%m/%d %H:%M') if article.published else '' }}</span>
+            <span class="article-source">{{ article.source }}</span>
+            <span class="article-cat-badge">🏷 {{ article.category }}</span>
+            <span class="article-badge">AI解説</span>
+        </div>
+        <h1 class="article-title">{{ article.title }}</h1>
+        <p class="live-readers">今 <span class="animated-number" data-target="{{ readers_now|default(42) }}">0</span> 人が読んでいます</p>
+    </header>
 
     <div class="read-mode-switch">
         <button type="button" class="read-mode-btn is-active" data-mode="short">📖 1分で理解</button>
@@ -47,16 +48,45 @@
     <div class="article-content-wrapper">
         <div class="article-main">
             <div id="article-short-content" class="article-read-content">
-                <h3 class="article-fixed-section-title">👀 概要</h3>
-                {% if short_summary %}
-                <div class="short-summary-box">
-                    <h3 class="short-summary-heading">📝 要点まとめ</h3>
-                    {{ short_summary|safe }}
+                {% if show_quick_points and quick_rows %}
+                <section class="three-points-card" aria-label="3つのポイント">
+                    <div class="three-points-card-head">
+                        <span class="three-points-mascot" aria-hidden="true">📌</span>
+                        <h2 class="three-points-title">3つのポイント</h2>
+                    </div>
+                    <div class="three-points-rows">
+                        {% if 'what' in quick_rows %}
+                        <div class="three-points-row">
+                            <span class="three-points-q three-points-q--red" aria-hidden="true">何が起きた？</span>
+                            <p class="three-points-a">{{ quick_rows['what']|safe }}</p>
+                        </div>
+                        {% endif %}
+                        {% if 'why' in quick_rows %}
+                        <div class="three-points-row">
+                            <span class="three-points-q three-points-q--orange" aria-hidden="true">ほかには？</span>
+                            <p class="three-points-a">{{ quick_rows['why']|safe }}</p>
+                        </div>
+                        {% endif %}
+                        {% if 'how' in quick_rows %}
+                        <div class="three-points-row">
+                            <span class="three-points-q three-points-q--green" aria-hidden="true">今後の注目は？</span>
+                            <p class="three-points-a">{{ quick_rows['how']|safe }}</p>
+                        </div>
+                        {% endif %}
+                    </div>
+                </section>
+                {% elif article_lead_html %}
+                <div class="short-summary-box short-summary-box--lead-only">
+                    {{ article_lead_html|safe }}
                 </div>
                 {% else %}
                 <div class="short-summary-box">
                     <h3 class="short-summary-heading">📝 要点まとめ</h3>
+                    {% if short_summary %}
+                    {{ short_summary|safe }}
+                    {% else %}
                     <p class="article-text">{{ article.summary|default('')|e }}</p>
+                    {% endif %}
                 </div>
                 {% endif %}
             </div>
@@ -75,8 +105,8 @@
                     href="{{ article.link }}"
                     target="_blank"
                     rel="noopener"
-                    class="read-original"
-                >出典を読む</a>
+                    class="read-original read-original--pill"
+                ><span class="read-original-source">{{ article.source }}</span><span class="read-original-mid">で詳しく読む</span><span class="read-original-chev" aria-hidden="true">›</span></a>
             </div>
         </div>
     </div>
@@ -159,7 +189,7 @@
 
     {% if vote_data %}
     <section class="vote-section" id="vote-section">
-        <h2 class="vote-question">💭 {{ vote_data.question }}</h2>
+        <h2 class="vote-question">📝 クイズ: {{ vote_data.question }}</h2>
         <div class="vote-options" id="vote-options">
             {% for opt in vote_data.options %}
             <button type="button" class="vote-btn" data-vote="{{ opt.id }}">
@@ -169,6 +199,8 @@
             </button>
             {% endfor %}
         </div>
+        <p id="vote-quiz-result" class="article-text" style="display:none; margin-top:0.6rem;"></p>
+        <p id="vote-quiz-rate" class="article-text" style="margin-top:0.35rem; color: var(--color-text-muted);"></p>
     </section>
     {% endif %}
 
@@ -352,30 +384,57 @@ document.addEventListener('DOMContentLoaded', function() {
     if (saveBtn) {
         var saved = JSON.parse(localStorage.getItem('saved_articles') || '[]');
         var isSaved = saved.some(function(a) { return a.id === articleId; });
-        if (isSaved) { saveBtn.classList.add('is-saved'); saveBtn.textContent = '⭐ 保存済み'; }
+        if (isSaved) { saveBtn.classList.add('is-saved'); saveBtn.textContent = '★'; saveBtn.setAttribute('title', '保存済み'); }
         saveBtn.addEventListener('click', function() {
             var saved = JSON.parse(localStorage.getItem('saved_articles') || '[]');
             var idx = saved.findIndex(function(a) { return a.id === articleId; });
             if (idx >= 0) {
                 saved.splice(idx, 1);
                 this.classList.remove('is-saved');
-                this.textContent = '⭐ 保存';
+                this.textContent = '⭐';
+                this.setAttribute('title', '保存');
             } else {
                 saved.push({ id: articleId, title: this.dataset.title, summary: this.dataset.summary });
                 this.classList.add('is-saved');
-                this.textContent = '⭐ 保存済み';
+                this.textContent = '★';
+                this.setAttribute('title', '保存済み');
             }
             localStorage.setItem('saved_articles', JSON.stringify(saved));
         });
     }
 
-    // Vote
+    // Quiz (旧 vote_data をクイズ用途で利用)
     var voteSection = document.getElementById('vote-section');
     if (voteSection) {
         var voteBtns = voteSection.querySelectorAll('.vote-btn');
-        var voteKey = 'vote_' + articleId;
+        var answerId = {{ (vote_data.answer_id if vote_data else "")|tojson|safe }};
+        var explainText = {{ (vote_data.explanation if vote_data else "")|tojson|safe }};
+        var learningPoint = {{ (vote_data.learning_point|default("", true) if vote_data else "")|tojson|safe }};
+        var keyTerm = {{ (vote_data.key_term|default("", true) if vote_data else "")|tojson|safe }};
+        var keyTermNote = {{ (vote_data.key_term_note|default("", true) if vote_data else "")|tojson|safe }};
+        function buildQuizMessage(isCorrect, aid) {
+            var parts = [];
+            parts.push(isCorrect ? '正解です。' : ('不正解です。正解は「' + (aid || '') + '」です。'));
+            if (explainText) parts.push(explainText);
+            if (learningPoint) parts.push('学習ポイント: ' + learningPoint);
+            if (keyTerm && keyTermNote) parts.push('用語「' + keyTerm + '」: ' + keyTermNote);
+            return parts.join('\n\n');
+        }
+        var resultEl = document.getElementById('vote-quiz-result');
+        var rateEl = document.getElementById('vote-quiz-rate');
+        var voteKey = 'quiz_answered_' + articleId;
         var existingVote = localStorage.getItem(voteKey);
         var votes = JSON.parse(localStorage.getItem('vote_counts_' + articleId) || '{}');
+        var stats = JSON.parse(localStorage.getItem('quiz_stats_' + articleId) || '{"total":0,"correct":0}');
+
+        function updateRateDisplay() {
+            if (!rateEl) return;
+            var total = Number(stats.total || 0);
+            var correct = Number(stats.correct || 0);
+            var rate = total > 0 ? Math.round((correct / total) * 100) : 0;
+            rateEl.textContent = '正答率: ' + rate + '%（' + correct + '/' + total + '）';
+        }
+
         function updateVoteDisplay() {
             var total = 0;
             for (var k in votes) total += votes[k];
@@ -388,7 +447,13 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (existingVote === vid) btn.classList.add('voted');
             });
         }
-        if (existingVote) updateVoteDisplay();
+        updateVoteDisplay();
+        updateRateDisplay();
+        if (existingVote && resultEl) {
+            var isCorrect = existingVote === answerId;
+            resultEl.style.display = '';
+            resultEl.textContent = buildQuizMessage(isCorrect, answerId);
+        }
         voteBtns.forEach(function(btn) {
             btn.addEventListener('click', function() {
                 if (existingVote) return;
@@ -397,7 +462,15 @@ document.addEventListener('DOMContentLoaded', function() {
                 localStorage.setItem(voteKey, vid);
                 votes[vid] = (votes[vid] || 0) + 1;
                 localStorage.setItem('vote_counts_' + articleId, JSON.stringify(votes));
+                stats.total = Number(stats.total || 0) + 1;
+                if (vid === answerId) stats.correct = Number(stats.correct || 0) + 1;
+                localStorage.setItem('quiz_stats_' + articleId, JSON.stringify(stats));
+                if (resultEl) {
+                    resultEl.style.display = '';
+                    resultEl.textContent = buildQuizMessage(vid === answerId, answerId);
+                }
                 updateVoteDisplay();
+                updateRateDisplay();
             });
         });
     }

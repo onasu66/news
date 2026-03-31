@@ -11,10 +11,6 @@
             {% for item in articles %}
             <article class="news-card animate-fade-in">
                 <a href="/topic/{{ item.id }}" class="news-card-link">
-                    <div class="news-card-image">
-                        <img src="{{ item.image_url or 'https://picsum.photos/400/225' }}" alt="{{ item.title }}" loading="lazy">
-                        <span class="news-card-category">{{ item.category }}</span>
-                    </div>
                     <div class="news-card-body">
                         <div class="news-card-meta">
                             <span class="news-card-time">🕒 {{ item.published.strftime('%m/%d %H:%M') if item.published else '' }}</span>
@@ -22,6 +18,10 @@
                         </div>
                         <h3 class="news-title">{{ item.title }}</h3>
                         <p class="news-summary-line">👀 {{ item.summary[:80] }}{% if item.summary|length > 80 %}...{% endif %}</p>
+                    </div>
+                    <div class="news-card-image">
+                        <img src="{{ item.image_url or 'https://picsum.photos/400/225' }}" alt="{{ item.title }}" loading="lazy">
+                        <span class="news-card-category">{{ item.category }}</span>
                     </div>
                 </a>
             </article>

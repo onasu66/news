@@ -391,6 +391,56 @@ def _build_short_summary(quick_understand: dict | None, fallback_summary: str | 
     return f'<p class="article-text">{_html.escape(one)}</p>'
 
 
+def _quick_points_non_empty(quick_understand: dict | None) -> bool:
+    """1分で理解用の3要点（what/why/how）が1つ以上あるか"""
+    if not isinstance(quick_understand, dict):
+        return False
+    for k in ("what", "why", "how"):
+        if (quick_understand.get(k) or "").strip():
+            return True
+    return False
+
+
+def _highlight_stats_in_text(text: str) -> str:
+    """エスケープ後に数値・パーセント表記をスマートニュース風に下線強調。"""
+    import html as _html
+    import re as _re
+
+    raw = (text or "").strip()
+    if not raw:
+        return ""
+    esc = _html.escape(raw)
+
+    def _hl(m):
+        return f'<span class="sn-text-highlight">{m.group(0)}</span>'
+
+    esc = _re.sub(r"\d+(?:[.,]\d+)?\s*[％％]|\d+(?:[.,]\d+)?\s*%", _hl, esc)
+    return esc
+
+
+def _build_article_lead_smartnews(quick_understand: dict | None, fallback_summary: str | None) -> str:
+    """3要点が無いときのリード1段落（参照UIの下線強調に近づける）。"""
+    import re as _re
+
+    parts: list[str] = []
+    if isinstance(quick_understand, dict):
+        for k in ("what", "why"):
+            t = (quick_understand.get(k) or "").strip()
+            if t:
+                parts.append(t)
+    raw = " ".join(parts) if parts else ""
+    if not raw:
+        raw = (fallback_summary or "").strip()
+    raw = _re.sub(r"\s+", " ", raw).strip()
+    if not raw:
+        return ""
+    raw = raw[:320] + ("…" if len(raw) > 320 else "")
+    inner = _highlight_stats_in_text(raw)
+    if not inner:
+        return ""
+    return f'<p class="article-lead-smartnews">{inner}</p>'
+
+
 def _attach_paper_related_tags(items: list) -> None:
     """論文一覧カード向けに関連タグを付与（最大3件）"""
     if not items:
@@ -548,6 +598,18 @@ async def topic_detail(request: Request, topic_id: str):
     deep_insights = cached.get("deep_insights") if cached else {}
     body_html = _blocks_to_html(blocks) if blocks else ""
     short_summary = _build_short_summary(quick_understand, item.summary)
+    show_quick_points = _quick_points_non_empty(quick_understand)
+    article_lead_html = (
+        ""
+        if show_quick_points
+        else _build_article_lead_smartnews(quick_understand, item.summary)
+    )
+    quick_rows: dict[str, str] = {}
+    if show_quick_points and isinstance(quick_understand, dict):
+        for k in ("what", "why", "how"):
+            t = (quick_understand.get(k) or "").strip()
+            if t:
+                quick_rows[k] = _highlight_stats_in_text(t)
     meta_desc = _meta_description_qa(item.title, item.summary)
     # 見た目演出用（記事ごとに安定した値）
     readers_now = 20 + (abs(hash(topic_id)) % 130)
@@ -583,6 +645,9 @@ async def topic_detail(request: Request, topic_id: str):
             "personas_data": personas_data,
             "body_html": body_html,
             "short_summary": short_summary,
+            "article_lead_html": article_lead_html,
+            "show_quick_points": show_quick_points,
+            "quick_rows": quick_rows,
             "meta_description": meta_desc,
             "next_article": next_article,
             "prev_article": prev_article,

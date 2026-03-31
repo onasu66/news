@@ -239,7 +239,7 @@ class NewsAggregator:
                     if news:
                         trends = cls.get_trends(force_refresh=True)
                         trend_keywords = [t.keyword for t in trends]
-                        min_added = max(0, getattr(settings, "RSS_MIN_ADDED_PER_REFRESH", 10))
+                        min_added = max(0, getattr(settings, "RSS_MIN_ADDED_PER_REFRESH", 14))
                         max_loops = max(1, getattr(settings, "RSS_REFRESH_MAX_LOOPS", 8))
                         added_run = 0
                         for _ in range(max_loops):

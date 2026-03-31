@@ -17,13 +17,13 @@
     {% for item in results %}
     <article class="news-card animate-fade-in">
         <a href="/topic/{{ item.id }}" class="news-card-link">
-            <div class="news-card-image">
-                <img src="{{ item.image_url or 'https://picsum.photos/400/225' }}" alt="{{ item.title }}" loading="lazy">
-                <span class="news-card-category">{{ item.category }}</span>
-            </div>
             <div class="news-card-body">
                 <h3 class="news-title">{{ item.title }}</h3>
                 <p class="news-summary-line">{{ item.summary[:100] }}...</p>
+            </div>
+            <div class="news-card-image">
+                <img src="{{ item.image_url or 'https://picsum.photos/400/225' }}" alt="{{ item.title }}" loading="lazy">
+                <span class="news-card-category">{{ item.category }}</span>
             </div>
         </a>
     </article>

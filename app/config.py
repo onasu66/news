@@ -21,7 +21,7 @@ class Settings:
     NEWS_LIST_CACHE_SYNC_MINUTES: int = int(os.getenv("NEWS_LIST_CACHE_SYNC_MINUTES", "15"))
     DAILY_ARTICLE_LIMIT: int = int(os.getenv("DAILY_ARTICLE_LIMIT", "6"))
     # 1回の RSS 強制更新で目標とする最小追加本数（候補・AI失敗で未達の場合あり）。0 で従来どおり1バッチのみ
-    RSS_MIN_ADDED_PER_REFRESH: int = int(os.getenv("RSS_MIN_ADDED_PER_REFRESH", "10"))
+    RSS_MIN_ADDED_PER_REFRESH: int = int(os.getenv("RSS_MIN_ADDED_PER_REFRESH", "14"))
     # 上記を満たすまで process を繰り返す上限（無限ループ防止）
     RSS_REFRESH_MAX_LOOPS: int = int(os.getenv("RSS_REFRESH_MAX_LOOPS", "8"))
     # FiveFilters Full-Text RSS のベースURL（未設定なら通常のRSSをそのまま取得）

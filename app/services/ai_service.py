@@ -715,7 +715,9 @@ def get_persona_opinion(
     max_len = PERSONA_COMMENT_MAX_LEN
     system_prompt = f"""あなたは「{p['name']}」という人格です。{p['role']}
 他の人格の口調や視点を真似せず、この人格の設定にだけ従ってください。{extra_note}
-ニュース記事を読んで、この人格として思ったことを述べてください。必ず日本語のみ。
+ニュース記事を読んで、この人格として思ったこと・予想・提案を述べてください。必ず日本語のみ。
+読者はすでにニュース内容を理解している前提なので、「何が起きたか」の要約・説明から書き始めないこと。
+冒頭で「〜が起きた」「このニュースは」「今回の件は」など事実説明に入らず、最初の一文から意見や予想に入ること。
 厳守: 出力は本文のみ（見出し・「コメント:」等は付けない）。箇条書きにしない。
 厳守: 出力全体を必ず{max_len}文字以下に収める。長い思考プロセスは書かず、要点だけを1〜3文で完結させる（文末まで書き切る。生成を途中で切らない）。
 思考プロセスの列挙は出力に含めず、結論としての短いコメントだけを書くこと。"""
@@ -727,6 +729,7 @@ def get_persona_opinion(
 ---
 上記について{p['name']}としてコメントしてください。
 ・{max_len}文字以下
+・ニュース内容の要約は書かない（最初の一文から意見・予想・提案を書く）
 ・最後の文は必ず句点「。」で終える
 ・{max_len}字を超えないよう、短く済ませる"""
     try:
@@ -800,12 +803,16 @@ def generate_quick_understand(title: str, content: str, model: str | None = None
     try:
         response = create_with_retry(
             client,
-            300,
+            400,
             model=model,
             messages=[
                 {
                     "role": "system",
-                    "content": "あなたはニュース速報の要約者です。記事を3つの視点で各1文（25字以内）にまとめ、必ず日本語のみで出力してください。\n\n出力はJSON形式のみ：\n{\"what\": \"何が起きたか（日本語1文）\", \"why\": \"なぜ起きたか（日本語1文）\", \"how\": \"今後どうなるか（日本語1文）\"}\n\nwhat/why/how の値はすべて日本語で書くこと。英語は使わない。JSONのみ出力。",
+                    "content": (
+                        "あなたはニュース速報の要約者です。スマートニュースの「3つのポイント」向けに、次の3文を各1文・各70字以内で書き、必ず日本語のみでJSONのみ出力してください。\n\n"
+                        "{\"what\":\"何が起きたか（核心の事実）\",\"why\":\"ほかに何が連動しているか・背景の補足（別の動き・市況など）\",\"how\":\"今後の注目点・官庁・市場・次のイベントなど\"}\n\n"
+                        "口調は速報アプリ向けに簡潔に。英語禁止。JSONのみ。"
+                    ),
                 },
                 {
                     "role": "user",
@@ -824,7 +831,7 @@ def generate_quick_understand(title: str, content: str, model: str | None = None
 
 
 def generate_vote_question(title: str, content: str, model: str | None = None) -> dict:
-    """投票用の質問とオプションをAIが提案"""
+    """記事内容クイズ（3択）を生成。正解ID・解説も返す。"""
     if not settings.OPENAI_API_KEY:
         return {}
     from openai import OpenAI
@@ -833,18 +840,63 @@ def generate_vote_question(title: str, content: str, model: str | None = None) -
     try:
         response = create_with_retry(
             client,
-            300,
+            480,
             model=model,
             messages=[
-                {"role": "system", "content": "以下のニュース記事について、読者に問いかける投票質問を1つ作ってください。選択肢は3〜4個。\n\n必ず日本語のみで出力すること。question と各 options の label はすべて日本語で書くこと。英語は使わない。\n\n出力はJSON形式のみ：\n{\"question\": \"質問文（日本語）\", \"options\": [{\"id\": \"a\", \"label\": \"選択肢1（日本語）\"}, ...]}\n\nJSONのみ出力。"},
-                {"role": "user", "content": f"以下の記事について、投票の質問と選択肢を必ず日本語で作ってください。\n\n【タイトル】{title}\n\n【内容】\n{content[:2000]}"},
+                {
+                    "role": "system",
+                    "content": (
+                        "以下のニュース記事について、勉強になる3択クイズを1問作成してください。"
+                        "中級程度の理解を問うこと（因果・条件・影響・仕組みなど）。"
+                        "必ず日本語のみで、JSONのみを返してください。"
+                        "形式: {\"question\":\"...\", \"options\":[{\"id\":\"a\",\"label\":\"...\"},"
+                        "{\"id\":\"b\",\"label\":\"...\"},{\"id\":\"c\",\"label\":\"...\"}],"
+                        "\"answer_id\":\"a|b|c\", \"explanation\":\"...\","
+                        "\"learning_point\":\"...\", \"key_term\":\"...\", \"key_term_note\":\"...\"}\n"
+                        "explanation: 正解の根拠に加え、誤りの選択肢がなぜ誤りかを1文ずつ程度で述べる。\n"
+                        "learning_point: 記事から持ち帰る学習の要点を1つ（80〜160文字）。"
+                        "省略せず必ず書く。\n"
+                        "key_term: 記事に即した専門語・難解語・固有名詞のうち、一般読者がつまずきそうな語を1つ。"
+                        "問題文またはいずれかの選択肢に自然にその語を含める。\n"
+                        "key_term_note: key_term を高校生向けに一言で平易に説明（60文字以内目安）。"
+                        "question/label/explanation/learning_point/key_term/key_term_note はすべて日本語。"
+                    ),
+                },
+                {
+                    "role": "user",
+                    "content": (
+                        "以下の記事について、上記ルールどおり3択クイズを作成してください。"
+                        "learning_point・key_term・key_term_note は空にしないでください。\n\n"
+                        f"【タイトル】{title}\n\n【内容】\n{content[:2000]}"
+                    ),
+                },
             ],
             temperature=0.5,
         )
         text = (response.choices[0].message.content or "").strip()
         if text.startswith("```"):
             text = text.split("\n", 1)[-1].rsplit("```", 1)[0].strip()
-        return json.loads(text)
+        data = json.loads(text)
+        options = data.get("options", [])
+        if not isinstance(options, list) or len(options) != 3:
+            return {}
+        answer_id = (data.get("answer_id") or "").strip()
+        if answer_id not in {"a", "b", "c"}:
+            return {}
+        learning_point = (data.get("learning_point") or "").strip()
+        key_term = (data.get("key_term") or "").strip()
+        key_term_note = (data.get("key_term_note") or "").strip()
+        if not learning_point or not key_term or not key_term_note:
+            return {}
+        return {
+            "question": (data.get("question") or "").strip(),
+            "options": options,
+            "answer_id": answer_id,
+            "explanation": (data.get("explanation") or "").strip(),
+            "learning_point": learning_point,
+            "key_term": key_term,
+            "key_term_note": key_term_note,
+        }
     except Exception as e:
         logger.warning("vote_question generation failed: %s", e)
         return {}
@@ -907,20 +959,33 @@ def generate_paper_quiz(title: str, content: str, model: str | None = None) -> d
     try:
         response = create_with_retry(
             client,
-            400,
+            520,
             model=model,
             messages=[
                 {
                     "role": "system",
                     "content": (
-                        "論文内容に基づいて3択クイズを1問作成してください。"
-                        "必ず日本語のみで、JSONのみを返します。"
+                        "論文内容に基づき、勉強になる3択クイズを1問作成してください。"
+                        "方法・結果の解釈・限界・用語の意味など、中級程度の理解を問うこと。"
+                        "必ず日本語のみで、JSONのみを返してください。"
                         "形式: {\"question\":\"...\", \"options\":[{\"id\":\"a\",\"label\":\"...\"},"
                         "{\"id\":\"b\",\"label\":\"...\"},{\"id\":\"c\",\"label\":\"...\"}],"
-                        "\"answer_id\":\"a|b|c\", \"explanation\":\"...\"}"
+                        "\"answer_id\":\"a|b|c\", \"explanation\":\"...\","
+                        "\"learning_point\":\"...\", \"key_term\":\"...\", \"key_term_note\":\"...\"}\n"
+                        "explanation: 正解の根拠と、誤り肢が誤りである理由を簡潔に。\n"
+                        "learning_point: この論文から得られる学習の要点1つ（80〜160文字）。必須。\n"
+                        "key_term: 論文に即した専門用語・記号・手法名など、難しめの語を1つ。"
+                        "問題または選択肢に自然に含める。\n"
+                        "key_term_note: key_term を高校以上向けに一言で平易に説明（60文字以内目安）。"
                     ),
                 },
-                {"role": "user", "content": f"【タイトル】{title}\n\n【内容】\n{content[:3500]}"},
+                {
+                    "role": "user",
+                    "content": (
+                        "上記ルールどおりクイズを作成。learning_point・key_term・key_term_note は空にしない。\n\n"
+                        f"【タイトル】{title}\n\n【内容】\n{content[:3500]}"
+                    ),
+                },
             ],
             temperature=0.4,
         )
@@ -934,11 +999,19 @@ def generate_paper_quiz(title: str, content: str, model: str | None = None) -> d
         answer_id = (data.get("answer_id") or "").strip()
         if answer_id not in {"a", "b", "c"}:
             return {}
+        learning_point = (data.get("learning_point") or "").strip()
+        key_term = (data.get("key_term") or "").strip()
+        key_term_note = (data.get("key_term_note") or "").strip()
+        if not learning_point or not key_term or not key_term_note:
+            return {}
         return {
             "question": (data.get("question") or "").strip(),
             "options": options,
             "answer_id": answer_id,
             "explanation": (data.get("explanation") or "").strip(),
+            "learning_point": learning_point,
+            "key_term": key_term,
+            "key_term_note": key_term_note,
         }
     except Exception as e:
         logger.warning("paper_quiz generation failed: %s", e)

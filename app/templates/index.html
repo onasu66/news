@@ -26,9 +26,9 @@
 
         <div class="genre-tabs-wrap" role="tablist" aria-label="ジャンルで絞り込み">
             <div class="genre-tabs-scroll">
-                <button type="button" class="genre-tab is-active" role="tab" aria-selected="true" data-cat="all">すべて</button>
+                <button type="button" class="genre-tab genre-tab-sn0 is-active" role="tab" aria-selected="true" data-cat="all">すべて</button>
                 {% for category, items in news_by_category %}
-                <button type="button" class="genre-tab" role="tab" aria-selected="false" data-cat="{{ category }}">{{ category }}</button>
+                <button type="button" class="genre-tab genre-tab-sn{{ (loop.index0 % 5) + 1 }}" role="tab" aria-selected="false" data-cat="{{ category }}">{{ category }}</button>
                 {% endfor %}
             </div>
         </div>
@@ -38,10 +38,6 @@
             {% for item in items %}
             <article class="news-card animate-fade-in" data-category="{{ item.category }}">
                 <a href="/topic/{{ item.id }}" class="news-card-link">
-                    <div class="news-card-image">
-                        <img src="{{ item.image_url or 'https://picsum.photos/400/225' }}" alt="{{ item.title }}" loading="lazy" onerror="this.src='https://picsum.photos/seed/{{ item.id }}/400/225'">
-                        <span class="news-card-category">{{ item.category }}</span>
-                    </div>
                     <div class="news-card-body">
                         <div class="news-card-meta">
                             <span class="news-card-time">🕒 {{ item.published.strftime('%m/%d %H:%M') if item.published else '' }}</span>
@@ -53,6 +49,10 @@
                             <span class="news-card-ai">✍ AIが解説</span>
                             <span class="news-badge">AI解説</span>
                         </div>
+                    </div>
+                    <div class="news-card-image">
+                        <img src="{{ item.image_url or 'https://picsum.photos/400/225' }}" alt="{{ item.title }}" loading="lazy" onerror="this.src='https://picsum.photos/seed/{{ item.id }}/400/225'">
+                        <span class="news-card-category">{{ item.category }}</span>
                     </div>
                 </a>
             </article>
