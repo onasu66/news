@@ -2882,16 +2882,6 @@ body::after {
     color: #fff;
     border-color: var(--color-accent);
 }
-:root[data-theme="dark"] .read-mode-btn {
-    background: var(--color-card);
-    border-color: var(--color-border-light);
-    color: var(--color-text);
-}
-:root[data-theme="dark"] .read-mode-btn.is-active {
-    background: var(--color-accent);
-    color: #fff;
-    border-color: var(--color-accent);
-}
 
 /* ===== ARTICLE: VOTE METER ===== */
 .vote-section {
@@ -3161,10 +3151,9 @@ body::after {
     letter-spacing: -0.01em;
     margin-bottom: 0.1rem;
 }
-.three-points-q--red { color: #dc2626; }
-.three-points-q--orange { color: #c2410c; }
-/* ライトモードではミント系の薄色は背景に埋もれるため濃いめに */
-.three-points-q--green { color: #047857; }
+.three-points-q--red { color: #ff5252; }
+.three-points-q--orange { color: #ff9800; }
+.three-points-q--green { color: #69f0ae; }
 .three-points-a {
     margin: 0;
     font-size: 0.92rem;
@@ -3177,19 +3166,13 @@ body::after {
     border-color: #333;
     box-shadow: none;
 }
-:root[data-theme="dark"] .three-points-q--red { color: #ff5252; }
-:root[data-theme="dark"] .three-points-q--orange { color: #ffb74d; }
 :root[data-theme="dark"] .three-points-q--green { color: #98ff98; }
 .sn-text-highlight {
     text-decoration: underline;
     text-decoration-thickness: 3px;
     text-underline-offset: 4px;
-    text-decoration-color: #15803d;
+    text-decoration-color: #22c55e;
     font-weight: 700;
-    color: inherit;
-}
-:root[data-theme="dark"] .sn-text-highlight {
-    text-decoration-color: #4ade80;
 }
 .article-lead-smartnews {
     margin: 0 0 1rem;

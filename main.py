@@ -21,9 +21,11 @@ try:
     from app.config import settings, is_rss_and_ai_disabled
     INTERVAL_MIN = settings.NEWS_REFRESH_INTERVAL
     LIST_CACHE_SYNC_MIN = int(getattr(settings, "NEWS_LIST_CACHE_SYNC_MINUTES", 15))
+    _SEED_MAX_PER_RUN = max(7, min(14, int(getattr(settings, "RSS_PROCESS_MAX_PER_BATCH", 22))))
 except Exception:
     INTERVAL_MIN = 240
     LIST_CACHE_SYNC_MIN = 15
+    _SEED_MAX_PER_RUN = 12
     is_rss_and_ai_disabled = lambda: False
 
 JST = ZoneInfo("Asia/Tokyo")
@@ -64,7 +66,7 @@ def _seed_if_needed():
     all_items = load_all()
     news_list = fetch_rss_news()
     if news_list:
-        process_new_rss_articles(news_list, max_per_run=7, existing_articles=all_items)
+        process_new_rss_articles(news_list, max_per_run=_SEED_MAX_PER_RUN, existing_articles=all_items)
 
 
 def _startup_add_one_each():

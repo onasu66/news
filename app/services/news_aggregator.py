@@ -31,6 +31,7 @@ PAPER_DOMAIN_ORDER = [
     "経済・ビジネス",
     "総合科学",
     "工学・応用",
+    "哲学",
 ]
 
 # 論文用：ソース名 → 上位ジャンルのマッピング
@@ -52,6 +53,16 @@ SOURCE_TO_PAPER_DOMAIN: dict[str, str] = {
     # 医療・ヘルスケア
     "PLOS ONE": "医療・ヘルスケア",
     "BMJ Open": "医療・ヘルスケア",
+    "medRxiv": "医療・ヘルスケア",
+    "arXiv q-bio": "医療・ヘルスケア",
+    # 心理学
+    "PubMed (心理学)": "心理学",
+    "Frontiers in Psychology": "心理学",
+    # 哲学・倫理
+    "arXiv cs.CY": "哲学",
+    "Journal of Medical Ethics": "哲学",
+    # 総合科学（プレプリント）
+    "bioRxiv": "総合科学",
     # 経済・ビジネス
     "SSRN": "経済・ビジネス",
     "IDEAS/RePEc": "経済・ビジネス",
@@ -139,6 +150,15 @@ PAPER_FILTER_KEYWORDS: dict[str, dict[str, list[str]]] = {
         "H": ["infrastructure", "earthquake", "構造"],
         "I": ["biomedical", "bioengineering"],
         "J": ["manufacturing", "3d printing"],
+    },
+    "哲学": {
+        "A": ["ethics", "倫理", "moral", "道徳"],
+        "B": ["autonomy", "自律", "consent", "同意"],
+        "C": ["justice", "正義", "fairness", "公平"],
+        "D": ["consciousness", "意識", "phenomenology", "現象学"],
+        "E": ["well-being", "福祉", "flourishing"],
+        "F": ["rights", "権利", "義務", "duty"],
+        "G": ["meaning", "意味", "existence", "存在"],
     },
 }
 
@@ -239,14 +259,15 @@ class NewsAggregator:
                     if news:
                         trends = cls.get_trends(force_refresh=True)
                         trend_keywords = [t.keyword for t in trends]
-                        min_added = max(0, getattr(settings, "RSS_MIN_ADDED_PER_REFRESH", 14))
-                        max_loops = max(1, getattr(settings, "RSS_REFRESH_MAX_LOOPS", 8))
+                        min_added = max(0, getattr(settings, "RSS_MIN_ADDED_PER_REFRESH", 18))
+                        max_loops = max(1, getattr(settings, "RSS_REFRESH_MAX_LOOPS", 3))
+                        batch_max = max(5, int(getattr(settings, "RSS_PROCESS_MAX_PER_BATCH", 22)))
                         added_run = 0
                         for _ in range(max_loops):
                             all_items = load_all()
                             batch = process_new_rss_articles(
                                 news,
-                                max_per_run=14,
+                                max_per_run=batch_max,
                                 trend_keywords=trend_keywords,
                                 existing_articles=all_items,
                             )

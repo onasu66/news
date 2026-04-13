@@ -2,7 +2,7 @@
 {% block title %}知リポAI - 最新ニュースをAIが知的に解説{% endblock %}
 {% block meta_extra %}
     {# キーワード付きURLは重複になりやすいので正規URLへ統一 + noindex 寄せ #}
-    <link rel="canonical" href="{{ site_url }}/">
+    <link rel="canonical" href="{{ site_url }}/news">
     {% if search_keyword %}
     <meta name="robots" content="noindex,follow">
     {% endif %}
@@ -10,7 +10,7 @@
     <meta property="og:title" content="知リポAI - 最新ニュースをAIが知的に解説">
     <meta property="og:description" content="信頼メディアの最新ニュースを収集し、AIが背景・ポイントを解説。">
     <meta property="og:image" content="{{ og_image|default('https://picsum.photos/1200/630') }}">
-    <meta property="og:url" content="{{ site_url|default(request.url) }}/">
+    <meta property="og:url" content="{{ site_url }}/news">
     <meta property="og:site_name" content="知リポAI">
 {% endblock %}
 
@@ -20,7 +20,7 @@
         {% if search_keyword %}
         <div class="search-result-header">
             <p class="search-keyword-msg">「{{ search_keyword }}」の関連記事</p>
-            <a href="/" class="search-clear">× クリア</a>
+            <a href="/news" class="search-clear">× クリア</a>
         </div>
         {% endif %}
 
@@ -76,7 +76,7 @@
             <ul class="trends-list">
                 {% for t in trends %}
                 <li>
-                    <a href="/?keyword={{ t.keyword|urlencode }}" class="trend-link-internal">
+                    <a href="/news?keyword={{ t.keyword|urlencode }}" class="trend-link-internal">
                         <span class="trend-source trend-{{ t.source }}">{{ '🐦' if t.source == 'twitter' else '🔍' }}</span>
                         {{ t.keyword }}
                     </a>

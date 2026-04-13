@@ -11,6 +11,17 @@ import feedparser
 
 JST = ZoneInfo("Asia/Tokyo")
 
+try:
+    from app.config import settings as _settings
+
+    _ENTRIES_PER_FEED = int(getattr(_settings, "RSS_ENTRIES_PER_FEED", 80))
+    _FETCH_POOL_MAX = int(getattr(_settings, "RSS_FETCH_MAX_ITEMS", 450))
+    _PUBMED_LIMIT = int(getattr(_settings, "RSS_PUBMED_FEED_LIMIT", 40))
+except Exception:
+    _ENTRIES_PER_FEED = 80
+    _FETCH_POOL_MAX = 450
+    _PUBMED_LIMIT = 40
+
 
 def _clean_summary(text: str, max_len: int = 18000) -> str:
     """HTMLタグ・実体参照を除去してプレーンテキストにする（先にクリーニングしてから truncate）"""
@@ -101,12 +112,18 @@ RSS_FEEDS = [
     # 医学・健康（BMJ Open など）
     ("https://bmjopen.bmj.com/rss/current.xml", "BMJ Open", "研究・論文"),
 
-    # PubMed（検索RSS・心理学系クエリ）— 論文ページの「心理学」ドメイン
+    # PubMed（検索RSS・心理学系クエリ）— limit は RSS_PUBMED_FEED_LIMIT で拡張可能
     (
-        "https://pubmed.ncbi.nlm.nih.gov/rss/search/1-ajL1qsWMIPAynykj-5p51mqo0z8KMu2pLHqtsHzN8gipbsyg/?limit=15&utm_campaign=pubmed-2",
+        f"https://pubmed.ncbi.nlm.nih.gov/rss/search/1-ajL1qsWMIPAynykj-5p51mqo0z8KMu2pLHqtsHzN8gipbsyg/?limit={_PUBMED_LIMIT}&utm_campaign=pubmed-2",
         "PubMed (心理学)",
         "研究・論文",
     ),
+    ("https://connect.biorxiv.org/biorxiv_xml.php?subject=all", "bioRxiv", "研究・論文"),
+    ("https://connect.medrxiv.org/medrxiv_xml.php?subject=all", "medRxiv", "研究・論文"),
+    ("https://export.arxiv.org/rss/q-bio", "arXiv q-bio", "研究・論文"),
+    ("https://export.arxiv.org/rss/cs.CY", "arXiv cs.CY", "研究・論文"),
+    ("https://www.frontiersin.org/journals/psychology/rss", "Frontiers in Psychology", "研究・論文"),
+    ("https://jme.bmj.com/rss/current.xml", "Journal of Medical Ethics", "研究・論文"),
 
     # 経済・ビジネス
     ("https://www.ssrn.com/index.cfm/en/rss/", "SSRN", "研究・論文"),
@@ -195,7 +212,7 @@ def fetch_rss_news() -> list[NewsItem]:
         category = feed_item[2]
         try:
             feed = feedparser.parse(url, agent="NewsSite/1.0")
-            for entry in feed.entries[:50]:  # 各フィードから最大50件（未取り込み記事を探す範囲を広げる）
+            for entry in feed.entries[:_ENTRIES_PER_FEED]:  # 各フィードから最大 N 件（設定: RSS_ENTRIES_PER_FEED）
                 title = entry.get("title", "")
                 link = entry.get("link", "")
                 raw_summary = entry.get("summary") or entry.get("description") or ""
@@ -258,8 +275,14 @@ def fetch_rss_news() -> list[NewsItem]:
         "Nature": 24 * 7,
         "Science Magazine": 24 * 7,
         "Frontiers in Sports and Active Living": 24 * 7,
+        "Frontiers in Psychology": 24 * 7,
+        "Journal of Medical Ethics": 24 * 7,
         "BMJ Open": 48,
         "PubMed (心理学)": 48,
+        "bioRxiv": 72,
+        "medRxiv": 72,
+        "arXiv q-bio": 48,
+        "arXiv cs.CY": 48,
     }
 
     filtered: list[NewsItem] = []
@@ -275,4 +298,4 @@ def fetch_rss_news() -> list[NewsItem]:
 
     # 日付でソート（新しい順＝人気度の代理）
     filtered.sort(key=lambda x: x.published, reverse=True)
-    return filtered[:260]
+    return filtered[:_FETCH_POOL_MAX]

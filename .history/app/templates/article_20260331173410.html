@@ -1,0 +1,599 @@
+{% extends "base.html" %}
+{% block title %}{{ article.title }} - 知リポAI{% endblock %}
+{% block meta_description %}{{ meta_description|default(article.summary[:160] if article.summary else article.title)|e }}{% endblock %}
+{% block meta_extra %}
+    <link rel="canonical" href="{{ article_url }}">
+    <meta property="og:type" content="article">
+    <meta property="og:title" content="{{ article.title }} - 知リポAI">
+    <meta property="og:description" content="{{ meta_description|e }}">
+    <meta property="og:image" content="{{ og_image|default(image_url) }}">
+    <meta property="og:url" content="{{ article_url }}">
+    <meta property="og:site_name" content="知リポAI">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="{{ article.title }} - 知リポAI">
+    <meta name="twitter:description" content="{{ meta_description|e }}">
+    <meta name="twitter:image" content="{{ og_image|default(image_url) }}">
+{% endblock %}
+
+{% block content %}
+<article class="article-detail article-detail--smartnews">
+    <div class="article-sn-toolbar">
+        <a href="/" class="back-link">← 一覧に戻る</a>
+        <div class="article-sn-toolbar-actions">
+            <button type="button" class="save-article-btn save-article-btn--icon" id="btn-save" data-id="{{ article.id }}" data-title="{{ article.title|e }}" data-summary="{{ (article.summary or '')[:100]|e }}" title="保存">⭐</button>
+            <button type="button" class="save-article-btn save-article-btn--icon" id="btn-copy-share" title="リンクをコピー">🔗</button>
+        </div>
+    </div>
+
+    <div class="article-hero">
+        <img src="{{ image_url }}" alt="{{ article.title }}" class="article-image">
+    </div>
+
+    <header class="article-header article-header--below-hero">
+        <div class="article-meta">
+            <span class="article-date">🕒 {{ published_text|default('') }}</span>
+            <span class="article-source">{{ article.source }}</span>
+            <span class="article-cat-badge">🏷 {{ article.category }}</span>
+            <span class="article-badge">AI解説</span>
+        </div>
+        <h1 class="article-title">{{ article.title }}</h1>
+        <p class="live-readers">今 <span class="animated-number" data-target="{{ readers_now|default(42) }}">0</span> 人が読んでいます</p>
+    </header>
+
+    <div class="read-mode-switch">
+        <button type="button" class="read-mode-btn is-active" data-mode="short">📖 1分で理解</button>
+        <button type="button" class="read-mode-btn" data-mode="deep">📚 3分で深掘り</button>
+    </div>
+
+    <div class="article-content-wrapper">
+        <div class="article-main">
+            <div id="article-short-content" class="article-read-content">
+                {% if show_quick_points and quick_rows %}
+                <section class="three-points-card" aria-label="3つのポイント">
+                    <div class="three-points-card-head">
+                        <span class="three-points-mascot" aria-hidden="true">📌</span>
+                        <h2 class="three-points-title">3つのポイント</h2>
+                    </div>
+                    <div class="three-points-rows">
+                        {% if 'what' in quick_rows %}
+                        <div class="three-points-row">
+                            <span class="three-points-q three-points-q--red" aria-hidden="true">何が起きた？</span>
+                            <p class="three-points-a">{{ quick_rows['what']|safe }}</p>
+                        </div>
+                        {% endif %}
+                        {% if 'why' in quick_rows %}
+                        <div class="three-points-row">
+                            <span class="three-points-q three-points-q--orange" aria-hidden="true">ほかには？</span>
+                            <p class="three-points-a">{{ quick_rows['why']|safe }}</p>
+                        </div>
+                        {% endif %}
+                        {% if 'how' in quick_rows %}
+                        <div class="three-points-row">
+                            <span class="three-points-q three-points-q--green" aria-hidden="true">今後の注目は？</span>
+                            <p class="three-points-a">{{ quick_rows['how']|safe }}</p>
+                        </div>
+                        {% endif %}
+                    </div>
+                </section>
+                {% elif article_lead_html %}
+                <div class="short-summary-box short-summary-box--lead-only">
+                    {{ article_lead_html|safe }}
+                </div>
+                {% else %}
+                <div class="short-summary-box">
+                    <h3 class="short-summary-heading">📝 要点まとめ</h3>
+                    {% if short_summary %}
+                    {{ short_summary|safe }}
+                    {% else %}
+                    <p class="article-text">{{ article.summary|default('')|e }}</p>
+                    {% endif %}
+                </div>
+                {% endif %}
+            </div>
+            <div id="article-deep-content" class="article-read-content" style="display:none;">
+                <h3 class="article-fixed-section-title">✍ AI解説</h3>
+                <div id="article-inline-content" class="article-inline-content" data-fallback="{{ article.summary|e }}">
+                    {% if body_html %}
+                    {{ body_html|safe }}
+                    {% else %}
+                    <p class="article-text">{{ article.summary|default('')|e }}</p>
+                    {% endif %}
+                </div>
+            </div>
+            <div class="article-actions">
+                <a
+                    href="{{ article.link }}"
+                    target="_blank"
+                    rel="noopener"
+                    class="read-original read-original--pill"
+                ><span class="read-original-source">{{ article.source }}</span><span class="read-original-mid">で詳しく読む</span><span class="read-original-chev" aria-hidden="true">›</span></a>
+            </div>
+        </div>
+    </div>
+
+    {% if paper_graph and paper_graph.related_tags %}
+    <section class="vote-section">
+        <h2 class="vote-question">🧩 ナレッジグラフ（論文）</h2>
+        <p class="article-text">{{ paper_graph.timeline_message|default('')|e }}</p>
+        <div class="tag-list">
+            {% for t in paper_graph.related_tags %}
+            <span class="news-badge">{{ t }}</span>
+            {% endfor %}
+        </div>
+    </section>
+    {% endif %}
+
+    {% if paper_quiz and paper_quiz.options %}
+    <section class="vote-section" id="paper-quiz">
+        <h2 class="vote-question">📝 3択クイズ（論文）</h2>
+        <p class="article-text">{{ paper_quiz.question|default('')|e }}</p>
+        <div class="vote-options">
+            {% for opt in paper_quiz.options %}
+            <button type="button" class="vote-btn paper-quiz-option" data-answer="{{ opt.id|default('')|e }}">{{ opt.label|default('')|e }}</button>
+            {% endfor %}
+        </div>
+        <p id="paper-quiz-result" class="article-text" style="display:none;"></p>
+    </section>
+    {% endif %}
+
+    {% if deep_insights %}
+    <section class="vote-section">
+        <h2 class="vote-question">🤖 AIに聞く（事前生成）</h2>
+        <button type="button" class="btn-one-take" id="btn-ai-comment">AIに聞く</button>
+        <div id="ai-comment-box" style="display:none;margin-top:0.75rem;">
+            <h4>3行メリット</h4>
+            <ul class="insight-list">
+                {% for m in (deep_insights.merits|default([]))[:3] %}
+                <li>{{ m|e }}</li>
+                {% endfor %}
+            </ul>
+            <h4>リスク</h4>
+            <ul class="insight-list">
+                {% for r in (deep_insights.risks|default([]))[:3] %}
+                <li>{{ r|e }}</li>
+                {% endfor %}
+            </ul>
+            <h4>将来予測</h4>
+            <p class="article-text">{{ deep_insights.future_prediction|default('')|e }}</p>
+        </div>
+    </section>
+    {% endif %}
+
+    <section class="personas-section">
+        <h2 class="personas-title">AIの多角的な視点 <span class="personas-hint">（この記事は3人分・クリックで表示）</span></h2>
+        <div class="personas-grid">
+            {% for p in personas %}
+            <div class="persona-card" data-persona-id="{{ p.id }}" data-article-id="{{ article.id }}">
+                <button type="button" class="persona-trigger" aria-expanded="false">
+                    <span class="persona-emoji">{{ p.emoji }}</span>
+                    <span class="persona-name">{{ p.name }}</span>
+                    <span class="persona-arrow">▶</span>
+                </button>
+                <div class="persona-content" hidden>
+                    <p class="persona-loading">読込中...</p>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% if all_personas %}
+        <details class="personas-all-list" style="margin-top:1rem;">
+            <summary>全{{ all_personas|length }}人格一覧</summary>
+            <ul class="personas-all-ul" style="list-style:none;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:0.25rem;margin:0.5rem 0 0;">
+                {% for p in all_personas %}
+                <li><span class="persona-emoji">{{ p.emoji }}</span> {{ p.name }} <span style="font-size:0.75em;color:#666;">{{ '論理型' if p.type == 'logic' else 'エンタメ' }}</span></li>
+                {% endfor %}
+            </ul>
+        </details>
+        {% endif %}
+    </section>
+
+    {% if vote_data %}
+    <section class="vote-section" id="vote-section">
+        <h2 class="vote-question">📝 クイズ: {{ vote_data.question|default('')|e }}</h2>
+        <div class="vote-options" id="vote-options">
+            {% for opt in vote_data.options %}
+            <button type="button" class="vote-btn" data-vote="{{ opt.id|default('')|e }}">
+                <span class="vote-label">{{ opt.label|default('')|e }}</span>
+                <span class="vote-bar"><span class="vote-bar-fill" style="width:0%"></span></span>
+                <span class="vote-pct">-</span>
+            </button>
+            {% endfor %}
+        </div>
+        <p id="vote-quiz-result" class="article-text" style="display:none; margin-top:0.6rem;"></p>
+        <p id="vote-quiz-rate" class="article-text" style="margin-top:0.35rem; color: var(--color-text-muted);"></p>
+    </section>
+    {% endif %}
+
+    <section class="article-navigation">
+        {% if related_articles %}
+        <div class="article-nav-section">
+            <h3 class="article-nav-title">📰 関連記事</h3>
+            <div class="news-grid nav-grid">
+                {% for rel in related_articles[:3] %}
+                <article class="news-card news-card-sm">
+                    <a href="/topic/{{ rel.id }}" class="news-card-link">
+                        <div class="news-card-body">
+                            <span class="news-card-category-inline">{{ rel.category }}</span>
+                            <h3 class="news-title">{{ rel.title }}</h3>
+                        </div>
+                    </a>
+                </article>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+
+        {% if same_category_articles %}
+        <div class="article-nav-section">
+            <h3 class="article-nav-title">🏷 {{ article.category }}の記事</h3>
+            <div class="news-grid nav-grid">
+                {% for rel in same_category_articles[:3] %}
+                <article class="news-card news-card-sm">
+                    <a href="/topic/{{ rel.id }}" class="news-card-link">
+                        <div class="news-card-body">
+                            <span class="news-card-category-inline">{{ rel.category }}</span>
+                            <h3 class="news-title">{{ rel.title }}</h3>
+                        </div>
+                    </a>
+                </article>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+
+        {% if ai_recommended %}
+        <div class="article-nav-section">
+            <h3 class="article-nav-title">🤖 AIおすすめ</h3>
+            <div class="news-grid nav-grid">
+                {% for rel in ai_recommended[:3] %}
+                <article class="news-card news-card-sm">
+                    <a href="/topic/{{ rel.id }}" class="news-card-link">
+                        <div class="news-card-body">
+                            <span class="news-card-category-inline">{{ rel.category }}</span>
+                            <h3 class="news-title">{{ rel.title }}</h3>
+                        </div>
+                    </a>
+                </article>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+
+        <nav class="next-article-nav" aria-label="続けて読む">
+            {% if prev_article %}
+            <a href="/topic/{{ prev_article.id }}" class="next-article-link next-article-prev">← 前の記事</a>
+            {% endif %}
+            {% if next_article %}
+            <a href="/topic/{{ next_article.id }}" class="next-article-link next-article-next">次の記事へ →</a>
+            {% endif %}
+        </nav>
+    </section>
+</article>
+
+<div id="midorman-float" class="midorman-float" aria-live="polite" hidden>
+    <span class="midorman-float-avatar" aria-hidden="true">🎙️</span>
+    <div class="midorman-float-inner">
+        <p class="midorman-float-text" id="midorman-float-text"></p>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    var articleId = '{{ article.id }}';
+    var ssrPersonas = {{ (personas_data|default([]))|tojson|safe }};
+    var displayPersonaIds = {{ (display_persona_ids|default([]))|tojson|safe }};
+    var floatEl = document.getElementById('midorman-float');
+
+    function escapeHtml(s) {
+        if (s == null) return '';
+        var div = document.createElement('div');
+        div.textContent = s;
+        return div.innerHTML;
+    }
+
+    document.querySelectorAll('.animated-number').forEach(function(el) {
+        var target = parseInt(el.getAttribute('data-target') || '0', 10);
+        var cur = 0;
+        var step = Math.max(1, Math.floor(target / 25));
+        var timer = setInterval(function() {
+            cur += step;
+            if (cur >= target) {
+                cur = target;
+                clearInterval(timer);
+            }
+            el.textContent = String(cur);
+        }, 24);
+    });
+
+    var copyBtn = document.getElementById('btn-copy-share');
+    if (copyBtn) {
+        copyBtn.addEventListener('click', function() {
+            var text = 'AI要約: ' + ({{ copy_blurb|default("")|tojson|safe }}) + '\n' + window.location.href;
+            navigator.clipboard.writeText(text).then(function() {
+                copyBtn.textContent = '✅ コピー済み';
+                setTimeout(function() { copyBtn.textContent = '🔗 コピー'; }, 1200);
+            });
+        });
+    }
+
+    var quizOptions = document.querySelectorAll('.paper-quiz-option');
+    if (quizOptions.length > 0) {
+        var answerId = '{{ (paper_quiz.answer_id|default("", true) if paper_quiz else "")|e }}';
+        var explain = {{ (paper_quiz.explanation|default("", true) if paper_quiz else "")|tojson|safe }};
+        var out = document.getElementById('paper-quiz-result');
+        quizOptions.forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                var ok = btn.getAttribute('data-answer') === answerId;
+                if (out) {
+                    out.style.display = '';
+                    out.textContent = (ok ? '正解です。' : '不正解です。') + ' ' + explain;
+                }
+            });
+        });
+    }
+
+    var aiCommentBtn = document.getElementById('btn-ai-comment');
+    var aiCommentBox = document.getElementById('ai-comment-box');
+    if (aiCommentBtn && aiCommentBox) {
+        aiCommentBtn.addEventListener('click', function() {
+            aiCommentBox.style.display = aiCommentBox.style.display === 'none' ? '' : 'none';
+        });
+    }
+
+    // Read mode switch
+    var modeBtns = document.querySelectorAll('.read-mode-btn');
+    var shortContent = document.getElementById('article-short-content');
+    var deepContent = document.getElementById('article-deep-content');
+    modeBtns.forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            var mode = this.getAttribute('data-mode');
+            modeBtns.forEach(function(b) { b.classList.remove('is-active'); });
+            this.classList.add('is-active');
+            if (mode === 'short') {
+                shortContent.style.display = '';
+                deepContent.style.display = 'none';
+                if (floatEl) floatEl.hidden = true; // 1分で理解ではミドルマン吹き出し無し
+            } else {
+                shortContent.style.display = 'none';
+                deepContent.style.display = '';
+                // deep 表示時に初期化（short時は初期化しない）
+                var contentEl2 = document.getElementById('article-inline-content');
+                if (contentEl2) initMidormanFloat(contentEl2);
+            }
+        });
+    });
+
+    // ?mode=deep が付いている場合は初期表示を「3分で深掘り」にする
+    try {
+        var qs = new URLSearchParams(window.location.search || '');
+        if (qs.get('mode') === 'deep') {
+            modeBtns.forEach(function(b) { b.classList.remove('is-active'); });
+            var deepBtn = document.querySelector('.read-mode-btn[data-mode="deep"]');
+            if (deepBtn) deepBtn.classList.add('is-active');
+            if (shortContent) shortContent.style.display = 'none';
+            if (deepContent) deepContent.style.display = '';
+            var contentElInit = document.getElementById('article-inline-content');
+            if (contentElInit) initMidormanFloat(contentElInit);
+        }
+    } catch (e) {}
+
+    // Save button
+    var saveBtn = document.getElementById('btn-save');
+    if (saveBtn) {
+        var saved = JSON.parse(localStorage.getItem('saved_articles') || '[]');
+        var isSaved = saved.some(function(a) { return a.id === articleId; });
+        if (isSaved) { saveBtn.classList.add('is-saved'); saveBtn.textContent = '★'; saveBtn.setAttribute('title', '保存済み'); }
+        saveBtn.addEventListener('click', function() {
+            var saved = JSON.parse(localStorage.getItem('saved_articles') || '[]');
+            var idx = saved.findIndex(function(a) { return a.id === articleId; });
+            if (idx >= 0) {
+                saved.splice(idx, 1);
+                this.classList.remove('is-saved');
+                this.textContent = '⭐';
+                this.setAttribute('title', '保存');
+            } else {
+                saved.push({ id: articleId, title: this.dataset.title, summary: this.dataset.summary });
+                this.classList.add('is-saved');
+                this.textContent = '★';
+                this.setAttribute('title', '保存済み');
+            }
+            localStorage.setItem('saved_articles', JSON.stringify(saved));
+        });
+    }
+
+    // Quiz (旧 vote_data をクイズ用途で利用)
+    var voteSection = document.getElementById('vote-section');
+    if (voteSection) {
+        var voteBtns = voteSection.querySelectorAll('.vote-btn');
+        var answerId = {{ (vote_data.answer_id|default("", true) if vote_data else "")|tojson|safe }};
+        var explainText = {{ (vote_data.explanation|default("", true) if vote_data else "")|tojson|safe }};
+        var learningPoint = {{ (vote_data.learning_point|default("", true) if vote_data else "")|tojson|safe }};
+        var keyTerm = {{ (vote_data.key_term|default("", true) if vote_data else "")|tojson|safe }};
+        var keyTermNote = {{ (vote_data.key_term_note|default("", true) if vote_data else "")|tojson|safe }};
+        function buildQuizMessage(isCorrect, aid) {
+            var parts = [];
+            parts.push(isCorrect ? '正解です。' : ('不正解です。正解は「' + (aid || '') + '」です。'));
+            if (explainText) parts.push(explainText);
+            if (learningPoint) parts.push('学習ポイント: ' + learningPoint);
+            if (keyTerm && keyTermNote) parts.push('用語「' + keyTerm + '」: ' + keyTermNote);
+            return parts.join('\n\n');
+        }
+        var resultEl = document.getElementById('vote-quiz-result');
+        var rateEl = document.getElementById('vote-quiz-rate');
+        var voteKey = 'quiz_answered_' + articleId;
+        var existingVote = localStorage.getItem(voteKey);
+        var votes = JSON.parse(localStorage.getItem('vote_counts_' + articleId) || '{}');
+        var stats = JSON.parse(localStorage.getItem('quiz_stats_' + articleId) || '{"total":0,"correct":0}');
+
+        function updateRateDisplay() {
+            if (!rateEl) return;
+            var total = Number(stats.total || 0);
+            var correct = Number(stats.correct || 0);
+            var rate = total > 0 ? Math.round((correct / total) * 100) : 0;
+            rateEl.textContent = '正答率: ' + rate + '%（' + correct + '/' + total + '）';
+        }
+
+        function updateVoteDisplay() {
+            var total = 0;
+            for (var k in votes) total += votes[k];
+            voteBtns.forEach(function(btn) {
+                var vid = btn.dataset.vote;
+                var count = votes[vid] || 0;
+                var pct = total > 0 ? Math.round((count / total) * 100) : 0;
+                btn.querySelector('.vote-bar-fill').style.width = pct + '%';
+                btn.querySelector('.vote-pct').textContent = pct + '%';
+                if (existingVote === vid) btn.classList.add('voted');
+            });
+        }
+        updateVoteDisplay();
+        updateRateDisplay();
+        if (existingVote && resultEl) {
+            var isCorrect = existingVote === answerId;
+            resultEl.style.display = '';
+            resultEl.textContent = buildQuizMessage(isCorrect, answerId);
+        }
+        voteBtns.forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                if (existingVote) return;
+                var vid = this.dataset.vote;
+                existingVote = vid;
+                localStorage.setItem(voteKey, vid);
+                votes[vid] = (votes[vid] || 0) + 1;
+                localStorage.setItem('vote_counts_' + articleId, JSON.stringify(votes));
+                stats.total = Number(stats.total || 0) + 1;
+                if (vid === answerId) stats.correct = Number(stats.correct || 0) + 1;
+                localStorage.setItem('quiz_stats_' + articleId, JSON.stringify(stats));
+                if (resultEl) {
+                    resultEl.style.display = '';
+                    resultEl.textContent = buildQuizMessage(vid === answerId, answerId);
+                }
+                updateVoteDisplay();
+                updateRateDisplay();
+            });
+        });
+    }
+
+    function initMidormanFloat(container) {
+        // 1分で理解では吹き出しを出さない（deep表示中のみ）
+        if (deepContent && deepContent.style.display === 'none') return;
+        var floatEl = document.getElementById('midorman-float');
+        var floatText = document.getElementById('midorman-float-text');
+        if (!floatEl || !floatText) return;
+        var dataEl = container.querySelector('.midorman-float-data');
+        if (!dataEl) return;
+        var items;
+        try { items = JSON.parse(dataEl.textContent); } catch(e) { return; }
+        if (!items || items.length === 0) return;
+        var paras = container.querySelectorAll('.article-text[data-para]');
+        if (paras.length === 0) return;
+        var currentIdx = -1;
+        var observer = new IntersectionObserver(function(entries) {
+            entries.forEach(function(entry) {
+                if (!entry.isIntersecting) return;
+                var idx = parseInt(entry.target.dataset.para, 10);
+                var explainIdx = Math.min(Math.floor(idx * items.length / paras.length), items.length - 1);
+                if (explainIdx !== currentIdx && explainIdx >= 0) {
+                    currentIdx = explainIdx;
+                    floatText.innerHTML = items[explainIdx].body;
+                    floatEl.hidden = false;
+                }
+            });
+        }, { rootMargin: '-10% 0px -50% 0px', threshold: 0 });
+        paras.forEach(function(p) { observer.observe(p); });
+    }
+
+    var contentEl = document.getElementById('article-inline-content');
+    // 初期表示は short のため、ここでは吹き出し初期化しない
+
+    var hasSsr = contentEl && contentEl.querySelector('.article-text, .article-readflow') && ssrPersonas && ssrPersonas.length > 0;
+    if (hasSsr) {
+        document.querySelectorAll('.persona-card').forEach(function(card, i) {
+            var content = card.querySelector('.persona-content');
+            var opinion = ssrPersonas[i] || '';
+            content.dataset.loaded = 'true';
+            content.innerHTML = opinion
+                ? '<p class="persona-opinion">' + escapeHtml(opinion).replace(/\n/g, '<br>') + '</p>'
+                : '<p class="persona-error">取得できませんでした</p>';
+        });
+    } else {
+        fetch('/api/article/' + articleId + '/explanations')
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                var el = document.getElementById('article-inline-content');
+                if (!data.blocks || data.blocks.length === 0) {
+                    el.innerHTML = '<p>' + escapeHtml(el.dataset.fallback || '') + '</p>';
+                } else {
+                    var navLabels = { facts: 'ニュース', background: '背景', impact: '影響範囲', prediction: '予測', caution: '注意' };
+                    var isNavigator = data.blocks[0].type === 'navigator_section';
+                    var textParts = [];
+                    var floatItems = [];
+                    if (isNavigator) {
+                        data.blocks.forEach(function(b) {
+                            if (b.type !== 'navigator_section' || !b.section) return;
+                            var body = (b.content || '').trim();
+                            if (!body) return;
+                            if (b.section === 'facts') {
+                                body.split(/\n\n+/).filter(function(p) { return p.trim(); }).forEach(function(p) {
+                                    textParts.push(escapeHtml(p).replace(/\n/g, '<br>'));
+                                });
+                            } else if (navLabels[b.section]) {
+                                floatItems.push({ label: navLabels[b.section], body: escapeHtml(body).replace(/\n/g, '<br>') });
+                            }
+                        });
+                    } else {
+                        data.blocks.forEach(function(b) {
+                            if (b.type === 'text') {
+                                (b.content || '').trim().split(/\n\n+/).filter(function(p) { return p.trim(); }).forEach(function(p) {
+                                    textParts.push(escapeHtml(p).replace(/\n/g, '<br>'));
+                                });
+                            } else if (b.type === 'explain') {
+                                var c = (b.content || '').trim();
+                                if (c) floatItems.push({ label: 'ミドルマン', body: escapeHtml(c).replace(/\n/g, '<br>') });
+                            }
+                        });
+                    }
+                    var html = '<div class="article-readflow">';
+                    textParts.forEach(function(p, i) {
+                        html += '<p class="article-text" data-para="' + i + '">' + p + '</p>';
+                    });
+                    if (floatItems.length > 0) {
+                        html += '<script type="application/json" class="midorman-float-data">' + JSON.stringify(floatItems) + '<\/script>';
+                    }
+                    html += '</div>';
+                    el.innerHTML = html;
+                    initMidormanFloat(el);
+                }
+                var personas = data.personas || [];
+                var ids = displayPersonaIds && displayPersonaIds.length ? displayPersonaIds : [0,1,2];
+                document.querySelectorAll('.persona-card').forEach(function(card, i) {
+                    var content = card.querySelector('.persona-content');
+                    var idx = ids[i] != null ? ids[i] : i;
+                    var opinion = personas[idx] || '';
+                    content.dataset.loaded = 'true';
+                    content.innerHTML = opinion
+                        ? '<p class="persona-opinion">' + escapeHtml(opinion).replace(/\n/g, '<br>') + '</p>'
+                        : '<p class="persona-error">取得できませんでした</p>';
+                });
+            })
+            .catch(function() {
+                var el = document.getElementById('article-inline-content');
+                el.innerHTML = '<p>' + escapeHtml(el.dataset.fallback || '') + '</p>';
+            });
+    }
+
+    // Persona toggle
+    document.querySelectorAll('.persona-card').forEach(function(card) {
+        var btn = card.querySelector('.persona-trigger');
+        var content = card.querySelector('.persona-content');
+        btn.addEventListener('click', function() {
+            var isOpen = btn.getAttribute('aria-expanded') === 'true';
+            content.hidden = !isOpen;
+            btn.setAttribute('aria-expanded', isOpen ? 'false' : 'true');
+            btn.querySelector('.persona-arrow').textContent = isOpen ? '▶' : '▼';
+        });
+    });
+});
+</script>
+{% endblock %}

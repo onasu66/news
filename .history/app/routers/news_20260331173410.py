@@ -4,7 +4,6 @@ import logging
 import uuid
 from datetime import datetime
 import threading
-from urllib.parse import urlencode
 
 from fastapi import APIRouter, Request, HTTPException, Form, Header
 from fastapi.responses import HTMLResponse, RedirectResponse, Response
@@ -191,8 +190,7 @@ async def robots_txt(request: Request):
         f"Disallow: /admin\n"
         f"Disallow: /confirm\n"
         f"Disallow: /saved\n"
-        f"Disallow: /?keyword=\n"
-        f"Disallow: /news?keyword=\n\n"
+        f"Disallow: /?keyword=\n\n"
         f"Sitemap: {site_url}/sitemap.xml\n"
     )
     return Response(content=body, media_type="text/plain; charset=utf-8")
@@ -207,7 +205,7 @@ async def sitemap_xml(request: Request):
         '<?xml version="1.0" encoding="UTF-8"?>',
         '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">',
         f"  <url><loc>{site_url}/</loc><changefreq>hourly</changefreq><priority>1.0</priority></url>",
-        f"  <url><loc>{site_url}/news</loc><changefreq>hourly</changefreq><priority>0.95</priority></url>",
+        f"  <url><loc>{site_url}/papers</loc><changefreq>weekly</changefreq><priority>0.6</priority></url>",
     ]
     for a in articles[:5000]:
         lines.append(f"  <url><loc>{site_url}/topic/{a.id}</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>")
@@ -216,26 +214,9 @@ async def sitemap_xml(request: Request):
 
 
 @router.api_route("/", methods=["GET", "POST", "HEAD", "OPTIONS"])
-async def root_home(request: Request, page: int = 1, keyword: str = ""):
-    """トップは論文一覧。キーワード検索は従来どおりニュース一覧へ誘導"""
-    if request.method == "POST":
-        return {"message": "ok"}
-    if request.method == "OPTIONS":
-        return Response(status_code=200)
-    if request.method in ("GET", "HEAD"):
-        keyword = (keyword or "").strip()
-        if keyword:
-            q = [("keyword", keyword)]
-            if page > 1:
-                q.append(("page", str(page)))
-            return RedirectResponse(url="/news?" + urlencode(q), status_code=302)
-        return _render_papers_page(request, page)
-    return Response(status_code=405)
-
-
-@router.api_route("/news", methods=["GET", "POST", "HEAD", "OPTIONS"])
-async def news_index(request: Request, page: int = 1, keyword: str = ""):
-    """ニュース一覧（ジャンル別・ページネーション）。keyword 指定時は関連記事のみ"""
+async def index(request: Request, page: int = 1, keyword: str = ""):
+    """トップページ（ジャンル別表示・ページネーション対応）。keyword 指定時は関連記事のみ表示"""
+    # Render/Cloudflare のヘルスチェックやプリフライト等で別メソッドが飛んできても 405 にしない
     if request.method == "POST":
         return {"message": "ok"}
     if request.method == "OPTIONS":
@@ -243,6 +224,7 @@ async def news_index(request: Request, page: int = 1, keyword: str = ""):
     from app.services.news_aggregator import CATEGORY_ORDER, ITEMS_PER_PAGE
     keyword = (keyword or "").strip()
     if keyword:
+        # キーワードでフィルタ：全記事からタイトル・要約に含まれるものだけ残し、ページネーション＋ジャンル再集計
         all_news = NewsAggregator.get_news()
         kw_lower = keyword.lower()
         filtered = [a for a in all_news if kw_lower in (a.title or "").lower() or kw_lower in (a.summary or "").lower()]
@@ -281,7 +263,7 @@ async def news_index(request: Request, page: int = 1, keyword: str = ""):
             "site_url": site_url,
             "og_image": og_image,
             "search_keyword": keyword,
-        },
+        }
     )
 
 
@@ -364,11 +346,30 @@ async def api_papers_page(page: int = 1):
     return {"html": cards_html, "page": pagination["page"], "total_pages": pagination["total_pages"]}
 
 
-@router.get("/papers")
-async def papers_legacy_redirect(request: Request):
-    """旧URL互換：トップ（論文一覧）へ統合"""
-    q = request.url.query
-    return RedirectResponse(url=("/?" + q) if q else "/", status_code=301)
+@router.get("/papers", response_class=HTMLResponse)
+async def papers_page(request: Request, page: int = 1):
+    """論文専用ページ：研究・論文を上位ジャンル（ドメイン）ごとに表示（ニュース一覧と同じUI）"""
+    papers_by_category, pagination = NewsAggregator.get_papers_by_category(page=page)
+    for _, items in papers_by_category:
+        _attach_paper_related_tags(items)
+        for item in items:
+            _ensure_japanese(item)
+            if not item.image_url:
+                item.image_url = get_image_url(item.id, 400, 225)
+            elif not item.image_url.startswith("http"):
+                item.image_url = get_image_url(item.image_url, 400, 225)
+    has_papers = any(items for _, items in papers_by_category)
+    return templates.TemplateResponse(
+        "papers.html",
+        {
+            "request": request,
+            "papers_by_category": papers_by_category,
+            "pagination": pagination,
+            "has_papers": has_papers,
+            "site_url": _get_site_url(request),
+            "page": page,
+        },
+    )
 
 
 @router.get("/trend", response_class=HTMLResponse)
@@ -414,15 +415,7 @@ async def ai_page(request: Request):
             ai_personas = daily.get("persona_comments", [])
     except Exception:
         pass
-    return templates.TemplateResponse(
-        "ai.html",
-        {
-            "request": request,
-            "recommended": recommended,
-            "ai_memo": ai_memo,
-            "ai_personas": ai_personas,
-        },
-    )
+    return templates.TemplateResponse("ai.html", {"request": request, "recommended": recommended, "ai_memo": ai_memo, "ai_personas": ai_personas})
 
 
 @router.get("/about", response_class=HTMLResponse)
@@ -685,31 +678,6 @@ def _attach_paper_related_tags(items: list) -> None:
         for aid in set(article_ids):
             full_map[aid] = _PAPER_RELATED_TAGS_CACHE.get(aid, [])
     _apply_tags_to_items(full_map)
-
-
-def _render_papers_page(request: Request, page: int = 1):
-    """論文一覧（トップ `/` と共通）"""
-    papers_by_category, pagination = NewsAggregator.get_papers_by_category(page=page)
-    for _, items in papers_by_category:
-        _attach_paper_related_tags(items)
-        for item in items:
-            _ensure_japanese(item)
-            if not item.image_url:
-                item.image_url = get_image_url(item.id, 400, 225)
-            elif item.image_url and not item.image_url.startswith("http"):
-                item.image_url = get_image_url(item.image_url, 400, 225)
-    has_papers = any(items for _, items in papers_by_category)
-    return templates.TemplateResponse(
-        "papers.html",
-        {
-            "request": request,
-            "papers_by_category": papers_by_category,
-            "pagination": pagination,
-            "has_papers": has_papers,
-            "site_url": _get_site_url(request),
-            "page": page,
-        },
-    )
 
 
 def _blocks_to_html(blocks: list) -> str:

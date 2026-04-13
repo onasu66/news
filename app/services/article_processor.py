@@ -329,7 +329,13 @@ def process_new_rss_articles(
         "Frontiers in Sports and Active Living": "筋肉・スポーツ・身体",
         "PLOS ONE": "医療・ヘルスケア",
         "BMJ Open": "医療・ヘルスケア",
+        "medRxiv": "医療・ヘルスケア",
+        "arXiv q-bio": "医療・ヘルスケア",
         "PubMed (心理学)": "心理学",
+        "Frontiers in Psychology": "心理学",
+        "arXiv cs.CY": "哲学",
+        "Journal of Medical Ethics": "哲学",
+        "bioRxiv": "総合科学",
         "SSRN": "経済・ビジネス",
         "IDEAS/RePEc": "経済・ビジネス",
         "Sensors (MDPI)": "工学・応用",
@@ -343,26 +349,37 @@ def process_new_rss_articles(
         "経済・ビジネス",
         "総合科学",
         "工学・応用",
+        "哲学",
     ]
 
-    # 論文はドメインごとにランキング→各ドメインから1本ずつ選ぶ（AI偏重を防ぎ多様性を確保）
-    # ランキングで落ちる場合もあるため、空ならドメイン先頭をフォールバックで拾う。
+    # 論文はドメインごとにランキング→各ドメインから複数本選ぶ（設定: RSS_PAPERS_PER_DOMAIN）
+    try:
+        from app.config import settings as _ap_settings
+
+        papers_per_domain = max(1, int(getattr(_ap_settings, "RSS_PAPERS_PER_DOMAIN", 2)))
+        max_total_papers = max(1, int(getattr(_ap_settings, "RSS_MAX_TOTAL_PAPERS_PER_RUN", 18)))
+    except Exception:
+        papers_per_domain = 2
+        max_total_papers = 18
+    paper_budget = min(max_total_papers, max_per_run)
+
     deduped_papers = _dedup(paper_candidates)
     paper_picks: list[NewsItem] = []
-    paper_capacity = min(len(PAPER_DOMAIN_ORDER), max_per_run)
     for domain in PAPER_DOMAIN_ORDER:
-        if len(paper_picks) >= paper_capacity:
+        if len(paper_picks) >= paper_budget:
             break
         domain_items = [x for x in deduped_papers if SOURCE_TO_PAPER_DOMAIN.get(x.source) == domain]
         if not domain_items:
             continue
-        ranked = rank_and_filter_articles(domain_items, trend_keywords, max_articles=3)
-        picked = ranked[0] if ranked else domain_items[0]
-        if picked:
+        ranked = rank_and_filter_articles(
+            domain_items, trend_keywords, max_articles=max(8, papers_per_domain * 4)
+        )
+        order = ranked if ranked else domain_items
+        slots_here = min(papers_per_domain, paper_budget - len(paper_picks))
+        for i in range(min(slots_here, len(order))):
+            picked = order[i]
             paper_picks.append(picked)
-            # 選んだ論文を次ドメインの候補から除外（同じ論文が別ドメインで選ばれないよう）
-            picked_id = picked.id
-            deduped_papers = [x for x in deduped_papers if x.id != picked_id]
+            deduped_papers = [x for x in deduped_papers if x.id != picked.id]
 
     # ニュースは従来どおり全体ランキング→上位から選ぶ
     ranked_news = (
@@ -407,7 +424,7 @@ def process_new_rss_articles(
 
     to_process = paper_picks + news_picks
 
-    # 14本を狙うため、足りない場合は条件を緩めて補充する。
+    # max_per_run 本を狙うため、足りない場合は条件を緩めて補充する。
     # 1) まだ未選出のニュース候補（dedup済み）から順に補充
     # 2) それでも不足なら、論文候補の残りから補充
     selected_ids = {x.id for x in to_process}

@@ -1,8 +1,8 @@
 {% extends "base.html" %}
 {% block title %}論文 - 知リポAI{% endblock %}
 {% block meta_extra %}
-    {# /papers?page=... は重複になりやすいので canonical 固定 + noindex に寄せる #}
-    <link rel="canonical" href="{{ site_url }}/papers">
+    {# トップ（論文）: canonical は `/` 固定。page>1 は noindex #}
+    <link rel="canonical" href="{{ site_url }}/">
     {% set page_param = request.query_params.get('page') %}
     {% if page_param and page_param != '1' %}
     <meta name="robots" content="noindex,follow">
@@ -10,7 +10,7 @@
     <meta property="og:type" content="website">
     <meta property="og:title" content="論文 - 知リポAI">
     <meta property="og:description" content="Nature・Science・arXivなど最新の研究論文をAIが解説。">
-    <meta property="og:url" content="{{ site_url }}/papers">
+    <meta property="og:url" content="{{ site_url }}/">
 {% endblock %}
 {% block content %}
 <section class="page-header">

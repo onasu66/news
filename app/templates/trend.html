@@ -35,7 +35,7 @@
             <h2 class="sidebar-title"><span class="icon-fire">📈</span> キーワード</h2>
             <ul class="trends-list">
                 {% for t in trends %}
-                <li><a href="/?keyword={{ t.keyword|urlencode }}" class="trend-link-internal">{{ t.keyword }}</a></li>
+                <li><a href="/news?keyword={{ t.keyword|urlencode }}" class="trend-link-internal">{{ t.keyword }}</a></li>
                 {% endfor %}
             </ul>
         </div>
