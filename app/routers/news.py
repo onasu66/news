@@ -136,7 +136,16 @@ def _sanitize_paper_quiz_for_page(val):
     d = _json_safe_for_template(d)
     if not isinstance(d, dict):
         return {}
-    d["options"] = _normalize_quiz_options(d.get("options"))
+    options = _normalize_quiz_options(d.get("options"))
+    # 既存キャッシュ互換: 過去の3択データは4択表示に補完する
+    # （answer_id はそのまま有効。追加肢は「該当なし」に固定）
+    existing_ids = {str(o.get("id", "")).strip() for o in options}
+    if len(options) == 3:
+        for cand in ("d", "4", "none"):
+            if cand not in existing_ids:
+                options.append({"id": cand, "label": "該当なし"})
+                break
+    d["options"] = options
     for _k in ("answer_id", "explanation", "question"):
         v = d.get(_k)
         d[_k] = "" if v is None else str(v)

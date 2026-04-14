@@ -14,13 +14,13 @@ JST = ZoneInfo("Asia/Tokyo")
 try:
     from app.config import settings as _settings
 
-    _ENTRIES_PER_FEED = int(getattr(_settings, "RSS_ENTRIES_PER_FEED", 80))
-    _FETCH_POOL_MAX = int(getattr(_settings, "RSS_FETCH_MAX_ITEMS", 450))
-    _PUBMED_LIMIT = int(getattr(_settings, "RSS_PUBMED_FEED_LIMIT", 40))
+    _ENTRIES_PER_FEED = int(getattr(_settings, "RSS_ENTRIES_PER_FEED", 120))
+    _FETCH_POOL_MAX = int(getattr(_settings, "RSS_FETCH_MAX_ITEMS", 800))
+    _PUBMED_LIMIT = int(getattr(_settings, "RSS_PUBMED_FEED_LIMIT", 80))
 except Exception:
-    _ENTRIES_PER_FEED = 80
-    _FETCH_POOL_MAX = 450
-    _PUBMED_LIMIT = 40
+    _ENTRIES_PER_FEED = 120
+    _FETCH_POOL_MAX = 800
+    _PUBMED_LIMIT = 80
 
 
 def _clean_summary(text: str, max_len: int = 18000) -> str:

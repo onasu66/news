@@ -950,7 +950,7 @@ def generate_paper_knowledge_graph(title: str, content: str, model: str | None =
 
 
 def generate_paper_quiz(title: str, content: str, model: str | None = None) -> dict:
-    """論文向け: 3択クイズ1問と解説を生成"""
+    """論文向け: 4択クイズ1問と解説を生成"""
     if not settings.OPENAI_API_KEY:
         return {}
     from openai import OpenAI
@@ -965,12 +965,12 @@ def generate_paper_quiz(title: str, content: str, model: str | None = None) -> d
                 {
                     "role": "system",
                     "content": (
-                        "論文内容に基づき、勉強になる3択クイズを1問作成してください。"
+                        "論文内容に基づき、勉強になる4択クイズを1問作成してください。"
                         "方法・結果の解釈・限界・用語の意味など、中級程度の理解を問うこと。"
                         "必ず日本語のみで、JSONのみを返してください。"
                         "形式: {\"question\":\"...\", \"options\":[{\"id\":\"a\",\"label\":\"...\"},"
-                        "{\"id\":\"b\",\"label\":\"...\"},{\"id\":\"c\",\"label\":\"...\"}],"
-                        "\"answer_id\":\"a|b|c\", \"explanation\":\"...\","
+                        "{\"id\":\"b\",\"label\":\"...\"},{\"id\":\"c\",\"label\":\"...\"},{\"id\":\"d\",\"label\":\"...\"}],"
+                        "\"answer_id\":\"a|b|c|d\", \"explanation\":\"...\","
                         "\"learning_point\":\"...\", \"key_term\":\"...\", \"key_term_note\":\"...\"}\n"
                         "explanation: 正解の根拠と、誤り肢が誤りである理由を簡潔に。\n"
                         "learning_point: この論文から得られる学習の要点1つ（80〜160文字）。必須。\n"
@@ -994,10 +994,10 @@ def generate_paper_quiz(title: str, content: str, model: str | None = None) -> d
             text = text.split("\n", 1)[-1].rsplit("```", 1)[0].strip()
         data = json.loads(text)
         options = data.get("options", [])
-        if not isinstance(options, list) or len(options) != 3:
+        if not isinstance(options, list) or len(options) != 4:
             return {}
         answer_id = (data.get("answer_id") or "").strip()
-        if answer_id not in {"a", "b", "c"}:
+        if answer_id not in {"a", "b", "c", "d"}:
             return {}
         learning_point = (data.get("learning_point") or "").strip()
         key_term = (data.get("key_term") or "").strip()

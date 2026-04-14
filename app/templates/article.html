@@ -106,7 +106,7 @@
                     target="_blank"
                     rel="noopener"
                     class="read-original read-original--pill"
-                ><span class="read-original-source">{{ article.source }}</span><span class="read-original-mid">で詳しく読む</span><span class="read-original-chev" aria-hidden="true">›</span></a>
+                ><span class="read-original-source">{{ article.source }}</span><span class="read-original-mid">で3分で深掘り</span><span class="read-original-chev" aria-hidden="true">›</span></a>
             </div>
         </div>
     </div>
@@ -125,7 +125,7 @@
 
     {% if paper_quiz and paper_quiz.options %}
     <section class="vote-section" id="paper-quiz">
-        <h2 class="vote-question">📝 3択クイズ（論文）</h2>
+        <h2 class="vote-question">📝 4択クイズ（論文）</h2>
         <p class="article-text">{{ paper_quiz.question|default('')|e }}</p>
         <div class="vote-options">
             {% for opt in paper_quiz.options %}
@@ -589,7 +589,7 @@ document.addEventListener('DOMContentLoaded', function() {
         var content = card.querySelector('.persona-content');
         btn.addEventListener('click', function() {
             var isOpen = btn.getAttribute('aria-expanded') === 'true';
-            content.hidden = !isOpen;
+            content.hidden = isOpen;
             btn.setAttribute('aria-expanded', isOpen ? 'false' : 'true');
             btn.querySelector('.persona-arrow').textContent = isOpen ? '▶' : '▼';
         });

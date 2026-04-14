@@ -259,9 +259,9 @@ class NewsAggregator:
                     if news:
                         trends = cls.get_trends(force_refresh=True)
                         trend_keywords = [t.keyword for t in trends]
-                        min_added = max(0, getattr(settings, "RSS_MIN_ADDED_PER_REFRESH", 18))
+                        min_added = max(0, getattr(settings, "RSS_MIN_ADDED_PER_REFRESH", 30))
                         max_loops = max(1, getattr(settings, "RSS_REFRESH_MAX_LOOPS", 3))
-                        batch_max = max(5, int(getattr(settings, "RSS_PROCESS_MAX_PER_BATCH", 22)))
+                        batch_max = max(5, int(getattr(settings, "RSS_PROCESS_MAX_PER_BATCH", 32)))
                         added_run = 0
                         for _ in range(max_loops):
                             all_items = load_all()
