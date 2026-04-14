@@ -101,12 +101,11 @@
                 </div>
             </div>
             <div class="article-actions">
-                <a
-                    href="{{ article.link }}"
-                    target="_blank"
-                    rel="noopener"
+                <button
+                    type="button"
+                    id="btn-go-deep"
                     class="read-original read-original--pill"
-                ><span class="read-original-source">{{ article.source }}</span><span class="read-original-mid">で3分で深掘り</span><span class="read-original-chev" aria-hidden="true">›</span></a>
+                ><span class="read-original-source">{{ article.source }}</span><span class="read-original-mid">で3分で深掘り</span><span class="read-original-chev" aria-hidden="true">›</span></button>
             </div>
         </div>
     </div>
@@ -364,6 +363,14 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
     });
+
+    var goDeepBtn = document.getElementById('btn-go-deep');
+    if (goDeepBtn) {
+        goDeepBtn.addEventListener('click', function() {
+            var deepBtn = document.querySelector('.read-mode-btn[data-mode="deep"]');
+            if (deepBtn) deepBtn.click();
+        });
+    }
 
     // ?mode=deep が付いている場合は初期表示を「3分で深掘り」にする
     try {
