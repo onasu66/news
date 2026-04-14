@@ -29,11 +29,6 @@
                 <span class="logo"><span class="logo-icon">📰</span>知リポAI</span>
                 <span class="logo-tagline">AIが解説する知的ニュース</span>
             </a>
-            <nav class="nav-main" aria-label="メインナビゲーション">
-                <a href="/" {% if request.url.path == '/' %}aria-current="page"{% endif %}>論文</a>
-                <a href="/news" {% if request.url.path == '/news' %}aria-current="page"{% endif %}>ニュース</a>
-                <a href="/search" {% if request.url.path == '/search' %}aria-current="page"{% endif %}>探す</a>
-            </nav>
             <button type="button" id="theme-toggle" class="theme-toggle" aria-label="ダークモード切替">🌙</button>
         </div>
     </header>

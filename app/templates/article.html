@@ -105,7 +105,7 @@
                     type="button"
                     id="btn-go-deep"
                     class="read-original read-original--pill"
-                ><span class="read-original-source">{{ article.source }}</span><span class="read-original-mid">で3分で深掘り</span><span class="read-original-chev" aria-hidden="true">›</span></button>
+                ><span class="read-original-mid">3分で深掘り</span><span class="read-original-chev" aria-hidden="true">›</span></button>
             </div>
         </div>
     </div>
@@ -214,6 +214,8 @@
                         <div class="news-card-body">
                             <span class="news-card-category-inline">{{ rel.category }}</span>
                             <h3 class="news-title">{{ rel.title }}</h3>
+                            <p class="article-nav-teaser">{{ (rel.summary or '')[:72] }}{% if (rel.summary or '')|length > 72 %}...{% endif %}</p>
+                            <span class="article-nav-cta">続きを読む →</span>
                         </div>
                     </a>
                 </article>
@@ -232,6 +234,8 @@
                         <div class="news-card-body">
                             <span class="news-card-category-inline">{{ rel.category }}</span>
                             <h3 class="news-title">{{ rel.title }}</h3>
+                            <p class="article-nav-teaser">{{ (rel.summary or '')[:72] }}{% if (rel.summary or '')|length > 72 %}...{% endif %}</p>
+                            <span class="article-nav-cta">続きを読む →</span>
                         </div>
                     </a>
                 </article>
@@ -250,6 +254,8 @@
                         <div class="news-card-body">
                             <span class="news-card-category-inline">{{ rel.category }}</span>
                             <h3 class="news-title">{{ rel.title }}</h3>
+                            <p class="article-nav-teaser">{{ (rel.summary or '')[:72] }}{% if (rel.summary or '')|length > 72 %}...{% endif %}</p>
+                            <span class="article-nav-cta">続きを読む →</span>
                         </div>
                     </a>
                 </article>
