@@ -77,6 +77,56 @@ def _normalize_quiz_options(raw) -> list[dict[str, str]]:
     return out
 
 
+def _normalize_quiz_payload(raw):
+    """
+    vote_data / paper_quiz のフィールド名ゆらぎを吸収して共通化する。
+    例:
+      - question / quiz_question / title
+      - options / choices
+      - answer_id / answer / correct_answer / correct_option
+      - explanation / reason / rationale / answer_explanation
+    """
+    d = _coerce_mapping(raw)
+    if not d:
+        return None
+    d = _json_safe_for_template(d)
+    if not isinstance(d, dict):
+        return None
+
+    def _pick(*keys):
+        for k in keys:
+            if k in d and d.get(k) not in (None, ""):
+                return d.get(k)
+        return ""
+
+    options = _normalize_quiz_options(_pick("options", "choices", "quiz_options"))
+    question = _pick("question", "quiz_question", "title")
+    answer_id = _pick("answer_id", "answer", "correct_answer", "correct_option")
+    explanation = _pick("explanation", "reason", "rationale", "answer_explanation")
+    learning_point = _pick("learning_point", "point", "takeaway")
+    key_term = _pick("key_term", "term", "keyword")
+    key_term_note = _pick("key_term_note", "term_note", "keyword_note")
+
+    # "A"/"B"/"C"/"D" 形式や "1" 形式も可能な範囲で合わせる
+    aid = str(answer_id).strip().lower()
+    if aid in {"1", "2", "3", "4"}:
+        answer_id = ["a", "b", "c", "d"][int(aid) - 1]
+    elif aid in {"a", "b", "c", "d"}:
+        answer_id = aid
+    else:
+        answer_id = str(answer_id).strip()
+
+    return {
+        "question": "" if question is None else str(question),
+        "options": options,
+        "answer_id": "" if answer_id is None else str(answer_id),
+        "explanation": "" if explanation is None else str(explanation),
+        "learning_point": "" if learning_point is None else str(learning_point),
+        "key_term": "" if key_term is None else str(key_term),
+        "key_term_note": "" if key_term_note is None else str(key_term_note),
+    }
+
+
 def _sanitize_quick_understand_for_page(val):
     d = _coerce_mapping(val)
     if not d:
@@ -96,11 +146,8 @@ def _sanitize_quick_understand_for_page(val):
 
 
 def _sanitize_vote_data_for_page(val):
-    d = _coerce_mapping(val)
+    d = _normalize_quiz_payload(val)
     if not d:
-        return None
-    d = _json_safe_for_template(d)
-    if not isinstance(d, dict):
         return None
     opts = _normalize_quiz_options(d.get("options"))
     if not opts:
@@ -130,11 +177,8 @@ def _sanitize_paper_graph_for_page(val):
 
 
 def _sanitize_paper_quiz_for_page(val):
-    d = _coerce_mapping(val)
+    d = _normalize_quiz_payload(val)
     if not d:
-        return {}
-    d = _json_safe_for_template(d)
-    if not isinstance(d, dict):
         return {}
     options = _normalize_quiz_options(d.get("options"))
     # 既存キャッシュ互換: 過去の3択データは4択表示に補完する
@@ -146,7 +190,7 @@ def _sanitize_paper_quiz_for_page(val):
                 options.append({"id": cand, "label": "該当なし"})
                 break
     d["options"] = options
-    for _k in ("answer_id", "explanation", "question"):
+    for _k in ("answer_id", "explanation", "question", "learning_point", "key_term", "key_term_note"):
         v = d.get(_k)
         d[_k] = "" if v is None else str(v)
     return d
@@ -833,6 +877,12 @@ async def topic_detail(request: Request, topic_id: str):
     vote_data = _sanitize_vote_data_for_page(cached.get("vote_data") if cached else None)
     paper_graph = _sanitize_paper_graph_for_page(cached.get("paper_graph") if cached else None)
     paper_quiz = _sanitize_paper_quiz_for_page(cached.get("paper_quiz") if cached else None)
+    # Firestore/過去データ互換:
+    # 片方にしか入っていない場合でも、クイズ/投票のどちらにも表示できるようにする
+    if (not vote_data) and paper_quiz and paper_quiz.get("options"):
+        vote_data = dict(paper_quiz)
+    if (not paper_quiz or not paper_quiz.get("options")) and vote_data and vote_data.get("options"):
+        paper_quiz = dict(vote_data)
     deep_insights = _sanitize_deep_insights_for_page(cached.get("deep_insights") if cached else None)
     body_html = _blocks_to_html(blocks) if blocks else ""
     short_summary = _build_short_summary(quick_understand, item.summary)
