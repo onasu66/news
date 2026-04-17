@@ -6,9 +6,9 @@ from datetime import datetime
 
 from .rss_service import NewsItem, sanitize_display_text
 
-# 性能対策: 一覧表示は最大 2000 件程度に制限しているため、
+# 性能対策: 一覧表示は最大 800 件程度に制限しているため、
 # SQLite 側も limit 付きで読み込んで初回遷移を高速化する。
-_LOAD_ALL_LIMIT = 2000
+_LOAD_ALL_LIMIT = 800
 
 def _use_firestore():
     try:

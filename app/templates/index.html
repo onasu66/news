@@ -17,6 +17,10 @@
 {% block content %}
 <div class="page-layout">
     <div class="content-main">
+        <div class="page-switch" role="navigation" aria-label="ページ切替">
+            <a href="/" class="page-switch-link">論文</a>
+            <a href="/news" class="page-switch-link is-active" aria-current="page">ニュース</a>
+        </div>
         {% if search_keyword %}
         <div class="search-result-header">
             <p class="search-keyword-msg">「{{ search_keyword }}」の関連記事</p>

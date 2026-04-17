@@ -18,6 +18,10 @@
 </section>
 <div class="page-layout">
     <div class="content-main">
+        <div class="page-switch" role="navigation" aria-label="ページ切替">
+            <a href="/" class="page-switch-link is-active" aria-current="page">論文</a>
+            <a href="/news" class="page-switch-link">ニュース</a>
+        </div>
         {% if has_papers %}
         <div class="genre-tabs-wrap" role="tablist" aria-label="論文ジャンルで絞り込み">
             <div class="genre-tabs-scroll">

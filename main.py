@@ -20,11 +20,11 @@ from app.services.news_aggregator import NewsAggregator
 try:
     from app.config import settings, is_rss_and_ai_disabled
     INTERVAL_MIN = settings.NEWS_REFRESH_INTERVAL
-    LIST_CACHE_SYNC_MIN = int(getattr(settings, "NEWS_LIST_CACHE_SYNC_MINUTES", 15))
+    LIST_CACHE_SYNC_MIN = int(getattr(settings, "NEWS_LIST_CACHE_SYNC_MINUTES", 60))
     _SEED_MAX_PER_RUN = max(7, min(14, int(getattr(settings, "RSS_PROCESS_MAX_PER_BATCH", 22))))
 except Exception:
     INTERVAL_MIN = 240
-    LIST_CACHE_SYNC_MIN = 15
+    LIST_CACHE_SYNC_MIN = 60
     _SEED_MAX_PER_RUN = 12
     is_rss_and_ai_disabled = lambda: False
 

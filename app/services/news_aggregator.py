@@ -245,7 +245,7 @@ class NewsAggregator:
         """
         if force_refresh or not cls._news_cache:
             processed_ids = get_cached_article_ids()
-            # 読み取り削減: load_all は1回だけ行い、force_refresh 時は process に渡して再読を避ける
+            # 読み取り削減: load_all の回数を最小化し、force_refresh 時も既存スナップショットを使い回す
             all_items = load_all()
             cached = [x for x in all_items if x.id in processed_ids][:PAGE_DISPLAY_LIMIT]
             if cached and not force_refresh:
@@ -263,19 +263,20 @@ class NewsAggregator:
                         max_loops = max(1, getattr(settings, "RSS_REFRESH_MAX_LOOPS", 3))
                         batch_max = max(5, int(getattr(settings, "RSS_PROCESS_MAX_PER_BATCH", 32)))
                         added_run = 0
+                        existing_items_snapshot = list(all_items)
                         for _ in range(max_loops):
-                            all_items = load_all()
                             batch = process_new_rss_articles(
                                 news,
                                 max_per_run=batch_max,
                                 trend_keywords=trend_keywords,
-                                existing_articles=all_items,
+                                existing_articles=existing_items_snapshot,
                             )
                             added_run += batch
                             if min_added <= 0 or added_run >= min_added or batch == 0:
                                 break
                 finally:
                     processed_ids = get_cached_article_ids()
+                    # force_refresh 終了後の再読は 1 回だけ
                     all_items = load_all()
             cls._news_cache = sorted(
                 [x for x in all_items if x.id in processed_ids][:PAGE_DISPLAY_LIMIT],
@@ -345,9 +346,36 @@ class NewsAggregator:
         戻り値: (news_by_category, pagination_info)
         pagination_info: {page, per_page, total, total_pages, has_prev, has_next}
         """
+        per_page = ITEMS_PER_PAGE
+        if not force_refresh:
+            try:
+                from .firestore_store import use_firestore, firestore_query_news_page
+
+                if use_firestore():
+                    page_items, total = firestore_query_news_page(page=page, per_page=per_page)
+                    total_pages = max(1, (int(total) + per_page - 1) // per_page) if total else 1
+                    page = max(1, min(int(page), total_pages))
+
+                    by_cat: dict[str, list[NewsItem]] = {}
+                    for item in page_items:
+                        by_cat.setdefault(item.category, []).append(item)
+                    news_by_category = [(cat, by_cat.get(cat, [])) for cat in CATEGORY_ORDER]
+
+                    pagination = {
+                        "page": page,
+                        "per_page": per_page,
+                        "total": int(total) if total else len(page_items),
+                        "total_pages": total_pages,
+                        "has_prev": page > 1,
+                        "has_next": page < total_pages,
+                    }
+                    return news_by_category, pagination
+            except Exception:
+                # Firestore 側で何か起きても、従来の挙動へフォールバック
+                pass
+
         news = cls.get_news(force_refresh)
         total = len(news)
-        per_page = ITEMS_PER_PAGE
         total_pages = max(1, (total + per_page - 1) // per_page)
         page = max(1, min(page, total_pages))
 

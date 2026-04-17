@@ -2734,6 +2734,35 @@ body::after {
 }
 .search-result-count { text-align: center; color: var(--color-text-muted); margin: 1rem 0; }
 
+/* ===== PAGE SWITCH (papers/news) ===== */
+.page-switch {
+    display: inline-flex;
+    gap: 0.45rem;
+    margin: 0 0 0.9rem;
+    padding: 0.25rem;
+    border: 1px solid var(--color-border-light);
+    border-radius: 999px;
+    background: var(--color-bg-elevated);
+}
+.page-switch-link {
+    text-decoration: none;
+    color: var(--color-text-secondary);
+    font-size: 0.86rem;
+    font-weight: 700;
+    padding: 0.45rem 1rem;
+    border-radius: 999px;
+    transition: all 0.2s ease;
+}
+.page-switch-link:hover {
+    color: var(--color-accent);
+    background: var(--color-accent-soft);
+}
+.page-switch-link.is-active,
+.page-switch-link[aria-current="page"] {
+    background: var(--color-accent);
+    color: #fff;
+}
+
 /* ===== PAGE HEADERS ===== */
 .page-header {
     text-align: center;

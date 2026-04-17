@@ -84,8 +84,8 @@ def _meta_doc():
     return _get_client().collection("_meta").document("cache")
 
 
-# 一覧取得の上限（無料枠 5万読/日 を考慮。PAGE_DISPLAY_LIMIT と揃える）
-_LOAD_ALL_LIMIT = 2000
+# 一覧取得の上限（無料枠 5万読/日 を考慮。過剰読取を抑える）
+_LOAD_ALL_LIMIT = 800
 
 # --- articles ---
 def firestore_load_by_id(article_id: str):
@@ -338,6 +338,73 @@ def firestore_query_papers_page(page: int, per_page: int) -> tuple[list["NewsIte
                 .where("category", "==", "研究・論文")
                 .where("has_explanation", "==", True)
                 .limit(per_page * 100)  # かなり広め（通常は収まる想定）
+                .stream()
+            ):
+                total_count += 1
+        except Exception:
+            total_count = len(items)
+
+    return items, total_count
+
+
+def firestore_query_news_page(page: int, per_page: int) -> tuple[list["NewsItem"], int]:
+    """
+    /news 用: has_explanation=True かつ category!=研究・論文 を published 降順でページング取得。
+    /news 初回表示時に get_news() -> load_all() を避ける。
+    """
+    from .rss_service import NewsItem, sanitize_display_text
+
+    page = max(1, int(page or 1))
+    per_page = max(1, int(per_page or 1))
+    start = (page - 1) * per_page
+
+    q = (
+        _articles_collection()
+        .where("has_explanation", "==", True)
+        .where("category", "!=", "研究・論文")
+        .order_by("category")
+        .order_by("published", direction="DESCENDING")
+        .offset(start)
+        .limit(per_page)
+    )
+
+    items: list[NewsItem] = []
+    for doc in q.stream():
+        d = doc.to_dict() or {}
+        try:
+            pub = datetime.fromisoformat(d.get("published", "")) if d.get("published") else datetime.now()
+        except Exception:
+            pub = datetime.now()
+        items.append(
+            NewsItem(
+                id=doc.id,
+                title=d.get("title", ""),
+                link=d.get("link", ""),
+                summary=sanitize_display_text(d.get("summary") or ""),
+                published=pub,
+                source=d.get("source", ""),
+                category=d.get("category", "総合"),
+                image_url=d.get("image_url"),
+            )
+        )
+
+    total_count = 0
+    try:
+        base = (
+            _articles_collection()
+            .where("has_explanation", "==", True)
+            .where("category", "!=", "研究・論文")
+        )
+        agg = base.count().get()
+        total_count = int(getattr(agg, "value", None) or agg[0].value or agg[0].get("count") or 0)
+    except Exception:
+        try:
+            total_count = 0
+            for _ in (
+                _articles_collection()
+                .where("has_explanation", "==", True)
+                .where("category", "!=", "研究・論文")
+                .limit(per_page * 100)
                 .stream()
             ):
                 total_count += 1
