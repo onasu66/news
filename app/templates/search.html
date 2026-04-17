@@ -3,15 +3,22 @@
 {% block content %}
 <section class="page-header">
     <h1 class="page-title">🔍 探す</h1>
+    <p class="page-desc">キーワードを組み合わせて、論文もニュースも横断検索できます。</p>
 </section>
-<div class="search-box">
+<div class="search-page-wrap">
+<div class="search-box search-box--rich">
     <form action="/search" method="get" class="search-form">
         <input type="search" name="q" value="{{ query|default('') }}" placeholder="キーワードで記事を検索..." class="search-input" autofocus>
         <button type="submit" class="search-btn">検索</button>
     </form>
+    <div class="search-helper-chips" aria-label="検索ヒント">
+        <a class="search-chip" href="/search?q=ai 論文">AI 論文</a>
+        <a class="search-chip" href="/search?q=要約 ニュース">要約 ニュース</a>
+        <a class="search-chip" href="/search?q=チリポ">チリポ</a>
+    </div>
 </div>
 {% if query %}
-<p class="search-result-count">「{{ query }}」の検索結果: {{ results|length }}件</p>
+<p class="search-result-count search-result-count--rich">「{{ query }}」の検索結果: {{ results|length }}件</p>
 {% endif %}
 <div class="news-grid" id="news-grid">
     {% for item in results %}
@@ -28,5 +35,9 @@
         </a>
     </article>
     {% endfor %}
+</div>
+{% if query and not results %}
+<p class="empty-msg">該当記事が見つかりませんでした。キーワードを短くするか、別の語でお試しください。</p>
+{% endif %}
 </div>
 {% endblock %}

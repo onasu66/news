@@ -96,6 +96,30 @@
             <p>すべての論文を表示しました</p>
         </div>
         {% endif %}
+
+        {% if recent_ai_news %}
+        <aside class="ai-news-widget" aria-label="最近話題のAIニュース">
+            <h2>最近話題のAIニュース（14人のAI解説付き）</h2>
+            <ul class="ai-news-widget-list">
+                {% for n in recent_ai_news %}
+                <li>
+                    <a href="/topic/{{ n.id }}" class="ai-news-widget-link">
+                        <span class="ai-news-widget-title">{{ n.title }}</span>
+                        <span class="ai-news-widget-icons">
+                            {% if n.emojis %}
+                                {% for e in n.emojis %}
+                                <span class="ai-news-widget-icon">{{ e }}</span>
+                                {% endfor %}
+                            {% else %}
+                                <span class="ai-news-widget-icon">🤖</span>
+                            {% endif %}
+                        </span>
+                    </a>
+                </li>
+                {% endfor %}
+            </ul>
+        </aside>
+        {% endif %}
     </div>
 </div>
 {% endblock %}

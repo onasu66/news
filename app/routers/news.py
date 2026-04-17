@@ -262,11 +262,21 @@ async def sitemap_xml(request: Request):
     lines = [
         '<?xml version="1.0" encoding="UTF-8"?>',
         '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">',
-        f"  <url><loc>{site_url}/</loc><changefreq>hourly</changefreq><priority>1.0</priority></url>",
-        f"  <url><loc>{site_url}/news</loc><changefreq>hourly</changefreq><priority>0.95</priority></url>",
+        f"  <url><loc>{site_url}/</loc><lastmod>{datetime.now().date().isoformat()}</lastmod><changefreq>hourly</changefreq><priority>1.0</priority></url>",
+        f"  <url><loc>{site_url}/news</loc><lastmod>{datetime.now().date().isoformat()}</lastmod><changefreq>hourly</changefreq><priority>0.95</priority></url>",
+        f"  <url><loc>{site_url}/ai</loc><lastmod>{datetime.now().date().isoformat()}</lastmod><changefreq>daily</changefreq><priority>0.7</priority></url>",
+        f"  <url><loc>{site_url}/search</loc><lastmod>{datetime.now().date().isoformat()}</lastmod><changefreq>daily</changefreq><priority>0.6</priority></url>",
     ]
     for a in articles[:5000]:
-        lines.append(f"  <url><loc>{site_url}/topic/{a.id}</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>")
+        lastmod = ""
+        try:
+            if getattr(a, "published", None) and hasattr(a.published, "date"):
+                lastmod = a.published.date().isoformat()
+        except Exception:
+            lastmod = ""
+        if not lastmod:
+            lastmod = datetime.now().date().isoformat()
+        lines.append(f"  <url><loc>{site_url}/topic/{a.id}</loc><lastmod>{lastmod}</lastmod><changefreq>weekly</changefreq><priority>0.8</priority></url>")
     lines.append("</urlset>")
     return Response(content="\n".join(lines), media_type="application/xml; charset=utf-8")
 
@@ -638,6 +648,50 @@ def _meta_description_qa(title: str, summary: str | None, max_len: int = 160) ->
     return f"{question} {answer}"[:max_len]
 
 
+def _iso_date(dt) -> str:
+    try:
+        if dt and hasattr(dt, "isoformat"):
+            return dt.isoformat()
+    except Exception:
+        pass
+    return datetime.now().isoformat()
+
+
+def _build_article_jsonld(
+    *,
+    item,
+    article_url: str,
+    og_image: str,
+    meta_desc: str,
+    site_url: str,
+    display_persona_ids: list[int] | None,
+) -> dict:
+    article_type = "ScholarlyArticle" if (item.category == "研究・論文") else "NewsArticle"
+    ai_authors = [{"@type": "Person", "name": p.get("name", "")} for p in PERSONAS]
+    contributors = []
+    for pid in (display_persona_ids or []):
+        try:
+            p = PERSONAS[int(pid)]
+            contributors.append({"@type": "Person", "name": p.get("name", "")})
+        except Exception:
+            continue
+    return {
+        "@context": "https://schema.org",
+        "@type": article_type,
+        "mainEntityOfPage": {"@type": "WebPage", "@id": article_url},
+        "headline": (item.title or "").strip(),
+        "description": (meta_desc or "").strip(),
+        "datePublished": _iso_date(getattr(item, "published", None)),
+        "dateModified": _iso_date(getattr(item, "published", None)),
+        "author": ai_authors,
+        "contributor": contributors,
+        "publisher": {"@type": "Organization", "name": "知リポAI", "url": site_url},
+        "image": [og_image] if og_image else [],
+        "articleSection": item.category or "ニュース",
+        "isAccessibleForFree": True,
+    }
+
+
 def _plain_text_for_copy(html_or_text: str | None, max_len: int = 1200) -> str:
     """コピー用に HTML タグを除いたプレーンテキスト（|striptags|tojson より型事故が少ない）"""
     import re as _re
@@ -825,6 +879,27 @@ def _render_papers_page(request: Request, page: int = 1):
             elif item.image_url and not item.image_url.startswith("http"):
                 item.image_url = get_image_url(item.image_url, 400, 225)
     has_papers = any(items for _, items in papers_by_category)
+    recent_ai_news: list[dict] = []
+    try:
+        all_news = NewsAggregator.get_news()[:120]
+        non_papers = [x for x in all_news if x.category != "研究・論文"][:10]
+        if non_papers:
+            from app.services.explanation_cache import get_cached_many
+
+            cached_map = get_cached_many([x.id for x in non_papers])
+            for it in non_papers:
+                c = cached_map.get(it.id, {}) if isinstance(cached_map, dict) else {}
+                pids = c.get("display_persona_ids") if isinstance(c, dict) else []
+                emojis: list[str] = []
+                if isinstance(pids, list):
+                    for pid in pids[:3]:
+                        try:
+                            emojis.append(PERSONAS[int(pid)]["emoji"])
+                        except Exception:
+                            continue
+                recent_ai_news.append({"id": it.id, "title": it.title or "", "emojis": emojis})
+    except Exception:
+        recent_ai_news = []
     return templates.TemplateResponse(
         "papers.html",
         {
@@ -834,6 +909,7 @@ def _render_papers_page(request: Request, page: int = 1):
             "has_papers": has_papers,
             "site_url": _get_site_url(request),
             "page": page,
+            "recent_ai_news": recent_ai_news,
         },
     )
 
@@ -1006,6 +1082,14 @@ async def topic_detail(request: Request, topic_id: str):
                 published_text = str(p)[:16]
     except Exception:
         published_text = ""
+    article_jsonld = _build_article_jsonld(
+        item=item,
+        article_url=article_url,
+        og_image=og_image,
+        meta_desc=meta_desc,
+        site_url=site_url,
+        display_persona_ids=display_persona_ids,
+    )
 
     return templates.TemplateResponse(
         "article.html",
@@ -1040,6 +1124,7 @@ async def topic_detail(request: Request, topic_id: str):
             "readers_now": readers_now,
             "published_text": published_text,
             "copy_blurb": copy_blurb,
+            "article_jsonld": article_jsonld,
         }
     )
 

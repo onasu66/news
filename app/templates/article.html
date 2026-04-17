@@ -13,6 +13,9 @@
     <meta name="twitter:title" content="{{ article.title }} - 知リポAI">
     <meta name="twitter:description" content="{{ meta_description|e }}">
     <meta name="twitter:image" content="{{ og_image|default(image_url) }}">
+    {% if article_jsonld %}
+    <script type="application/ld+json">{{ article_jsonld|tojson }}</script>
+    {% endif %}
 {% endblock %}
 
 {% block content %}
@@ -119,19 +122,6 @@
             <span class="news-badge">{{ t }}</span>
             {% endfor %}
         </div>
-    </section>
-    {% endif %}
-
-    {% if paper_quiz and paper_quiz.options %}
-    <section class="vote-section" id="paper-quiz">
-        <h2 class="vote-question">📝 4択クイズ（論文）</h2>
-        <p class="article-text">{{ paper_quiz.question|default('')|e }}</p>
-        <div class="vote-options">
-            {% for opt in paper_quiz.options %}
-            <button type="button" class="vote-btn paper-quiz-option" data-answer="{{ opt.id|default('')|e }}">{{ opt.label|default('')|e }}</button>
-            {% endfor %}
-        </div>
-        <p id="paper-quiz-result" class="article-text" style="display:none;"></p>
     </section>
     {% endif %}
 
@@ -319,22 +309,6 @@ document.addEventListener('DOMContentLoaded', function() {
             navigator.clipboard.writeText(text).then(function() {
                 copyBtn.textContent = '✅ コピー済み';
                 setTimeout(function() { copyBtn.textContent = '🔗 コピー'; }, 1200);
-            });
-        });
-    }
-
-    var quizOptions = document.querySelectorAll('.paper-quiz-option');
-    if (quizOptions.length > 0) {
-        var answerId = '{{ (paper_quiz.answer_id|default("", true) if paper_quiz else "")|e }}';
-        var explain = {{ (paper_quiz.explanation|default("", true) if paper_quiz else "")|tojson|safe }};
-        var out = document.getElementById('paper-quiz-result');
-        quizOptions.forEach(function(btn) {
-            btn.addEventListener('click', function() {
-                var ok = btn.getAttribute('data-answer') === answerId;
-                if (out) {
-                    out.style.display = '';
-                    out.textContent = (ok ? '正解です。' : '不正解です。') + ' ' + explain;
-                }
             });
         });
     }
