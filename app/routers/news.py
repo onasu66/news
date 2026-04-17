@@ -336,6 +336,15 @@ async def news_index(request: Request, page: int = 1, keyword: str = ""):
                 item.image_url = get_image_url(item.image_url, 400, 225)
     site_url = _get_site_url(request)
     og_image = "https://picsum.photos/1200/630"
+    flat_news = [it for _, items in news_by_category for it in items]
+    news_breadcrumb_jsonld = _build_breadcrumb_jsonld(
+        [("ホーム", f"{site_url}/"), ("AIニュースアーカイブ", f"{site_url}/news")]
+    )
+    news_itemlist_jsonld = _build_itemlist_jsonld(
+        page_name="AIニュースアーカイブ一覧",
+        site_url=site_url,
+        items=flat_news,
+    )
     return templates.TemplateResponse(
         "index.html",
         {
@@ -347,6 +356,8 @@ async def news_index(request: Request, page: int = 1, keyword: str = ""):
             "site_url": site_url,
             "og_image": og_image,
             "search_keyword": keyword,
+            "news_breadcrumb_jsonld": news_breadcrumb_jsonld,
+            "news_itemlist_jsonld": news_itemlist_jsonld,
         },
     )
 
@@ -692,6 +703,46 @@ def _build_article_jsonld(
     }
 
 
+def _build_breadcrumb_jsonld(items: list[tuple[str, str]]) -> dict:
+    return {
+        "@context": "https://schema.org",
+        "@type": "BreadcrumbList",
+        "itemListElement": [
+            {
+                "@type": "ListItem",
+                "position": i + 1,
+                "name": name,
+                "item": url,
+            }
+            for i, (name, url) in enumerate(items)
+        ],
+    }
+
+
+def _build_itemlist_jsonld(*, page_name: str, site_url: str, items: list) -> dict:
+    list_items = []
+    for idx, it in enumerate(items[:30]):
+        title = (getattr(it, "title", "") or "").strip()
+        if not title:
+            continue
+        list_items.append(
+            {
+                "@type": "ListItem",
+                "position": idx + 1,
+                "url": f"{site_url.rstrip('/')}/topic/{it.id}",
+                "name": title,
+            }
+        )
+    return {
+        "@context": "https://schema.org",
+        "@type": "ItemList",
+        "name": page_name,
+        "itemListOrder": "https://schema.org/ItemListOrderDescending",
+        "numberOfItems": len(list_items),
+        "itemListElement": list_items,
+    }
+
+
 def _plain_text_for_copy(html_or_text: str | None, max_len: int = 1200) -> str:
     """コピー用に HTML タグを除いたプレーンテキスト（|striptags|tojson より型事故が少ない）"""
     import re as _re
@@ -878,6 +929,16 @@ def _render_papers_page(request: Request, page: int = 1):
                 item.image_url = get_image_url(item.id, 400, 225)
             elif item.image_url and not item.image_url.startswith("http"):
                 item.image_url = get_image_url(item.image_url, 400, 225)
+    site_url = _get_site_url(request)
+    flat_papers = [it for _, items in papers_by_category for it in items]
+    papers_breadcrumb_jsonld = _build_breadcrumb_jsonld(
+        [("ホーム", f"{site_url}/"), ("AI論文解説", f"{site_url}/")]
+    )
+    papers_itemlist_jsonld = _build_itemlist_jsonld(
+        page_name="AI論文解説一覧",
+        site_url=site_url,
+        items=flat_papers,
+    )
     has_papers = any(items for _, items in papers_by_category)
     recent_ai_news: list[dict] = []
     try:
@@ -907,9 +968,11 @@ def _render_papers_page(request: Request, page: int = 1):
             "papers_by_category": papers_by_category,
             "pagination": pagination,
             "has_papers": has_papers,
-            "site_url": _get_site_url(request),
+            "site_url": site_url,
             "page": page,
             "recent_ai_news": recent_ai_news,
+            "papers_breadcrumb_jsonld": papers_breadcrumb_jsonld,
+            "papers_itemlist_jsonld": papers_itemlist_jsonld,
         },
     )
 

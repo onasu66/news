@@ -11,6 +11,12 @@
     <meta property="og:title" content="論文 - 知リポAI">
     <meta property="og:description" content="Nature・Science・arXivなど最新の研究論文をAIが解説。">
     <meta property="og:url" content="{{ site_url }}/">
+    {% if papers_breadcrumb_jsonld %}
+    <script type="application/ld+json">{{ papers_breadcrumb_jsonld|tojson }}</script>
+    {% endif %}
+    {% if papers_itemlist_jsonld %}
+    <script type="application/ld+json">{{ papers_itemlist_jsonld|tojson }}</script>
+    {% endif %}
 {% endblock %}
 {% block content %}
 <section class="page-header">
