@@ -33,7 +33,11 @@ def create_with_retry(client, max_tokens_val: int, **create_kwargs):
             logger.warning("OpenAI API エラー（記事が保存されない原因の可能性）: %s", e)
             body = getattr(e, "body", None) or (getattr(e, "response", None) and getattr(e.response, "text", None))
             if body is not None:
-                logger.warning("OpenAI response body: %s", (str(body))[:500])
+                # 巨大レスポンス本文はログに出さず、サイズのみ記録する
+                try:
+                    logger.warning("OpenAI response body size: %d chars", len(str(body)))
+                except Exception:
+                    logger.warning("OpenAI response body: <unavailable>")
         # max_tokens 不可のモデル → 確実に max_tokens を外して再試行
         if "max_tokens" in full_err and "max_completion_tokens" in full_err:
             return client.chat.completions.create(
