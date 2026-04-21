@@ -113,7 +113,7 @@ def process_rss_to_site_article(item: NewsItem, force: bool = False) -> bool:
 
 
 def _rewrite_news_title(title: str) -> str:
-    """ニュース用タイトルを編集方針で整形（誇張せず、事実を変えず、必要な範囲で分かりやすく）。"""
+    """ニュース用タイトルを編集方針で整形（感情の温度を少し上げつつ事実ベース）。"""
     t = (title or "").strip()
     if not t:
         return ""
@@ -123,7 +123,7 @@ def _rewrite_news_title(title: str) -> str:
         t = t.split("】", 1)[1].strip()
 
     # 長すぎる場合のみ短縮（まずはルールベースで）
-    def _shorten(s: str, max_len: int = 55) -> str:
+    def _shorten(s: str, max_len: int = 36) -> str:
         s = " ".join(s.split())
         return s if len(s) <= max_len else (s[:max_len] + "…")
 
@@ -138,10 +138,10 @@ def _rewrite_news_title(title: str) -> str:
 ルール：
 - 元のタイトルをベースにする
 - 事実を変えない
-- 誇張しない（煽り語禁止：衝撃/激震/悲報/朗報/必見/真相/裏側 など）
-- 必要なら少しだけ分かりやすくする
-- 長すぎる場合のみ短縮する
-- 目を引くが、あくまで事実ベースで落ち着いた表現
+- 過激な煽りは禁止（衝撃/悲報/暴露/真相/裏側 など）
+- 不安・期待・驚きなどの感情ニュアンスを「ほんの少し」加える
+- 思わず続きが気になる言い回しにする
+- 長いタイトルは短く、スマホで見切れにくい長さにする
 - 出力はタイトル1行のみ（引用符や説明不要）"""
             user_prompt = f"元タイトル：{t}\n\n上のルールで、自然な日本語の見出しに整えてください。"
             resp = create_with_retry(
@@ -152,7 +152,7 @@ def _rewrite_news_title(title: str) -> str:
                     {"role": "system", "content": system_prompt},
                     {"role": "user", "content": user_prompt},
                 ],
-                temperature=0.2,
+                temperature=0.55,
             )
             out = (resp.choices[0].message.content or "").strip().strip("「」\"'")
             if out:
@@ -323,22 +323,42 @@ def process_new_rss_articles(
         "arXiv cs.LG": "AI・テック",
         "arXiv cs.CL": "AI・テック",
         "arXiv cs.CV": "AI・テック",
+        "arXiv cs.RO": "AI・テック",
+        "arXiv cs.HC": "AI・テック",
+        "arXiv cs.IR": "AI・テック",
+        "arXiv cs.NE": "AI・テック",
+        "arXiv stat.ML": "AI・テック",
+        "AI (MDPI)": "AI・テック",
+        "arXiv math.OC": "AI・テック",
+        "arXiv math.ST": "AI・テック",
         "Frontiers in Artificial Intelligence": "AI・テック",
         "arXiv astro-ph": "物理・宇宙",
         "arXiv quant-ph": "物理・宇宙",
+        "arXiv physics.app-ph": "物理・宇宙",
+        "arXiv physics.bio-ph": "物理・宇宙",
+        "arXiv physics.med-ph": "物理・宇宙",
+        "arXiv physics.soc-ph": "物理・宇宙",
+        "arXiv math.PR": "物理・宇宙",
         "Frontiers in Sports and Active Living": "筋肉・スポーツ・身体",
         "PLOS ONE": "医療・ヘルスケア",
         "BMJ Open": "医療・ヘルスケア",
         "medRxiv": "医療・ヘルスケア",
         "arXiv q-bio": "医療・ヘルスケア",
         "PubMed (心理学)": "心理学",
+        "PubMed (神経科学)": "心理学",
         "Frontiers in Psychology": "心理学",
+        "IJERPH (MDPI)": "心理学",
         "arXiv cs.CY": "哲学",
         "Journal of Medical Ethics": "哲学",
         "bioRxiv": "総合科学",
         "SSRN": "経済・ビジネス",
         "IDEAS/RePEc": "経済・ビジネス",
+        "arXiv econ.EM": "経済・ビジネス",
+        "PubMed (公衆衛生)": "経済・ビジネス",
         "Sensors (MDPI)": "工学・応用",
+        "PubMed (AI医療)": "工学・応用",
+        "PubMed (栄養・代謝)": "医療・ヘルスケア",
+        "arXiv math.DS": "総合科学",
     }
     PAPER_DOMAIN_ORDER = [
         "筋肉・スポーツ・身体",

@@ -25,16 +25,20 @@ class Settings:
     # 上記を満たすまで process を繰り返す上限（無限ループ防止）
     RSS_REFRESH_MAX_LOOPS: int = int(os.getenv("RSS_REFRESH_MAX_LOOPS", "3"))
     # process_new_rss_articles 1回あたりの処理候補上限（論文＋ニュースの合計）
-    RSS_PROCESS_MAX_PER_BATCH: int = int(os.getenv("RSS_PROCESS_MAX_PER_BATCH", "28"))
+    RSS_PROCESS_MAX_PER_BATCH: int = int(os.getenv("RSS_PROCESS_MAX_PER_BATCH", "40"))
     # 論文: 各ドメイン（心理学・AI・Nature 等）から選ぶ本数
-    RSS_PAPERS_PER_DOMAIN: int = int(os.getenv("RSS_PAPERS_PER_DOMAIN", "3"))
+    RSS_PAPERS_PER_DOMAIN: int = int(os.getenv("RSS_PAPERS_PER_DOMAIN", "4"))
     # 論文: 1バッチで選ぶ合計の上限（max_per_run との小さい方が効く）
-    RSS_MAX_TOTAL_PAPERS_PER_RUN: int = int(os.getenv("RSS_MAX_TOTAL_PAPERS_PER_RUN", "24"))
+    RSS_MAX_TOTAL_PAPERS_PER_RUN: int = int(os.getenv("RSS_MAX_TOTAL_PAPERS_PER_RUN", "32"))
     # RSS 各フィードから読むエントリ上限・マージ後の候補プール上限
-    RSS_ENTRIES_PER_FEED: int = int(os.getenv("RSS_ENTRIES_PER_FEED", "90"))
-    RSS_FETCH_MAX_ITEMS: int = int(os.getenv("RSS_FETCH_MAX_ITEMS", "500"))
+    RSS_ENTRIES_PER_FEED: int = int(os.getenv("RSS_ENTRIES_PER_FEED", "150"))
+    RSS_FETCH_MAX_ITEMS: int = int(os.getenv("RSS_FETCH_MAX_ITEMS", "1200"))
     # PubMed 検索 RSS の limit= パラメータ
-    RSS_PUBMED_FEED_LIMIT: int = int(os.getenv("RSS_PUBMED_FEED_LIMIT", "40"))
+    RSS_PUBMED_FEED_LIMIT: int = int(os.getenv("RSS_PUBMED_FEED_LIMIT", "120"))
+    # 論文記事として採用する最小要約文字数（短すぎる抄録は除外）
+    RSS_MIN_PAPER_SUMMARY_CHARS: int = int(os.getenv("RSS_MIN_PAPER_SUMMARY_CHARS", "340"))
+    # Full-Text RSS 使用時に本文をどれだけ優先するか（0.0〜1.0）
+    FULLTEXT_BODY_PRIORITY: float = float(os.getenv("FULLTEXT_BODY_PRIORITY", "0.85"))
     # FiveFilters Full-Text RSS のベースURL（未設定なら通常のRSSをそのまま取得）
     FULLTEXT_RSS_BASE_URL: str = os.getenv("FULLTEXT_RSS_BASE_URL", "").rstrip("/")
     # 管理者用シークレット（手動記事追加・管理画面）。未設定なら管理機能は利用不可

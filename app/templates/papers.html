@@ -22,12 +22,30 @@
 <section class="page-header">
     <h1 class="page-title">📄 論文</h1>
 </section>
-<div class="page-layout">
+<div class="page-layout page-layout--papers">
     <div class="content-main">
         <div class="page-switch" role="navigation" aria-label="ページ切替">
             <a href="/" class="page-switch-link is-active" aria-current="page">論文</a>
             <a href="/news" class="page-switch-link">ニュース</a>
         </div>
+        {% if top_recommendations %}
+        <section class="top-picks top-picks--papers" aria-label="論文おすすめ">
+            <h2 class="top-picks-title">🤖 今のAIおすすめ論文</h2>
+            <div class="top-picks-grid">
+                {% for rec in top_recommendations[:3] %}
+                <article class="top-pick-card">
+                    <a href="/topic/{{ rec.id }}" class="top-pick-link">
+                        <img src="{{ rec.image_url or 'https://picsum.photos/400/225' }}" alt="{{ rec.title }}" loading="lazy">
+                        <div class="top-pick-body">
+                            <span class="top-pick-meta">{{ rec.source }}</span>
+                            <h3>{{ rec.title }}</h3>
+                        </div>
+                    </a>
+                </article>
+                {% endfor %}
+            </div>
+        </section>
+        {% endif %}
         {% if has_papers %}
         <div class="genre-tabs-wrap" role="tablist" aria-label="論文ジャンルで絞り込み">
             <div class="genre-tabs-scroll">
@@ -36,21 +54,6 @@
                 <button type="button" class="genre-tab genre-tab-sn{{ (loop.index0 % 5) + 1 }}" role="tab" aria-selected="false" data-cat="{{ domain }}">{{ domain }}</button>
                 {% endfor %}
             </div>
-        </div>
-        <div class="paper-filter-wrap">
-            <label for="paper-filter-select">細かいフィルター:</label>
-            <select id="paper-filter-select">
-                <option value="">すべて</option>
-                <option value="A">A</option>
-                <option value="B">B</option>
-                <option value="C">C</option>
-                <option value="D">D</option>
-                <option value="E">E</option>
-                <option value="F">F</option>
-                <option value="G">G</option>
-                <option value="H">H</option>
-                <option value="I">I</option>
-            </select>
         </div>
         {% endif %}
 
@@ -134,18 +137,14 @@
 <script>
 (function() {
     var tabs = document.querySelectorAll('.genre-tab');
-    var filterSelect = document.getElementById('paper-filter-select');
     var cards = document.querySelectorAll('#papers-grid .news-card');
     var activeDomain = 'all';
-    var activeFilter = '';
 
     function applyFilters() {
         cards.forEach(function(card) {
             var dom = card.getAttribute('data-category') || '';
-            var f = card.getAttribute('data-filter') || '';
             var domainOk = (activeDomain === 'all' || dom === activeDomain);
-            var filterOk = (!activeFilter || f === activeFilter);
-            card.style.display = (domainOk && filterOk) ? '' : 'none';
+            card.style.display = domainOk ? '' : 'none';
         });
     }
 
@@ -158,13 +157,6 @@
             applyFilters();
         });
     });
-
-    if (filterSelect) {
-        filterSelect.addEventListener('change', function() {
-            activeFilter = this.value || '';
-            applyFilters();
-        });
-    }
 
     var page = {{ pagination.page }};
     var totalPages = {{ pagination.total_pages }};

@@ -44,10 +44,23 @@ SOURCE_TO_PAPER_DOMAIN: dict[str, str] = {
     "arXiv cs.LG": "AI・テック",
     "arXiv cs.CL": "AI・テック",
     "arXiv cs.CV": "AI・テック",
+    "arXiv cs.RO": "AI・テック",
+    "arXiv cs.HC": "AI・テック",
+    "arXiv cs.IR": "AI・テック",
+    "arXiv cs.NE": "AI・テック",
+    "arXiv stat.ML": "AI・テック",
+    "AI (MDPI)": "AI・テック",
+    "arXiv math.OC": "AI・テック",
+    "arXiv math.ST": "AI・テック",
     "Frontiers in Artificial Intelligence": "AI・テック",
     # 物理・宇宙
     "arXiv astro-ph": "物理・宇宙",
     "arXiv quant-ph": "物理・宇宙",
+    "arXiv physics.app-ph": "物理・宇宙",
+    "arXiv physics.bio-ph": "物理・宇宙",
+    "arXiv physics.med-ph": "物理・宇宙",
+    "arXiv physics.soc-ph": "物理・宇宙",
+    "arXiv math.PR": "物理・宇宙",
     # 筋肉・スポーツ・身体
     "Frontiers in Sports and Active Living": "筋肉・スポーツ・身体",
     # 医療・ヘルスケア
@@ -57,7 +70,9 @@ SOURCE_TO_PAPER_DOMAIN: dict[str, str] = {
     "arXiv q-bio": "医療・ヘルスケア",
     # 心理学
     "PubMed (心理学)": "心理学",
+    "PubMed (神経科学)": "心理学",
     "Frontiers in Psychology": "心理学",
+    "IJERPH (MDPI)": "心理学",
     # 哲学・倫理
     "arXiv cs.CY": "哲学",
     "Journal of Medical Ethics": "哲学",
@@ -66,8 +81,13 @@ SOURCE_TO_PAPER_DOMAIN: dict[str, str] = {
     # 経済・ビジネス
     "SSRN": "経済・ビジネス",
     "IDEAS/RePEc": "経済・ビジネス",
+    "arXiv econ.EM": "経済・ビジネス",
+    "PubMed (公衆衛生)": "経済・ビジネス",
     # 工学・応用
     "Sensors (MDPI)": "工学・応用",
+    "PubMed (AI医療)": "工学・応用",
+    "PubMed (栄養・代謝)": "医療・ヘルスケア",
+    "arXiv math.DS": "総合科学",
 }
 
 # 論文フィルター（A〜I）用キーワード定義（タイトル・要約からタグ付け）

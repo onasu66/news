@@ -1,7 +1,7 @@
 """RSSフィード取得サービス"""
 import html
 import re
-from urllib.parse import quote
+from urllib.parse import quote, quote_plus
 from datetime import datetime, timedelta
 from typing import Optional
 from dataclasses import dataclass
@@ -99,6 +99,20 @@ RSS_FEEDS = [
     ("https://export.arxiv.org/rss/cs.LG", "arXiv cs.LG", "研究・論文"),
     ("https://export.arxiv.org/rss/cs.CL", "arXiv cs.CL", "研究・論文"),
     ("https://export.arxiv.org/rss/cs.CV", "arXiv cs.CV", "研究・論文"),
+    ("https://export.arxiv.org/rss/cs.RO", "arXiv cs.RO", "研究・論文"),
+    ("https://export.arxiv.org/rss/cs.HC", "arXiv cs.HC", "研究・論文"),
+    ("https://export.arxiv.org/rss/cs.IR", "arXiv cs.IR", "研究・論文"),
+    ("https://export.arxiv.org/rss/cs.NE", "arXiv cs.NE", "研究・論文"),
+    ("https://export.arxiv.org/rss/stat.ML", "arXiv stat.ML", "研究・論文"),
+    # math.* / physics.* を追加（論文対象の裾野を拡大）
+    ("https://export.arxiv.org/rss/math.PR", "arXiv math.PR", "研究・論文"),
+    ("https://export.arxiv.org/rss/math.ST", "arXiv math.ST", "研究・論文"),
+    ("https://export.arxiv.org/rss/math.OC", "arXiv math.OC", "研究・論文"),
+    ("https://export.arxiv.org/rss/math.DS", "arXiv math.DS", "研究・論文"),
+    ("https://export.arxiv.org/rss/physics.app-ph", "arXiv physics.app-ph", "研究・論文"),
+    ("https://export.arxiv.org/rss/physics.bio-ph", "arXiv physics.bio-ph", "研究・論文"),
+    ("https://export.arxiv.org/rss/physics.med-ph", "arXiv physics.med-ph", "研究・論文"),
+    ("https://export.arxiv.org/rss/physics.soc-ph", "arXiv physics.soc-ph", "研究・論文"),
     ("https://www.frontiersin.org/journals/artificial-intelligence/rss", "Frontiers in Artificial Intelligence", "研究・論文"),
 
     # 物理・宇宙（arXiv astro-ph / quant-ph）
@@ -112,15 +126,40 @@ RSS_FEEDS = [
     # 医学・健康（BMJ Open など）
     ("https://bmjopen.bmj.com/rss/current.xml", "BMJ Open", "研究・論文"),
 
-    # PubMed（検索RSS・心理学系クエリ）— limit は RSS_PUBMED_FEED_LIMIT で拡張可能
+    # PubMed（検索RSS・分野別クエリ）
+    # erss.cgi は term 指定でフィード化できるため、心理学以外にも分割して取得する
     (
-        f"https://pubmed.ncbi.nlm.nih.gov/rss/search/1-ajL1qsWMIPAynykj-5p51mqo0z8KMu2pLHqtsHzN8gipbsyg/?limit={_PUBMED_LIMIT}&utm_campaign=pubmed-2",
+        f"https://eutils.ncbi.nlm.nih.gov/entrez/eutils/erss.cgi?db=pubmed&term={quote_plus('(psychology OR cognitive science OR behavioral science) AND (systematic review OR meta-analysis OR randomized)')}&retmax={_PUBMED_LIMIT}",
         "PubMed (心理学)",
+        "研究・論文",
+    ),
+    (
+        f"https://eutils.ncbi.nlm.nih.gov/entrez/eutils/erss.cgi?db=pubmed&term={quote_plus('(machine learning OR artificial intelligence in medicine) AND (clinical OR diagnosis OR prognosis)')}&retmax={_PUBMED_LIMIT}",
+        "PubMed (AI医療)",
+        "研究・論文",
+    ),
+    (
+        f"https://eutils.ncbi.nlm.nih.gov/entrez/eutils/erss.cgi?db=pubmed&term={quote_plus('(nutrition OR metabolism OR obesity OR diet) AND (cohort OR trial OR review)')}&retmax={_PUBMED_LIMIT}",
+        "PubMed (栄養・代謝)",
+        "研究・論文",
+    ),
+    (
+        f"https://eutils.ncbi.nlm.nih.gov/entrez/eutils/erss.cgi?db=pubmed&term={quote_plus('(neuroscience OR neuroimaging OR brain) AND (fMRI OR EEG OR longitudinal OR review)')}&retmax={_PUBMED_LIMIT}",
+        "PubMed (神経科学)",
+        "研究・論文",
+    ),
+    (
+        f"https://eutils.ncbi.nlm.nih.gov/entrez/eutils/erss.cgi?db=pubmed&term={quote_plus('(public health OR epidemiology OR preventive medicine) AND (policy OR intervention OR review)')}&retmax={_PUBMED_LIMIT}",
+        "PubMed (公衆衛生)",
         "研究・論文",
     ),
     ("https://connect.biorxiv.org/biorxiv_xml.php?subject=all", "bioRxiv", "研究・論文"),
     ("https://connect.medrxiv.org/medrxiv_xml.php?subject=all", "medRxiv", "研究・論文"),
     ("https://export.arxiv.org/rss/q-bio", "arXiv q-bio", "研究・論文"),
+    ("https://export.arxiv.org/rss/stat.AP", "arXiv stat.AP", "研究・論文"),
+    ("https://export.arxiv.org/rss/econ.EM", "arXiv econ.EM", "研究・論文"),
+    ("https://www.mdpi.com/rss/journal/ijerph", "IJERPH (MDPI)", "研究・論文"),
+    ("https://www.mdpi.com/rss/journal/ai", "AI (MDPI)", "研究・論文"),
     ("https://export.arxiv.org/rss/cs.CY", "arXiv cs.CY", "研究・論文"),
     ("https://www.frontiersin.org/journals/psychology/rss", "Frontiers in Psychology", "研究・論文"),
     ("https://jme.bmj.com/rss/current.xml", "Journal of Medical Ethics", "研究・論文"),
@@ -205,9 +244,17 @@ def fetch_rss_news() -> list[NewsItem]:
     all_news: list[NewsItem] = []
     seen_ids = set()
 
+    try:
+        from app.config import settings as _cfg_fetch
+        fulltext_body_priority = float(getattr(_cfg_fetch, "FULLTEXT_BODY_PRIORITY", 0.85))
+    except Exception:
+        fulltext_body_priority = 0.85
+    fulltext_body_priority = max(0.0, min(1.0, fulltext_body_priority))
+
     for feed_item in RSS_FEEDS:
         original_url = feed_item[0]
         url = _get_feed_url(original_url)
+        use_fulltext = bool(url != original_url)
         source = feed_item[1]
         category = feed_item[2]
         try:
@@ -227,10 +274,18 @@ def fetch_rss_news() -> list[NewsItem]:
                 desc = entry.get("description", "")
                 if desc and desc != raw_summary and desc not in raw_content and len(desc) > len(raw_summary):
                     raw_content = (raw_content + "\n\n" + desc).strip() if raw_content else desc
-                # summary + content を結合して記事量を確保（重複避けて長く）
-                combined = raw_summary or ""
-                if raw_content and raw_content not in combined:
-                    combined = (combined + "\n\n" + raw_content).strip()
+                # Full-Text RSS 使用時は本文を優先して取り込む
+                if use_fulltext and raw_content:
+                    body = _clean_summary(raw_content, max_len=22000)
+                    summ = _clean_summary(raw_summary, max_len=12000)
+                    body_take = int(len(body) * fulltext_body_priority)
+                    summ_take = int(len(summ) * max(0.1, 1.0 - fulltext_body_priority))
+                    combined = (body[:body_take] + "\n\n" + summ[:summ_take]).strip()
+                else:
+                    # summary + content を結合して記事量を確保（重複避けて長く）
+                    combined = raw_summary or ""
+                    if raw_content and raw_content not in combined:
+                        combined = (combined + "\n\n" + raw_content).strip()
                 summary = _clean_summary(combined or "")
 
                 published_str = entry.get("published", entry.get("updated", ""))
@@ -274,8 +329,22 @@ def fetch_rss_news() -> list[NewsItem]:
     SOURCE_TO_CUTOFF_HOURS: dict[str, int] = {
         "Nature": 24 * 7,
         "Science Magazine": 24 * 7,
+        "arXiv cs.AI": 24 * 7,
+        "arXiv cs.LG": 24 * 7,
+        "arXiv cs.CL": 24 * 7,
+        "arXiv cs.CV": 24 * 7,
+        "arXiv cs.RO": 24 * 7,
+        "arXiv cs.HC": 24 * 7,
+        "arXiv cs.IR": 24 * 7,
+        "arXiv cs.NE": 24 * 7,
+        "arXiv stat.ML": 24 * 7,
+        "arXiv stat.AP": 24 * 7,
+        "arXiv econ.EM": 24 * 7,
         "Frontiers in Sports and Active Living": 24 * 7,
         "Frontiers in Psychology": 24 * 7,
+        "Frontiers in Artificial Intelligence": 24 * 7,
+        "IJERPH (MDPI)": 24 * 7,
+        "AI (MDPI)": 24 * 7,
         "Journal of Medical Ethics": 24 * 7,
         "BMJ Open": 48,
         "PubMed (心理学)": 48,
@@ -285,12 +354,19 @@ def fetch_rss_news() -> list[NewsItem]:
         "arXiv cs.CY": 48,
     }
 
+    try:
+        from app.config import settings as _cfg
+        min_paper_summary_chars = max(80, int(getattr(_cfg, "RSS_MIN_PAPER_SUMMARY_CHARS", 260)))
+    except Exception:
+        min_paper_summary_chars = 260
+
     filtered: list[NewsItem] = []
     for x in all_news:
         if x.category == "研究・論文":
             hours = SOURCE_TO_CUTOFF_HOURS.get(x.source, 24)
             cutoff = now_jst - timedelta(hours=hours)
-            if x.published >= cutoff:
+            # 内容が薄すぎる抄録は除外して「読み応えのある記事」を優先
+            if x.published >= cutoff and len((x.summary or "").strip()) >= min_paper_summary_chars:
                 filtered.append(x)
         else:
             if x.published >= cutoff_6h:

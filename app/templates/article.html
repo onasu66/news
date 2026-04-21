@@ -458,6 +458,19 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
                 updateVoteDisplay();
                 updateRateDisplay();
+                // クイズ回答後、少し待ってから次の記事へランダム遷移
+                var candidates = Array.prototype.slice.call(
+                    document.querySelectorAll('.article-navigation a[href^="/topic/"]')
+                ).map(function(a) { return a.getAttribute('href'); })
+                 .filter(function(href, idx, arr) {
+                     return href && href.indexOf('/topic/' + articleId) === -1 && arr.indexOf(href) === idx;
+                 });
+                if (candidates.length > 0) {
+                    var nextHref = candidates[Math.floor(Math.random() * candidates.length)];
+                    setTimeout(function() {
+                        window.location.href = nextHref;
+                    }, 1400);
+                }
             });
         });
     }

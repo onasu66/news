@@ -334,19 +334,6 @@ async def news_index(request: Request, page: int = 1, keyword: str = ""):
                 item.image_url = get_image_url(item.id, 400, 225)
             elif item.image_url and not item.image_url.startswith("http"):
                 item.image_url = get_image_url(item.image_url, 400, 225)
-    top_recommendations: list = []
-    if not keyword:
-        try:
-            latest = [x for x in NewsAggregator.get_news() if x.category != "研究・論文"][:12]
-            top_recommendations = latest[:3]
-            for item in top_recommendations:
-                _ensure_japanese(item)
-                if not item.image_url:
-                    item.image_url = get_image_url(item.id, 400, 225)
-                elif item.image_url and not item.image_url.startswith("http"):
-                    item.image_url = get_image_url(item.image_url, 400, 225)
-        except Exception:
-            top_recommendations = []
     site_url = _get_site_url(request)
     og_image = "https://picsum.photos/1200/630"
     flat_news = [it for _, items in news_by_category for it in items]
@@ -369,7 +356,6 @@ async def news_index(request: Request, page: int = 1, keyword: str = ""):
             "site_url": site_url,
             "og_image": og_image,
             "search_keyword": keyword,
-            "top_recommendations": top_recommendations,
             "news_breadcrumb_jsonld": news_breadcrumb_jsonld,
             "news_itemlist_jsonld": news_itemlist_jsonld,
         },
@@ -954,18 +940,6 @@ def _render_papers_page(request: Request, page: int = 1):
         items=flat_papers,
     )
     has_papers = any(items for _, items in papers_by_category)
-    top_recommendations: list = []
-    try:
-        latest_papers = [x for x in NewsAggregator.get_news() if x.category == "研究・論文"][:12]
-        top_recommendations = latest_papers[:3]
-        for item in top_recommendations:
-            _ensure_japanese(item)
-            if not item.image_url:
-                item.image_url = get_image_url(item.id, 400, 225)
-            elif item.image_url and not item.image_url.startswith("http"):
-                item.image_url = get_image_url(item.image_url, 400, 225)
-    except Exception:
-        top_recommendations = []
     recent_ai_news: list[dict] = []
     try:
         all_news = NewsAggregator.get_news()[:120]
@@ -997,7 +971,6 @@ def _render_papers_page(request: Request, page: int = 1):
             "site_url": site_url,
             "page": page,
             "recent_ai_news": recent_ai_news,
-            "top_recommendations": top_recommendations,
             "papers_breadcrumb_jsonld": papers_breadcrumb_jsonld,
             "papers_itemlist_jsonld": papers_itemlist_jsonld,
         },
