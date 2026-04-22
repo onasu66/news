@@ -295,7 +295,25 @@ async def root_home(request: Request, page: int = 1, keyword: str = ""):
             if page > 1:
                 q.append(("page", str(page)))
             return RedirectResponse(url="/news?" + urlencode(q), status_code=302)
-        return _render_papers_page(request, page)
+        try:
+            return _render_papers_page(request, page)
+        except Exception as e:
+            logger.warning("papers page fallback: %s", e)
+            return templates.TemplateResponse(
+                "papers.html",
+                {
+                    "request": request,
+                    "papers_by_category": [],
+                    "pagination": {"page": 1, "per_page": 24, "total": 0, "total_pages": 1, "has_prev": False, "has_next": False},
+                    "has_papers": False,
+                    "site_url": _get_site_url(request),
+                    "page": 1,
+                    "recent_ai_news": [],
+                    "top_recommendations": [],
+                    "papers_breadcrumb_jsonld": None,
+                    "papers_itemlist_jsonld": None,
+                },
+            )
     return Response(status_code=405)
 
 
@@ -324,8 +342,16 @@ async def news_index(request: Request, page: int = 1, keyword: str = ""):
         news_by_category = [(c, by_cat.get(c, [])) for c in CATEGORY_ORDER]
         pagination = {"page": page, "per_page": per_page, "total": total, "total_pages": total_pages, "has_prev": page > 1, "has_next": page < total_pages}
     else:
-        news_by_category, pagination = NewsAggregator.get_news_by_category(page=page)
-    trends = NewsAggregator.get_trends()
+        try:
+            news_by_category, pagination = NewsAggregator.get_news_by_category(page=page)
+        except Exception as e:
+            logger.warning("news page category fallback: %s", e)
+            news_by_category = []
+            pagination = {"page": 1, "per_page": ITEMS_PER_PAGE, "total": 0, "total_pages": 1, "has_prev": False, "has_next": False}
+    try:
+        trends = NewsAggregator.get_trends()
+    except Exception:
+        trends = []
     added_one = None
     for _, items in news_by_category:
         for item in items:

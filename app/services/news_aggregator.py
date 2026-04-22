@@ -1,4 +1,5 @@
 """ニュース集約・キャッシュサービス"""
+import logging
 from datetime import datetime, timedelta
 from typing import Optional
 
@@ -246,6 +247,9 @@ PAGE_DISPLAY_LIMIT = 2000
 # - 通常閲覧時の Firestore 読み取りを最小化する
 # - 再起動時・force_refresh 実行時には再取得される
 CACHE_NEVER_EXPIRE = True
+DB_ERROR_BACKOFF_SECONDS = max(60, int(getattr(settings, "NEWS_DB_ERROR_BACKOFF_SECONDS", 600)))
+
+logger = logging.getLogger(__name__)
 
 
 class NewsAggregator:
@@ -254,6 +258,16 @@ class NewsAggregator:
     _trends_cache: list[TrendItem] = []
     _last_updated: Optional[datetime] = None
     _trends_last_updated: Optional[datetime] = None
+    _db_backoff_until: Optional[datetime] = None
+
+    @classmethod
+    def _set_db_backoff(cls, reason: str, exc: Exception) -> None:
+        cls._db_backoff_until = datetime.now() + timedelta(seconds=DB_ERROR_BACKOFF_SECONDS)
+        logger.warning("NewsAggregator DB読み取りを一時停止: %s (%s)", reason, exc)
+
+    @classmethod
+    def _in_db_backoff(cls) -> bool:
+        return bool(cls._db_backoff_until and datetime.now() < cls._db_backoff_until)
 
     @classmethod
     def get_news(cls, force_refresh: bool = False) -> list[NewsItem]:
@@ -264,13 +278,20 @@ class NewsAggregator:
         閲覧時はTTLで破棄しない（更新イベント駆動）。
         """
         if force_refresh or not cls._news_cache:
-            processed_ids = get_cached_article_ids()
-            # 読み取り削減: load_all の回数を最小化し、force_refresh 時も既存スナップショットを使い回す
-            all_items = load_all()
+            if cls._in_db_backoff():
+                return cls._news_cache or []
+            try:
+                processed_ids = get_cached_article_ids()
+                # 読み取り削減: load_all の回数を最小化し、force_refresh 時も既存スナップショットを使い回す
+                all_items = load_all()
+            except Exception as e:
+                cls._set_db_backoff("initial_load", e)
+                return cls._news_cache or []
             cached = [x for x in all_items if x.id in processed_ids][:PAGE_DISPLAY_LIMIT]
             if cached and not force_refresh:
                 cls._news_cache = sorted(cached, key=lambda x: x.published or datetime.min, reverse=True)
                 cls._last_updated = datetime.now()
+                cls._db_backoff_until = None
                 return cls._news_cache
             if force_refresh:
                 # RSS/AI の途中で例外が出ても、ここまで保存された記事を一覧に載せる（finally で必ず再読込）
@@ -295,15 +316,20 @@ class NewsAggregator:
                             if min_added <= 0 or added_run >= min_added or batch == 0:
                                 break
                 finally:
-                    processed_ids = get_cached_article_ids()
-                    # force_refresh 終了後の再読は 1 回だけ
-                    all_items = load_all()
+                    try:
+                        processed_ids = get_cached_article_ids()
+                        # force_refresh 終了後の再読は 1 回だけ
+                        all_items = load_all()
+                    except Exception as e:
+                        cls._set_db_backoff("refresh_reload", e)
+                        return cls._news_cache or []
             cls._news_cache = sorted(
                 [x for x in all_items if x.id in processed_ids][:PAGE_DISPLAY_LIMIT],
                 key=lambda x: x.published or datetime.min,
                 reverse=True,
             )
             cls._last_updated = datetime.now()
+            cls._db_backoff_until = None
         return cls._news_cache
 
     @classmethod
@@ -319,10 +345,18 @@ class NewsAggregator:
             invalidate_ids_cache()
         except Exception:
             pass
-        processed_ids = get_cached_article_ids()
+        if cls._in_db_backoff() and cls._news_cache:
+            cls._last_updated = datetime.now()
+            return
+        try:
+            processed_ids = get_cached_article_ids()
+        except Exception as e:
+            cls._set_db_backoff("sync_ids", e)
+            return
         if not processed_ids:
             cls._news_cache = []
             cls._last_updated = datetime.now()
+            cls._db_backoff_until = None
             return
 
         cached_ids = {x.id for x in cls._news_cache}
@@ -333,7 +367,10 @@ class NewsAggregator:
         if not cls._news_cache:
             items = []
             for nid in processed_ids:
-                item = load_by_id(nid)
+                try:
+                    item = load_by_id(nid)
+                except Exception:
+                    item = None
                 if item:
                     items.append(item)
             cls._news_cache = sorted(
@@ -342,13 +379,18 @@ class NewsAggregator:
                 reverse=True,
             )[:PAGE_DISPLAY_LIMIT]
             cls._last_updated = datetime.now()
+            if cls._news_cache:
+                cls._db_backoff_until = None
             return
 
         new_ids = processed_ids - cached_ids
         gone_ids = cached_ids - processed_ids
         items = [x for x in cls._news_cache if x.id not in gone_ids]
         for nid in new_ids:
-            item = load_by_id(nid)
+            try:
+                item = load_by_id(nid)
+            except Exception:
+                item = None
             if item:
                 items.append(item)
         cls._news_cache = sorted(
@@ -357,6 +399,7 @@ class NewsAggregator:
             reverse=True,
         )[:PAGE_DISPLAY_LIMIT]
         cls._last_updated = datetime.now()
+        cls._db_backoff_until = None
 
     @classmethod
     def get_news_by_category(cls, force_refresh: bool = False, page: int = 1) -> tuple[list[tuple[str, list[NewsItem]]], dict]:
@@ -508,4 +551,12 @@ class NewsAggregator:
         for item in cls._news_cache:
             if item.id == article_id:
                 return item
-        return load_by_id(article_id)
+        if cls._in_db_backoff():
+            return None
+        try:
+            item = load_by_id(article_id)
+            cls._db_backoff_until = None
+            return item
+        except Exception as e:
+            cls._set_db_backoff("get_article", e)
+            return None
