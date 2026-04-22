@@ -89,10 +89,15 @@
         </div>
 
         <div id="infinite-sentinel" style="height:1px;"></div>
-        <div id="infinite-loader" class="infinite-loader" style="display:none;">
-            <div class="loader-spinner"></div>
+        <div id="infinite-loader" class="infinite-loader" style="display:none;" aria-busy="true" aria-label="追加の記事を読み込み中">
+            <div class="loader-spinner" aria-hidden="true"></div>
             <p>読み込み中...</p>
         </div>
+        <div id="infinite-load-error" class="infinite-load-error" role="alert">
+            <p>記事一覧の読み込みに失敗しました。</p>
+            <button type="button" class="infinite-retry-btn" id="infinite-retry">もう一度試す</button>
+        </div>
+        <div id="news-feed-announcer" class="visually-hidden" aria-live="polite" aria-atomic="true"></div>
         <div id="infinite-end" class="infinite-end" style="display:none;">
             <p>すべての記事を表示しました</p>
         </div>
@@ -124,6 +129,13 @@
     // Genre tab filtering
     var tabs = document.querySelectorAll('.genre-tab');
     var cards = document.querySelectorAll('.news-card');
+    var genreTablist = document.querySelector('.genre-tabs-wrap[role="tablist"]');
+    function syncGenreTabIndexes() {
+        tabs = document.querySelectorAll('.genre-tab');
+        tabs.forEach(function(t) {
+            t.setAttribute('tabindex', t.classList.contains('is-active') ? '0' : '-1');
+        });
+    }
     tabs.forEach(function(tab) {
         tab.addEventListener('click', function() {
             var cat = this.getAttribute('data-cat');
@@ -137,8 +149,26 @@
                     card.style.display = 'none';
                 }
             });
+            syncGenreTabIndexes();
         });
     });
+    syncGenreTabIndexes();
+    if (genreTablist) {
+        genreTablist.addEventListener('keydown', function(e) {
+            tabs = document.querySelectorAll('.genre-tab');
+            var tabNodes = Array.prototype.slice.call(tabs);
+            var i = tabNodes.indexOf(document.activeElement);
+            if (i < 0) return;
+            var ni = i;
+            if (e.key === 'ArrowRight') { e.preventDefault(); ni = (i + 1) % tabNodes.length; }
+            else if (e.key === 'ArrowLeft') { e.preventDefault(); ni = (i - 1 + tabNodes.length) % tabNodes.length; }
+            else if (e.key === 'Home') { e.preventDefault(); ni = 0; }
+            else if (e.key === 'End') { e.preventDefault(); ni = tabNodes.length - 1; }
+            else return;
+            tabNodes[ni].focus();
+            tabNodes[ni].click();
+        });
+    }
 
     // Infinite scroll
     var page = {{ pagination.page }};
@@ -161,9 +191,9 @@
         var url = '/api/news/page?page=' + page;
         if (keyword) url += '&keyword=' + encodeURIComponent(keyword);
         fetch(url).then(function(r) { return r.json(); }).then(function(data) {
+            if (loadErrorEl) loadErrorEl.style.display = 'none';
             if (data.html) {
                 grid.insertAdjacentHTML('beforeend', data.html);
-                // Re-query cards for tab filtering
                 cards = document.querySelectorAll('.news-card');
                 var activeTab = document.querySelector('.genre-tab.is-active');
                 if (activeTab) {
@@ -183,10 +213,28 @@
         }).catch(function() {
             loading = false;
             loader.style.display = 'none';
+            if (loadErrorEl) loadErrorEl.style.display = 'block';
+            announceFeed('記事一覧の読み込みに失敗しました');
+            if (window.showSiteToast) window.showSiteToast('読み込みに失敗しました', true);
         });
     }
 
     var sentinel = document.getElementById('infinite-sentinel');
+    var feedAnnouncer = document.getElementById('news-feed-announcer');
+    var loadErrorEl = document.getElementById('infinite-load-error');
+    var retryBtn = document.getElementById('infinite-retry');
+    function announceFeed(msg) {
+        if (!feedAnnouncer || !msg) return;
+        feedAnnouncer.textContent = '';
+        setTimeout(function() { feedAnnouncer.textContent = msg; }, 50);
+    }
+    if (retryBtn) {
+        retryBtn.addEventListener('click', function() {
+            if (loadErrorEl) loadErrorEl.style.display = 'none';
+            page = Math.max(0, page - 1);
+            loadMore();
+        });
+    }
     if (sentinel && 'IntersectionObserver' in window) {
         var obs = new IntersectionObserver(function(entries) {
             if (entries[0].isIntersecting) loadMore();

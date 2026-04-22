@@ -1180,6 +1180,9 @@ async def topic_detail(request: Request, topic_id: str):
         site_url=site_url,
         display_persona_ids=display_persona_ids,
     )
+    _article_cat = (getattr(item, "category", None) or "").strip()
+    mobile_nav_papers_highlight = _article_cat == "研究・論文"
+    mobile_nav_news_highlight = not mobile_nav_papers_highlight
 
     return templates.TemplateResponse(
         "article.html",
@@ -1215,6 +1218,8 @@ async def topic_detail(request: Request, topic_id: str):
             "published_text": published_text,
             "copy_blurb": copy_blurb,
             "article_jsonld": article_jsonld,
+            "mobile_nav_papers_highlight": mobile_nav_papers_highlight,
+            "mobile_nav_news_highlight": mobile_nav_news_highlight,
         }
     )
 

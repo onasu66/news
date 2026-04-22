@@ -97,10 +97,15 @@
 
         {% if has_papers %}
         <div id="papers-sentinel" style="height:1px;"></div>
-        <div id="papers-loader" class="infinite-loader" style="display:none;">
-            <div class="loader-spinner"></div>
+        <div id="papers-loader" class="infinite-loader" style="display:none;" aria-busy="true" aria-label="追加の論文を読み込み中">
+            <div class="loader-spinner" aria-hidden="true"></div>
             <p>読み込み中...</p>
         </div>
+        <div id="papers-load-error" class="infinite-load-error" role="alert">
+            <p>論文一覧の読み込みに失敗しました。</p>
+            <button type="button" class="infinite-retry-btn" id="papers-infinite-retry">もう一度試す</button>
+        </div>
+        <div id="papers-feed-announcer" class="visually-hidden" aria-live="polite" aria-atomic="true"></div>
         <div id="papers-end" class="infinite-end" style="display:none;">
             <p>すべての論文を表示しました</p>
         </div>
@@ -139,12 +144,20 @@
     var tabs = document.querySelectorAll('.genre-tab');
     var cards = document.querySelectorAll('#papers-grid .news-card');
     var activeDomain = 'all';
+    var papersTablist = document.querySelector('.genre-tabs-wrap[role="tablist"]');
 
     function applyFilters() {
         cards.forEach(function(card) {
             var dom = card.getAttribute('data-category') || '';
             var domainOk = (activeDomain === 'all' || dom === activeDomain);
             card.style.display = domainOk ? '' : 'none';
+        });
+    }
+
+    function syncPapersTabIndexes() {
+        tabs = document.querySelectorAll('.genre-tab');
+        tabs.forEach(function(t) {
+            t.setAttribute('tabindex', t.classList.contains('is-active') ? '0' : '-1');
         });
     }
 
@@ -155,8 +168,26 @@
             this.classList.add('is-active');
             this.setAttribute('aria-selected', 'true');
             applyFilters();
+            syncPapersTabIndexes();
         });
     });
+    syncPapersTabIndexes();
+    if (papersTablist) {
+        papersTablist.addEventListener('keydown', function(e) {
+            tabs = document.querySelectorAll('.genre-tab');
+            var tabNodes = Array.prototype.slice.call(tabs);
+            var i = tabNodes.indexOf(document.activeElement);
+            if (i < 0) return;
+            var ni = i;
+            if (e.key === 'ArrowRight') { e.preventDefault(); ni = (i + 1) % tabNodes.length; }
+            else if (e.key === 'ArrowLeft') { e.preventDefault(); ni = (i - 1 + tabNodes.length) % tabNodes.length; }
+            else if (e.key === 'Home') { e.preventDefault(); ni = 0; }
+            else if (e.key === 'End') { e.preventDefault(); ni = tabNodes.length - 1; }
+            else return;
+            tabNodes[ni].focus();
+            tabNodes[ni].click();
+        });
+    }
 
     var page = {{ pagination.page }};
     var totalPages = {{ pagination.total_pages }};
@@ -164,6 +195,15 @@
     var loader = document.getElementById('papers-loader');
     var endMsg = document.getElementById('papers-end');
     var grid = document.getElementById('papers-grid');
+    var papersLoadError = document.getElementById('papers-load-error');
+    var papersFeedAnnouncer = document.getElementById('papers-feed-announcer');
+    var papersRetryBtn = document.getElementById('papers-infinite-retry');
+
+    function announcePapers(msg) {
+        if (!papersFeedAnnouncer || !msg) return;
+        papersFeedAnnouncer.textContent = '';
+        setTimeout(function() { papersFeedAnnouncer.textContent = msg; }, 50);
+    }
 
     if (page >= totalPages && grid && grid.children.length > 0) {
         if (endMsg) endMsg.style.display = 'block';
@@ -175,6 +215,7 @@
         if (loader) loader.style.display = 'flex';
         page++;
         fetch('/api/papers/page?page=' + page).then(function(r) { return r.json(); }).then(function(data) {
+            if (papersLoadError) papersLoadError.style.display = 'none';
             if (data.html && grid) {
                 grid.insertAdjacentHTML('beforeend', data.html);
                 cards = document.querySelectorAll('#papers-grid .news-card');
@@ -186,6 +227,17 @@
         }).catch(function() {
             loading = false;
             if (loader) loader.style.display = 'none';
+            if (papersLoadError) papersLoadError.style.display = 'block';
+            announcePapers('論文一覧の読み込みに失敗しました');
+            if (window.showSiteToast) window.showSiteToast('読み込みに失敗しました', true);
+        });
+    }
+
+    if (papersRetryBtn) {
+        papersRetryBtn.addEventListener('click', function() {
+            if (papersLoadError) papersLoadError.style.display = 'none';
+            page = Math.max(0, page - 1);
+            loadMore();
         });
     }
 

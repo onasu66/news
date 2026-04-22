@@ -19,12 +19,33 @@
 {% endblock %}
 
 {% block content %}
+<progress class="article-read-progress" id="article-read-progress" max="1" value="0" aria-label="記事の読了進捗" aria-valuetext="0%"></progress>
 <article class="article-detail article-detail--smartnews">
+    <nav class="article-breadcrumb" aria-label="パンくず">
+        <ol itemscope itemtype="https://schema.org/BreadcrumbList">
+            <li itemprop="itemListElement" itemscope itemtype="https://schema.org/ListItem">
+                <a itemprop="item" href="/"><span itemprop="name">ホーム</span></a>
+                <meta itemprop="position" content="1">
+            </li>
+            <li itemprop="itemListElement" itemscope itemtype="https://schema.org/ListItem">
+                {% if mobile_nav_papers_highlight|default(false) %}
+                <a itemprop="item" href="/"><span itemprop="name">論文</span></a>
+                {% else %}
+                <a itemprop="item" href="/news"><span itemprop="name">ニュース</span></a>
+                {% endif %}
+                <meta itemprop="position" content="2">
+            </li>
+            <li itemprop="itemListElement" itemscope itemtype="https://schema.org/ListItem">
+                <a itemprop="item" href="{{ article_url }}" aria-current="page"><span itemprop="name">{{ article.title }}</span></a>
+                <meta itemprop="position" content="3">
+            </li>
+        </ol>
+    </nav>
     <div class="article-sn-toolbar">
-        <a href="/" class="back-link">← 一覧に戻る</a>
+        <a href="{% if mobile_nav_papers_highlight|default(false) %}/{% else %}/news{% endif %}" class="back-link">{% if mobile_nav_papers_highlight|default(false) %}← 論文一覧へ{% else %}← ニュース一覧へ{% endif %}</a>
         <div class="article-sn-toolbar-actions">
-            <button type="button" class="save-article-btn save-article-btn--icon" id="btn-save" data-id="{{ article.id }}" data-title="{{ article.title|e }}" data-summary="{{ (article.summary or '')[:100]|e }}" title="保存">⭐</button>
-            <button type="button" class="save-article-btn save-article-btn--icon" id="btn-copy-share" title="リンクをコピー">🔗</button>
+            <button type="button" class="save-article-btn save-article-btn--icon" id="btn-save" data-id="{{ article.id }}" data-title="{{ article.title|e }}" data-summary="{{ (article.summary or '')[:100]|e }}" title="保存" aria-label="この記事を保存">⭐</button>
+            <button type="button" class="save-article-btn save-article-btn--icon" id="btn-copy-share" title="リンクをコピー" aria-label="タイトルとURLをクリップボードにコピー">🔗</button>
         </div>
     </div>
 
@@ -43,14 +64,14 @@
         <p class="live-readers">今 <span class="animated-number" data-target="{{ readers_now|default(42) }}">0</span> 人が読んでいます</p>
     </header>
 
-    <div class="read-mode-switch">
-        <button type="button" class="read-mode-btn is-active" data-mode="short">📖 1分で理解</button>
-        <button type="button" class="read-mode-btn" data-mode="deep">📚 3分で深掘り</button>
+    <div class="read-mode-switch" role="tablist" aria-label="記事の表示モード">
+        <button type="button" class="read-mode-btn is-active" id="tab-mode-short" role="tab" aria-selected="true" aria-controls="article-short-content" data-mode="short">📖 1分で理解</button>
+        <button type="button" class="read-mode-btn" id="tab-mode-deep" role="tab" aria-selected="false" aria-controls="article-deep-content" data-mode="deep" tabindex="-1">📚 3分で深掘り</button>
     </div>
 
     <div class="article-content-wrapper">
         <div class="article-main">
-            <div id="article-short-content" class="article-read-content">
+            <div id="article-short-content" class="article-read-content" role="tabpanel" aria-labelledby="tab-mode-short" tabindex="0">
                 {% if show_quick_points and quick_rows %}
                 <section class="three-points-card" aria-label="3つのポイント">
                     <div class="three-points-card-head">
@@ -93,7 +114,7 @@
                 </div>
                 {% endif %}
             </div>
-            <div id="article-deep-content" class="article-read-content" style="display:none;">
+            <div id="article-deep-content" class="article-read-content" role="tabpanel" aria-labelledby="tab-mode-deep" tabindex="-1" hidden>
                 <h3 class="article-fixed-section-title">✍ AI解説</h3>
                 <div id="article-inline-content" class="article-inline-content" data-fallback="{{ article.summary|e }}">
                     {% if body_html %}
@@ -128,7 +149,7 @@
     {% if deep_insights %}
     <section class="vote-section">
         <h2 class="vote-question">🤖 AIに聞く（事前生成）</h2>
-        <button type="button" class="btn-one-take" id="btn-ai-comment">AIに聞く</button>
+        <button type="button" class="btn-one-take" id="btn-ai-comment" aria-expanded="false" aria-controls="ai-comment-box">AIに聞く</button>
         <div id="ai-comment-box" style="display:none;margin-top:0.75rem;">
             <h4>3行メリット</h4>
             <ul class="insight-list">
@@ -265,6 +286,8 @@
     </section>
 </article>
 
+<button type="button" class="back-to-top" id="article-back-to-top" aria-label="ページ先頭へ戻る">↑</button>
+
 <div id="midorman-float" class="midorman-float" aria-live="polite" hidden>
     <span class="midorman-float-avatar" aria-hidden="true">🎙️</span>
     <div class="midorman-float-inner">
@@ -288,8 +311,13 @@ document.addEventListener('DOMContentLoaded', function() {
         return div.innerHTML;
     }
 
+    var prefersReduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     document.querySelectorAll('.animated-number').forEach(function(el) {
         var target = parseInt(el.getAttribute('data-target') || '0', 10);
+        if (prefersReduced) {
+            el.textContent = String(target);
+            return;
+        }
         var cur = 0;
         var step = Math.max(1, Math.floor(target / 25));
         var timer = setInterval(function() {
@@ -306,10 +334,21 @@ document.addEventListener('DOMContentLoaded', function() {
     if (copyBtn) {
         copyBtn.addEventListener('click', function() {
             var text = 'AI要約: ' + ({{ copy_blurb|default("")|tojson|safe }}) + '\n' + window.location.href;
-            navigator.clipboard.writeText(text).then(function() {
+            function done() {
                 copyBtn.textContent = '✅ コピー済み';
-                setTimeout(function() { copyBtn.textContent = '🔗 コピー'; }, 1200);
-            });
+                if (window.announceToScreenReader) window.announceToScreenReader('リンクをクリップボードにコピーしました');
+                if (window.showSiteToast) window.showSiteToast('コピーしました');
+                setTimeout(function() { copyBtn.textContent = '🔗'; copyBtn.setAttribute('aria-label', 'タイトルとURLをクリップボードにコピー'); }, 1600);
+            }
+            function fail() {
+                if (window.showSiteToast) window.showSiteToast('コピーできませんでした。ブラウザの権限をご確認ください。', true);
+                if (window.announceToScreenReader) window.announceToScreenReader('コピーに失敗しました');
+            }
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(text).then(done).catch(fail);
+            } else {
+                fail();
+            }
         });
     }
 
@@ -317,32 +356,67 @@ document.addEventListener('DOMContentLoaded', function() {
     var aiCommentBox = document.getElementById('ai-comment-box');
     if (aiCommentBtn && aiCommentBox) {
         aiCommentBtn.addEventListener('click', function() {
-            aiCommentBox.style.display = aiCommentBox.style.display === 'none' ? '' : 'none';
+            var hidden = aiCommentBox.style.display === 'none';
+            aiCommentBox.style.display = hidden ? '' : 'none';
+            aiCommentBtn.setAttribute('aria-expanded', hidden ? 'true' : 'false');
         });
     }
 
-    // Read mode switch
+    // Read mode switch（タブパターン・アクセシビリティ）
     var modeBtns = document.querySelectorAll('.read-mode-btn');
     var shortContent = document.getElementById('article-short-content');
     var deepContent = document.getElementById('article-deep-content');
+    var tablist = document.querySelector('.read-mode-switch');
+
+    function applyReadMode(mode) {
+        var isShort = mode === 'short';
+        modeBtns.forEach(function(b) {
+            var m = b.getAttribute('data-mode');
+            var on = m === mode;
+            b.classList.toggle('is-active', on);
+            b.setAttribute('aria-selected', on ? 'true' : 'false');
+            b.setAttribute('tabindex', on ? '0' : '-1');
+        });
+        if (shortContent) {
+            shortContent.hidden = !isShort;
+            shortContent.setAttribute('tabindex', isShort ? '0' : '-1');
+        }
+        if (deepContent) {
+            deepContent.hidden = isShort;
+            deepContent.setAttribute('tabindex', isShort ? '-1' : '0');
+        }
+        if (floatEl) floatEl.hidden = isShort;
+        if (!isShort) {
+            var contentEl2 = document.getElementById('article-inline-content');
+            if (contentEl2) initMidormanFloat(contentEl2);
+        }
+    }
+
     modeBtns.forEach(function(btn) {
         btn.addEventListener('click', function() {
-            var mode = this.getAttribute('data-mode');
-            modeBtns.forEach(function(b) { b.classList.remove('is-active'); });
-            this.classList.add('is-active');
-            if (mode === 'short') {
-                shortContent.style.display = '';
-                deepContent.style.display = 'none';
-                if (floatEl) floatEl.hidden = true; // 1分で理解ではミドルマン吹き出し無し
-            } else {
-                shortContent.style.display = 'none';
-                deepContent.style.display = '';
-                // deep 表示時に初期化（short時は初期化しない）
-                var contentEl2 = document.getElementById('article-inline-content');
-                if (contentEl2) initMidormanFloat(contentEl2);
-            }
+            applyReadMode(this.getAttribute('data-mode') || 'short');
         });
     });
+
+    if (tablist) {
+        tablist.addEventListener('keydown', function(e) {
+            var tabs = Array.prototype.slice.call(tablist.querySelectorAll('[role="tab"]'));
+            var i = tabs.indexOf(document.activeElement);
+            if (i < 0) return;
+            if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') {
+                e.preventDefault();
+                var dir = e.key === 'ArrowRight' ? 1 : -1;
+                var ni = (i + dir + tabs.length) % tabs.length;
+                tabs[ni].focus();
+            } else if (e.key === 'Home') {
+                e.preventDefault();
+                tabs[0].focus();
+            } else if (e.key === 'End') {
+                e.preventDefault();
+                tabs[tabs.length - 1].focus();
+            }
+        });
+    }
 
     var goDeepBtn = document.getElementById('btn-go-deep');
     if (goDeepBtn) {
@@ -352,26 +426,57 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // ?mode=deep が付いている場合は初期表示を「3分で深掘り」にする
     try {
         var qs = new URLSearchParams(window.location.search || '');
         if (qs.get('mode') === 'deep') {
-            modeBtns.forEach(function(b) { b.classList.remove('is-active'); });
-            var deepBtn = document.querySelector('.read-mode-btn[data-mode="deep"]');
-            if (deepBtn) deepBtn.classList.add('is-active');
-            if (shortContent) shortContent.style.display = 'none';
-            if (deepContent) deepContent.style.display = '';
+            applyReadMode('deep');
             var contentElInit = document.getElementById('article-inline-content');
             if (contentElInit) initMidormanFloat(contentElInit);
         }
     } catch (e) {}
+
+    var progressEl = document.getElementById('article-read-progress');
+    function updateReadProgress() {
+        if (!progressEl) return;
+        var doc = document.documentElement;
+        var scroll = window.scrollY || doc.scrollTop || 0;
+        var max = doc.scrollHeight - window.innerHeight;
+        max = Math.max(max, 1);
+        var pct = Math.min(1, scroll / max);
+        progressEl.value = pct;
+        progressEl.setAttribute('aria-valuetext', Math.round(pct * 100) + '%');
+    }
+    window.addEventListener('scroll', updateReadProgress, { passive: true });
+    window.addEventListener('resize', updateReadProgress);
+    updateReadProgress();
+
+    var backTop = document.getElementById('article-back-to-top');
+    if (backTop) {
+        window.addEventListener('scroll', function() {
+            if ((window.scrollY || 0) > 380) backTop.classList.add('is-visible');
+            else backTop.classList.remove('is-visible');
+        }, { passive: true });
+        backTop.addEventListener('click', function() {
+            var main = document.getElementById('main-content');
+            var behavior = prefersReduced ? 'auto' : 'smooth';
+            window.scrollTo({ top: 0, behavior: behavior });
+            if (main) {
+                try { main.focus({ preventScroll: true }); } catch (err) { main.focus(); }
+            }
+        });
+    }
 
     // Save button
     var saveBtn = document.getElementById('btn-save');
     if (saveBtn) {
         var saved = JSON.parse(localStorage.getItem('saved_articles') || '[]');
         var isSaved = saved.some(function(a) { return a.id === articleId; });
-        if (isSaved) { saveBtn.classList.add('is-saved'); saveBtn.textContent = '★'; saveBtn.setAttribute('title', '保存済み'); }
+        if (isSaved) {
+            saveBtn.classList.add('is-saved');
+            saveBtn.textContent = '★';
+            saveBtn.setAttribute('title', '保存済み');
+            saveBtn.setAttribute('aria-label', '保存済み。タップで保存解除');
+        }
         saveBtn.addEventListener('click', function() {
             var saved = JSON.parse(localStorage.getItem('saved_articles') || '[]');
             var idx = saved.findIndex(function(a) { return a.id === articleId; });
@@ -380,11 +485,15 @@ document.addEventListener('DOMContentLoaded', function() {
                 this.classList.remove('is-saved');
                 this.textContent = '⭐';
                 this.setAttribute('title', '保存');
+                this.setAttribute('aria-label', 'この記事を保存');
+                if (window.announceToScreenReader) window.announceToScreenReader('保存を解除しました');
             } else {
                 saved.push({ id: articleId, title: this.dataset.title, summary: this.dataset.summary });
                 this.classList.add('is-saved');
                 this.textContent = '★';
                 this.setAttribute('title', '保存済み');
+                this.setAttribute('aria-label', '保存済み。タップで保存解除');
+                if (window.announceToScreenReader) window.announceToScreenReader('記事を保存しました');
             }
             localStorage.setItem('saved_articles', JSON.stringify(saved));
         });
@@ -477,7 +586,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     function initMidormanFloat(container) {
         // 1分で理解では吹き出しを出さない（deep表示中のみ）
-        if (deepContent && deepContent.style.display === 'none') return;
+        if (deepContent && deepContent.hidden) return;
         var floatEl = document.getElementById('midorman-float');
         var floatText = document.getElementById('midorman-float-text');
         if (!floatEl || !floatText) return;
@@ -579,7 +688,9 @@ document.addEventListener('DOMContentLoaded', function() {
             })
             .catch(function() {
                 var el = document.getElementById('article-inline-content');
-                el.innerHTML = '<p>' + escapeHtml(el.dataset.fallback || '') + '</p>';
+                if (el) el.innerHTML = '<p>' + escapeHtml(el.dataset.fallback || '') + '</p>';
+                if (window.showSiteToast) window.showSiteToast('解説の読み込みに失敗しました。キャッシュ表示に切り替えました。', true);
+                if (window.announceToScreenReader) window.announceToScreenReader('解説の読み込みに失敗しました');
             });
     }
 

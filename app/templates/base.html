@@ -23,21 +23,22 @@
     <link rel="stylesheet" href="/static/css/style.css">
 </head>
 <body>
+    <a class="skip-link" href="#main-content">本文へスキップ</a>
     <header class="site-header">
         <div class="header-inner">
-            <a href="/" class="logo-wrap">
-                <span class="logo"><span class="logo-icon">📰</span>知リポAI</span>
-                <span class="logo-tagline">AIが解説する知的ニュース</span>
+            <a href="/" class="logo-wrap" aria-label="知リポAI ホームへ">
+                <span class="logo" aria-hidden="true"><span class="logo-icon">📰</span>知リポAI</span>
+                <span class="logo-tagline" aria-hidden="true">AIが解説する知的ニュース</span>
             </a>
             <nav class="global-pill-nav" aria-label="グローバルナビゲーション">
                 <a href="/" class="global-pill{% if request.url.path == '/' %} is-active{% endif %}" {% if request.url.path == '/' %}aria-current="page"{% endif %}>AI論文解説</a>
                 <a href="/news" class="global-pill{% if request.url.path == '/news' %} is-active{% endif %}" {% if request.url.path == '/news' %}aria-current="page"{% endif %}>AIニュースアーカイブ</a>
             </nav>
-            <button type="button" id="theme-toggle" class="theme-toggle" aria-label="ダークモード切替">🌙</button>
+            <button type="button" id="theme-toggle" class="theme-toggle" aria-label="ダークテーマに切り替え" aria-pressed="false">🌙</button>
         </div>
     </header>
 
-    <main class="main-content">
+    <main id="main-content" class="main-content" tabindex="-1">
         {% block content %}{% endblock %}
     </main>
 
@@ -49,22 +50,25 @@
     </footer>
 
     <nav class="mobile-bottom-bar" aria-label="モバイルナビ">
-        <a href="/" class="bottom-bar-item{% if request.url.path == '/' %} is-active{% endif %}">
-            <span class="bottom-bar-icon">📄</span><span class="bottom-bar-label">論文</span>
+        <a href="/" class="bottom-bar-item{% if request.url.path == '/' or (mobile_nav_papers_highlight|default(false)) %} is-active{% endif %}"{% if request.url.path == '/' %} aria-current="page"{% elif mobile_nav_papers_highlight|default(false) %} aria-current="page"{% endif %}>
+            <span class="bottom-bar-icon" aria-hidden="true">📄</span><span class="bottom-bar-label">論文</span>
         </a>
-        <a href="/news" class="bottom-bar-item{% if request.url.path == '/news' %} is-active{% endif %}">
-            <span class="bottom-bar-icon">🏠</span><span class="bottom-bar-label">ニュース</span>
+        <a href="/news" class="bottom-bar-item{% if request.url.path == '/news' or (mobile_nav_news_highlight|default(false)) %} is-active{% endif %}"{% if request.url.path == '/news' %} aria-current="page"{% elif mobile_nav_news_highlight|default(false) %} aria-current="page"{% endif %}>
+            <span class="bottom-bar-icon" aria-hidden="true">🏠</span><span class="bottom-bar-label">ニュース</span>
         </a>
-        <a href="/ai" class="bottom-bar-item{% if request.url.path == '/ai' %} is-active{% endif %}">
-            <span class="bottom-bar-icon">🤖</span><span class="bottom-bar-label">AI</span>
+        <a href="/ai" class="bottom-bar-item{% if request.url.path == '/ai' %} is-active{% endif %}"{% if request.url.path == '/ai' %} aria-current="page"{% endif %}>
+            <span class="bottom-bar-icon" aria-hidden="true">🤖</span><span class="bottom-bar-label">AI</span>
         </a>
-        <a href="/search" class="bottom-bar-item{% if request.url.path == '/search' %} is-active{% endif %}">
-            <span class="bottom-bar-icon">🔍</span><span class="bottom-bar-label">探す</span>
+        <a href="/search" class="bottom-bar-item{% if request.url.path == '/search' %} is-active{% endif %}"{% if request.url.path == '/search' %} aria-current="page"{% endif %}>
+            <span class="bottom-bar-icon" aria-hidden="true">🔍</span><span class="bottom-bar-label">探す</span>
         </a>
-        <a href="/saved" class="bottom-bar-item{% if request.url.path == '/saved' %} is-active{% endif %}">
-            <span class="bottom-bar-icon">⭐</span><span class="bottom-bar-label">保存</span>
+        <a href="/saved" class="bottom-bar-item{% if request.url.path == '/saved' %} is-active{% endif %}"{% if request.url.path == '/saved' %} aria-current="page"{% endif %}>
+            <span class="bottom-bar-icon" aria-hidden="true">⭐</span><span class="bottom-bar-label">保存</span>
         </a>
     </nav>
+
+    <div id="site-toast-region" class="site-toast-region"></div>
+    <div id="site-announcer" class="visually-hidden" aria-live="polite" aria-atomic="true"></div>
 
     <script>
     (function() {
@@ -73,20 +77,43 @@
         if (savedTheme === 'dark') root.setAttribute('data-theme', 'dark');
         var btn = document.getElementById('theme-toggle');
         if (!btn) return;
-        btn.textContent = root.getAttribute('data-theme') === 'dark' ? '☀️' : '🌙';
+        function syncThemeUi() {
+            var isDark = root.getAttribute('data-theme') === 'dark';
+            btn.textContent = isDark ? '☀️' : '🌙';
+            btn.setAttribute('aria-pressed', isDark ? 'true' : 'false');
+            btn.setAttribute('aria-label', isDark ? 'ライトテーマに切り替え' : 'ダークテーマに切り替え');
+        }
+        syncThemeUi();
         btn.addEventListener('click', function() {
             var dark = root.getAttribute('data-theme') === 'dark';
             if (dark) {
                 root.removeAttribute('data-theme');
                 localStorage.setItem('theme_mode', 'light');
-                btn.textContent = '🌙';
             } else {
                 root.setAttribute('data-theme', 'dark');
                 localStorage.setItem('theme_mode', 'dark');
-                btn.textContent = '☀️';
             }
+            syncThemeUi();
         });
     })();
+    window.showSiteToast = function(message, isError) {
+        var region = document.getElementById('site-toast-region');
+        if (!region || !message) return;
+        var el = document.createElement('div');
+        el.className = 'site-toast' + (isError ? ' site-toast--error' : '');
+        if (isError) el.setAttribute('role', 'alert');
+        el.textContent = message;
+        region.appendChild(el);
+        setTimeout(function() {
+            el.remove();
+        }, isError ? 5200 : 3200);
+    };
+    window.announceToScreenReader = function(text) {
+        var a = document.getElementById('site-announcer');
+        if (!a || !text) return;
+        a.textContent = '';
+        setTimeout(function() { a.textContent = text; }, 50);
+    };
     </script>
     {% block scripts %}{% endblock %}
 </body>
