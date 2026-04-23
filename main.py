@@ -91,7 +91,7 @@ async def lifespan(app: FastAPI):
     import threading
     rss_ai_disabled = is_rss_and_ai_disabled()
     if rss_ai_disabled:
-        logger.info("RSS取得・AI要約は無効です（DISABLE_RSS_AND_AI または RENDER）。表示はキャッシュのみ。")
+        logger.info("RSS取得・AI要約は無効です（DISABLE_RSS_AND_AI=true）。表示はキャッシュのみ。")
 
     # Render では credentials ファイルがデプロイされないため、Firestore を使うには FIREBASE_SERVICE_ACCOUNT_JSON が必須
     if os.environ.get("RENDER", "").strip().lower() == "true":

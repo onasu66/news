@@ -259,6 +259,7 @@ class NewsAggregator:
     _last_updated: Optional[datetime] = None
     _trends_last_updated: Optional[datetime] = None
     _db_backoff_until: Optional[datetime] = None
+    _last_processed_count: int = 0
 
     @classmethod
     def _set_db_backoff(cls, reason: str, exc: Exception) -> None:
@@ -292,6 +293,7 @@ class NewsAggregator:
                 cls._news_cache = sorted(cached, key=lambda x: x.published or datetime.min, reverse=True)
                 cls._last_updated = datetime.now()
                 cls._db_backoff_until = None
+                cls._last_processed_count = len(processed_ids)
                 return cls._news_cache
             if force_refresh:
                 # RSS/AI の途中で例外が出ても、ここまで保存された記事を一覧に載せる（finally で必ず再読込）
@@ -330,6 +332,7 @@ class NewsAggregator:
             )
             cls._last_updated = datetime.now()
             cls._db_backoff_until = None
+            cls._last_processed_count = len(processed_ids)
         return cls._news_cache
 
     @classmethod
@@ -357,6 +360,7 @@ class NewsAggregator:
             cls._news_cache = []
             cls._last_updated = datetime.now()
             cls._db_backoff_until = None
+            cls._last_processed_count = 0
             return
 
         cached_ids = {x.id for x in cls._news_cache}
@@ -381,6 +385,7 @@ class NewsAggregator:
             cls._last_updated = datetime.now()
             if cls._news_cache:
                 cls._db_backoff_until = None
+            cls._last_processed_count = len(processed_ids)
             return
 
         new_ids = processed_ids - cached_ids
@@ -400,6 +405,7 @@ class NewsAggregator:
         )[:PAGE_DISPLAY_LIMIT]
         cls._last_updated = datetime.now()
         cls._db_backoff_until = None
+        cls._last_processed_count = len(processed_ids)
 
     @classmethod
     def get_news_by_category(cls, force_refresh: bool = False, page: int = 1) -> tuple[list[tuple[str, list[NewsItem]]], dict]:

@@ -31,6 +31,49 @@ router = APIRouter()
 templates = Jinja2Templates(directory=str(Path(__file__).resolve().parent.parent / "templates"))
 logger = logging.getLogger(__name__)
 
+PERSONA_IMAGE_MAP = {
+    "セミナ": "/static/char-imgs/セミナ.png",
+    "ヴォルテ・アセット": "/static/char-imgs/ヴぉるて.png",
+    "カゲロウ": "/static/char-imgs/kagerou.png",
+    "くらしあ": "/static/char-imgs/くらしあ.png",
+    "アルシエル": "/static/char-imgs/あるしえる.png",
+    "クロニクル": "/static/char-imgs/くろにくる.png",
+    "ブレイズ": "/static/char-imgs/ぶれいず.png",
+    "ノアフォール": "/static/char-imgs/ノアフォール.png",
+    "そらみ": "/static/char-imgs/そらみ.png",
+    "レガリア": "/static/char-imgs/れがりあ.png",
+    "リュミエ": "/static/char-imgs/りゅみえ.png",
+    "ジャスティア": "/static/char-imgs/ジャスティア.png",
+    "観測体オメガ": "/static/char-imgs/オメガ.png",
+    "ゼロ・カオス": "/static/char-imgs/ゼロカオス.png",
+}
+
+
+def _build_persona_view(p: dict) -> dict:
+    role = str(p.get("role", "") or "")
+    summary = role.split("。")[0].replace("あなたは", "").replace("である", "").strip()
+    thought = ""
+    style = ""
+    advice = "最後に実行可能な提案・アドバイスを必ず添える"
+    m_thought = re.search(r"思考プロセス（必須）:\s*(.+?)。", role)
+    if m_thought:
+        thought = m_thought.group(1).strip()
+    m_style = re.search(r"文体は(.+?)。", role)
+    if m_style:
+        style = m_style.group(1).strip()
+    return {
+        "id": p.get("id"),
+        "name": p.get("name"),
+        "emoji": p.get("emoji"),
+        "type": "論理型" if p.get("type") == "logic" else "エンタメ型",
+        "summary": summary,
+        "thought_process": thought,
+        "style": style,
+        "advice_rule": advice,
+        "prompt_text": role,
+        "image_url": PERSONA_IMAGE_MAP.get(p.get("name"), "/static/site-imgs/ロゴ.png"),
+    }
+
 
 def _json_safe_for_template(obj):
     """Jinja の |tojson が扱えない型（Decimal, DatetimeWithNanoseconds 等）を落とさないよう正規化。"""
@@ -552,6 +595,37 @@ async def about_page(request: Request):
 async def authors_page(request: Request):
     """著者情報ページ"""
     return templates.TemplateResponse("authors.html", {"request": request})
+
+
+@router.get("/personas", response_class=HTMLResponse)
+async def personas_page(request: Request):
+    """14キャラクター紹介ページ"""
+    personas = [_build_persona_view(p) for p in PERSONAS]
+    return templates.TemplateResponse(
+        "personas.html",
+        {
+            "request": request,
+            "personas": personas,
+        },
+    )
+
+
+@router.get("/personas/{persona_id}", response_class=HTMLResponse)
+async def persona_detail_page(request: Request, persona_id: int):
+    """キャラクター詳細ページ"""
+    target = next((p for p in PERSONAS if int(p.get("id", -1)) == int(persona_id)), None)
+    if not target:
+        raise HTTPException(status_code=404, detail="キャラクターが見つかりません")
+    persona = _build_persona_view(target)
+    other_personas = [_build_persona_view(p) for p in PERSONAS if int(p.get("id", -1)) != int(persona_id)][:6]
+    return templates.TemplateResponse(
+        "persona_detail.html",
+        {
+            "request": request,
+            "persona": persona,
+            "other_personas": other_personas,
+        },
+    )
 
 
 @router.get("/search", response_class=HTMLResponse)
@@ -1330,12 +1404,9 @@ async def api_persona_opinion(article_id: str, persona_id: int):
 
 @router.get("/api/status")
 async def api_status():
-    """状態確認（高速）。Firestorm/DBへの重い読取を避ける"""
-    from app.services.explanation_cache import get_cached_article_ids
-
-    # API疎通確認用エンドポイントは軽量に保つ（重いDB読取はしない）
+    """状態確認（高速）。DB読取をせずメモリ情報のみ返す"""
     displayable = len(getattr(NewsAggregator, "_news_cache", []) or [])
-    processed = get_cached_article_ids()
+    processed_count = int(getattr(NewsAggregator, "_last_processed_count", 0) or 0)
     try:
         from app.config import settings
         has_key = bool(getattr(settings, "OPENAI_API_KEY", ""))
@@ -1344,7 +1415,7 @@ async def api_status():
 
     return {
         "articles_in_db": displayable,
-        "ai_processed": len(processed),
+        "ai_processed": processed_count,
         "displayable": displayable,
         "openai_key_set": has_key,
     }

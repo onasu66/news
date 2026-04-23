@@ -20,6 +20,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;600;700;900&display=swap" rel="stylesheet">
+    <link rel="icon" type="image/png" href="/static/site-imgs/ファビコン.png">
     <link rel="stylesheet" href="/static/css/style.css">
 </head>
 <body>
@@ -27,12 +28,13 @@
     <header class="site-header">
         <div class="header-inner">
             <a href="/" class="logo-wrap" aria-label="知リポAI ホームへ">
-                <span class="logo" aria-hidden="true"><span class="logo-icon">📰</span>知リポAI</span>
+                <span class="logo" aria-hidden="true"><img src="/static/site-imgs/ロゴ.png" alt="" class="logo-image"><span class="logo-text">知リポAI</span></span>
                 <span class="logo-tagline" aria-hidden="true">AIが解説する知的ニュース</span>
             </a>
             <nav class="global-pill-nav" aria-label="グローバルナビゲーション">
                 <a href="/" class="global-pill{% if request.url.path == '/' %} is-active{% endif %}" {% if request.url.path == '/' %}aria-current="page"{% endif %}>AI論文解説</a>
                 <a href="/news" class="global-pill{% if request.url.path == '/news' %} is-active{% endif %}" {% if request.url.path == '/news' %}aria-current="page"{% endif %}>AIニュースアーカイブ</a>
+                <a href="/personas" class="global-pill{% if request.url.path == '/personas' %} is-active{% endif %}" {% if request.url.path == '/personas' %}aria-current="page"{% endif %}>14キャラクター</a>
             </nav>
             <button type="button" id="theme-toggle" class="theme-toggle" aria-label="ダークテーマに切り替え" aria-pressed="false">🌙</button>
         </div>
@@ -45,7 +47,7 @@
     <footer class="site-footer">
         <div class="footer-inner">
             <p>知リポAI — 最新ニュースをAIが解説する、知的ニュースレポート</p>
-            <div class="tiny-links"><a href="/about">運営者</a> · <a href="/authors">著者</a></div>
+            <div class="tiny-links"><a href="/personas">14キャラクター</a> · <a href="/about">運営者</a> · <a href="/authors">著者</a></div>
         </div>
     </footer>
 
@@ -64,6 +66,9 @@
         </a>
         <a href="/saved" class="bottom-bar-item{% if request.url.path == '/saved' %} is-active{% endif %}"{% if request.url.path == '/saved' %} aria-current="page"{% endif %}>
             <span class="bottom-bar-icon" aria-hidden="true">⭐</span><span class="bottom-bar-label">保存</span>
+        </a>
+        <a href="/personas" class="bottom-bar-item{% if request.url.path == '/personas' %} is-active{% endif %}"{% if request.url.path == '/personas' %} aria-current="page"{% endif %}>
+            <span class="bottom-bar-icon" aria-hidden="true">🎭</span><span class="bottom-bar-label">キャラ</span>
         </a>
     </nav>
 

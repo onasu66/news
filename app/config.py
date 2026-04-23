@@ -17,15 +17,15 @@ class Settings:
     OPENAI_MODEL: str = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
     CDN_BASE_URL: str = os.getenv("CDN_BASE_URL", "https://picsum.photos")
     NEWS_REFRESH_INTERVAL: int = int(os.getenv("NEWS_REFRESH_INTERVAL", "240"))
-    # 一覧メモリキャッシュを DB と照合する間隔（分）。0 で無効。Firestore 読取負荷を抑えるため既定は 60。
-    NEWS_LIST_CACHE_SYNC_MINUTES: int = int(os.getenv("NEWS_LIST_CACHE_SYNC_MINUTES", "60"))
+    # 一覧メモリキャッシュを DB と照合する間隔（分）。0 で無効。無料枠向け既定は 180。
+    NEWS_LIST_CACHE_SYNC_MINUTES: int = int(os.getenv("NEWS_LIST_CACHE_SYNC_MINUTES", "180"))
     DAILY_ARTICLE_LIMIT: int = int(os.getenv("DAILY_ARTICLE_LIMIT", "6"))
-    # 1回の RSS 強制更新で目標とする最小追加本数（候補・AI失敗で未達の場合あり）。0 で従来どおり1バッチのみ
-    RSS_MIN_ADDED_PER_REFRESH: int = int(os.getenv("RSS_MIN_ADDED_PER_REFRESH", "22"))
-    # 上記を満たすまで process を繰り返す上限（無限ループ防止）
-    RSS_REFRESH_MAX_LOOPS: int = int(os.getenv("RSS_REFRESH_MAX_LOOPS", "3"))
-    # process_new_rss_articles 1回あたりの処理候補上限（論文＋ニュースの合計）
-    RSS_PROCESS_MAX_PER_BATCH: int = int(os.getenv("RSS_PROCESS_MAX_PER_BATCH", "40"))
+    # 1回の RSS 強制更新で目標とする最小追加本数（無料枠向けに小さめ）
+    RSS_MIN_ADDED_PER_REFRESH: int = int(os.getenv("RSS_MIN_ADDED_PER_REFRESH", "5"))
+    # 上記を満たすまで process を繰り返す上限（無料枠向け既定は 1）
+    RSS_REFRESH_MAX_LOOPS: int = int(os.getenv("RSS_REFRESH_MAX_LOOPS", "1"))
+    # process_new_rss_articles 1回あたりの処理候補上限（無料枠向け既定は 10）
+    RSS_PROCESS_MAX_PER_BATCH: int = int(os.getenv("RSS_PROCESS_MAX_PER_BATCH", "10"))
     # 論文: 各ドメイン（心理学・AI・Nature 等）から選ぶ本数
     RSS_PAPERS_PER_DOMAIN: int = int(os.getenv("RSS_PAPERS_PER_DOMAIN", "4"))
     # 論文: 1バッチで選ぶ合計の上限（max_per_run との小さい方が効く）
@@ -55,10 +55,12 @@ settings = Settings()
 
 
 def is_rss_and_ai_disabled() -> bool:
-    """RSS取得・AI要約をこのインスタンスで無効にするか。Render では True にするとRSS/AIを動かさず表示のみ。"""
+    """RSS取得・AI要約をこのインスタンスで無効にするか。
+
+    既定は「有効」。無料枠運用でも定時更新を止めないため、
+    明示的に DISABLE_RSS_AND_AI=true を指定した場合のみ無効化する。
+    """
     v = os.getenv("DISABLE_RSS_AND_AI", "").strip().lower()
     if v in ("1", "true", "yes"):
-        return True
-    if os.getenv("RENDER", "").strip().lower() == "true":
         return True
     return False

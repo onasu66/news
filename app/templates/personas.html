@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block title %}14キャラクター紹介 - 知リポAI{% endblock %}
+{% block meta_description %}知リポAIの14キャラクター（論理型・エンタメ型）の性格と役割を紹介します。{% endblock %}
+
+{% block content %}
+<section class="page-header personas-page">
+    <h1 class="page-title">🎭 14キャラクター紹介</h1>
+    <p class="personas-intro">記事のコメント欄で登場するキャラクターです。各キャラは見方が異なり、ニュースの読み解き方が変わります。</p>
+</section>
+
+<section class="personas-page">
+    <div class="personas-directory">
+        {% for p in personas %}
+        <article class="persona-directory-card">
+            <a href="/personas/{{ p.id }}" class="persona-directory-link">
+                <img src="{{ p.image_url }}" alt="{{ p.name }} のイメージ" class="persona-directory-img" loading="lazy">
+            </a>
+            <div class="persona-directory-head">
+                <h2 class="persona-directory-name">{{ p.emoji }} {{ p.name }}</h2>
+                <span class="persona-directory-type">{{ p.type }}</span>
+            </div>
+            <p class="persona-directory-note">{{ p.summary }}</p>
+            <a href="/personas/{{ p.id }}" class="persona-directory-detail-link">詳細を見る →</a>
+        </article>
+        {% endfor %}
+    </div>
+</section>
+{% endblock %}

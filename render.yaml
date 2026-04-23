@@ -19,7 +19,18 @@ services:
       # 以下は任意。Render ダッシュボードの Environment で設定
       # - key: OPENAI_API_KEY
       #   sync: false
+      # - key: DISABLE_RSS_AND_AI
+      #   value: "false"  # true にすると定時の記事更新を停止
       # - key: ADMIN_SECRET
       #   sync: false
       # - key: NEWS_REFRESH_INTERVAL
       #   value: "240"
+      # 無料枠向けの省エネ推奨値（必要に応じて有効化）
+      # - key: NEWS_LIST_CACHE_SYNC_MINUTES
+      #   value: "180"
+      # - key: RSS_MIN_ADDED_PER_REFRESH
+      #   value: "5"
+      # - key: RSS_REFRESH_MAX_LOOPS
+      #   value: "1"
+      # - key: RSS_PROCESS_MAX_PER_BATCH
+      #   value: "10"

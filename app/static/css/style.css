@@ -288,6 +288,16 @@ body::after {
     align-items: center;
     gap: 0.35rem;
 }
+.logo-image {
+    width: 28px;
+    height: 28px;
+    border-radius: 8px;
+    object-fit: cover;
+    box-shadow: 0 2px 8px rgba(15, 23, 42, 0.12);
+}
+.logo-text {
+    display: inline-block;
+}
 
 .logo-tagline {
     font-size: 0.7rem;
@@ -434,6 +444,168 @@ body::after {
 .top-pick-meta {
     color: var(--color-text-muted);
     font-size: 0.74rem;
+}
+
+/* ========== PERSONAS PAGE ========== */
+.personas-page {
+    max-width: 1200px;
+    margin: 0 auto;
+}
+.personas-intro {
+    margin: 0.25rem 0 1rem;
+    color: var(--color-text-muted);
+    font-size: 0.95rem;
+}
+.personas-directory {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+    gap: 0.9rem;
+}
+.persona-directory-card {
+    background: var(--color-bg-elevated);
+    border: 1px solid var(--color-border-light);
+    border-radius: 14px;
+    padding: 0.7rem;
+    box-shadow: var(--shadow-xs);
+}
+.persona-directory-img {
+    width: 100%;
+    aspect-ratio: 1 / 1;
+    border-radius: 12px;
+    object-fit: cover;
+    display: block;
+    background: #e2e8f0;
+}
+.persona-directory-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    margin: 0.55rem 0 0.3rem;
+}
+.persona-directory-name {
+    margin: 0;
+    font-size: 1rem;
+    font-weight: 800;
+}
+.persona-directory-type {
+    font-size: 0.7rem;
+    font-weight: 700;
+    padding: 0.16rem 0.5rem;
+    border-radius: 999px;
+    background: var(--color-accent-soft);
+    color: var(--color-accent-hover);
+}
+.persona-directory-note {
+    margin: 0;
+    font-size: 0.82rem;
+    color: var(--color-text-secondary);
+    line-height: 1.5;
+}
+.persona-directory-link {
+    display: block;
+    border-radius: 12px;
+    overflow: hidden;
+}
+.persona-directory-detail-link {
+    margin-top: 0.48rem;
+    display: inline-block;
+    text-decoration: none;
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: var(--color-accent);
+}
+.persona-directory-detail-link:hover {
+    text-decoration: underline;
+}
+.persona-detail-layout {
+    display: grid;
+    grid-template-columns: minmax(280px, 340px) 1fr;
+    gap: 1rem;
+}
+.persona-profile-card,
+.persona-spec-card {
+    background: var(--color-bg-elevated);
+    border: 1px solid var(--color-border-light);
+    border-radius: 14px;
+    padding: 0.85rem;
+}
+.persona-profile-img {
+    width: 100%;
+    border-radius: 12px;
+    aspect-ratio: 1 / 1;
+    object-fit: cover;
+    display: block;
+}
+.persona-profile-body {
+    margin-top: 0.7rem;
+}
+.persona-profile-title {
+    margin: 0;
+    font-size: 1.2rem;
+}
+.persona-profile-type {
+    margin: 0.25rem 0 0.45rem;
+    color: var(--color-accent);
+    font-weight: 700;
+    font-size: 0.86rem;
+}
+.persona-profile-summary {
+    margin: 0;
+    color: var(--color-text-secondary);
+    line-height: 1.6;
+}
+.persona-spec-card h2 {
+    margin: 0 0 0.7rem;
+    font-size: 1.05rem;
+}
+.persona-spec-card dl {
+    margin: 0;
+    display: grid;
+    gap: 0.55rem;
+}
+.persona-spec-card dt {
+    font-weight: 800;
+    font-size: 0.86rem;
+}
+.persona-spec-card dd {
+    margin: 0.2rem 0 0;
+    color: var(--color-text-secondary);
+    line-height: 1.6;
+}
+.persona-prompt-details {
+    margin-top: 0.85rem;
+    padding-top: 0.7rem;
+    border-top: 1px dashed var(--color-border-light);
+}
+.persona-prompt-details summary {
+    cursor: pointer;
+    font-weight: 700;
+    font-size: 0.86rem;
+}
+.persona-prompt-details p {
+    margin: 0.65rem 0 0;
+    font-size: 0.82rem;
+    line-height: 1.65;
+    color: var(--color-text-secondary);
+}
+.persona-detail-back {
+    margin: 0 0 0.35rem;
+    font-size: 0.86rem;
+}
+.persona-detail-back a {
+    color: var(--color-accent);
+    text-decoration: none;
+}
+.persona-detail-back a:hover {
+    text-decoration: underline;
+}
+.persona-related {
+    margin-top: 1rem;
+}
+.persona-related-title {
+    font-size: 1.15rem;
+    margin: 0 0 0.7rem;
 }
 
 .global-pill-nav {
@@ -3571,6 +3743,33 @@ body::after {
     .sp-only { display: inline; }
     .genre-tabs-wrap { top: auto; position: relative; }
     .paper-filter-wrap { margin: 0.25rem 0 1rem; }
+    .logo-image {
+        width: 24px;
+        height: 24px;
+    }
+    .personas-directory {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 0.6rem;
+    }
+    .persona-directory-card {
+        padding: 0.5rem;
+    }
+    .persona-directory-name {
+        font-size: 0.9rem;
+    }
+    .persona-directory-note {
+        font-size: 0.76rem;
+    }
+    .persona-detail-layout {
+        grid-template-columns: 1fr;
+        gap: 0.7rem;
+    }
+    .persona-profile-title {
+        font-size: 1.06rem;
+    }
+    .persona-prompt-details p {
+        font-size: 0.76rem;
+    }
 }
 @media (min-width: 769px) {
     .sp-only { display: none; }

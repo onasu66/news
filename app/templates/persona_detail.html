@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+{% block title %}{{ persona.name }} - キャラクター紹介 - 知リポAI{% endblock %}
+{% block meta_description %}{{ persona.name }}（{{ persona.type }}）の視点・文体・思考プロセスを紹介します。{% endblock %}
+
+{% block content %}
+<section class="page-header personas-page">
+    <p class="persona-detail-back"><a href="/personas">← 14キャラクター一覧へ戻る</a></p>
+    <h1 class="page-title">{{ persona.emoji }} {{ persona.name }}</h1>
+    <p class="personas-intro">{{ persona.type }}の視点でニュースを解釈するキャラクターです。</p>
+</section>
+
+<section class="personas-page persona-detail-layout">
+    <article class="persona-profile-card">
+        <img src="{{ persona.image_url }}" alt="{{ persona.name }} のイメージ" class="persona-profile-img">
+        <div class="persona-profile-body">
+            <h2 class="persona-profile-title">{{ persona.name }}</h2>
+            <p class="persona-profile-type">{{ persona.type }}</p>
+            <p class="persona-profile-summary">{{ persona.summary }}</p>
+        </div>
+    </article>
+
+    <article class="persona-spec-card">
+        <h2>キャラクター設定</h2>
+        <dl>
+            <dt>思考プロセス</dt>
+            <dd>{{ persona.thought_process or "記事ごとに定義された観点で解釈" }}</dd>
+            <dt>文体</dt>
+            <dd>{{ persona.style or "自然な短文で解説" }}</dd>
+            <dt>共通ルール</dt>
+            <dd>{{ persona.advice_rule }}</dd>
+        </dl>
+        <details class="persona-prompt-details">
+            <summary>システムプロンプト全文を見る</summary>
+            <p>{{ persona.prompt_text }}</p>
+        </details>
+    </article>
+</section>
+
+{% if other_personas %}
+<section class="personas-page persona-related">
+    <h2 class="page-title persona-related-title">他のキャラクター</h2>
+    <div class="personas-directory">
+        {% for p in other_personas %}
+        <article class="persona-directory-card">
+            <a href="/personas/{{ p.id }}" class="persona-directory-link">
+                <img src="{{ p.image_url }}" alt="{{ p.name }} のイメージ" class="persona-directory-img" loading="lazy">
+            </a>
+            <div class="persona-directory-head">
+                <h3 class="persona-directory-name">{{ p.emoji }} {{ p.name }}</h3>
+                <span class="persona-directory-type">{{ p.type }}</span>
+            </div>
+            <p class="persona-directory-note">{{ p.summary }}</p>
+            <a href="/personas/{{ p.id }}" class="persona-directory-detail-link">詳細を見る →</a>
+        </article>
+        {% endfor %}
+    </div>
+</section>
+{% endif %}
+{% endblock %}
