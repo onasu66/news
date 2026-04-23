@@ -21,7 +21,6 @@
         {% for pc in ai_personas %}
         <div class="ai-persona-comment">
             <img src="{{ pc.image_url|default('/static/site-imgs/ロゴ.png') }}" alt="" class="ai-persona-avatar" loading="lazy">
-            <span class="ai-persona-emoji">{{ pc.emoji }}</span>
             <div>
                 <strong>{{ pc.name }}</strong>
                 <p>{{ pc.comment }}</p>

@@ -5,7 +5,7 @@
 {% block content %}
 <section class="page-header personas-page">
     <p class="persona-detail-back"><a href="/personas">← 14キャラクター一覧へ戻る</a></p>
-    <h1 class="page-title">{{ persona.emoji }} {{ persona.name }}</h1>
+    <h1 class="page-title">{{ persona.name }}</h1>
     <p class="personas-intro">{{ persona.type }}の視点でニュースを解釈するキャラクターです。</p>
 </section>
 
@@ -46,7 +46,7 @@
                 <img src="{{ p.image_url }}" alt="{{ p.name }} のイメージ" class="persona-directory-img" loading="lazy">
             </a>
             <div class="persona-directory-head">
-                <h3 class="persona-directory-name">{{ p.emoji }} {{ p.name }}</h3>
+                <h3 class="persona-directory-name">{{ p.name }}</h3>
                 <span class="persona-directory-type">{{ p.type }}</span>
             </div>
             <p class="persona-directory-note">{{ p.summary }}</p>
