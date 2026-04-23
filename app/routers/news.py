@@ -46,7 +46,12 @@ PERSONA_IMAGE_MAP = {
     "ジャスティア": "/static/char-imgs/ジャスティア.png",
     "観測体オメガ": "/static/char-imgs/オメガ.png",
     "ゼロ・カオス": "/static/char-imgs/ゼロカオス.png",
+    "ミドルマン": "/static/char-imgs/ミドルマン.png",
 }
+
+
+def _persona_image_url(name: str | None) -> str:
+    return PERSONA_IMAGE_MAP.get((name or "").strip(), "/static/site-imgs/ロゴ.png")
 
 
 def _build_persona_view(p: dict) -> dict:
@@ -71,7 +76,7 @@ def _build_persona_view(p: dict) -> dict:
         "style": style,
         "advice_rule": advice,
         "prompt_text": role,
-        "image_url": PERSONA_IMAGE_MAP.get(p.get("name"), "/static/site-imgs/ロゴ.png"),
+        "image_url": _persona_image_url(p.get("name")),
     }
 
 
@@ -572,6 +577,14 @@ async def ai_page(request: Request):
         if daily:
             ai_memo = daily.get("memo", "")
             ai_personas = daily.get("persona_comments", [])
+            if isinstance(ai_personas, list):
+                patched = []
+                for pc in ai_personas:
+                    if isinstance(pc, dict):
+                        p = dict(pc)
+                        p["image_url"] = _persona_image_url(p.get("name"))
+                        patched.append(p)
+                ai_personas = patched
     except Exception:
         pass
     return templates.TemplateResponse(
@@ -1187,7 +1200,7 @@ async def topic_detail(request: Request, topic_id: str):
     cached_personas = cached.get("personas", []) if cached else []
     if cached_ids and isinstance(cached_personas, list) and len(cached_personas) == 3:
         display_persona_ids = cached_ids[:3]
-        display_personas = [PERSONAS[i] for i in display_persona_ids]
+        display_personas = [{**PERSONAS[i], "image_url": _persona_image_url(PERSONAS[i].get("name"))} for i in display_persona_ids]
         personas_data = [str(x) if x is not None else "" for x in cached_personas[:3]]
     else:
         raw_personas = cached.get("personas", []) if cached else []
@@ -1202,7 +1215,7 @@ async def topic_detail(request: Request, topic_id: str):
             _rnd.shuffle(display_indices)
         else:
             display_indices = list(range(min(3, len(PERSONAS))))
-        display_personas = [PERSONAS[i] for i in display_indices]
+        display_personas = [{**PERSONAS[i], "image_url": _persona_image_url(PERSONAS[i].get("name"))} for i in display_indices]
         personas_data = [
             str(all_personas_data[i]) if i < len(all_personas_data) and all_personas_data[i] is not None else ""
             for i in display_indices
@@ -1283,6 +1296,7 @@ async def topic_detail(request: Request, topic_id: str):
     _article_cat = (getattr(item, "category", None) or "").strip()
     mobile_nav_papers_highlight = _article_cat == "研究・論文"
     mobile_nav_news_highlight = not mobile_nav_papers_highlight
+    all_personas_enriched = [{**p, "image_url": _persona_image_url(p.get("name"))} for p in PERSONAS]
 
     return templates.TemplateResponse(
         "article.html",
@@ -1292,7 +1306,7 @@ async def topic_detail(request: Request, topic_id: str):
             "image_url": image_url,
             "personas": display_personas,
             "display_persona_ids": display_persona_ids,
-            "all_personas": PERSONAS,
+            "all_personas": all_personas_enriched,
             "site_url": site_url,
             "article_url": article_url,
             "og_image": og_image,
@@ -1320,6 +1334,7 @@ async def topic_detail(request: Request, topic_id: str):
             "article_jsonld": article_jsonld,
             "mobile_nav_papers_highlight": mobile_nav_papers_highlight,
             "mobile_nav_news_highlight": mobile_nav_news_highlight,
+            "midorman_image_url": _persona_image_url("ミドルマン"),
         }
     )
 

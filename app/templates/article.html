@@ -175,6 +175,7 @@
             {% for p in personas %}
             <div class="persona-card" data-persona-id="{{ p.id }}" data-article-id="{{ article.id }}">
                 <button type="button" class="persona-trigger" aria-expanded="false">
+                    <img src="{{ p.image_url }}" alt="" class="persona-avatar" loading="lazy">
                     <span class="persona-emoji">{{ p.emoji }}</span>
                     <span class="persona-name">{{ p.name }}</span>
                     <span class="persona-arrow">▶</span>
@@ -190,7 +191,7 @@
             <summary>全{{ all_personas|length }}人格一覧</summary>
             <ul class="personas-all-ul" style="list-style:none;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:0.25rem;margin:0.5rem 0 0;">
                 {% for p in all_personas %}
-                <li><span class="persona-emoji">{{ p.emoji }}</span> {{ p.name }} <span style="font-size:0.75em;color:#666;">{{ '論理型' if p.type == 'logic' else 'エンタメ' }}</span></li>
+                <li class="personas-all-item"><img src="{{ p.image_url }}" alt="" class="personas-all-avatar" loading="lazy"><span class="persona-emoji">{{ p.emoji }}</span> {{ p.name }} <span style="font-size:0.75em;color:#666;">{{ '論理型' if p.type == 'logic' else 'エンタメ' }}</span></li>
                 {% endfor %}
             </ul>
         </details>
@@ -289,6 +290,7 @@
 <button type="button" class="back-to-top" id="article-back-to-top" aria-label="ページ先頭へ戻る">↑</button>
 
 <div id="midorman-float" class="midorman-float" aria-live="polite" hidden>
+    <img src="{{ midorman_image_url|default('/static/site-imgs/ロゴ.png') }}" alt="" class="midorman-float-avatar-img" loading="lazy">
     <span class="midorman-float-avatar" aria-hidden="true">🎙️</span>
     <div class="midorman-float-inner">
         <p class="midorman-float-text" id="midorman-float-text"></p>

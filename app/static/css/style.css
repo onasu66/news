@@ -2111,6 +2111,14 @@ body::after {
 .persona-emoji {
     font-size: 1.35rem;
 }
+.persona-avatar {
+    width: 28px;
+    height: 28px;
+    border-radius: 999px;
+    object-fit: cover;
+    flex: 0 0 auto;
+    border: 1px solid var(--color-border-light);
+}
 
 .persona-name {
     flex: 1;
@@ -2142,6 +2150,18 @@ body::after {
 .persona-error {
     font-size: 0.85rem;
     color: var(--color-accent);
+}
+.personas-all-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+.personas-all-avatar {
+    width: 18px;
+    height: 18px;
+    border-radius: 999px;
+    object-fit: cover;
+    border: 1px solid var(--color-border-light);
 }
 
 /* ========== フッター ========== */
@@ -3285,6 +3305,14 @@ body::after {
     background: var(--color-card);
     border-radius: 12px;
 }
+.ai-persona-avatar {
+    width: 36px;
+    height: 36px;
+    border-radius: 999px;
+    object-fit: cover;
+    border: 1px solid var(--color-border-light);
+    flex: 0 0 auto;
+}
 .ai-persona-emoji { font-size: 1.5rem; flex: 0 0 auto; }
 
 /* ===== MOBILE BOTTOM BAR ===== */
@@ -4080,6 +4108,14 @@ body::after {
     backdrop-filter: blur(8px);
 }
 .midorman-float-avatar { font-size: 1.5rem; flex: 0 0 auto; }
+.midorman-float-avatar-img {
+    width: 36px;
+    height: 36px;
+    border-radius: 999px;
+    object-fit: cover;
+    border: 1px solid rgba(99,102,241,0.35);
+    flex: 0 0 auto;
+}
 .midorman-float-inner { flex: 1; min-width: 0; }
 .midorman-float-text {
     margin: 0;
@@ -4153,6 +4189,7 @@ body::after {
     .midorman-float-text { color: #334155; }
 
     .persona-card { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; }
+    .persona-avatar { border-color: #cbd5e1; }
     .vote-section { background: #fff; border: 1px solid #e2e8f0; }
     .vote-btn { background: #fff; border-color: #e2e8f0; color: #334155; }
     .vote-btn:hover { border-color: var(--color-accent); background: #f8fafc; }
