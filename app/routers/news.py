@@ -373,9 +373,10 @@ async def news_index(request: Request, page: int = 1, keyword: str = ""):
     if request.method == "OPTIONS":
         return Response(status_code=200)
     from app.services.news_aggregator import CATEGORY_ORDER, ITEMS_PER_PAGE
+    news_category_order = [c for c in CATEGORY_ORDER if c != "研究・論文"]
     keyword = (keyword or "").strip()
+    all_news = [a for a in NewsAggregator.get_news() if (a.category or "") != "研究・論文"]
     if keyword:
-        all_news = NewsAggregator.get_news()
         kw_lower = keyword.lower()
         filtered = [a for a in all_news if kw_lower in (a.title or "").lower() or kw_lower in (a.summary or "").lower()]
         per_page = ITEMS_PER_PAGE
@@ -387,15 +388,20 @@ async def news_index(request: Request, page: int = 1, keyword: str = ""):
         by_cat: dict[str, list] = {}
         for a in page_items:
             by_cat.setdefault(a.category, []).append(a)
-        news_by_category = [(c, by_cat.get(c, [])) for c in CATEGORY_ORDER]
+        news_by_category = [(c, by_cat.get(c, [])) for c in news_category_order]
         pagination = {"page": page, "per_page": per_page, "total": total, "total_pages": total_pages, "has_prev": page > 1, "has_next": page < total_pages}
     else:
-        try:
-            news_by_category, pagination = NewsAggregator.get_news_by_category(page=page)
-        except Exception as e:
-            logger.warning("news page category fallback: %s", e)
-            news_by_category = []
-            pagination = {"page": 1, "per_page": ITEMS_PER_PAGE, "total": 0, "total_pages": 1, "has_prev": False, "has_next": False}
+        per_page = ITEMS_PER_PAGE
+        total = len(all_news)
+        total_pages = max(1, (total + per_page - 1) // per_page)
+        page = max(1, min(page, total_pages))
+        start = (page - 1) * per_page
+        page_items = all_news[start : start + per_page]
+        by_cat: dict[str, list] = {}
+        for a in page_items:
+            by_cat.setdefault(a.category, []).append(a)
+        news_by_category = [(c, by_cat.get(c, [])) for c in news_category_order]
+        pagination = {"page": page, "per_page": per_page, "total": total, "total_pages": total_pages, "has_prev": page > 1, "has_next": page < total_pages}
     try:
         trends = NewsAggregator.get_trends()
     except Exception:
@@ -453,14 +459,14 @@ async def news_index(request: Request, page: int = 1, keyword: str = ""):
 @router.get("/api/news/page")
 async def api_news_page(page: int = 1, keyword: str = ""):
     """無限スクロール用：ページの記事カードHTMLを返す"""
-    from app.services.news_aggregator import CATEGORY_ORDER, ITEMS_PER_PAGE
+    from app.services.news_aggregator import ITEMS_PER_PAGE
     keyword = (keyword or "").strip()
+    all_news = [a for a in NewsAggregator.get_news() if (a.category or "") != "研究・論文"]
     if keyword:
-        all_news = NewsAggregator.get_news()
         kw_lower = keyword.lower()
         news = [a for a in all_news if kw_lower in (a.title or "").lower() or kw_lower in (a.summary or "").lower()]
     else:
-        news = NewsAggregator.get_news()
+        news = all_news
     total = len(news)
     per_page = ITEMS_PER_PAGE
     total_pages = max(1, (total + per_page - 1) // per_page)
