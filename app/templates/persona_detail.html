@@ -41,7 +41,7 @@
     <h2 class="page-title persona-related-title">他のキャラクター</h2>
     <div class="personas-directory">
         {% for p in other_personas %}
-        <article class="persona-directory-card">
+        <article class="persona-directory-card persona-p{{ p.id }}">
             <a href="/personas/{{ p.id }}" class="persona-directory-link">
                 <img src="{{ p.image_url }}" alt="{{ p.name }} のイメージ" class="persona-directory-img" loading="lazy">
             </a>

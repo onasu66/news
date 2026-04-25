@@ -2998,7 +2998,7 @@ body::after {
 .genre-tab.is-active,
 .genre-tab[aria-selected="true"] {
     background: var(--color-accent);
-    color: #000;
+    color: #fff;
     border-color: var(--color-accent);
 }
 
@@ -3010,7 +3010,7 @@ body::after {
 .genre-tab-sn0.is-active,
 .genre-tab-sn0[aria-selected="true"] {
     background: #ef4444 !important;
-    color: #000000 !important;
+    color: #ffffff !important;
     border-color: #ef4444 !important;
     border-bottom-color: #ef4444 !important;
     box-shadow: none;
@@ -3018,7 +3018,7 @@ body::after {
 .genre-tab-sn1.is-active,
 .genre-tab-sn1[aria-selected="true"] {
     background: #f97316 !important;
-    color: #000000 !important;
+    color: #ffffff !important;
     border-color: #f97316 !important;
     border-bottom-color: #f97316 !important;
     box-shadow: none;
@@ -3026,7 +3026,7 @@ body::after {
 .genre-tab-sn2.is-active,
 .genre-tab-sn2[aria-selected="true"] {
     background: #16a34a !important;
-    color: #000000 !important;
+    color: #ffffff !important;
     border-color: #16a34a !important;
     border-bottom-color: #16a34a !important;
     box-shadow: none;
@@ -3034,7 +3034,7 @@ body::after {
 .genre-tab-sn3.is-active,
 .genre-tab-sn3[aria-selected="true"] {
     background: #2563eb !important;
-    color: #000000 !important;
+    color: #ffffff !important;
     border-color: #2563eb !important;
     border-bottom-color: #2563eb !important;
     box-shadow: none;
@@ -3042,7 +3042,7 @@ body::after {
 .genre-tab-sn4.is-active,
 .genre-tab-sn4[aria-selected="true"] {
     background: #d97706 !important;
-    color: #000000 !important;
+    color: #ffffff !important;
     border-color: #d97706 !important;
     border-bottom-color: #d97706 !important;
     box-shadow: none;
@@ -3050,7 +3050,7 @@ body::after {
 .genre-tab-sn5.is-active,
 .genre-tab-sn5[aria-selected="true"] {
     background: #9333ea !important;
-    color: #000000 !important;
+    color: #ffffff !important;
     border-color: #9333ea !important;
     border-bottom-color: #9333ea !important;
     box-shadow: none;
@@ -4284,4 +4284,97 @@ body::after {
         color: var(--color-text-muted);
         border-top: 1px solid var(--color-border-light);
     }
+}
+
+/* ================================================================
+   14キャラクター個性カラーシステム
+   --pc: キャラクターカラー  --pc-soft: 薄い背景色
+   ================================================================ */
+.persona-p0  { --pc: #6366f1; --pc-soft: #eef2ff; } /* セミナ: インディゴ（分析）*/
+.persona-p1  { --pc: #10b981; --pc-soft: #ecfdf5; } /* ヴォルテ: エメラルド（投資）*/
+.persona-p2  { --pc: #7c3aed; --pc-soft: #ede9fe; } /* カゲロウ: ダークバイオレット（影）*/
+.persona-p3  { --pc: #f97316; --pc-soft: #fff7ed; } /* くらしあ: オレンジ（生活・暖）*/
+.persona-p4  { --pc: #a855f7; --pc-soft: #faf5ff; } /* アルシエル: バイオレット（神秘）*/
+.persona-p5  { --pc: #d97706; --pc-soft: #fffbeb; } /* クロニクル: アンバー（セピア）*/
+.persona-p6  { --pc: #ef4444; --pc-soft: #fef2f2; } /* ブレイズ: レッド（怒り・炎）*/
+.persona-p7  { --pc: #64748b; --pc-soft: #f1f5f9; } /* ノアフォール: スレート（憂鬱）*/
+.persona-p8  { --pc: #0ea5e9; --pc-soft: #f0f9ff; } /* そらみ: スカイ（無邪気）*/
+.persona-p9  { --pc: #1d4ed8; --pc-soft: #eff6ff; } /* レガリア: ディープブルー（権威）*/
+.persona-p10 { --pc: #eab308; --pc-soft: #fefce8; } /* リュミエ: ゴールド（自由・光）*/
+.persona-p11 { --pc: #059669; --pc-soft: #ecfdf5; } /* ジャスティア: ティール（正義）*/
+.persona-p12 { --pc: #94a3b8; --pc-soft: #f8fafc; } /* 観測体オメガ: シルバー（機械的）*/
+.persona-p13 { --pc: #dc2626; --pc-soft: #fff1f2; } /* ゼロ・カオス: クリムゾン（虚無）*/
+
+/* ペルソナ一覧ページ: カード左アクセントボーダー + バッジ色 */
+.persona-directory-card.persona-p0,
+.persona-directory-card.persona-p1,
+.persona-directory-card.persona-p2,
+.persona-directory-card.persona-p3,
+.persona-directory-card.persona-p4,
+.persona-directory-card.persona-p5,
+.persona-directory-card.persona-p6,
+.persona-directory-card.persona-p7,
+.persona-directory-card.persona-p8,
+.persona-directory-card.persona-p9,
+.persona-directory-card.persona-p10,
+.persona-directory-card.persona-p11,
+.persona-directory-card.persona-p12,
+.persona-directory-card.persona-p13 {
+    border-left: 4px solid var(--pc);
+    transition: box-shadow 0.2s, transform 0.2s, border-color 0.2s;
+}
+.persona-directory-card[class*="persona-p"] .persona-directory-type {
+    background: var(--pc-soft);
+    color: var(--pc);
+    border: 1px solid var(--pc);
+}
+.persona-directory-card[class*="persona-p"] .persona-directory-detail-link {
+    color: var(--pc);
+}
+.persona-directory-card[class*="persona-p"]:hover {
+    box-shadow: 0 8px 24px rgba(0,0,0,0.1);
+    transform: translateY(-2px);
+}
+.persona-directory-card[class*="persona-p"] .persona-directory-img {
+    border-bottom: 3px solid var(--pc);
+}
+
+/* 記事ページのペルソナカード: data-persona-id で個性カラーを適用 */
+.persona-card[data-persona-id="0"]  { --pc: #6366f1; --pc-soft: #eef2ff; }
+.persona-card[data-persona-id="1"]  { --pc: #10b981; --pc-soft: #ecfdf5; }
+.persona-card[data-persona-id="2"]  { --pc: #7c3aed; --pc-soft: #ede9fe; }
+.persona-card[data-persona-id="3"]  { --pc: #f97316; --pc-soft: #fff7ed; }
+.persona-card[data-persona-id="4"]  { --pc: #a855f7; --pc-soft: #faf5ff; }
+.persona-card[data-persona-id="5"]  { --pc: #d97706; --pc-soft: #fffbeb; }
+.persona-card[data-persona-id="6"]  { --pc: #ef4444; --pc-soft: #fef2f2; }
+.persona-card[data-persona-id="7"]  { --pc: #64748b; --pc-soft: #f1f5f9; }
+.persona-card[data-persona-id="8"]  { --pc: #0ea5e9; --pc-soft: #f0f9ff; }
+.persona-card[data-persona-id="9"]  { --pc: #1d4ed8; --pc-soft: #eff6ff; }
+.persona-card[data-persona-id="10"] { --pc: #eab308; --pc-soft: #fefce8; }
+.persona-card[data-persona-id="11"] { --pc: #059669; --pc-soft: #ecfdf5; }
+.persona-card[data-persona-id="12"] { --pc: #94a3b8; --pc-soft: #f8fafc; }
+.persona-card[data-persona-id="13"] { --pc: #dc2626; --pc-soft: #fff1f2; }
+
+.persona-card[data-persona-id] {
+    border-left-width: 3px;
+    border-left-color: var(--pc, var(--color-border));
+}
+.persona-card[data-persona-id] .persona-avatar {
+    border-color: var(--pc, var(--color-border-light));
+    box-shadow: 0 0 0 2px var(--pc-soft, transparent);
+}
+.persona-card[data-persona-id] .persona-trigger:hover {
+    background: var(--pc-soft, var(--color-bg));
+}
+.persona-card[data-persona-id] .persona-content {
+    border-top-color: var(--pc, var(--color-border-light));
+    background: var(--pc-soft, transparent);
+}
+.persona-card[data-persona-id] .persona-name {
+    color: var(--pc, var(--color-text));
+}
+
+/* ダークモード対応: persona カードの背景は透過 */
+:root[data-theme="dark"] .persona-card[data-persona-id] .persona-content {
+    background: color-mix(in srgb, var(--pc-soft, #f0f0f0) 12%, transparent);
 }

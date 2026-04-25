@@ -11,7 +11,7 @@
 <section class="personas-page">
     <div class="personas-directory">
         {% for p in personas %}
-        <article class="persona-directory-card">
+        <article class="persona-directory-card persona-p{{ p.id }}">
             <a href="/personas/{{ p.id }}" class="persona-directory-link">
                 <img src="{{ p.image_url }}" alt="{{ p.name }} のイメージ" class="persona-directory-img" loading="lazy">
             </a>
