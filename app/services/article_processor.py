@@ -59,8 +59,11 @@ def process_rss_to_site_article(item: NewsItem, force: bool = False) -> bool:
             t2 = translate_title_to_japanese(item.title or "")
             if t2 and text_mainly_japanese(t2):
                 title_ja = t2
-    if item.source in FOREIGN_SOURCES and (not text_mainly_japanese(title_ja) or not text_mainly_japanese(summary_ja)):
-        return False  # 海外は日本語にならない場合は保存しない（無駄なAPI連打はしない）
+    # 海外ニュースは従来どおり。論文（arXiv/Nature 等）は FOREIGN_SOURCES に入っていないが、
+    # 英語タイトル・要約のまま掲載されるとサイト方針に反するため同様に弾く。
+    strict_ja = item.source in FOREIGN_SOURCES or item.category == "研究・論文"
+    if strict_ja and (not text_mainly_japanese(title_ja) or not text_mainly_japanese(summary_ja)):
+        return False  # 日本語にならない場合は保存しない（無駄なAPI連打はしない）
 
     # タイトルは「元のタイトルをベースに、事実を変えず、誇張せず、必要なら少しだけ分かりやすく」整える
     # 論文（研究・論文）は見出し加工を避け、元タイトルを基本そのまま使う
@@ -229,12 +232,22 @@ def process_startup_articles(rss_items: list[NewsItem] | None = None, trend_keyw
 
     cached_ids = get_cached_article_ids()
     uncached = [x for x in rss_items if x.id not in cached_ids]
-    if uncached:
-        ranked = rank_and_filter_articles(uncached, trend_keywords, max_articles=15)
-        force = False
-    else:
-        ranked = rank_and_filter_articles(rss_items, trend_keywords, max_articles=15)
-        force = True
+    base_pool = uncached if uncached else rss_items
+    force = bool(not uncached)
+
+    # --- [AI選定] 有効時: 起動時の2本もAIで選定 ---
+    from .article_selector import select_articles_with_ai, is_ai_curation_enabled
+    if is_ai_curation_enabled() and base_pool:
+        from .keyword_scorer import lightweight_filter
+        prefiltered = [x for x in base_pool if lightweight_filter(x.title, x.summary, x.category)]
+        if prefiltered:
+            base_pool = select_articles_with_ai(
+                prefiltered,
+                max_select=20,
+                trend_keywords=trend_keywords,  # 呼び出し元のトレンドも渡す（内部でも自動取得）
+            )
+
+    ranked = rank_and_filter_articles(base_pool, trend_keywords, max_articles=15)
 
     existing_norm = {_normalize_title_for_dedup(a.title) for a in load_all()}
     seen_norm: set[str] = set()
@@ -287,6 +300,22 @@ def process_new_rss_articles(
     # 新規候補があれば新規を優先、なければ既存も含めて上書き取り込み（force=True）
     base_candidates = uncached if uncached else rss_items
     force = False if uncached else True
+
+    # --- [AI選定] 有効時: 候補を OpenAI で一括評価して絞り込む ---
+    from .article_selector import select_articles_with_ai, is_ai_curation_enabled
+    if is_ai_curation_enabled() and base_candidates:
+        # 軽量フィルタを通過したものだけを選定対象にする（コスト削減）
+        from .keyword_scorer import lightweight_filter
+        prefiltered = [
+            x for x in base_candidates
+            if lightweight_filter(x.title, x.summary, x.category)
+        ]
+        if prefiltered:
+            base_candidates = select_articles_with_ai(
+                prefiltered,
+                max_select=max(max_per_run * 4, 30),
+                trend_keywords=trend_keywords,  # 呼び出し元のトレンドも渡す（内部でも自動取得）
+            )
 
     # 論文を増やしたい要件のため「論文とニュースを同じ上位N件で奪い合う」方式は避け、
     # 論文を先に別枠で確保→残り枠をニュースで埋める。

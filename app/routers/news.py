@@ -1600,6 +1600,31 @@ async def api_seed_articles():
     return {"status": "ok", "added": added, "total": total}
 
 
+@router.post("/api/admin/seed-curated")
+async def api_seed_curated(
+    request: Request,
+    x_admin_secret: str | None = Header(None, alias="X-Admin-Secret"),
+    max: int = 30,
+):
+    """
+    curated_articles.json の記事を既存パイプラインで記事化する（管理者のみ）。
+    Claude Code が選定した記事リストを処理する用途。
+    """
+    if not _is_admin(request, x_admin_secret):
+        raise HTTPException(status_code=403, detail="管理者のみ利用できます")
+    if is_rss_and_ai_disabled():
+        raise HTTPException(status_code=503, detail="この環境ではAI要約は無効です。")
+    import asyncio
+    from app.services.article_seed_from_curated import process_curated_articles
+    from app.services.explanation_cache import get_cached_article_ids
+    added = await asyncio.get_event_loop().run_in_executor(
+        None, lambda: process_curated_articles(max_per_run=max)
+    )
+    NewsAggregator.get_news(force_refresh=True)
+    total = len(get_cached_article_ids())
+    return {"status": "ok", "added": added, "total": total}
+
+
 @router.post("/api/admin/sync-meta")
 async def api_admin_sync_meta(
     request: Request,

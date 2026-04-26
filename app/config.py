@@ -50,6 +50,10 @@ class Settings:
     # RapidAPI（Super Duper Trends 等）。未設定ならGoogleトレンドRSSのみ使用
     RAPIDAPI_KEY: str = os.getenv("RAPIDAPI_KEY", "").strip()
     RAPIDAPI_SUPER_DUPER_HOST: str = os.getenv("RAPIDAPI_SUPER_DUPER_HOST", "super-duper-trends.p.rapidapi.com").strip()
+    # OpenAI による記事選定（キュレーション）。true にすると RSS 候補を AI で評価してから記事化
+    AI_CURATION_ENABLED: str = os.getenv("AI_CURATION_ENABLED", "false")
+    # 選定に使うモデル（未設定なら OPENAI_MODEL と同じ gpt-4o-mini）
+    OPENAI_CURATION_MODEL: str = os.getenv("OPENAI_CURATION_MODEL", "")
 
 settings = Settings()
 

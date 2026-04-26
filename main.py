@@ -47,6 +47,28 @@ def _scheduled_2000_rss_and_ai_daily():
         logger.warning("AI日次コンテンツ生成に失敗: %s", e)
 
 
+def _scheduled_claude_research_and_seed():
+    """Claude Code CLI でウェブリサーチ → curated_articles.json 更新 → 記事化パイプラインに投入。
+    claude CLI がない環境（Render 本番など）では自動スキップする。"""
+    try:
+        from app.services.claude_researcher import is_claude_available, run_claude_research
+        if not is_claude_available():
+            logger.debug("claude CLI が未インストールのためリサーチをスキップ")
+            return
+        ok = run_claude_research(n=15, timeout=480)
+        if not ok:
+            return
+        from app.services.article_seed_from_curated import process_curated_articles
+        count = process_curated_articles(max_per_run=15)
+        if count > 0:
+            NewsAggregator.get_news(force_refresh=True)
+            logger.info("Claude リサーチ→記事化完了: %d 件追加", count)
+        else:
+            logger.info("Claude リサーチ: 新規記事なし（重複または生成失敗）")
+    except Exception as e:
+        logger.warning("Claude リサーチタスクでエラー: %s", e)
+
+
 def _scheduled_sync_list_cache_from_db():
     """一覧メモリキャッシュを DB から再構築（再起動なしで新着を表示させる）"""
     try:
@@ -157,6 +179,19 @@ async def lifespan(app: FastAPI):
             CronTrigger(hour=20, minute=0, timezone=JST),
             id="rss_2000_and_ai_daily",
         )
+        # Claude ウェブリサーチ: 8:00 / 13:00 / 19:00 の3回
+        # claude CLI がない環境（Render 本番）では _scheduled_claude_research_and_seed 内で自動スキップ
+        for cr_id, cr_hour, cr_minute in [
+            ("claude_research_0800", 8, 0),
+            ("claude_research_1300", 13, 0),
+            ("claude_research_1900", 19, 0),
+        ]:
+            scheduler.add_job(
+                _scheduled_claude_research_and_seed,
+                CronTrigger(hour=cr_hour, minute=cr_minute, timezone=JST),
+                id=cr_id,
+            )
+        logger.info("Claude ウェブリサーチ: 8:00 / 13:00 / 19:00 JST に設定")
     scheduler.start()
     # 起動直後のメモリをログ（Render 512MB 制限の確認用）
     try:
