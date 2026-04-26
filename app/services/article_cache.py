@@ -113,7 +113,7 @@ def load_all() -> list[NewsItem]:
             category=row["category"] or "総合",
             image_url=row["image_url"],
         ))
-        return items
+    return items
 
 
 def save_articles_batch(items: list[NewsItem]) -> int:

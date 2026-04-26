@@ -1608,12 +1608,30 @@ async def api_seed_curated(
 ):
     """
     curated_articles.json の記事を既存パイプラインで記事化する（管理者のみ）。
-    Claude Code が選定した記事リストを処理する用途。
+    リクエストボディに JSON 配列を渡すと curated_articles.json を上書きしてから処理する。
+    ボディなし（空）の場合はサーバー上の既存 curated_articles.json をそのまま処理する。
     """
     if not _is_admin(request, x_admin_secret):
         raise HTTPException(status_code=403, detail="管理者のみ利用できます")
     if is_rss_and_ai_disabled():
         raise HTTPException(status_code=503, detail="この環境ではAI要約は無効です。")
+
+    # ボディに JSON 配列が渡された場合、サーバー上の curated_articles.json を上書きする
+    from pathlib import Path as _Path
+    _curated_file = _Path(__file__).resolve().parent.parent.parent / "curated_articles.json"
+    try:
+        body_bytes = await request.body()
+        if body_bytes and body_bytes.strip():
+            articles_data = json.loads(body_bytes)
+            if isinstance(articles_data, list) and articles_data:
+                _curated_file.write_text(
+                    json.dumps(articles_data, ensure_ascii=False, indent=2),
+                    encoding="utf-8",
+                )
+                logger.info("seed-curated: %d 件の記事リストをアップロードしました", len(articles_data))
+    except Exception as e:
+        logger.warning("seed-curated: ボディ解析エラー（既存ファイルをそのまま使用）: %s", e)
+
     import asyncio
     from app.services.article_seed_from_curated import process_curated_articles
     from app.services.explanation_cache import get_cached_article_ids

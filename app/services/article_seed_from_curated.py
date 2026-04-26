@@ -33,6 +33,19 @@ JST = ZoneInfo("Asia/Tokyo")
 CURATED_FILE = Path(__file__).resolve().parent.parent.parent / "curated_articles.json"
 HISTORY_FILE = Path(__file__).resolve().parent.parent.parent / "curated_history.json"
 
+_VALID_CATEGORIES = {"国内", "国際", "テクノロジー", "政治・社会", "スポーツ", "エンタメ", "研究・論文"}
+_CATEGORY_MAP = {
+    "社会": "政治・社会",
+    "政策": "政治・社会",
+    "経済": "政治・社会",
+    "AI": "テクノロジー",
+    "AI・テクノロジー": "テクノロジー",
+    "テック": "テクノロジー",
+    "科学": "研究・論文",
+    "ビジネス": "政治・社会",
+    "環境": "政治・社会",
+}
+
 
 # ── 重複履歴の管理 ────────────────────────────────────────────────────────────
 
@@ -100,6 +113,12 @@ def load_curated_articles(path: Optional[Path] = None) -> list[NewsItem]:
         except Exception:
             published = datetime.now(JST).replace(tzinfo=None)
 
+        raw_cat = (entry.get("category") or "").strip()
+        category = _CATEGORY_MAP.get(raw_cat, raw_cat)
+        if category not in _VALID_CATEGORIES:
+            logger.warning("未知のカテゴリ '%s' -> 'テクノロジー' に変換", raw_cat)
+            category = "テクノロジー"
+
         items.append(NewsItem(
             id=item_id,
             title=title,
@@ -107,7 +126,7 @@ def load_curated_articles(path: Optional[Path] = None) -> list[NewsItem]:
             summary=entry.get("summary") or "",
             published=published,
             source=entry.get("source") or "Claude Code選定",
-            category=entry.get("category") or "総合",
+            category=category,
             image_url=entry.get("image_url") or None,
         ))
 

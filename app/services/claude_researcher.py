@@ -37,7 +37,7 @@ JSON 形式（配列のみ、説明文不要）:
     "url": "実在する記事の URL",
     "summary": "100〜150 字の日本語要約",
     "source": "媒体名",
-    "category": "テクノロジー|経済|政策|社会|研究・論文|国際|AI のいずれか",
+    "category": "テクノロジー|国際|国内|政治・社会|研究・論文|エンタメ|スポーツ のいずれか",
     "published": "YYYY-MM-DDTHH:MM:SS",
     "image_url": null
   }}
@@ -50,6 +50,21 @@ JSON 形式（配列のみ、説明文不要）:
 - 研究・論文はカテゴリを必ず「研究・論文」にする
 - スポーツ速報・訃報・芸能ゴシップは除外
 - URL は必ず実在する記事の URL（架空 URL 禁止）
+
+【重要】以下のメディアは本文取得が403エラーになるため選ばないこと:
+- bloomberg.com（有料・ペイウォール）
+- wsj.com（有料・ペイウォール）
+- ft.com（有料・ペイウォール）
+- nytimes.com（有料・ペイウォール）
+- economist.com（有料・ペイウォール）
+代わりに、以下のような無料で本文を読めるメディアを優先すること:
+- nhk.or.jp / www3.nhk.or.jp
+- reuters.com / apnews.com / afpbb.com
+- techcrunch.com / theverge.com / wired.com
+- nikkei.com（見出し記事は可）/ japan-times.co.jp
+- arxiv.org / nature.com（オープンアクセス論文）
+- nasa.gov / jpl.nasa.gov / sciencedaily.com
+- bbc.com / cnn.com / reuters.com
 
 {n} 件の JSON を {curated_file} に書き込んで作業を完了してください。
 """
@@ -98,27 +113,34 @@ def run_claude_research(n: int = 15, timeout: int = 480) -> bool:
         curated_file=str(CURATED_FILE).replace("\\", "/"),
     )
 
-    cmd = [
-        cmd_path,
-        "-p", prompt,
+    # プロンプトは stdin 経由で渡す（Windows で | などのシェルメタ文字を含むと
+    # cmd.exe に誤解釈されるため、コマンドライン引数には入れない）
+    base_cmd = [
         "--dangerously-skip-permissions",
         "--allowed-tools", "WebSearch,Write",
         "--max-budget-usd", "0.80",
+        "-p",          # stdin から読む（positional prompt なし）
+        "--input-format", "text",
     ]
+    # Windows では .cmd ファイルを cmd /c でラップしないと実行できない
+    if sys.platform == "win32":
+        cmd = ["cmd", "/c", cmd_path] + base_cmd
+    else:
+        cmd = [cmd_path] + base_cmd
 
     logger.info("Claude リサーチ開始: %d 件 (タイムアウト=%d 秒)", n, timeout)
 
     try:
-        # Windows では .cmd ファイルを shell 経由で起動する
-        use_shell = sys.platform == "win32"
         proc = subprocess.run(
             cmd,
+            input=prompt,          # stdin にプロンプトを流す
             capture_output=True,
             text=True,
+            encoding="utf-8",
             timeout=timeout,
             cwd=str(PROJECT_ROOT),
             env=os.environ.copy(),
-            shell=use_shell,
+            shell=False,
         )
 
         if proc.returncode != 0:
