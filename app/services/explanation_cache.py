@@ -94,7 +94,8 @@ def _is_bad_fallback_cache(blocks: list) -> bool:
 
 
 def get_cached(article_id: str) -> Optional[dict]:
-    """キャッシュから取得。なければNone。Firestore 時はメモリキャッシュ（最大200件）で同一記事の再読を削減"""
+    """キャッシュから取得。なければNone。Firestore 時はメモリキャッシュ（最大200件）で同一記事の再読を削減。
+    Firestore のクォータ超過・エラー時は例外を握りつぶして None を返す（500エラーを防ぐ）。"""
     global _explanation_cache
     if _use_firestore():
         with _explanation_cache_lock:
@@ -102,7 +103,15 @@ def get_cached(article_id: str) -> Optional[dict]:
         if cached is not None:
             return cached
         from .firestore_store import firestore_get_cached
-        result = firestore_get_cached(article_id)
+        try:
+            result = firestore_get_cached(article_id)
+        except Exception as e:
+            import logging as _logging
+            _logging.getLogger(__name__).warning(
+                "get_cached: Firestore 読み取り失敗（クォータ超過の可能性）article_id=%s: %s",
+                article_id, e,
+            )
+            return None
         if result is not None:
             with _explanation_cache_lock:
                 if len(_explanation_cache) >= _explanation_cache_max:
