@@ -30,11 +30,22 @@ def summary_looks_english(summary: str) -> bool:
 
 
 def text_mainly_japanese(text: str) -> bool:
-    """テキストが主に日本語か（ひらがな・カタカナ・漢字の割合）"""
+    """テキストが主に日本語か（ひらがな・カタカナ・漢字・CJK記号の割合）"""
     if not text or len(text) < 5:
         return True
     sample = text[:500]
-    ja_count = sum(1 for c in sample if '\u3040' <= c <= '\u309f' or '\u30a0' <= c <= '\u30ff' or '\u4e00' <= c <= '\u9fff')
+
+    def _ja_char(c: str) -> bool:
+        if len(c) != 1:
+            return False
+        if "\u3040" <= c <= "\u309f" or "\u30a0" <= c <= "\u30ff" or "\u4e00" <= c <= "\u9fff":
+            return True
+        # CJK 記号・句読点（【】「」など）。見出しだけが記号主体のときの誤判定を減らす
+        if "\u3000" <= c <= "\u303f":
+            return True
+        return False
+
+    ja_count = sum(1 for c in sample if _ja_char(c))
     return ja_count / len(sample) > 0.3
 
 

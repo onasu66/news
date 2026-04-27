@@ -31,6 +31,20 @@ PERSONA_LOGIC_IDS = [p["id"] for p in PERSONAS if p.get("type") == "logic"]
 PERSONA_ENT_IDS = [p["id"] for p in PERSONAS if p.get("type") == "entertainment"]
 
 
+def _valid_text_explain_blocks(blocks: object) -> bool:
+    """API が返した blocks を採用してよいか。空配列は all(...) が True になるため明示的に拒否する。"""
+    if not isinstance(blocks, list) or len(blocks) == 0:
+        return False
+    if not all(
+        isinstance(x, dict)
+        and x.get("type") in ("text", "explain")
+        and "content" in x
+        for x in blocks
+    ):
+        return False
+    return any(str(x.get("content", "")).strip() for x in blocks)
+
+
 def get_image_url(path: str, width: int = 800, height: int = 450) -> str:
     """CDN経由で画像URLを生成（プレースホルダー用）"""
     if path and path.startswith("http"):
@@ -176,7 +190,7 @@ def explain_article_long_with_bubbles(
             raw = response.choices[0].message.content or "{}"
             data = json.loads(raw)
             blocks = data.get("blocks", data if isinstance(data, list) else [])
-            if isinstance(blocks, list) and all(isinstance(x, dict) and x.get("type") in ("text", "explain") and "content" in x for x in blocks):
+            if _valid_text_explain_blocks(blocks):
                 return blocks
         except Exception as schema_err:
             logger.info("長文吹き出し strict schema スキップ: %s", str(schema_err)[:80])
@@ -205,10 +219,10 @@ def explain_article_long_with_bubbles(
         if m:
             raw = m.group(0)
         data = json.loads(raw.strip())
-        if isinstance(data, list):
+        if isinstance(data, list) and _valid_text_explain_blocks(data):
             return data
         blocks = data.get("blocks", []) if isinstance(data, dict) else []
-        if isinstance(blocks, list) and all(isinstance(x, dict) and x.get("type") in ("text", "explain") and "content" in x for x in blocks):
+        if _valid_text_explain_blocks(blocks):
             return blocks
     except (json.JSONDecodeError, Exception) as e:
         logger.warning("長文吹き出し パース失敗: %s", e)
@@ -414,7 +428,7 @@ def expand_navigator_to_article(
             raw = response.choices[0].message.content or "{}"
             data = json.loads(raw)
             blocks = data.get("blocks", data if isinstance(data, list) else [])
-            if isinstance(blocks, list) and all(isinstance(x, dict) and x.get("type") in ("text", "explain") and "content" in x for x in blocks):
+            if _valid_text_explain_blocks(blocks):
                 return blocks
         except Exception as schema_err:
             logger.info("expand_navigator strict schema スキップ: %s", str(schema_err)[:80])
@@ -443,10 +457,10 @@ def expand_navigator_to_article(
         if m:
             raw = m.group(0)
         data = json.loads(raw.strip())
-        if isinstance(data, list):
+        if isinstance(data, list) and _valid_text_explain_blocks(data):
             return data
         blocks = data.get("blocks", []) if isinstance(data, dict) else []
-        if isinstance(blocks, list) and all(isinstance(x, dict) and x.get("type") in ("text", "explain") and "content" in x for x in blocks):
+        if _valid_text_explain_blocks(blocks):
             return blocks
     except (json.JSONDecodeError, Exception) as e:
         logger.warning("expand_navigator パース失敗: %s", e)
@@ -575,7 +589,7 @@ blocks配列のJSONのみ返す。"""
             # スキーマは {"blocks": [...]} 形式
             data = json.loads(raw)
             blocks = data.get("blocks", data if isinstance(data, list) else [])
-            if isinstance(blocks, list) and all(isinstance(x, dict) and x.get("type") in ("text", "explain") and "content" in x for x in blocks):
+            if _valid_text_explain_blocks(blocks):
                 return blocks
         except Exception as schema_err:
             logger.info("構造化出力スキップ（%s）、通常モードで再試行", str(schema_err)[:80])
@@ -608,7 +622,12 @@ blocks配列のJSONのみ返す。"""
         if m:
             raw = m.group(0)
         data = json.loads(raw.strip())
-        if isinstance(data, list) and all(isinstance(x, dict) and "type" in x and "content" in x for x in data):
+        if (
+            isinstance(data, list)
+            and len(data) > 0
+            and all(isinstance(x, dict) and "type" in x and "content" in x for x in data)
+            and any(str(x.get("content", "")).strip() for x in data)
+        ):
             return data
         logger.warning(
             "ミドルマン解説: 構造検証失敗（type/contentが不正）。parsed=%s",
