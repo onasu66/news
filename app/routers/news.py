@@ -307,24 +307,25 @@ async def sitemap_xml(request: Request):
     """SEO用 sitemap.xml（一覧は NewsAggregator キャッシュ利用で Firestore 読取を抑える）"""
     site_url = _get_site_url(request)
     articles = NewsAggregator.get_news()
+    today = datetime.now().date().isoformat()
     lines = [
         '<?xml version="1.0" encoding="UTF-8"?>',
         '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">',
-        f"  <url><loc>{site_url}/</loc><lastmod>{datetime.now().date().isoformat()}</lastmod><changefreq>hourly</changefreq><priority>1.0</priority></url>",
-        f"  <url><loc>{site_url}/news</loc><lastmod>{datetime.now().date().isoformat()}</lastmod><changefreq>hourly</changefreq><priority>0.95</priority></url>",
-        f"  <url><loc>{site_url}/ai</loc><lastmod>{datetime.now().date().isoformat()}</lastmod><changefreq>daily</changefreq><priority>0.7</priority></url>",
-        f"  <url><loc>{site_url}/search</loc><lastmod>{datetime.now().date().isoformat()}</lastmod><changefreq>daily</changefreq><priority>0.6</priority></url>",
+        f"  <url><loc>{site_url}/</loc><lastmod>{today}</lastmod><changefreq>hourly</changefreq><priority>1.0</priority></url>",
+        f"  <url><loc>{site_url}/news</loc><lastmod>{today}</lastmod><changefreq>hourly</changefreq><priority>1.0</priority></url>",
+        f"  <url><loc>{site_url}/trend</loc><lastmod>{today}</lastmod><changefreq>hourly</changefreq><priority>0.8</priority></url>",
+        f"  <url><loc>{site_url}/search</loc><lastmod>{today}</lastmod><changefreq>daily</changefreq><priority>0.7</priority></url>",
+        f"  <url><loc>{site_url}/ai</loc><lastmod>{today}</lastmod><changefreq>daily</changefreq><priority>0.6</priority></url>",
+        f"  <url><loc>{site_url}/about</loc><lastmod>{today}</lastmod><changefreq>monthly</changefreq><priority>0.5</priority></url>",
+        f"  <url><loc>{site_url}/personas</loc><lastmod>{today}</lastmod><changefreq>monthly</changefreq><priority>0.5</priority></url>",
     ]
     for a in articles[:5000]:
-        lastmod = ""
         try:
-            if getattr(a, "published", None) and hasattr(a.published, "date"):
-                lastmod = a.published.date().isoformat()
+            lastmod = a.published.date().isoformat() if getattr(a, "published", None) and hasattr(a.published, "date") else today
         except Exception:
-            lastmod = ""
-        if not lastmod:
-            lastmod = datetime.now().date().isoformat()
-        lines.append(f"  <url><loc>{site_url}/topic/{a.id}</loc><lastmod>{lastmod}</lastmod><changefreq>weekly</changefreq><priority>0.8</priority></url>")
+            lastmod = today
+        priority = "0.9" if getattr(a, "category", "") == "研究・論文" else "0.8"
+        lines.append(f"  <url><loc>{site_url}/topic/{a.id}</loc><lastmod>{lastmod}</lastmod><changefreq>never</changefreq><priority>{priority}</priority></url>")
     lines.append("</urlset>")
     return Response(content="\n".join(lines), media_type="application/xml; charset=utf-8")
 

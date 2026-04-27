@@ -379,16 +379,13 @@ class NewsAggregator:
             return
 
         if not cls._news_cache:
-            items = []
-            for nid in processed_ids:
-                try:
-                    item = load_by_id(nid)
-                except Exception:
-                    item = None
-                if item:
-                    items.append(item)
+            try:
+                all_items = load_all()
+            except Exception as e:
+                cls._set_db_backoff("sync_load_all", e)
+                return
             cls._news_cache = sorted(
-                items,
+                all_items,
                 key=lambda x: x.published or datetime.min,
                 reverse=True,
             )[:PAGE_DISPLAY_LIMIT]
