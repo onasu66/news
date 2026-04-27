@@ -272,6 +272,7 @@ async def debug_storage():
 @app.get("/api/debug/articles-status")
 async def debug_articles_status():
     """記事が表示されない原因の確認用。保存記事数・AI解説済み数・表示対象数を返す。"""
+    import traceback
     from app.services.article_cache import load_all
     from app.services.explanation_cache import get_cached_article_ids
     try:
@@ -279,14 +280,26 @@ async def debug_articles_status():
         storage = "firestore" if use_firestore() else "sqlite"
     except Exception:
         storage = "sqlite"
-    all_articles = load_all()
-    processed_ids = get_cached_article_ids()
+    all_articles = []
+    processed_ids = set()
+    load_all_error = None
+    get_ids_error = None
+    try:
+        all_articles = load_all()
+    except Exception as e:
+        load_all_error = f"{type(e).__name__}: {e}\n{traceback.format_exc()}"
+    try:
+        processed_ids = get_cached_article_ids()
+    except Exception as e:
+        get_ids_error = f"{type(e).__name__}: {e}\n{traceback.format_exc()}"
     displayable = [a for a in all_articles if a.id in processed_ids]
     return {
         "storage": storage,
         "articles_total": len(all_articles),
         "with_ai_explanation": len(processed_ids),
         "displayable": len(displayable),
+        "load_all_error": load_all_error,
+        "get_ids_error": get_ids_error,
         "message": "表示されるのは「記事が保存されている」かつ「AI解説済み」のものだけです。",
     }
 
