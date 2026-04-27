@@ -55,11 +55,11 @@ def _scheduled_claude_research_and_seed():
         if not is_claude_available():
             logger.debug("claude CLI が未インストールのためリサーチをスキップ")
             return
-        ok = run_claude_research(n=15, timeout=480)
+        ok = run_claude_research(n=30, n_news=15, n_papers=15, timeout=600)
         if not ok:
             return
         from app.services.article_seed_from_curated import process_curated_articles
-        count = process_curated_articles(max_per_run=15)
+        count = process_curated_articles(max_per_run=30)
         if count > 0:
             NewsAggregator.get_news(force_refresh=True)
             logger.info("Claude リサーチ→記事化完了: %d 件追加", count)

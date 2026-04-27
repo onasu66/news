@@ -320,8 +320,18 @@ class NewsAggregator:
                 finally:
                     try:
                         processed_ids = get_cached_article_ids()
-                        # force_refresh 終了後の再読は 1 回だけ
-                        all_items = load_all()
+                        # 差分ロード: 処理中に追加された記事のみ load_by_id で補完する。
+                        # load_all()（最大800読み取り）の二重呼び出しを避けて無料枠を節約する。
+                        existing_ids = {x.id for x in all_items}
+                        for nid in processed_ids:
+                            if nid not in existing_ids:
+                                try:
+                                    item = load_by_id(nid)
+                                    if item:
+                                        all_items.append(item)
+                                        existing_ids.add(nid)
+                                except Exception:
+                                    pass
                     except Exception as e:
                         cls._set_db_backoff("refresh_reload", e)
                         return cls._news_cache or []

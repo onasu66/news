@@ -67,12 +67,10 @@ def generate_all_explanations(article_id: str, title: str, content: str, categor
         from app.services.ai_service import PERSONAS
         display_persona_ids = list(range(min(3, len(PERSONAS))))
 
-    # 3) 記事展開・3人格・投票・深掘り（論文時は知識グラフ/クイズ）を並列生成
+    # 3) 記事展開・投票・深掘り（論文時は知識グラフ/クイズ）を並列生成
+    #    ペルソナコメントは順番に生成（前のキャラのコメントを渡して言葉の重複を防ぐ）
     def do_blocks():
         return expand_navigator_to_article(navigator_blocks, title)
-
-    def do_persona(pid: int):
-        return get_persona_opinion(title, summary_text, pid)
 
     def do_vote():
         return generate_vote_question(title, summary_text)
@@ -95,19 +93,26 @@ def generate_all_explanations(article_id: str, title: str, content: str, categor
 
     with ThreadPoolExecutor(max_workers=16) as ex:
         fut_blocks = ex.submit(do_blocks)
-        fut_personas = {ex.submit(do_persona, pid): i for i, pid in enumerate(display_persona_ids)}
         fut_vote = ex.submit(do_vote)
         fut_deep = ex.submit(do_deep)
         fut_paper_graph = ex.submit(do_paper_graph) if is_paper else None
         fut_paper_quiz = ex.submit(do_paper_quiz) if is_paper else None
 
-        blocks = fut_blocks.result()
-        for f in as_completed(fut_personas):
-            idx = fut_personas[f]
+        # ペルソナは順番に生成: 前のコメントを other_comments として渡し重複を防ぐ
+        generated_comments: list[str] = []
+        for slot_idx, pid in enumerate(display_persona_ids):
             try:
-                personas_3[idx] = f.result() or ""
+                comment = get_persona_opinion(
+                    title, summary_text, pid,
+                    other_comments=generated_comments if generated_comments else None,
+                ) or ""
             except Exception:
-                pass
+                comment = ""
+            personas_3[slot_idx] = comment
+            if comment:
+                generated_comments.append(comment)
+
+        blocks = fut_blocks.result()
         try:
             vote_data = fut_vote.result() or {}
         except Exception:

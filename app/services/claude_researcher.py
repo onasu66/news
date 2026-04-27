@@ -27,7 +27,7 @@ CURATED_FILE = PROJECT_ROOT / "curated_articles.json"
 _PROMPT_TEMPLATE = """\
 今日は {today}（日本時間）です。
 Google 検索と X のトレンドを調べ、「知リポAI」ニュースサイト（20〜40代の知的好奇心が高い日本語読者向け）に
-ふさわしい最新ニュース・論文を {n} 件リサーチして選定し、
+ふさわしい記事を合計 {n} 件（ニュース {n_news} 件＋学術論文 {n_papers} 件）リサーチして選定し、
 {curated_file} に以下の JSON 形式で書き込んでください（既存ファイルを上書き）。
 
 JSON 形式（配列のみ、説明文不要）:
@@ -43,30 +43,41 @@ JSON 形式（配列のみ、説明文不要）:
   }}
 ]
 
-選定基準:
-- 今話題のトレンドキーワードに関連する記事を最優先
-- 日本関連 70% ／ 海外 30%
-- ジャンルを分散（テクノロジー・経済・科学・政策・論文など）
-- 研究・論文はカテゴリを必ず「研究・論文」にする
-- スポーツ速報・訃報・芸能ゴシップは除外
-- URL は必ず実在する記事の URL（架空 URL 禁止）
+━━━━━━━━━━━━━━━━━━━━
+【ニュース {n_news} 件の選定基準】
+━━━━━━━━━━━━━━━━━━━━
+- 日本のニュース約 70%（{n_news} 件中 10 件前後）／ 海外ニュース約 30%（4〜5 件）
+- 今 X・Google で話題になっているトレンドに合致するものを最優先
+- 「へえ、そうなんだ」と思わせる知的好奇心をくすぐるニュースを選ぶ
+- カテゴリは テクノロジー / 国内 / 国際 / 政治・社会 / エンタメ / スポーツ から選ぶ（研究・論文は禁止）
+- スポーツ速報・訃報・芸能ゴシップ・選挙速報は除外
+- URL は必ず実在するニュース記事の URL（架空 URL 禁止）
 
-【重要】以下のメディアは本文取得が403エラーになるため選ばないこと:
-- bloomberg.com（有料・ペイウォール）
-- wsj.com（有料・ペイウォール）
-- ft.com（有料・ペイウォール）
-- nytimes.com（有料・ペイウォール）
-- economist.com（有料・ペイウォール）
-代わりに、以下のような無料で本文を読めるメディアを優先すること:
-- nhk.or.jp / www3.nhk.or.jp
-- reuters.com / apnews.com / afpbb.com
-- techcrunch.com / theverge.com / wired.com
-- nikkei.com（見出し記事は可）/ japan-times.co.jp
-- arxiv.org / nature.com（オープンアクセス論文）
-- nasa.gov / jpl.nasa.gov / sciencedaily.com
-- bbc.com / cnn.com / reuters.com
+━━━━━━━━━━━━━━━━━━━━
+【学術論文 {n_papers} 件の選定基準】
+━━━━━━━━━━━━━━━━━━━━
+- 海外の英語論文を重視（{n_papers} 件中 10 件以上）
+- 以下のような「皆が気になる・検索されやすい」テーマを優先:
+    * 健康・長寿・ダイエット・睡眠・メンタルヘルス
+    * AI・テクノロジー・ロボット
+    * 宇宙・物理・量子
+    * 筋トレ・スポーツ科学・栄養
+    * 経済・行動経済学
+    * 気候変動・環境
+- arXiv / PubMed / Nature / Science / bioRxiv / medRxiv などの査読済み・プレプリント論文
+- カテゴリは必ず「研究・論文」にする
+- URL は必ず実在する論文の URL（架空 URL 禁止）
 
-{n} 件の JSON を {curated_file} に書き込んで作業を完了してください。
+━━━━━━━━━━━━━━━━━━━━
+【共通: 使用禁止メディア（403エラー・有料ペイウォール）】
+━━━━━━━━━━━━━━━━━━━━
+- bloomberg.com / wsj.com / ft.com / nytimes.com / economist.com
+
+【共通: 優先メディア（無料・本文取得可能）】
+- ニュース: nhk.or.jp / reuters.com / apnews.com / afpbb.com / techcrunch.com / theverge.com / bbc.com / cnn.com / japan-times.co.jp
+- 論文: arxiv.org / pubmed.ncbi.nlm.nih.gov / nature.com / science.org / biorxiv.org / medrxiv.org / sciencedaily.com / nasa.gov
+
+合計 {n} 件（ニュース {n_news} 件＋論文 {n_papers} 件）の JSON を {curated_file} に書き込んで作業を完了してください。
 """
 
 
@@ -93,13 +104,15 @@ def _find_claude_cmd() -> str | None:
     return None
 
 
-def run_claude_research(n: int = 15, timeout: int = 480) -> bool:
+def run_claude_research(n: int = 30, n_news: int = 15, n_papers: int = 15, timeout: int = 600) -> bool:
     """
     Claude Code CLI を使って Web リサーチを行い curated_articles.json を更新する。
 
-    n       : 選定する記事数
-    timeout : タイムアウト秒数（デフォルト 8 分）
-    戻り値  : 成功すれば True、失敗すれば False
+    n        : 合計記事数（n_news + n_papers）
+    n_news   : ニュース選定件数
+    n_papers : 論文選定件数
+    timeout  : タイムアウト秒数（デフォルト 10 分）
+    戻り値   : 成功すれば True、失敗すれば False
     """
     cmd_path = _find_claude_cmd()
     if not cmd_path:
@@ -110,6 +123,8 @@ def run_claude_research(n: int = 15, timeout: int = 480) -> bool:
     prompt = _PROMPT_TEMPLATE.format(
         today=today,
         n=n,
+        n_news=n_news,
+        n_papers=n_papers,
         curated_file=str(CURATED_FILE).replace("\\", "/"),
     )
 
@@ -118,7 +133,7 @@ def run_claude_research(n: int = 15, timeout: int = 480) -> bool:
     base_cmd = [
         "--dangerously-skip-permissions",
         "--allowed-tools", "WebSearch,Write",
-        "--max-budget-usd", "0.80",
+        "--max-budget-usd", "1.50",
         "-p",          # stdin から読む（positional prompt なし）
         "--input-format", "text",
     ]

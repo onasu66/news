@@ -696,9 +696,11 @@ def get_persona_opinion(
     title: str,
     content: str,
     persona_id: int,
-    model: str | None = None
+    model: str | None = None,
+    other_comments: list[str] | None = None,
 ) -> str:
-    """指定された人格のAIが記事に対する意見を述べる。最大200文字以下で完結させる。"""
+    """指定された人格のAIが記事に対する意見を述べる。最大200文字以下で完結させる。
+    other_comments: 先に生成済みの他キャラのコメント（重複表現を避けるために渡す）。"""
     if not settings.OPENAI_API_KEY:
         return "（APIキーが設定されていません）"
     if persona_id < 0 or persona_id >= len(PERSONAS):
@@ -712,6 +714,18 @@ def get_persona_opinion(
     if persona_id != 1:
         # 投資家キャラ（ヴォルテ・アセット）以外は、投資・相場の話題に寄りすぎないようにする
         extra_note = "株価や為替、投資・相場の専門的な話題には触れず、この人格ならではの視点に集中してください。"
+
+    # 他キャラのコメントが渡されている場合、同じ言葉・視点を使わないよう指示を追加
+    avoid_note = ""
+    if other_comments:
+        combined = "\n".join(f"・{c}" for c in other_comments if c and c.strip())
+        if combined:
+            avoid_note = (
+                f"\n\n【他のキャラがすでに述べたコメント（重複禁止）】\n{combined}\n"
+                "↑上記と同じ言葉・フレーズ・視点は使わないこと。"
+                "似た表現（例：同じ動詞・名詞・比喩）も避け、この人格だけの独自の言い方をすること。"
+            )
+
     max_len = PERSONA_COMMENT_MAX_LEN
     system_prompt = f"""あなたは「{p['name']}」という人格です。{p['role']}
 他の人格の口調や視点を真似せず、この人格の設定にだけ従ってください。{extra_note}
@@ -720,7 +734,7 @@ def get_persona_opinion(
 冒頭で「〜が起きた」「このニュースは」「今回の件は」など事実説明に入らず、最初の一文から意見や予想に入ること。
 厳守: 出力は本文のみ（見出し・「コメント:」等は付けない）。箇条書きにしない。
 厳守: 出力全体を必ず{max_len}文字以下に収める。長い思考プロセスは書かず、要点だけを1〜3文で完結させる（文末まで書き切る。生成を途中で切らない）。
-思考プロセスの列挙は出力に含めず、結論としての短いコメントだけを書くこと。"""
+思考プロセスの列挙は出力に含めず、結論としての短いコメントだけを書くこと。{avoid_note}"""
     user_prompt = f"""【タイトル】{title}
 
 【本文抜粋】
