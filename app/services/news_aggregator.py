@@ -260,6 +260,11 @@ class NewsAggregator:
     _trends_last_updated: Optional[datetime] = None
     _db_backoff_until: Optional[datetime] = None
     _last_processed_count: int = 0
+    # 論文一覧の Firestore クエリ結果をメモリにキャッシュ（毎リクエスト Firestore を叩くのを防ぐ）
+    _papers_cache: Optional[tuple[list, dict]] = None  # (papers_by_category, pagination)
+    _papers_cache_page: int = 0
+    _papers_cache_at: Optional[datetime] = None
+    _PAPERS_CACHE_TTL_SEC: int = 120  # 2分間はメモリキャッシュを使い回す
 
     @classmethod
     def _set_db_backoff(cls, reason: str, exc: Exception) -> None:
@@ -304,7 +309,7 @@ class NewsAggregator:
                         trend_keywords = [t.keyword for t in trends]
                         min_added = max(0, getattr(settings, "RSS_MIN_ADDED_PER_REFRESH", 30))
                         max_loops = max(1, getattr(settings, "RSS_REFRESH_MAX_LOOPS", 3))
-                        batch_max = max(5, int(getattr(settings, "RSS_PROCESS_MAX_PER_BATCH", 32)))
+                        batch_max = max(5, int(getattr(settings, "RSS_PROCESS_MAX_PER_BATCH", 15)))
                         added_run = 0
                         existing_items_snapshot = list(all_items)
                         for _ in range(max_loops):
@@ -343,6 +348,8 @@ class NewsAggregator:
             cls._last_updated = datetime.now()
             cls._db_backoff_until = None
             cls._last_processed_count = len(processed_ids)
+            # _news_cache が更新されたら論文一覧のメモリキャッシュも破棄（新着を反映させる）
+            cls._invalidate_papers_cache()
         return cls._news_cache
 
     @classmethod
@@ -413,6 +420,9 @@ class NewsAggregator:
         cls._last_updated = datetime.now()
         cls._db_backoff_until = None
         cls._last_processed_count = len(processed_ids)
+        # 論文一覧のメモリキャッシュも破棄（新着が反映されるようにする）
+        if new_ids or gone_ids:
+            cls._invalidate_papers_cache()
 
     @classmethod
     def get_news_by_category(cls, force_refresh: bool = False, page: int = 1) -> tuple[list[tuple[str, list[NewsItem]]], dict]:
@@ -475,12 +485,25 @@ class NewsAggregator:
         return news_by_category, pagination
 
     @classmethod
+    def _invalidate_papers_cache(cls) -> None:
+        """論文一覧メモリキャッシュを明示的に破棄（記事追加・更新後に呼ぶ）"""
+        cls._papers_cache = None
+        cls._papers_cache_page = 0
+        cls._papers_cache_at = None
+
+    @classmethod
     def get_papers_by_category(cls, force_refresh: bool = False, page: int = 1) -> tuple[list[tuple[str, list[NewsItem]]], dict]:
         """
         論文（研究・論文ジャンル）を上位ジャンル（ドメイン）ごとにグループ化。
         戻り値: (papers_by_category, pagination_info)
         papers_by_category は (domain_name, list[NewsItem]) のリスト（表示順は PAPER_DOMAIN_ORDER）。
+        Firestore のクォータ超過時はメモリキャッシュ（TTL 2分）を返し、記事0件にならないようにする。
         """
+        # メモリキャッシュが有効かチェック（TTL 内かつ同じページ）
+        if not force_refresh and cls._papers_cache is not None and cls._papers_cache_page == page:
+            if cls._papers_cache_at and (datetime.now() - cls._papers_cache_at).total_seconds() < cls._PAPERS_CACHE_TTL_SEC:
+                return cls._papers_cache
+
         # Firestore なら /papers は get_news() 経由で load_all(最大2000件) しない。
         # has_explanation & category で直接クエリしてページングすることで、初回遷移を速くする。
         if not force_refresh:
@@ -510,10 +533,16 @@ class NewsAggregator:
                         "has_prev": page > 1,
                         "has_next": page < total_pages,
                     }
+                    # メモリキャッシュに保存
+                    cls._papers_cache = (papers_by_category, pagination)
+                    cls._papers_cache_page = page
+                    cls._papers_cache_at = datetime.now()
                     return papers_by_category, pagination
-            except Exception:
-                # Firestore 側で何か起きても、従来の挙動へフォールバック
-                pass
+            except Exception as _e:
+                # クォータ超過など Firestore 障害時: メモリキャッシュが残っていればそれを返す（記事0件を防ぐ）
+                logger.warning("get_papers_by_category: Firestore クエリ失敗（メモリキャッシュにフォールバック）: %s", _e)
+                if cls._papers_cache is not None:
+                    return cls._papers_cache
 
         news = cls.get_news(force_refresh)
         papers = [a for a in news if a.category == "研究・論文"]
