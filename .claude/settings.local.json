@@ -5,7 +5,10 @@
       "Bash(python *)",
       "Bash(findstr /V \"FutureWarning warnings\")",
       "Bash(findstr /v \"FutureWarning\")",
-      "Bash(findstr /v \"warnings.warn\")"
+      "Bash(findstr /v \"warnings.warn\")",
+      "Bash(git add *)",
+      "Bash(git commit *)",
+      "Bash(git push *)"
     ]
   }
 }
