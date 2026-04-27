@@ -58,6 +58,7 @@ class NewsItem:
     source: str
     category: str  # ジャンル: 総合, 国内, 国際, テクノロジー, 政治・社会, スポーツ, エンタメ
     image_url: Optional[str] = None
+    added_at: Optional[datetime] = None
 
 
 # RSSフィード (URL, 表示名, ジャンル)

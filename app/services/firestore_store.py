@@ -98,6 +98,8 @@ def firestore_load_by_id(article_id: str):
         pub = datetime.fromisoformat(d.get("published", "")) if d.get("published") else datetime.now()
     except Exception:
         pub = datetime.now()
+    added_at_raw = d.get("added_at")
+    added_at = added_at_raw.replace(tzinfo=None) if hasattr(added_at_raw, "replace") else None
     return NewsItem(
         id=doc.id,
         title=d.get("title", ""),
@@ -107,6 +109,7 @@ def firestore_load_by_id(article_id: str):
         source=d.get("source", ""),
         category=d.get("category", "総合"),
         image_url=d.get("image_url"),
+        added_at=added_at,
     )
 
 
@@ -120,6 +123,8 @@ def firestore_load_all():
             pub = datetime.fromisoformat(d.get("published", "")) if d.get("published") else datetime.now()
         except Exception:
             pub = datetime.now()
+        added_at_raw = d.get("added_at")
+        added_at = added_at_raw.replace(tzinfo=None) if hasattr(added_at_raw, "replace") else None
         items.append(NewsItem(
             id=doc.id,
             title=d.get("title", ""),
@@ -129,6 +134,7 @@ def firestore_load_all():
             source=d.get("source", ""),
             category=d.get("category", "総合"),
             image_url=d.get("image_url"),
+            added_at=added_at,
         ))
     return items
 

@@ -295,7 +295,7 @@ class NewsAggregator:
                 return cls._news_cache or []
             cached = [x for x in all_items if x.id in processed_ids][:PAGE_DISPLAY_LIMIT]
             if cached and not force_refresh:
-                cls._news_cache = sorted(cached, key=lambda x: x.published or datetime.min, reverse=True)
+                cls._news_cache = sorted(cached, key=lambda x: x.added_at or x.published or datetime.min, reverse=True)
                 cls._last_updated = datetime.now()
                 cls._db_backoff_until = None
                 cls._last_processed_count = len(processed_ids)
@@ -309,7 +309,7 @@ class NewsAggregator:
                         trend_keywords = [t.keyword for t in trends]
                         min_added = max(0, getattr(settings, "RSS_MIN_ADDED_PER_REFRESH", 30))
                         max_loops = max(1, getattr(settings, "RSS_REFRESH_MAX_LOOPS", 3))
-                        batch_max = max(5, int(getattr(settings, "RSS_PROCESS_MAX_PER_BATCH", 15)))
+                        batch_max = max(5, int(getattr(settings, "RSS_PROCESS_MAX_PER_BATCH", 32)))
                         added_run = 0
                         existing_items_snapshot = list(all_items)
                         for _ in range(max_loops):
@@ -546,7 +546,7 @@ class NewsAggregator:
 
         news = cls.get_news(force_refresh)
         papers = [a for a in news if a.category == "研究・論文"]
-        papers.sort(key=lambda x: x.published or datetime.min, reverse=True)
+        papers.sort(key=lambda x: x.added_at or x.published or datetime.min, reverse=True)
         total = len(papers)
         per_page = ITEMS_PER_PAGE
         total_pages = max(1, (total + per_page - 1) // per_page)

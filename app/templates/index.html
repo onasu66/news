@@ -150,6 +150,7 @@
                 }
             });
             syncGenreTabIndexes();
+            triggerLoadIfSparse();
         });
     });
     syncGenreTabIndexes();
@@ -168,6 +169,16 @@
             tabNodes[ni].focus();
             tabNodes[ni].click();
         });
+    }
+
+    function triggerLoadIfSparse() {
+        if (loading || page >= totalPages) return;
+        var allCards = document.querySelectorAll('.news-card');
+        var visible = 0;
+        for (var i = 0; i < allCards.length; i++) {
+            if (allCards[i].style.display !== 'none') visible++;
+        }
+        if (visible < 8) loadMore();
     }
 
     // Infinite scroll
@@ -210,6 +221,7 @@
             }
             loading = false;
             loader.style.display = 'none';
+            triggerLoadIfSparse();
         }).catch(function() {
             loading = false;
             loader.style.display = 'none';

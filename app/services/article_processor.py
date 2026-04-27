@@ -406,10 +406,10 @@ def process_new_rss_articles(
         from app.config import settings as _ap_settings
 
         papers_per_domain = max(1, int(getattr(_ap_settings, "RSS_PAPERS_PER_DOMAIN", 2)))
-        max_total_papers = max(0, int(getattr(_ap_settings, "RSS_MAX_TOTAL_PAPERS_PER_RUN", 0)))
+        max_total_papers = max(1, int(getattr(_ap_settings, "RSS_MAX_TOTAL_PAPERS_PER_RUN", 18)))
     except Exception:
         papers_per_domain = 2
-        max_total_papers = 0
+        max_total_papers = 18
     paper_budget = min(max_total_papers, max_per_run)
 
     deduped_papers = _dedup(paper_candidates)
