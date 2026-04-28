@@ -444,6 +444,7 @@ async def news_index(request: Request, page: int = 1, keyword: str = ""):
         {
             "request": request,
             "news_by_category": news_by_category,
+            "page_items": page_items,
             "trends": trends,
             "pagination": pagination,
             "added_one": added_one,

@@ -62,8 +62,7 @@
         </div>
 
         <div class="news-grid" id="news-grid">
-            {% for category, items in news_by_category %}
-            {% for item in items %}
+            {% for item in page_items %}
             <article class="news-card animate-fade-in" data-category="{{ item.category }}">
                 <a href="/topic/{{ item.id }}" class="news-card-link">
                     <div class="news-card-body">
@@ -84,7 +83,6 @@
                     </div>
                 </a>
             </article>
-            {% endfor %}
             {% endfor %}
         </div>
 
