@@ -1,272 +1,272 @@
 [
   {
-    "title": "「ロボットが誰もやりたくない仕事を埋める」日本の物理AI実験最前線",
+    "title": "北海道でM6.2の地震発生、浦幌町で震度5強を観測",
+    "url": "https://www.japantimes.co.jp/news/2026/04/27/japan/japan-hokkaido-quake/",
+    "summary": "4月27日午前5時半前、北海道南部でマグニチュード6.2の地震が発生。浦幌町で最大震度5強、新冠町で震度5弱を記録した。気象庁は震源深さ83kmと発表し津波の心配はないとしたが、4月は東北大地震後の揺れが続く状況となっている。",
+    "source": "The Japan Times",
+    "category": "国内",
+    "published": "2026-04-27T05:30:00",
+    "image_url": null
+  },
+  {
+    "title": "東北沖M7.7地震で特別警戒発令—182市町村に「より大きな地震」への備えを促す",
+    "url": "https://www.japantimes.co.jp/news/2026/04/20/japan/earthquake-tsunami-warning/",
+    "summary": "岩手県沖でM7.7の大地震が発生し広域に津波警報が発令。気象庁はM8以上の巨大地震が続発する可能性を指摘し、北海道から千葉まで7都道府県182市町村に稀な特別警戒情報を発動。住民に避難経路の確認を呼びかけた。",
+    "source": "The Japan Times",
+    "category": "国内",
+    "published": "2026-04-20T10:00:00",
+    "image_url": null
+  },
+  {
+    "title": "日銀、政策金利0.75%を据え置き—イラン戦争の不確実性で成長見通しを0.5%に下方修正",
+    "url": "https://www.cnbc.com/2026/04/28/bank-of-japan-keeps-policy-rate-steady-cpi-iran-war-gdp.html",
+    "summary": "日本銀行は政策金利を0.75%に据え置いた。イラン戦争によるエネルギー価格高騰を受け、2026年度の成長見通しを1%から0.5%に下方修正。コアCPIは2.5〜3.0%に上方修正し、3名の政策委員が利上げを主張する異例の事態となった。",
+    "source": "CNBC",
+    "category": "政治・社会",
+    "published": "2026-04-28T12:00:00",
+    "image_url": null
+  },
+  {
+    "title": "マイクロソフト、日本へのAI・サイバーセキュリティ基盤に100億ドル投資を発表",
+    "url": "https://news.microsoft.com/source/asia/2026/04/03/microsoft-deepens-its-commitment-to-japan-with-10-billion-investment-in-ai-infrastructure-cybersecurity-workforce/",
+    "summary": "マイクロソフトが2026〜2029年に日本のAIインフラ・サイバーセキュリティ・人材育成に総額100億ドルの投資を表明。さくらインターネット・SoftBankと協力し、2030年までにIT大手5社と連携してAI人材100万人を育成する計画。",
+    "source": "Microsoft Source Asia",
+    "category": "テクノロジー",
+    "published": "2026-04-03T09:00:00",
+    "image_url": null
+  },
+  {
+    "title": "ソフトバンク・NEC・ホンダ・ソニーが国産物理AI基盤モデル開発会社を設立",
+    "url": "https://www.japantimes.co.jp/business/2026/04/12/companies/softbank-ai-new-firm/",
+    "summary": "日本国内データで訓練された物理AIの基盤モデルを開発する新会社「Japan AI Foundation Model Development」が設立。製造業や機械制御向けに外国クラウドに依存しない国産AIを構築し、2040年に世界市場30%獲得を目指す国家戦略の一環。",
+    "source": "The Japan Times",
+    "category": "テクノロジー",
+    "published": "2026-04-12T10:00:00",
+    "image_url": null
+  },
+  {
+    "title": "日本がAI開発向けに個人情報保護法を緩和—同意なしのデータ共有を解禁",
+    "url": "https://www.theregister.com/2026/04/08/japan_privacy_law_changes_ai/",
+    "summary": "デジタル大臣が「日本を世界で最もAIアプリを開発しやすい国にする」と宣言。個人データ共有にオプトイン同意を不要とする法改正が実施され、AI開発企業の参入障壁が大幅に低下。プライバシー団体からは懸念の声も上がっている。",
+    "source": "The Register",
+    "category": "テクノロジー",
+    "published": "2026-04-08T00:00:00",
+    "image_url": null
+  },
+  {
+    "title": "JAXA、6月10日にH3ロケット打ち上げを発表—固体補助ロケットなし国内初の液体専用大型機",
+    "url": "https://www.japantimes.co.jp/news/2026/04/24/japan/science-health/jaxa-h3-rocket-june/",
+    "summary": "JAXAが種子島宇宙センターから6月10日にH3ロケットを打ち上げると発表した。固体補助ロケットを搭載しない低コスト仕様で、液体エンジンのみで稼働する国内初の大型ロケット。打ち上げ時間は午前9時54分〜11時53分を予定している。",
+    "source": "The Japan Times",
+    "category": "テクノロジー",
+    "published": "2026-04-24T00:00:00",
+    "image_url": null
+  },
+  {
+    "title": "日本のコアCPI、5か月ぶりに加速—イラン戦争によるエネルギー価格高騰が背景",
+    "url": "https://www.cnbc.com/2026/04/24/japan-cpi-march-inflation-iran-war-boj-rate.html",
+    "summary": "3月の日本のコアCPIが前年比1.8%上昇と5か月ぶりに加速。イラン戦争に伴う原油価格高騰がエネルギーと輸入品の価格を押し上げており、日銀の金融政策判断にも影響。家計の購買力低下が懸念される状況となっている。",
+    "source": "CNBC",
+    "category": "国内",
+    "published": "2026-04-24T08:30:00",
+    "image_url": null
+  },
+  {
+    "title": "地震直後のSNSで「津波が来た」「原発で爆発」などデマが急拡散—当局が注意喚起",
+    "url": "https://www.japantimes.co.jp/news/2026/04/23/japan/false-information-social-media-earthquake/",
+    "summary": "4月の東北地震後、X（旧Twitter）やInstagramで「津波が来た」「原発で爆発」などの虚偽情報が急拡散。当局は正確な情報源への誘導を呼びかけ、プラットフォーム各社もファクトチェック機能の緊急強化対応を求められた。",
+    "source": "The Japan Times",
+    "category": "テクノロジー",
+    "published": "2026-04-23T00:00:00",
+    "image_url": null
+  },
+  {
+    "title": "JAXAが彗星289P/Blanpainへのサンプルリターン計画を発表—太陽系誕生の謎に迫る",
+    "url": "https://phys.org/news/2026-04-jaxa-pristine-early-solar-samples.html",
+    "summary": "JAXAが2030年代の大型ミッションとして彗星289P/Blanpainからの地下サンプル採取・帰還計画を公表。衝突装置でクレーターを形成し、宇宙線未改変の有機物や初期太陽系物質を持ち帰る。2041年到達後1.5年間の近接運用を予定している。",
+    "source": "Phys.org",
+    "category": "テクノロジー",
+    "published": "2026-04-15T00:00:00",
+    "image_url": null
+  },
+  {
+    "title": "世界銀行、イラン戦争で2026年エネルギー価格が4年ぶり最高水準に急騰と警告",
+    "url": "https://www.euronews.com/business/2026/04/28/iran-war-will-trigger-largest-energy-price-surge-since-2022-world-bank-warns",
+    "summary": "世界銀行は2026年の世界エネルギー価格が24%上昇し2022年以来の最高水準になると警告。ホルムズ海峡封鎖で日量1000万バレルの石油供給が喪失し史上最大の供給ショックと評価。ブレント原油の年間平均は86ドル/バレルと予測される。",
+    "source": "Euronews",
+    "category": "国際",
+    "published": "2026-04-28T10:00:00",
+    "image_url": null
+  },
+  {
+    "title": "中国のクリーンエネルギー輸出が記録更新—イラン戦争の石油危機が脱炭素化を加速",
+    "url": "https://www.cnn.com/2026/04/26/energy/china-clean-energy-exports-intl-hnk",
+    "summary": "3月の中国太陽光技術輸出量が68GWと過去最高を記録し前月比50%増。イラン戦争によるエネルギー危機を背景に50か国が新記録を更新。電気自動車・蓄電池も同様の輸出急増が続き、中国が脱炭素化の恩恵を最大限に享受している。",
+    "source": "CNN",
+    "category": "国際",
+    "published": "2026-04-26T00:00:00",
+    "image_url": null
+  },
+  {
+    "title": "「ロボットが仕事を奪う」ではなく「誰もやりたくない仕事を埋める」—日本で物理AIが普及フェーズへ",
     "url": "https://techcrunch.com/2026/04/05/japan-is-proving-experimental-physical-ai-is-ready-for-the-real-world/",
-    "summary": "少子高齢化による人手不足に悩む日本で、工場や倉庫などにAIロボットを導入する実証実験が急加速。経産省は2040年までに物理AIの世界シェア30％獲得を目標に掲げ、社会インフラを支える新産業として期待が高まっている。",
+    "summary": "人手不足に悩む日本で物理AIロボットが実験段階から実用展開フェーズへ移行。倉庫・農業・介護など就労希望者が不足する職種を中心に導入が加速。TechCrunchは日本が物理AI実装の世界的実証地となりつつあると報告した。",
     "source": "TechCrunch",
     "category": "テクノロジー",
     "published": "2026-04-05T00:00:00",
     "image_url": null
   },
   {
-    "title": "日本国債利回りが27年ぶりの高水準、財政懸念と中東情勢が圧迫",
-    "url": "https://www.japantimes.co.jp/business/2026/04/07/economy/bonds-27-years/",
-    "summary": "中東紛争による原油高と財政赤字への懸念が重なり、日本の10年物国債利回りが約27年ぶりの高水準に達した。インフレ長期化の懸念も加わり、日銀の金融政策運営への注目が一段と高まっている。",
-    "source": "The Japan Times",
+    "title": "世界のロボット産業が日本に集結—「ヒューマノイドサミット東京2026」5月28〜29日開催へ",
+    "url": "https://www.businesswire.com/news/home/20260408592677/en/Global-Robotics-Industry-Converges-on-Japan-for-Humanoids-Summit-Tokyo-2026",
+    "summary": "人型ロボットをテーマにしたグローバル会議「ヒューマノイドサミット東京2026」が5月28〜29日に開催される。人型ロボットの早期実用展開・物理AI基盤モデルの最新動向を議論し、世界中のロボット企業・研究機関が集まる場となる。",
+    "source": "Business Wire",
+    "category": "テクノロジー",
+    "published": "2026-04-08T00:00:00",
+    "image_url": null
+  },
+  {
+    "title": "高市首相、過去最大122兆円予算を公表—防衛費9兆円超え、財政健全化とのバランスが焦点",
+    "url": "https://finance.yahoo.com/news/japan-takaichi-unveil-record-122-094459861.html",
+    "summary": "高市早苗首相が2026年度予算案として122兆円超の過去最大規模を公表。防衛費は9兆円（約563億ドル）と過去最高を更新し14年連続の増額となった。歳出拡大と財政健全化の両立をどう図るかが政策上の最大の焦点となっている。",
+    "source": "Yahoo Finance",
     "category": "政治・社会",
+    "published": "2026-04-01T00:00:00",
+    "image_url": null
+  },
+  {
+    "title": "AIランプによる非接触睡眠ステージ検出—1022件の一晩記録でポリソムノグラフィと比較検証",
+    "url": "https://arxiv.org/abs/2604.16442",
+    "summary": "レーダー搭載の家庭用AIスリープランプ「Sleepal」の睡眠ステージ分類精度を1022夜分の標準的な睡眠検査（PSG）と比較検証した研究。非接触・消費者向け機器でも高精度な睡眠ステージ判定が可能であることを大規模データで示した。",
+    "source": "arXiv",
+    "category": "研究・論文",
+    "published": "2026-04-23T00:00:00",
+    "image_url": null
+  },
+  {
+    "title": "運動が老化タンパク質プロファイルを逆転させる—UKバイオバンクと12週間介入研究で検証",
+    "url": "https://www.nature.com/articles/s41514-025-00318-w",
+    "summary": "UKバイオバンクのデータと12週間の運動介入試験を解析した結果、中〜高強度の運動がタンパク質老化指標を有意に低下させることを確認。ウォーキングでは効果が限定的で、老化を遅らせるには運動の「強度」が重要と結論付けた。",
+    "source": "npj Aging",
+    "category": "研究・論文",
+    "published": "2025-04-01T00:00:00",
+    "image_url": null
+  },
+  {
+    "title": "食事制限と長寿—オートファジー・mTOR・NAD+経路への作用を最新レビューで整理（Nature Aging）",
+    "url": "https://www.nature.com/articles/s43587-026-01091-5",
+    "summary": "Nature Agingに掲載された複数生物種にわたる食事制限と長寿研究の包括的レビュー。カロリー制限模倣薬（ラパマイシン・メトホルミン等）がオートファジー・mTOR・AMPK・NAD+代謝を介して老化を抑制するメカニズムを詳述した。",
+    "source": "Nature Aging",
+    "category": "研究・論文",
+    "published": "2026-03-15T00:00:00",
+    "image_url": null
+  },
+  {
+    "title": "習慣的なコーヒー摂取が腸内細菌叢と認知機能を改善—カフェイン非依存の効果を確認",
+    "url": "https://www.nature.com/articles/s41467-026-71264-8",
+    "summary": "Nature Communicationsが掲載した研究で、コーヒーが腸内細菌叢と脳の双方向コミュニケーション（腸脳軸）を介して認知機能を改善することを確認。カフェインを除去した成分でも同様の効果が見られ、多数の健常者を対象に実証された。",
+    "source": "Nature Communications",
+    "category": "研究・論文",
+    "published": "2026-03-01T00:00:00",
+    "image_url": null
+  },
+  {
+    "title": "気候変動が洪水と干ばつの同時発生を増幅—深層学習SPARモデルで上ドナウ流域を解析",
+    "url": "https://arxiv.org/abs/2604.21647",
+    "summary": "気候変動が同一地域での洪水・干ばつの同時発生頻度を高めているとする研究。深層学習フレームワーク「deep SPAR」を用い、上ドナウ流域4流域の極端な水文事象を統計的に解析・定量化した。2026年4月提出のarXivプレプリント。",
+    "source": "arXiv",
+    "category": "研究・論文",
+    "published": "2026-04-23T00:00:00",
+    "image_url": null
+  },
+  {
+    "title": "気候変動で生物種が移動—環境勾配を取り込んだグラフ反応拡散拡流モデルを開発",
+    "url": "https://arxiv.org/abs/2604.05423",
+    "summary": "気候変動による生息地断片化と種移動を予測するグラフ型反応拡散拡流フレームワークを開発した研究。気温・降水量など環境勾配から生物の方向移動を数理的にモデル化し、生物多様性保全計画の立案支援を目指す手法を提案した。",
+    "source": "arXiv",
+    "category": "研究・論文",
     "published": "2026-04-07T00:00:00",
     "image_url": null
   },
   {
-    "title": "岩手沖M7.7地震で特別警戒発令、北海道〜千葉の182市区町村に津波警戒",
-    "url": "https://www.japantimes.co.jp/news/2026/04/20/japan/earthquake-tsunami-warning/",
-    "summary": "岩手沖でマグニチュード7.7の地震が発生し、政府は北海道から千葉にかけての182市区町村に巨大地震の特別警戒情報を発令。津波注意報も一時発令され、住民に迅速な避難準備を呼びかけた。",
-    "source": "The Japan Times",
-    "category": "国内",
-    "published": "2026-04-20T00:00:00",
+    "title": "自律LLMエージェントが材料科学の理論を自動構築—コードを自作し実験・検証まで完遂",
+    "url": "https://arxiv.org/abs/2604.19789",
+    "summary": "大規模言語モデルが材料科学の実験データから自律的に数式を導き、コードを生成・実行して理論の妥当性まで検証する研究。人間の介入なしにデータ駆動型の理論開発をエンドツーエンドで実現した初めての事例として注目される。",
+    "source": "arXiv",
+    "category": "研究・論文",
+    "published": "2026-04-28T00:00:00",
     "image_url": null
   },
   {
-    "title": "柏崎刈羽原発6号機が14年ぶり商業運転再開、経産相が現地視察",
-    "url": "https://www.japantimes.co.jp/news/2026/04/26/japan/japan-industry-minister-kashiwazaki-kariwa-plant-visit/",
-    "summary": "東京電力の柏崎刈羽原子力発電所6号機が約14年ぶりに商業運転を再開し、経済産業大臣が現地を視察した。2011年の福島事故後、東電管内では初の原発再稼働となり、電力供給の安定化に向け注目が集まっている。",
-    "source": "The Japan Times",
-    "category": "国内",
-    "published": "2026-04-26T00:00:00",
-    "image_url": null
-  },
-  {
-    "title": "日本とNATOの協力が「具体化」新フェーズへ、インド太平洋と欧州の安保連携が深化",
-    "url": "https://www.japantimes.co.jp/news/2026/04/16/japan/politics/nato-japan-ambassador-interview/",
-    "summary": "日本のNATO大使が「協力は広範な政治対話から具体的な連携へ進化した」と述べ、昨年のNATOサミット以降、防衛・情報共有・技術協力の実務的制度化が急速に進んでいることを明らかにした。",
-    "source": "The Japan Times",
-    "category": "国際",
-    "published": "2026-04-16T00:00:00",
-    "image_url": null
-  },
-  {
-    "title": "福島第一原発が「ダークツーリズム」目的地に、廃炉現場に世界中から訪問者",
-    "url": "https://www.japantimes.co.jp/news/2026/04/26/japan/japan-fukushima-dark-tourism/",
-    "summary": "被災地や惨事の現場を訪れる「ダークツーリズム」として、解体作業が進む福島第一原発に世界各地からの旅行者が増加。廃炉現場の見学は原子力災害の記憶を次世代に伝える教育的意義としても評価が高まっている。",
-    "source": "The Japan Times",
-    "category": "国内",
-    "published": "2026-04-26T00:00:00",
-    "image_url": null
-  },
-  {
-    "title": "「ハブ」から「セカンダリーコネクター」へ、中堅国外交の旗手に浮上する日本",
-    "url": "https://www.japantimes.co.jp/news/2026/04/26/japan/japan-middle-power-security/",
-    "summary": "日本が米主導の安全保障秩序を補完しながら独自の中堅国外交を展開していると分析。ASEAN・中東・欧州の多国間枠組みへの関与を強化し、安全保障パートナーを多角化する戦略的姿勢が鮮明になっている。",
-    "source": "The Japan Times",
-    "category": "国際",
-    "published": "2026-04-26T00:00:00",
-    "image_url": null
-  },
-  {
-    "title": "日本政府、AI・量子・ドローンなど27の先端技術を重点投資対象に指定",
-    "url": "https://www.japantimes.co.jp/business/2026/03/10/japan-investment-targets-ai-quantum-drones/",
-    "summary": "政府は物理AI、量子コンピューター、再生医療、海洋ドローンなど27の先端技術を重点支援対象に選定。民間投資の呼び込みと国産技術の国際競争力強化を狙い、補助金拡充と規制緩和を組み合わせた総合戦略を打ち出した。",
-    "source": "The Japan Times",
-    "category": "テクノロジー",
-    "published": "2026-03-10T00:00:00",
-    "image_url": null
-  },
-  {
-    "title": "津波被災経験の岩手消防団員、今度は1600ヘクタール超の山火事と闘う",
-    "url": "https://www.japantimes.co.jp/news/2026/04/27/japan/society/iwate-tsunami-survivor-battles-wildfire/",
-    "summary": "2011年の東日本大震災で津波の恐怖を経験した岩手県の消防団員が、6日以上燃え続ける大規模山火事の鎮火に奔走している。1600ヘクタール以上が延焼し、復興を続けるコミュニティに新たな試練が訪れている。",
-    "source": "The Japan Times",
-    "category": "国内",
-    "published": "2026-04-27T00:00:00",
-    "image_url": null
-  },
-  {
-    "title": "M7.7地震から1週間で特別警戒解除、専門家は継続した地震活動の監視を呼びかけ",
-    "url": "https://www.japantimes.co.jp/news/2026/04/27/japan/advisory-lift-week-after/",
-    "summary": "政府は岩手沖の大地震を受けて発令した特別警戒を1週間で解除した。182市区町村への警戒呼びかけは終了するが、専門家は余震リスクが残るとして引き続き注意深い地震活動の監視を続けるよう求めている。",
-    "source": "The Japan Times",
-    "category": "国内",
-    "published": "2026-04-27T00:00:00",
-    "image_url": null
-  },
-  {
-    "title": "OpenAIがMicrosoftとの法的問題を解決、Amazon500億ドル契約が正式発効",
-    "url": "https://techcrunch.com/2026/04/27/openai-ends-microsoft-legal-peril-over-its-50b-amazon-deal/",
-    "summary": "OpenAIとMicrosoftが新合意に達し、Amazonとの500億ドル投資契約をめぐるライセンス問題が解消された。Microsoftは2032年まで非独占のOpenAI知財ライセンスを確保し、AI産業の巨大資本同盟が安定軌道に入った。",
-    "source": "TechCrunch",
-    "category": "テクノロジー",
-    "published": "2026-04-27T00:00:00",
-    "image_url": null
-  },
-  {
-    "title": "GoogleがNVIDIAに対抗する次世代TPU 2種を発表、AI推論コスト削減へ",
-    "url": "https://techcrunch.com/2026/04/22/google-cloud-next-new-tpu-ai-chips-compete-with-nvidia/",
-    "summary": "Google Cloudが第8世代カスタムAIチップ（TPU）を2タイプ同時発表した。NVIDIAへの依存を減らし大規模AIモデルの学習・推論コストを引き下げる狙いで、クラウドAIインフラ市場での競争がさらに激化している。",
-    "source": "TechCrunch",
-    "category": "テクノロジー",
-    "published": "2026-04-22T00:00:00",
-    "image_url": null
-  },
-  {
-    "title": "CohereがAleph Alphaを統合、米国勢に対抗する欧州・カナダ連合AIが誕生",
-    "url": "https://techcrunch.com/2026/04/25/why-cohere-is-merging-with-aleph-alpha/",
-    "summary": "カナダのAIスタートアップCohereがドイツのAleph Alphaを傘下に収め、欧州企業向け「ソブリンAI」の有力な選択肢が誕生した。シュワルツ・グループの支援を受け、OpenAIやGoogleとは異なる路線で欧州市場を狙う。",
-    "source": "TechCrunch",
-    "category": "テクノロジー",
-    "published": "2026-04-25T00:00:00",
-    "image_url": null
-  },
-  {
-    "title": "量子コンピューターが2030年前にサイバーセキュリティを脅かす可能性、Nature警告",
-    "url": "https://www.nature.com/articles/d41586-026-01114-6",
-    "summary": "量子コンピューターの急速な性能向上により、現行の公開鍵暗号システムが2030年以前に解読される恐れがあると研究者が警告。金融・通信・国防分野での「耐量子暗号」への早急な移行を国際社会に訴えている。",
-    "source": "Nature",
-    "category": "テクノロジー",
-    "published": "2026-04-10T00:00:00",
-    "image_url": null
-  },
-  {
-    "title": "人間の科学者がAIエージェントを圧倒、「複雑な研究課題では人間がまだ優位」",
-    "url": "https://www.nature.com/articles/d41586-026-01199-z",
-    "summary": "科学研究の複雑な課題において最先端AIエージェントよりも人間の科学者が大幅に優れた成果を上げると示す研究が注目を集めている。AIの急速な進歩が続く中、「真の科学的創造性」はまだ人間にしかないとの議論が再燃している。",
-    "source": "Nature",
-    "category": "テクノロジー",
-    "published": "2026-04-18T00:00:00",
-    "image_url": null
-  },
-  {
-    "title": "睡眠1夜のデータで130疾患を予測するAI「SleepFM」—65,000人・58万時間の睡眠記録で学習",
-    "url": "https://www.nature.com/articles/s41591-025-04133-4",
-    "summary": "約65,000人・58万時間超の睡眠ポリソムノグラフィーで学習したマルチモーダル基盤モデルSleepFMが、1夜の睡眠データから心疾患・糖尿病・認知症など130疾患の将来リスクを高精度で予測できることが示された。",
+    "title": "健康的な老化に最適な食事パターンを特定—大規模研究でMIND食と地中海食が優位（Nature Medicine）",
+    "url": "https://www.nature.com/articles/s41591-025-03570-5",
+    "summary": "Nature Medicine掲載の大規模コホート研究で、MIND食と地中海食（MED食）が他の食事パターンと比べて老化バイオマーカーを有意に改善することを示した。植物性食品・青魚・オリーブオイルの摂取比率が長寿との関連で特に重要とされた。",
     "source": "Nature Medicine",
     "category": "研究・論文",
-    "published": "2025-12-15T00:00:00",
+    "published": "2025-06-01T00:00:00",
     "image_url": null
   },
   {
-    "title": "7つの多民族コホートで実証、透明性の高いAIが睡眠時無呼吸を精度0.81で診断",
-    "url": "https://www.nature.com/articles/s41467-025-62864-x",
-    "summary": "臨床施設と在宅の両環境に対応した解釈可能なAI「Apnea Interact Xplainer」が開発された。15,807例のポリソムノグラフィーを用いて4段階重症度分類で精度0.81を達成し、検査環境を問わない汎用診断を実現した。",
+    "title": "GLP-1受容体作動薬が精神疾患患者の症状を悪化させるリスク—スウェーデン国民コホート研究",
+    "url": "https://pubmed.ncbi.nlm.nih.gov/41862258/",
+    "summary": "抗糖尿病薬GLP-1受容体作動薬（オゼンピックなど）を服用した精神疾患患者を対象にしたスウェーデンの大規模研究。精神科入院・自傷・自殺死亡などの複合アウトカムとの関連を解析し、特定の患者群でリスク上昇の可能性を報告した。",
+    "source": "PubMed (Lancet Psychiatry)",
+    "category": "研究・論文",
+    "published": "2026-01-01T00:00:00",
+    "image_url": null
+  },
+  {
+    "title": "睡眠が脳・認知・メンタルヘルスに与える効果はグリンパティックシステムが媒介—思春期研究",
+    "url": "https://arxiv.org/abs/2512.08704",
+    "summary": "思春期を対象とした研究で、睡眠が脳構造・認知機能・精神的健康に与える恩恵を媒介するのが脳のグリンパティック系（老廃物除去システム）であることを示した。良質な睡眠が持つ神経保護作用の分子メカニズムを新たな視点で解明した。",
+    "source": "arXiv",
+    "category": "研究・論文",
+    "published": "2025-12-11T00:00:00",
+    "image_url": null
+  },
+  {
+    "title": "ACSM最新版・筋力トレーニング処方指針—週2回以上・1RMの80%以上が筋力増強に最適",
+    "url": "https://pubmed.ncbi.nlm.nih.gov/41843416/",
+    "summary": "アメリカスポーツ医学会（ACSM）が2026年版筋力トレーニング指針を発表。最大筋力向上には最大挙上重量（1RM）の80%以上の高負荷で週2回以上の実施が最効率と結論。システマティックレビューに基づく科学的エビデンスを体系化した。",
+    "source": "PubMed (Medicine & Science in Sports & Exercise)",
+    "category": "研究・論文",
+    "published": "2026-04-01T00:00:00",
+    "image_url": null
+  },
+  {
+    "title": "幼児期の腸内細菌叢が学齢期の不安・抑うつ症状と関連—機能的脳結合を介するメカニズムを解明",
+    "url": "https://www.nature.com/articles/s41467-025-64988-6",
+    "summary": "Nature Communications掲載の縦断研究。幼児期の腸内細菌叢の多様性が学齢期の内在化症状（不安・抑うつ）を予測することを確認し、その経路として機能的コネクトーム（脳ネットワーク接続パターン）の変化が媒介していることを解明した。",
     "source": "Nature Communications",
     "category": "研究・論文",
-    "published": "2025-10-20T00:00:00",
+    "published": "2025-10-01T00:00:00",
     "image_url": null
   },
   {
-    "title": "就寝12〜15時間前の低強度運動が睡眠効率を最大改善—説明可能AIが運動タイミングの「黄金律」を発見",
-    "url": "https://www.nature.com/articles/s41598-025-32036-4",
-    "summary": "説明可能な機械学習を用いた研究で、起床後12〜15時間後（夕方）の低強度身体活動が睡眠効率に最も大きな好影響を与えることが明らかになった。全年齢グループで精度0.8以上を達成し、最適な運動タイミングの科学的根拠を示した。",
-    "source": "Scientific Reports",
+    "title": "人間の長寿の謎に迫る—エピゲノム・細胞老化・テロメア維持の最新研究展望（npj Aging）",
+    "url": "https://www.nature.com/articles/s41514-026-00339-z",
+    "summary": "npj Agingに掲載された長寿研究の包括的レビュー。100歳超長寿者の遺伝的・生活習慣的特徴を分析し、エピゲノム修飾・老化細胞の除去（セノリシス）・テロメア維持などの分子メカニズムを統合的に解説した注目論文。",
+    "source": "npj Aging",
     "category": "研究・論文",
-    "published": "2025-05-10T00:00:00",
+    "published": "2026-02-01T00:00:00",
     "image_url": null
   },
   {
-    "title": "ケトジェニック食が高血糖状態の有酸素運動能力を回復—糖尿病患者の運動療法に新展望",
-    "url": "https://www.nature.com/articles/s41467-026-69349-5",
-    "summary": "糖質制限の高脂肪食が高血糖で低下した有酸素運動能力を回復させることがマウス実験で示された。骨格筋の酸化型筋線維増加と毛細血管密度の向上が鍵となっており、糖尿病患者の運動療法への臨床応用が期待される。",
-    "source": "Nature Communications",
+    "title": "LLMエージェントの設計論—アーキテクチャ・協調メカニズム・進化経路を体系的にサーベイ",
+    "url": "https://arxiv.org/abs/2503.21460",
+    "summary": "大規模言語モデルをエージェントとして機能させる設計論を方法論的分類に基づき整理した総説。計画・行動・継続学習の仕組みやマルチエージェント協調の課題・展望を包括的にサーベイし、AIエージェント研究の全体像を俯瞰した。",
+    "source": "arXiv",
     "category": "研究・論文",
-    "published": "2026-02-10T00:00:00",
+    "published": "2025-03-27T00:00:00",
     "image_url": null
   },
   {
-    "title": "超加工食品と健康リスク—食事ガイドライン改定に向けた科学的エビデンスの整理",
-    "url": "https://www.nature.com/articles/s41591-025-04085-9",
-    "summary": "加工度が異なる食品を比較した臨床試験の方法論的差異を分析し、超加工食品と健康リスクの関連性に関する証拠を評価。食品の「加工度」を新たな栄養指導の指標に加えるべきかをめぐる政策議論に科学的根拠を提示した。",
-    "source": "Nature Medicine",
+    "title": "2026年のENSO予測—気候ネットワークと複雑系解析で精度向上、干ばつ・洪水リスクに警鐘",
+    "url": "https://arxiv.org/abs/2602.14773",
+    "summary": "気候ネットワーク理論と複雑系手法を組み合わせた新手法で2026年のエルニーニョ/ラニーニャ（ENSO）現象を予測した研究。世界的な干ばつ・洪水・異常気象に影響する太平洋水温変動の予測精度を従来手法より大幅に改善したと報告した。",
+    "source": "arXiv",
     "category": "研究・論文",
-    "published": "2025-11-05T00:00:00",
-    "image_url": null
-  },
-  {
-    "title": "老化時計の終焉—DNAメチル化とタンパク質データで老化を推論するAI「LongevityLLM」",
-    "url": "https://www.biorxiv.org/content/10.64898/2026.03.28.714980v1",
-    "summary": "エピジェネティクス・プロテオミクス・臨床バイオマーカーで微調整したLLMが、従来の老化時計を上回る精度で生物学的年齢を推定することを示した。平均誤差4.34年を達成し、長寿研究の新パラダイムとして注目されている。",
-    "source": "bioRxiv",
-    "category": "研究・論文",
-    "published": "2026-03-28T00:00:00",
-    "image_url": null
-  },
-  {
-    "title": "TMEM174遺伝子欠損が寿命を短縮するメカニズムを発見—老化制御の新標的候補",
-    "url": "https://www.biorxiv.org/content/10.64898/2026.04.09.716713v1",
-    "summary": "TMEM174タンパク質の欠損が酸化ストレスの増大と細胞老化の促進を通じて寿命を有意に短縮することがモデル生物で確認された。この遺伝子が老化関連疾患への新たな介入ターゲットとなる可能性が示唆されている。",
-    "source": "bioRxiv",
-    "category": "研究・論文",
-    "published": "2026-04-09T00:00:00",
-    "image_url": null
-  },
-  {
-    "title": "接続性ガイド型の加速TMSが難治性うつ病の4週間以内寛解率を大幅改善",
-    "url": "https://www.medrxiv.org/content/10.64898/2026.01.11.26343900v1.full",
-    "summary": "個人の脳接続性データを活用した個別化加速TMS（経頭蓋磁気刺激）療法が、治療抵抗性うつ病患者において4週間以内に50%以上の症状改善と寛解を実現したと報告。薬物療法に反応しない患者への新たな選択肢として期待される。",
-    "source": "medRxiv",
-    "category": "研究・論文",
-    "published": "2026-01-11T00:00:00",
-    "image_url": null
-  },
-  {
-    "title": "海水温上昇で「海陸風」が弱まり沿岸大都市の熱ストレス急増—Nature気候変動誌",
-    "url": "https://www.nature.com/articles/s41558-026-02618-9",
-    "summary": "気候変動による海水温上昇が沿岸都市の海陸風循環を弱め、67%の沿岸都市で海陸風日数が3〜45%減少していることが判明。天然の冷却効果が失われた都市では熱中症リスクが増大しており、緊急の適応策が必要とされている。",
-    "source": "Nature Climate Change",
-    "category": "研究・論文",
-    "published": "2026-02-15T00:00:00",
-    "image_url": null
-  },
-  {
-    "title": "開放海洋の未知のメタン発生源を特定—栄養塩不足の微生物が温暖化を加速させる恐れ",
-    "url": "https://www.sciencedaily.com/releases/2026/04/260415043615.htm",
-    "summary": "海洋の栄養塩が乏しい環境でメタン産生微生物が活性化することを発見。温暖化が進むと栄養塩の鉛直混合が減少してこれらの微生物が増殖し、海洋からのメタン排出が増える正のフィードバック機構が働くと警告している。",
-    "source": "ScienceDaily",
-    "category": "研究・論文",
-    "published": "2026-04-15T00:00:00",
-    "image_url": null
-  },
-  {
-    "title": "大西洋循環（AMOC）崩壊で大気CO₂が最大83ppm上昇、追加温暖化0.2℃の試算",
-    "url": "https://www.nature.com/articles/s43247-026-03427-w",
-    "summary": "大西洋子午面循環が崩壊した場合、海洋から大気へのCO₂放出増加により大気中CO₂濃度が47〜83ppm上昇し、約0.2℃の追加温暖化をもたらすと推計。現在進む温暖化との相乗効果で気候システムへの影響が深刻化する可能性がある。",
-    "source": "Communications Earth & Environment",
-    "category": "研究・論文",
-    "published": "2026-01-20T00:00:00",
-    "image_url": null
-  },
-  {
-    "title": "AIが量子コンピューターの設計・制御・誤り訂正を自動化—量子技術の実用化を加速",
-    "url": "https://www.nature.com/articles/s41467-025-65836-3",
-    "summary": "量子ハードウェアの設計、制御パルス最適化、回路コンパイル、量子誤り訂正の各段階でAIが高い有効性を示すことをレビュー。量子コンピューターのスケールアップに不可欠な自動化ツールとしてAIの役割が急拡大していることが示された。",
-    "source": "Nature Communications",
-    "category": "研究・論文",
-    "published": "2025-09-15T00:00:00",
-    "image_url": null
-  },
-  {
-    "title": "腸内細菌叢ががん免疫療法の効果を左右—免疫チェックポイント阻害薬の新標的として開発加速",
-    "url": "https://www.nature.com/articles/s41573-025-01211-7",
-    "summary": "腸内マイクロバイオームが免疫チェックポイント阻害薬の治療効果を大きく規定することが明らかになった。ビフィズス菌などの活用や糞便移植による腸内細菌叢の調整が、がん治療の補助療法として開発の加速段階に入った。",
-    "source": "Nature Reviews Drug Discovery",
-    "category": "研究・論文",
-    "published": "2025-10-10T00:00:00",
-    "image_url": null
-  },
-  {
-    "title": "血液バイオマーカーから算出する生物学的年齢「NiaAge」、暦年齢より死亡予測精度が向上",
-    "url": "https://www.medrxiv.org/content/10.64898/2026.03.17.26348521v1",
-    "summary": "血液バイオマーカーから臨床現場での利用を想定した生物学的年齢指標「NiaAge」が開発された。暦年齢より将来の死亡リスクや疾患発症を精度高く予測し、個別化予防医療・長寿研究への幅広い応用が期待されている。",
-    "source": "medRxiv",
-    "category": "研究・論文",
-    "published": "2026-03-17T00:00:00",
-    "image_url": null
-  },
-  {
-    "title": "2026年の天文学を展望—DESI 5年観測完了・アルテミスIIが宇宙科学を塗り替える",
-    "url": "https://www.nature.com/articles/s41550-026-02779-9",
-    "summary": "暗黒エネルギー分光装置（DESI）が4,700万個超の銀河とクエーサーの5年観測を完了し、宇宙の大規模構造に関する史上最精細なデータを提供。アルテミスIIの月周回ミッションも加わり、2026年は宇宙科学の転換点となると展望する。",
-    "source": "Nature Astronomy",
-    "category": "研究・論文",
-    "published": "2026-01-05T00:00:00",
+    "published": "2026-02-19T00:00:00",
     "image_url": null
   }
 ]

@@ -1,7 +1,6 @@
 """Claude Code CLI を subprocess で呼び出してウェブリサーチを実行するサービス
 
-APScheduler から呼ぶことで、定時に Claude が自律的に Web 検索・X トレンドを
-調べて curated_articles.json を更新し、既存パイプラインで記事化する。
+ニュースと論文を並列で 2 プロセス同時実行することで、タイムアウトを防ぐ。
 
 動作要件:
   - Claude Code CLI (npm i -g @anthropic-ai/claude-code) がインストール済み
@@ -14,6 +13,8 @@ import os
 import shutil
 import subprocess
 import sys
+import tempfile
+import threading
 from datetime import datetime
 from pathlib import Path
 from zoneinfo import ZoneInfo
@@ -24,78 +25,87 @@ JST = ZoneInfo("Asia/Tokyo")
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 CURATED_FILE = PROJECT_ROOT / "curated_articles.json"
 
-_PROMPT_TEMPLATE = """\
+_NEWS_PROMPT = """\
 今日は {today}（日本時間）です。
 Google 検索と X のトレンドを調べ、「知リポAI」ニュースサイト（20〜40代の知的好奇心が高い日本語読者向け）に
-ふさわしい記事を合計 {n} 件（ニュース {n_news} 件＋学術論文 {n_papers} 件）リサーチして選定し、
-{curated_file} に以下の JSON 形式で書き込んでください（既存ファイルを上書き）。
+ふさわしい【ニュース記事のみ】を {n} 件リサーチして選定し、
+{output_file} に以下の JSON 形式で書き込んでください（配列のみ、説明文不要）。
 
-JSON 形式（配列のみ、説明文不要）:
 [
   {{
     "title": "タイトル（日本語可）",
     "url": "実在する記事の URL",
     "summary": "100〜150 字の日本語要約",
     "source": "媒体名",
-    "category": "テクノロジー|国際|国内|政治・社会|研究・論文|エンタメ|スポーツ のいずれか",
+    "category": "テクノロジー|国際|国内|政治・社会|エンタメ|スポーツ のいずれか",
     "published": "YYYY-MM-DDTHH:MM:SS",
     "image_url": null
   }}
 ]
 
-━━━━━━━━━━━━━━━━━━━━
-【ニュース {n_news} 件の選定基準】
-━━━━━━━━━━━━━━━━━━━━
-- 日本のニュース約 70%（{n_news} 件中 10 件前後）／ 海外ニュース約 30%（4〜5 件）
+【選定基準】
+- 日本のニュース約 70% / 海外ニュース約 30%
 - 今 X・Google で話題になっているトレンドに合致するものを最優先
 - 「へえ、そうなんだ」と思わせる知的好奇心をくすぐるニュースを選ぶ
-- カテゴリは テクノロジー / 国内 / 国際 / 政治・社会 / エンタメ / スポーツ から選ぶ（研究・論文は禁止）
+- カテゴリは テクノロジー / 国内 / 国際 / 政治・社会 / エンタメ / スポーツ から選ぶ
 - スポーツ速報・訃報・芸能ゴシップ・選挙速報は除外
 - URL は必ず実在するニュース記事の URL（架空 URL 禁止）
 
-━━━━━━━━━━━━━━━━━━━━
-【学術論文 {n_papers} 件の選定基準】
-━━━━━━━━━━━━━━━━━━━━
-- 海外の英語論文を重視（{n_papers} 件中 10 件以上）
-- 以下のような「皆が気になる・検索されやすい」テーマを優先:
-    * 健康・長寿・ダイエット・睡眠・メンタルヘルス
-    * AI・テクノロジー・ロボット
-    * 宇宙・物理・量子
-    * 筋トレ・スポーツ科学・栄養
-    * 経済・行動経済学
-    * 気候変動・環境
-- arXiv / PubMed / Nature / Science / bioRxiv / medRxiv などの査読済み・プレプリント論文
-- カテゴリは必ず「研究・論文」にする
-- URL は必ず実在する論文の URL（架空 URL 禁止）
-
-━━━━━━━━━━━━━━━━━━━━
-【共通: 使用禁止メディア（403エラー・有料ペイウォール）】
-━━━━━━━━━━━━━━━━━━━━
+【使用禁止メディア（ペイウォール）】
 - bloomberg.com / wsj.com / ft.com / nytimes.com / economist.com
 
-【共通: 優先メディア（無料・本文取得可能）】
-- ニュース: nhk.or.jp / reuters.com / apnews.com / afpbb.com / techcrunch.com / theverge.com / bbc.com / cnn.com / japan-times.co.jp
-- 論文: arxiv.org / pubmed.ncbi.nlm.nih.gov / nature.com / science.org / biorxiv.org / medrxiv.org / sciencedaily.com / nasa.gov
+【優先メディア】
+- nhk.or.jp / reuters.com / apnews.com / afpbb.com / techcrunch.com / theverge.com / bbc.com / cnn.com / japantimes.co.jp
 
-合計 {n} 件（ニュース {n_news} 件＋論文 {n_papers} 件）の JSON を {curated_file} に書き込んで作業を完了してください。
+{n} 件の JSON を {output_file} に書き込んで作業を完了してください。
+"""
+
+_PAPERS_PROMPT = """\
+今日は {today}（日本時間）です。
+「知リポAI」ニュースサイト（20〜40代の知的好奇心が高い日本語読者向け）向けに
+【学術論文のみ】を {n} 件リサーチして選定し、
+{output_file} に以下の JSON 形式で書き込んでください（配列のみ、説明文不要）。
+
+[
+  {{
+    "title": "タイトル（日本語可）",
+    "url": "実在する論文の URL",
+    "summary": "100〜150 字の日本語要約",
+    "source": "媒体名（arXiv / Nature / PubMed など）",
+    "category": "研究・論文",
+    "published": "YYYY-MM-DDTHH:MM:SS",
+    "image_url": null
+  }}
+]
+
+【選定基準】
+- 海外の英語論文を重視（{n} 件中 8 件以上）
+- 「皆が気になる・検索されやすい」テーマを優先:
+    健康・長寿・ダイエット・睡眠・メンタルヘルス
+    AI・テクノロジー・ロボット / 宇宙・物理・量子
+    筋トレ・スポーツ科学・栄養 / 経済・行動経済学 / 気候変動・環境
+- arXiv / PubMed / Nature / Science / bioRxiv / medRxiv などの論文
+- カテゴリは必ず「研究・論文」
+- URL は必ず実在する論文の URL（架空 URL 禁止）
+
+【優先ソース】
+- arxiv.org / pubmed.ncbi.nlm.nih.gov / nature.com / science.org / biorxiv.org / medrxiv.org / sciencedaily.com
+
+{n} 件の JSON を {output_file} に書き込んで作業を完了してください。
 """
 
 
 def is_claude_available() -> bool:
-    """Claude Code CLI が使える環境かどうかを返す。Render 本番では False。"""
-    # Render 本番は claude CLI がないため自動スキップ
     if os.environ.get("RENDER", "").strip().lower() == "true":
         return False
     return _find_claude_cmd() is not None
 
 
 def _find_claude_cmd() -> str | None:
-    """claude コマンドのパスを返す。見つからなければ None。"""
     for candidate in ("claude", "claude.cmd"):
         found = shutil.which(candidate)
         if found:
             return candidate
-    # Windows npm グローバルの典型パスを直接確認
     appdata = os.environ.get("APPDATA", "")
     if appdata:
         npm_cmd = Path(appdata) / "npm" / "claude.cmd"
@@ -104,51 +114,32 @@ def _find_claude_cmd() -> str | None:
     return None
 
 
-def run_claude_research(n: int = 30, n_news: int = 15, n_papers: int = 15, timeout: int = 600) -> bool:
-    """
-    Claude Code CLI を使って Web リサーチを行い curated_articles.json を更新する。
-
-    n        : 合計記事数（n_news + n_papers）
-    n_news   : ニュース選定件数
-    n_papers : 論文選定件数
-    timeout  : タイムアウト秒数（デフォルト 10 分）
-    戻り値   : 成功すれば True、失敗すれば False
-    """
-    cmd_path = _find_claude_cmd()
-    if not cmd_path:
-        logger.warning("claude コマンドが見つかりません。Claude Code CLI をインストールしてください。")
-        return False
-
-    today = datetime.now(JST).strftime("%Y-%m-%d")
-    prompt = _PROMPT_TEMPLATE.format(
-        today=today,
-        n=n,
-        n_news=n_news,
-        n_papers=n_papers,
-        curated_file=str(CURATED_FILE).replace("\\", "/"),
-    )
-
-    # プロンプトは stdin 経由で渡す（Windows で | などのシェルメタ文字を含むと
-    # cmd.exe に誤解釈されるため、コマンドライン引数には入れない）
-    base_cmd = [
+def _build_cmd(cmd_path: str) -> list[str]:
+    base = [
         "--dangerously-skip-permissions",
         "--allowed-tools", "WebSearch,Write",
-        "--max-budget-usd", "2.00",
-        "-p",          # stdin から読む（positional prompt なし）
+        "-p",
         "--input-format", "text",
     ]
-    # Windows では .cmd ファイルを cmd /c でラップしないと実行できない
     if sys.platform == "win32":
-        cmd = ["cmd", "/c", cmd_path] + base_cmd
-    else:
-        cmd = [cmd_path] + base_cmd
+        return ["cmd", "/c", cmd_path] + base
+    return [cmd_path] + base
 
-    logger.info("Claude リサーチ開始: %d 件 (タイムアウト=%d 秒)", n, timeout)
+
+def _run_one(label: str, prompt: str, output_file: Path, timeout: int, result: dict) -> None:
+    """単一の Claude サブプロセスを実行し、result[label] にパース済みリストを格納する。"""
+    cmd_path = _find_claude_cmd()
+    if not cmd_path:
+        logger.error("[%s] claude コマンドが見つかりません", label)
+        return
+
+    cmd = _build_cmd(cmd_path)
+    logger.info("[%s] Claude 起動 (タイムアウト=%d 秒)", label, timeout)
 
     try:
         proc = subprocess.run(
             cmd,
-            input=prompt,          # stdin にプロンプトを流す
+            input=prompt,
             capture_output=True,
             text=True,
             encoding="utf-8",
@@ -160,44 +151,96 @@ def run_claude_research(n: int = 30, n_news: int = 15, n_papers: int = 15, timeo
 
         if proc.returncode != 0:
             logger.error(
-                "Claude 終了コード %d:\nstdout=%s\nstderr=%s",
+                "[%s] 終了コード %d:\nstdout=%s\nstderr=%s",
+                label,
                 proc.returncode,
-                (proc.stdout or "")[:300],
-                (proc.stderr or "")[:300],
+                (proc.stdout or "")[:500],
+                (proc.stderr or "")[:500],
             )
-            return False
+            return
 
-        # 書き込まれた JSON を検証
-        if not CURATED_FILE.exists():
-            logger.error("curated_articles.json が書き込まれませんでした")
-            return False
+        if not output_file.exists():
+            logger.error("[%s] 出力ファイルが書き込まれませんでした", label)
+            return
 
-        raw = CURATED_FILE.read_text(encoding="utf-8").strip()
-        # Claude が JSON ブロック（```json ... ```）で返した場合に対応
+        raw = output_file.read_text(encoding="utf-8").strip()
         if raw.startswith("```"):
-            lines = raw.splitlines()
-            raw = "\n".join(
-                l for l in lines if not l.startswith("```")
-            ).strip()
+            raw = "\n".join(l for l in raw.splitlines() if not l.startswith("```")).strip()
 
         data = json.loads(raw)
         if not isinstance(data, list) or not data:
             raise ValueError("空またはリストでない")
 
-        # 検証済みの JSON で上書き（クリーニング済み）
-        CURATED_FILE.write_text(
-            json.dumps(data, ensure_ascii=False, indent=2),
-            encoding="utf-8",
-        )
-        logger.info("Claude リサーチ完了: %d 件を curated_articles.json に保存", len(data))
-        return True
+        result[label] = data
+        logger.info("[%s] 完了: %d 件", label, len(data))
 
     except subprocess.TimeoutExpired:
-        logger.error("Claude リサーチがタイムアウト (%d 秒)", timeout)
-        return False
+        logger.error("[%s] タイムアウト (%d 秒)", label, timeout)
     except json.JSONDecodeError as e:
-        logger.error("生成された curated_articles.json が不正な JSON: %s", e)
-        return False
+        logger.error("[%s] JSON パースエラー: %s", label, e)
     except Exception as e:
-        logger.error("Claude リサーチで予期しないエラー: %s", e)
+        logger.error("[%s] 予期しないエラー: %s", label, e)
+
+
+def run_claude_research(n: int = 15, n_news: int = 8, n_papers: int = 7, timeout: int = 900) -> bool:
+    """
+    ニュースと論文を並列 2 プロセスでリサーチし curated_articles.json を更新する。
+
+    並列実行により合計時間を約 1/2 に短縮できる。
+    戻り値: ニュース・論文のどちらか一方でも取得できれば True
+    """
+    cmd_path = _find_claude_cmd()
+    if not cmd_path:
+        logger.warning("claude コマンドが見つかりません。Claude Code CLI をインストールしてください。")
         return False
+
+    today = datetime.now(JST).strftime("%Y-%m-%d")
+    result: dict[str, list] = {}
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        news_file = Path(tmpdir) / "news.json"
+        papers_file = Path(tmpdir) / "papers.json"
+
+        news_prompt = _NEWS_PROMPT.format(
+            today=today, n=n_news,
+            output_file=str(news_file).replace("\\", "/"),
+        )
+        papers_prompt = _PAPERS_PROMPT.format(
+            today=today, n=n_papers,
+            output_file=str(papers_file).replace("\\", "/"),
+        )
+
+        threads = [
+            threading.Thread(
+                target=_run_one,
+                args=("ニュース", news_prompt, news_file, timeout, result),
+                daemon=True,
+            ),
+            threading.Thread(
+                target=_run_one,
+                args=("論文", papers_prompt, papers_file, timeout, result),
+                daemon=True,
+            ),
+        ]
+
+        logger.info("ニュース・論文を並列リサーチ開始 (各タイムアウト=%d 秒)", timeout)
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join(timeout + 60)
+
+        all_articles = result.get("ニュース", []) + result.get("論文", [])
+
+    if not all_articles:
+        logger.error("ニュース・論文ともに取得できませんでした")
+        return False
+
+    CURATED_FILE.write_text(
+        json.dumps(all_articles, ensure_ascii=False, indent=2),
+        encoding="utf-8",
+    )
+    logger.info("Claude リサーチ完了: 合計 %d 件 (ニュース %d / 論文 %d) を保存",
+                len(all_articles),
+                len(result.get("ニュース", [])),
+                len(result.get("論文", [])))
+    return True
