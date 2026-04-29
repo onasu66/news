@@ -13,6 +13,7 @@
     <meta name="twitter:title" content="{{ article.title }} - 知リポAI">
     <meta name="twitter:description" content="{{ meta_description|e }}">
     <meta name="twitter:image" content="{{ og_image|default(image_url) }}">
+    <meta name="robots" content="index,follow,max-image-preview:large">
     {% if article_jsonld %}
     <script type="application/ld+json">{{ article_jsonld|tojson }}</script>
     {% endif %}
@@ -290,7 +291,6 @@
 
 <div id="midorman-float" class="midorman-float" aria-live="polite" hidden>
     <img src="{{ midorman_image_url|default('/static/site-imgs/ロゴ.png') }}" alt="" class="midorman-float-avatar-img" loading="lazy">
-    <span class="midorman-float-avatar" aria-hidden="true">🎙️</span>
     <div class="midorman-float-inner">
         <p class="midorman-float-text" id="midorman-float-text"></p>
     </div>

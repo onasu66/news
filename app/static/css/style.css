@@ -3000,60 +3000,13 @@ body::after {
     background: var(--color-accent);
     color: #fff;
     border-color: var(--color-accent);
+    border-bottom-color: var(--color-accent);
 }
 
-/* SmartNews風：ジャンルタブのアクセント（選択時は下線＋半透明背景） */
+/* ジャンルタブ：選択中はサイトアクセントで統一（タブごとに色を変えない） */
 .genre-tab[class*="genre-tab-sn"] {
     border-bottom-width: 3px;
     border-bottom-color: transparent;
-}
-.genre-tab-sn0.is-active,
-.genre-tab-sn0[aria-selected="true"] {
-    background: #ef4444 !important;
-    color: #ffffff !important;
-    border-color: #ef4444 !important;
-    border-bottom-color: #ef4444 !important;
-    box-shadow: none;
-}
-.genre-tab-sn1.is-active,
-.genre-tab-sn1[aria-selected="true"] {
-    background: #f97316 !important;
-    color: #ffffff !important;
-    border-color: #f97316 !important;
-    border-bottom-color: #f97316 !important;
-    box-shadow: none;
-}
-.genre-tab-sn2.is-active,
-.genre-tab-sn2[aria-selected="true"] {
-    background: #16a34a !important;
-    color: #ffffff !important;
-    border-color: #16a34a !important;
-    border-bottom-color: #16a34a !important;
-    box-shadow: none;
-}
-.genre-tab-sn3.is-active,
-.genre-tab-sn3[aria-selected="true"] {
-    background: #2563eb !important;
-    color: #ffffff !important;
-    border-color: #2563eb !important;
-    border-bottom-color: #2563eb !important;
-    box-shadow: none;
-}
-.genre-tab-sn4.is-active,
-.genre-tab-sn4[aria-selected="true"] {
-    background: #d97706 !important;
-    color: #ffffff !important;
-    border-color: #d97706 !important;
-    border-bottom-color: #d97706 !important;
-    box-shadow: none;
-}
-.genre-tab-sn5.is-active,
-.genre-tab-sn5[aria-selected="true"] {
-    background: #9333ea !important;
-    color: #ffffff !important;
-    border-color: #9333ea !important;
-    border-bottom-color: #9333ea !important;
-    box-shadow: none;
 }
 
 :root[data-theme="dark"] .news-card .news-title {
@@ -4233,51 +4186,10 @@ body::after {
     }
     :root[data-theme="dark"] .genre-tab.is-active,
     :root[data-theme="dark"] .genre-tab[aria-selected="true"] {
-        color: inherit;
-        border-color: inherit;
-        background: inherit;
-    }
-    :root[data-theme="dark"] .genre-tab-sn0.is-active,
-    :root[data-theme="dark"] .genre-tab-sn0[aria-selected="true"] {
-        background: rgba(244, 67, 54, 0.22);
-        color: #ffcdd2;
-        border-color: #e57373;
-        border-bottom-color: #f44336;
-    }
-    :root[data-theme="dark"] .genre-tab-sn1.is-active,
-    :root[data-theme="dark"] .genre-tab-sn1[aria-selected="true"] {
-        background: rgba(255, 152, 0, 0.22);
-        color: #ffe0b2;
-        border-color: #ffb74d;
-        border-bottom-color: #ff9800;
-    }
-    :root[data-theme="dark"] .genre-tab-sn2.is-active,
-    :root[data-theme="dark"] .genre-tab-sn2[aria-selected="true"] {
-        background: rgba(76, 175, 80, 0.24);
-        color: #c8e6c9;
-        border-color: #81c784;
-        border-bottom-color: #4caf50;
-    }
-    :root[data-theme="dark"] .genre-tab-sn3.is-active,
-    :root[data-theme="dark"] .genre-tab-sn3[aria-selected="true"] {
-        background: rgba(33, 150, 243, 0.22);
-        color: #bbdefb;
-        border-color: #64b5f6;
-        border-bottom-color: #2196f3;
-    }
-    :root[data-theme="dark"] .genre-tab-sn4.is-active,
-    :root[data-theme="dark"] .genre-tab-sn4[aria-selected="true"] {
-        background: rgba(255, 193, 7, 0.22);
-        color: #fff8e1;
-        border-color: #ffd54f;
-        border-bottom-color: #ffc107;
-    }
-    :root[data-theme="dark"] .genre-tab-sn5.is-active,
-    :root[data-theme="dark"] .genre-tab-sn5[aria-selected="true"] {
-        background: rgba(156, 39, 176, 0.24);
-        color: #e1bee7;
-        border-color: #ba68c8;
-        border-bottom-color: #ab47bc;
+        background: var(--color-accent);
+        color: #fff;
+        border-color: var(--color-accent);
+        border-bottom-color: var(--color-accent);
     }
     :root[data-theme="dark"] .site-footer {
         background: var(--color-surface);

@@ -2,7 +2,7 @@
 理解は1回（理解ナビゲーター）だけ行い、その結果を記事・秒速理解・投票に流用。
 人格は「論理2＋エンタメ1」のランダム3人を選んでから、その3人分だけAPI呼び出し。"""
 import random
-from concurrent.futures import ThreadPoolExecutor, as_completed
+from concurrent.futures import ThreadPoolExecutor
 
 from app.services.ai_service import (
     explain_article_as_navigator,
@@ -91,24 +91,32 @@ def generate_all_explanations(article_id: str, title: str, content: str, categor
     paper_quiz = {}
     deep_insights = {}
 
-    def do_persona(pid: int) -> str:
-        return get_persona_opinion(title, summary_text, pid) or ""
-
     with ThreadPoolExecutor(max_workers=16) as ex:
         fut_blocks = ex.submit(do_blocks)
         fut_vote = ex.submit(do_vote)
         fut_deep = ex.submit(do_deep)
         fut_paper_graph = ex.submit(do_paper_graph) if is_paper else None
         fut_paper_quiz = ex.submit(do_paper_quiz) if is_paper else None
-        fut_personas = {ex.submit(do_persona, pid): i for i, pid in enumerate(display_persona_ids)}
 
         blocks = fut_blocks.result()
-        for f in as_completed(fut_personas):
-            idx = fut_personas[f]
+        # ペルソナは順に生成し、先に出したコメントを渡して言葉の重複・同じ角度を避ける
+        generated_comments: list[str] = []
+        for slot_idx, pid in enumerate(display_persona_ids):
             try:
-                personas_3[idx] = f.result() or ""
+                comment = (
+                    get_persona_opinion(
+                        title,
+                        summary_text,
+                        pid,
+                        other_comments=generated_comments if generated_comments else None,
+                    )
+                    or ""
+                )
             except Exception:
-                pass
+                comment = ""
+            personas_3[slot_idx] = comment
+            if comment and "取得失敗" not in comment:
+                generated_comments.append(comment)
         try:
             vote_data = fut_vote.result() or {}
         except Exception:
