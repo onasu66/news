@@ -133,7 +133,7 @@ def run_claude_research(n: int = 30, n_news: int = 15, n_papers: int = 15, timeo
     base_cmd = [
         "--dangerously-skip-permissions",
         "--allowed-tools", "WebSearch,Write",
-        "--max-budget-usd", "1.50",
+        "--max-budget-usd", "2.00",
         "-p",          # stdin から読む（positional prompt なし）
         "--input-format", "text",
     ]

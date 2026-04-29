@@ -34,7 +34,7 @@ def run_research():
         if not is_claude_available():
             logger.warning("Claude CLI が見つかりません。`npm i -g @anthropic-ai/claude-code` でインストールしてください。")
             return
-        ok = run_claude_research(n=30, n_news=15, n_papers=15, timeout=600)
+        ok = run_claude_research(n=15, n_news=8, n_papers=7, timeout=600)
         if not ok:
             logger.warning("Claude リサーチ失敗（curated_articles.json が更新されませんでした）")
             return
