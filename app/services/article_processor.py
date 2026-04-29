@@ -61,9 +61,17 @@ def process_rss_to_site_article(item: NewsItem, force: bool = False) -> bool:
                 title_ja = t2
     # 海外ニュースは従来どおり。論文（arXiv/Nature 等）は FOREIGN_SOURCES に入っていないが、
     # 英語タイトル・要約のまま掲載されるとサイト方針に反するため同様に弾く。
+    # ただし論文はタイトルが英語でも要約が日本語なら通す（curated論文でタイトル翻訳失敗しても消えないように）
     strict_ja = item.source in FOREIGN_SOURCES or item.category == "研究・論文"
-    if strict_ja and (not text_mainly_japanese(title_ja) or not text_mainly_japanese(summary_ja)):
-        return False  # 日本語にならない場合は保存しない（無駄なAPI連打はしない）
+    if strict_ja:
+        if item.category == "研究・論文":
+            # 論文: 要約が日本語であれば保存する（タイトルが英語のままでも許容）
+            if not text_mainly_japanese(summary_ja):
+                return False
+        else:
+            # 海外ニュース: タイトル・要約ともに日本語が必要
+            if not text_mainly_japanese(title_ja) or not text_mainly_japanese(summary_ja):
+                return False
 
     # タイトルは「元のタイトルをベースに、事実を変えず、誇張せず、必要なら少しだけ分かりやすく」整える
     # 論文（研究・論文）は見出し加工を避け、元タイトルを基本そのまま使う

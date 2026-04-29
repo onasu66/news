@@ -68,7 +68,7 @@ _PAPERS_PROMPT = """\
 
 [
   {{
-    "title": "タイトル（日本語可）",
+    "title": "タイトルは必ず日本語で書いてください（英語論文も日本語訳する）",
     "url": "実在する論文の URL",
     "summary": "100〜150 字の日本語要約",
     "source": "媒体名（arXiv / Nature / PubMed など）",
