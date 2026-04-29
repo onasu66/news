@@ -486,18 +486,22 @@ async def api_news_page(page: int = 1, keyword: str = ""):
     for item in items:
         pub = item.published.strftime('%m/%d %H:%M') if item.published else ''
         title_safe = html_mod.escape(item.title or "")
-        summary_safe = html_mod.escape((item.summary or "")[:80])
+        raw_summary = item.summary or ""
+        summary_safe = html_mod.escape(raw_summary[:80])
+        ellipsis = "..." if len(raw_summary) > 80 else ""
         source_safe = html_mod.escape(item.source or "")
         cat_safe = html_mod.escape(item.category or "")
+        img_src = item.image_url or "https://picsum.photos/400/225"
         cards_html += f'''<article class="news-card animate-fade-in" data-category="{cat_safe}">
 <a href="/topic/{item.id}" class="news-card-link">
-<div class="news-card-image"><img src="{item.image_url or 'https://picsum.photos/400/225'}" alt="{title_safe}" loading="lazy"><span class="news-card-category">{cat_safe}</span></div>
 <div class="news-card-body">
 <div class="news-card-meta"><span class="news-card-time">🕒 {pub}</span><span class="news-card-source">{source_safe}</span></div>
 <h3 class="news-title">{title_safe}</h3>
-<p class="news-summary-line">👀 {summary_safe}...</p>
+<p class="news-summary-line">👀 {summary_safe}{ellipsis}</p>
 <div class="news-card-footer"><span class="news-card-ai">✍ AIが解説</span><span class="news-badge">AI解説</span></div>
-</div></a></article>'''
+</div>
+<div class="news-card-image"><img src="{img_src}" alt="{title_safe}" loading="lazy" onerror="this.src='https://picsum.photos/seed/{item.id}/400/225'"><span class="news-card-category">{cat_safe}</span></div>
+</a></article>'''
     return {"html": cards_html, "page": page, "total_pages": total_pages}
 
 
@@ -521,19 +525,19 @@ async def api_papers_page(page: int = 1):
             summary_safe = html_mod.escape(raw_summary[:80])
             domain_safe = html_mod.escape(domain or "")
             source_safe = html_mod.escape(item.source or "")
-            tags = getattr(item, "related_tags", []) or []
-            chips = "".join([f'<span class="news-badge">{html_mod.escape(t)}</span>' for t in tags[:3]])
             ellipsis = "..." if len(raw_summary) > 80 else ""
-            cards_html += f'''<article class="news-card animate-fade-in" data-category="{domain_safe}">
+            filt = html_mod.escape(getattr(item, "paper_filter_code", None) or "")
+            img_src = item.image_url or "https://picsum.photos/400/225"
+            cards_html += f'''<article class="news-card animate-fade-in" data-category="{domain_safe}" data-filter="{filt}">
 <a href="/topic/{item.id}" class="news-card-link">
-<div class="news-card-image"><img src="{item.image_url or 'https://picsum.photos/400/225'}" alt="{title_safe}" loading="lazy"><span class="news-card-category">{domain_safe}</span></div>
 <div class="news-card-body">
 <div class="news-card-meta"><span class="news-card-time">🕒 {pub}</span><span class="news-card-source">{source_safe}</span></div>
 <h3 class="news-title">{title_safe}</h3>
 <p class="news-summary-line">👀 {summary_safe}{ellipsis}</p>
-<div class="tag-list">{chips}</div>
 <div class="news-card-footer"><span class="news-card-ai">✍ AIが解説</span><span class="news-badge">AI解説</span></div>
-</div></a></article>'''
+</div>
+<div class="news-card-image"><img src="{img_src}" alt="{title_safe}" loading="lazy" onerror="this.src='https://picsum.photos/seed/{item.id}/400/225'"><span class="news-card-category">{domain_safe}</span></div>
+</a></article>'''
     return {"html": cards_html, "page": pagination["page"], "total_pages": pagination["total_pages"]}
 
 

@@ -49,9 +49,9 @@
         {% if has_papers %}
         <div class="genre-tabs-wrap" role="tablist" aria-label="論文ジャンルで絞り込み">
             <div class="genre-tabs-scroll">
-                <button type="button" class="genre-tab genre-tab-sn0 is-active" role="tab" aria-selected="true" data-cat="all">すべて</button>
+                <button type="button" class="genre-tab is-active" role="tab" aria-selected="true" data-cat="all">すべて</button>
                 {% for domain, items in papers_by_category %}
-                <button type="button" class="genre-tab genre-tab-sn{{ (loop.index0 % 5) + 1 }}" role="tab" aria-selected="false" data-cat="{{ domain }}">{{ domain }}</button>
+                <button type="button" class="genre-tab" role="tab" aria-selected="false" data-cat="{{ domain }}">{{ domain }}</button>
                 {% endfor %}
             </div>
         </div>

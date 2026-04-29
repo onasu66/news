@@ -389,15 +389,11 @@ body::after {
     border-color: rgba(71, 85, 105, 0.35);
     box-shadow: none;
 }
-.page-layout--papers {
-    background: linear-gradient(180deg, rgba(239, 246, 255, 0.9), rgba(219, 234, 254, 0.55));
-}
+.page-layout--papers,
 .page-layout--news {
     background: linear-gradient(180deg, rgba(255, 247, 237, 0.92), rgba(254, 226, 226, 0.55));
 }
-:root[data-theme="dark"] .page-layout--papers {
-    background: linear-gradient(180deg, rgba(8, 47, 73, 0.45), rgba(17, 24, 39, 0.72));
-}
+:root[data-theme="dark"] .page-layout--papers,
 :root[data-theme="dark"] .page-layout--news {
     background: linear-gradient(180deg, rgba(69, 26, 3, 0.42), rgba(17, 24, 39, 0.72));
 }
@@ -1082,35 +1078,7 @@ body::after {
     height: 6px;
 }
 
-.genre-tab {
-    flex-shrink: 0;
-    padding: 0.6rem 1.25rem;
-    background: var(--color-surface);
-    color: var(--color-text-secondary);
-    font-size: 0.95rem;
-    font-weight: 600;
-    border-radius: 999px;
-    border: 2px solid var(--color-border);
-    cursor: pointer;
-    transition: all 0.25s ease;
-    box-shadow: var(--shadow-xs);
-}
-
-.genre-tab:hover {
-    background: linear-gradient(135deg, var(--color-accent), var(--color-primary-light));
-    color: #fff;
-    border-color: transparent;
-    box-shadow: 0 4px 12px rgba(99, 102, 241, 0.35);
-    transform: translateY(-2px);
-}
-
-.genre-tab.is-active,
-.genre-tab[aria-selected="true"] {
-    background: linear-gradient(135deg, var(--color-accent), var(--color-primary-light));
-    color: #000;
-    border-color: transparent;
-    box-shadow: 0 4px 14px rgba(99, 102, 241, 0.4);
-}
+/* ジャンルタブの見た目は下段「ENHANCED NEWS CARDS」付近の .genre-tabs-scroll .genre-tab に統一 */
 
 .genre-panels {
     min-height: 200px;
@@ -1193,10 +1161,6 @@ body::after {
     transform: translateY(-4px);
     border-color: rgba(99, 102, 241, 0.25);
 }
-
-.news-card:nth-child(3n+1):hover { border-color: rgba(99, 102, 241, 0.3); }
-.news-card:nth-child(3n+2):hover { border-color: rgba(236, 72, 153, 0.2); }
-.news-card:nth-child(3n):hover { border-color: rgba(14, 165, 233, 0.2); }
 
 .news-card-link {
     text-decoration: none;
@@ -2365,7 +2329,7 @@ body::after {
         display: none;
     }
 
-    .genre-tab {
+    .genre-tabs-scroll .genre-tab {
         min-height: 48px;
         padding: 0.65rem 1.25rem;
         display: inline-flex;
@@ -2982,7 +2946,7 @@ body::after {
     padding-bottom: 0.25rem;
 }
 .genre-tabs-scroll::-webkit-scrollbar { display: none; }
-.genre-tab {
+.genre-tabs-scroll .genre-tab {
     flex: 0 0 auto;
     padding: 0.45rem 1rem;
     border: 1px solid var(--color-border-light);
@@ -2994,19 +2958,19 @@ body::after {
     transition: all 0.2s;
     white-space: nowrap;
     color: var(--color-text-secondary);
+    border-bottom-width: 3px;
+    border-bottom-color: transparent;
 }
-.genre-tab.is-active,
-.genre-tab[aria-selected="true"] {
+.genre-tabs-scroll .genre-tab:hover:not(.is-active):not([aria-selected="true"]) {
+    border-color: rgba(99, 102, 241, 0.35);
+    color: var(--color-text);
+}
+.genre-tabs-scroll .genre-tab.is-active,
+.genre-tabs-scroll .genre-tab[aria-selected="true"] {
     background: var(--color-accent);
     color: #fff;
     border-color: var(--color-accent);
     border-bottom-color: var(--color-accent);
-}
-
-/* ジャンルタブ：選択中はサイトアクセントで統一（タブごとに色を変えない） */
-.genre-tab[class*="genre-tab-sn"] {
-    border-bottom-width: 3px;
-    border-bottom-color: transparent;
 }
 
 :root[data-theme="dark"] .news-card .news-title {
@@ -4114,7 +4078,7 @@ body::after {
     .news-card-meta { color: var(--color-text-muted); }
     .news-summary-line { color: var(--color-text-muted); font-size: 0.74rem; }
 
-    .genre-tab { background: #fff; border-color: #e2e8f0; color: #475569; }
+    .genre-tabs-scroll .genre-tab { background: #fff; border-color: #e2e8f0; color: #475569; }
     .genre-tabs-wrap { background: rgba(248,250,252,0.95); backdrop-filter: blur(8px); }
 
     .article-detail { background: transparent; border-radius: 0; padding: 0; margin: 0; box-shadow: none; }
@@ -4175,7 +4139,7 @@ body::after {
     }
     :root[data-theme="dark"] .news-card-meta { color: var(--color-text-muted); }
     :root[data-theme="dark"] .news-summary-line { color: var(--color-text-muted); font-size: 0.74rem; -webkit-line-clamp: 2; }
-    :root[data-theme="dark"] .genre-tab {
+    :root[data-theme="dark"] .genre-tabs-scroll .genre-tab {
         background: var(--color-bg-elevated);
         border-color: var(--color-border-light);
         color: var(--color-text-secondary);
@@ -4184,8 +4148,8 @@ body::after {
         background: var(--color-bg);
         backdrop-filter: blur(8px);
     }
-    :root[data-theme="dark"] .genre-tab.is-active,
-    :root[data-theme="dark"] .genre-tab[aria-selected="true"] {
+    :root[data-theme="dark"] .genre-tabs-scroll .genre-tab.is-active,
+    :root[data-theme="dark"] .genre-tabs-scroll .genre-tab[aria-selected="true"] {
         background: var(--color-accent);
         color: #fff;
         border-color: var(--color-accent);

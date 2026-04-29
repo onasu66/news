@@ -54,9 +54,9 @@
 
         <div class="genre-tabs-wrap" role="tablist" aria-label="ジャンルで絞り込み">
             <div class="genre-tabs-scroll">
-                <button type="button" class="genre-tab genre-tab-sn0 is-active" role="tab" aria-selected="true" data-cat="all">すべて</button>
+                <button type="button" class="genre-tab is-active" role="tab" aria-selected="true" data-cat="all">すべて</button>
                 {% for category, items in news_by_category %}
-                <button type="button" class="genre-tab genre-tab-sn{{ (loop.index0 % 5) + 1 }}" role="tab" aria-selected="false" data-cat="{{ category }}">{{ category }}</button>
+                <button type="button" class="genre-tab" role="tab" aria-selected="false" data-cat="{{ category }}">{{ category }}</button>
                 {% endfor %}
             </div>
         </div>
