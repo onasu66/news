@@ -162,36 +162,32 @@ async def lifespan(app: FastAPI):
         )
         logger.info("一覧キャッシュを DB から %d 分ごとに同期します。", LIST_CACHE_SYNC_MIN)
     if not rss_ai_disabled:
-        # 0:00 / 9:30 / 12:30: RSS取得→記事化のみ
-        for job_id, hour, minute in [
-            ("rss_00", 0, 0),
-            ("rss_0930", 9, 30),
-            ("rss_1230", 12, 30),
-        ]:
-            scheduler.add_job(
-                _scheduled_rss_fetch_and_article,
-                CronTrigger(hour=hour, minute=minute, timezone=JST),
-                id=job_id,
-            )
+        # 13:00: RSS取得→記事化のみ
+        scheduler.add_job(
+            _scheduled_rss_fetch_and_article,
+            CronTrigger(hour=13, minute=0, timezone=JST),
+            id="rss_1300",
+        )
         # 20:00: 記事更新のあと、AI日次コンテンツを1日1回だけ更新
         scheduler.add_job(
             _scheduled_2000_rss_and_ai_daily,
             CronTrigger(hour=20, minute=0, timezone=JST),
             id="rss_2000_and_ai_daily",
         )
-        # Claude ウェブリサーチ: 8:00 / 13:00 / 19:00 の3回
+        logger.info("RSS記事化: 13:00 / 20:00 JST に設定")
+        # Claude ウェブリサーチ: 8:30 / 16:30 / 22:00 の3回
         # claude CLI がない環境（Render 本番）では _scheduled_claude_research_and_seed 内で自動スキップ
         for cr_id, cr_hour, cr_minute in [
-            ("claude_research_0800", 8, 0),
-            ("claude_research_1300", 13, 0),
-            ("claude_research_1900", 19, 0),
+            ("claude_research_0830", 8, 30),
+            ("claude_research_1630", 16, 30),
+            ("claude_research_2200", 22, 0),
         ]:
             scheduler.add_job(
                 _scheduled_claude_research_and_seed,
                 CronTrigger(hour=cr_hour, minute=cr_minute, timezone=JST),
                 id=cr_id,
             )
-        logger.info("Claude ウェブリサーチ: 8:00 / 13:00 / 19:00 JST に設定")
+        logger.info("Claude ウェブリサーチ: 8:30 / 16:30 / 22:00 JST に設定")
     scheduler.start()
     # 起動直後のメモリをログ（Render 512MB 制限の確認用）
     try:

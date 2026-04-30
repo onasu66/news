@@ -63,7 +63,7 @@
             {% else %}
             {% for domain, items in papers_by_category %}
             {% for item in items %}
-            <article class="news-card animate-fade-in" data-category="{{ domain }}" data-filter="{{ item.paper_filter_code or '' }}">
+            <article class="news-card animate-fade-in" data-category="{{ domain }}">
                 <a href="/topic/{{ item.id }}" class="news-card-link">
                     <div class="news-card-body">
                         <div class="news-card-meta">

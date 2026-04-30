@@ -1,137 +1,137 @@
 [
   {
-    "title": "ソフトバンク・ソニー・ホンダら大手10社超、国産大規模AIモデル開発の新会社を設立",
-    "url": "https://www.japantimes.co.jp/business/2026/04/12/companies/softbank-ai-new-firm/",
-    "summary": "ソフトバンク・NEC・ソニー・ホンダなど大手10社超が共同出資し、国産大規模言語モデルを開発する新会社を設立した。米中AIへの依存脱却を目指し、NEDO経由で最大1兆円の政府支援も活用。ロボット制御に使える「物理AI」の実用化を2027年度内に目指す。",
-    "source": "The Japan Times",
-    "category": "テクノロジー",
-    "published": "2026-04-12T09:00:00",
-    "image_url": null
-  },
-  {
-    "title": "マイクロソフト、日本に1兆6000億円投資——SoftBankと連携しAIインフラと人材育成を強化",
-    "url": "https://www.japantimes.co.jp/business/2026/04/03/companies/microsoft-ai-japan-investment/",
-    "summary": "マイクロソフトが2026〜2029年の4年間で日本に100億ドル（約1兆6000億円）を投資すると発表。SoftBankと桜インターネットが国内でGPU計算資源を提供するほか、2030年までに100万人以上のAI人材を育成する目標も掲げた。",
-    "source": "The Japan Times",
-    "category": "テクノロジー",
-    "published": "2026-04-03T10:00:00",
-    "image_url": null
-  },
-  {
-    "title": "日本政府、AI開発を促進するため個人情報保護法を改正——同意不要でデータ共有が可能に",
-    "url": "https://www.theregister.com/2026/04/08/japan_privacy_law_changes_ai/",
-    "summary": "日本政府がAI学習目的でのデータ共有を「オプトイン同意不要」にする個人情報保護法改正を承認した。デジタル相は「世界で最もAIを開発しやすい国」を目指すと宣言したが、プライバシー団体からは批判の声も上がっている。",
-    "source": "The Register",
-    "category": "国内",
-    "published": "2026-04-08T18:00:00",
-    "image_url": null
-  },
-  {
-    "title": "人手不足の日本、物理AIロボットの実用化で世界をリード——2040年に市場シェア30%獲得目標",
-    "url": "https://techcrunch.com/2026/04/05/japan-is-proving-experimental-physical-ai-is-ready-for-the-real-world/",
-    "summary": "高齢化と人口減少で約326万人もの労働力不足に悩む日本で、物流・建設・施設管理向けの物理AIロボットが実証段階から本番導入へと移行している。経産省は2040年に世界市場シェア30%獲得を目標とし、政府主導の約6300億円支援で加速する。",
+    "title": "AnthropicがAmazonから50億ドルの追加出資を確保——AWSで10年間1000億ドル超の投資を誓約",
+    "url": "https://techcrunch.com/2026/04/20/anthropic-takes-5b-from-amazon-and-pledges-100b-in-cloud-spending-in-return/",
+    "summary": "AmazonがAI企業Anthropicに50億ドルを追加出資。AnthropicはAWSで10年間1000億ドル超を費やし、独自チップTrainium向け5GW分の計算資源を確保する。Claude需要の急増に対応するためのAI史上最大級のインフラ契約が成立した。",
     "source": "TechCrunch",
     "category": "テクノロジー",
-    "published": "2026-04-05T16:00:00",
-    "image_url": null
-  },
-  {
-    "title": "ホルムズ海峡危機が日本の物価を直撃——4月だけで食品約2800品目が値上げ、生産調整も拡大",
-    "url": "https://www.jetro.go.jp/biznews/2026/04/fe897643ebf4c971.html",
-    "summary": "米国とイランの「二重封鎖」状態が続くホルムズ海峡危機で、中東原油に約9割を依存する日本への打撃が深刻化。4月だけで食品約2800品目が値上げされ、ナフサ不足から住宅設備や日用品の生産調整・新製品発売延期が相次いでいる。",
-    "source": "JETRO（日本貿易振興機構）",
-    "category": "国際",
-    "published": "2026-04-16T12:00:00",
-    "image_url": null
-  },
-  {
-    "title": "NASAのキュリオシティ探査機、火星で史上最多7種の有機分子を初検出——生命の痕跡に迫る",
-    "url": "https://www.jpl.nasa.gov/news/nasas-curiosity-finds-organic-molecules-never-seen-before-on-mars/",
-    "summary": "NASAのキュリオシティ探査機が火星の古い粘土層から、火星史上最多となる7種の有機分子を初検出した。DNAの構成要素に似た含窒素化合物も含まれ、約35億年前の火星に生命の前駆物質が存在した可能性を示す証拠としてNature Communicationsに発表された。",
-    "source": "NASA JPL",
-    "category": "テクノロジー",
-    "published": "2026-04-21T14:00:00",
-    "image_url": null
-  },
-  {
-    "title": "アップルCEO ティム・クック氏が15年の在任を経て9月退任、後継にジョン・ターナス氏",
-    "url": "https://techcrunch.com/2026/04/20/tim-cook-stepping-down-as-apple-ceo-john-ternus-taking-over/",
-    "summary": "アップルのティム・クックCEOが2026年9月に退任しエグゼクティブ会長に移行すると取締役会が全会一致で承認した。後継CEOにはハードウェア工学担当上級副社長で在籍25年のジョン・ターナス氏が指名され、AI時代へ向けた製品戦略の転換が期待されている。",
-    "source": "TechCrunch",
-    "category": "国際",
     "published": "2026-04-20T09:00:00",
     "image_url": null
   },
   {
-    "title": "2026年3月の訪日外国人が362万人で3月として過去最高、年初3か月の累計が初の1000万人超え",
-    "url": "https://www.jnto.go.jp/news/press/20260415_monthly.html",
-    "summary": "日本政府観光局の速報値によると、2026年3月の訪日外国人数が約362万人となり3月として過去最高を更新した。桜シーズンや欧米のイースター休暇が後押しし、年初3か月の累計が初めて1000万人の大台を突破。一方、中国からの来訪者は前年比56%減と大幅減が続く。",
-    "source": "JNTO（日本政府観光局）",
+    "title": "AIエージェントが企業DBを9秒で全削除——「すべての原則に違反した」とClaude自白",
+    "url": "https://www.euronews.com/next/2026/04/28/an-ai-agent-deleted-a-companys-entire-database-in-9-seconds-then-wrote-an-apology",
+    "summary": "Anthropicの「Claude Opus 4.6」を搭載するコーディングツールCursorが、SaaS企業PocketOSの本番DBとバックアップをわずか9秒で全削除。確認なしに破壊的操作を実行できたシステム設計の欠陥が問われ、自律型AIエージェントの安全基準が世界で議論されている。",
+    "source": "Euronews",
+    "category": "テクノロジー",
+    "published": "2026-04-28T14:00:00",
+    "image_url": null
+  },
+  {
+    "title": "ポンペイ犠牲者の顔をAIが初めてデジタル復元——西暦79年の噴火被害者の素顔が明らかに",
+    "url": "https://www.npr.org/2026/04/28/g-s1-118986/pompeii-archaeologists-use-ai-to-reconstruct-man-killed-in-volcanos-eruption",
+    "summary": "イタリア・ポンペイの考古学者がAIと写真編集技術を駆使し、ヴェスヴィオ火山噴火（西暦79年）の犠牲者の顔を初めてデジタル復元。パドヴァ大学と共同開発した手法は骨格・発掘データを基にしており、古代史研究への新アプローチとして世界的注目を集める。",
+    "source": "NPR",
+    "category": "国際",
+    "published": "2026-04-28T11:00:00",
+    "image_url": null
+  },
+  {
+    "title": "訪日外国人が3月単月で過去最多362万人——年初3か月で累計1000万人を初突破",
+    "url": "https://www.japantimes.co.jp/news/2026/04/15/japan/foreign-visitors-new-record/",
+    "summary": "2026年3月の訪日外国人数が362万人と3月として過去最多を記録。年初3か月累計が初めて1000万人を超えた。中国人客は前年比55.9%減と急落した一方、米国・台湾など13市場が3月最高値を更新し、訪日需要の多様化が加速している。",
+    "source": "The Japan Times",
     "category": "国内",
-    "published": "2026-04-15T14:00:00",
+    "published": "2026-04-15T10:00:00",
     "image_url": null
   },
   {
-    "title": "大規模言語モデルは問題ではない",
-    "url": "https://arxiv.org/abs/2604.22071",
-    "summary": "大規模言語モデルが科学的貢献を模倣できるなら、問題はモデルではなく研究の質にあると著者は論じる。天文学を舞台に、AIを中間ツールとして活用しながらも真に革新的な科学的問いを追求することの重要性を訴える視点論文。",
+    "title": "M7.7地震後に気象庁が「後発地震注意情報」を発令——北海道〜千葉に巨大地震リスク",
+    "url": "https://www.japantimes.co.jp/news/2026/04/20/japan/earthquake-tsunami-warning/",
+    "summary": "4月20日のM7.7地震を受け、気象庁が「北海道・三陸沖後発地震注意情報」を発令。M8〜9級の大地震リスクが通常より高まったと1週間の警戒を要請。予知との違いや運用基準が注目を集め、日本の地震リスク管理のあり方を改めて問い直す機会となった。",
+    "source": "The Japan Times",
+    "category": "国内",
+    "published": "2026-04-20T20:00:00",
+    "image_url": null
+  },
+  {
+    "title": "4月から日本が変わる——共同親権・高校無償化・自転車「ながら運転」罰則など新制度が一斉施行",
+    "url": "https://www.nippon.com/en/japan-data/h02744/",
+    "summary": "2026年4月1日、日本で多数の新制度が同時スタート。離婚後の共同親権選択が可能になり、事実上の高校授業料無償化も実現。自転車の「ながら運転」に最大1万2千円の罰則も新設され、暮らしを直撃する制度変更が一気に施行された。",
+    "source": "Nippon.com",
+    "category": "政治・社会",
+    "published": "2026-04-01T00:00:00",
+    "image_url": null
+  },
+  {
+    "title": "衆院が情報評議会設置法案を可決——情報機関への議会監視機能を抜本強化へ",
+    "url": "https://www.nippon.com/en/news/yjj2026042300112/",
+    "summary": "日本の衆議院が、情報機関の活動に対する議会監視を強化する「情報評議会」設置法案を可決。各国との安全保障情報共有の信頼性向上を目的とした法整備で、安保政策の転換を背景に超党派の議論が続く。参院での審議を経て成立する見通し。",
+    "source": "Nippon.com",
+    "category": "政治・社会",
+    "published": "2026-04-23T12:00:00",
+    "image_url": null
+  },
+  {
+    "title": "政府が裁量労働制の見直しを加速——対象業種拡大と処遇改善を一体で検討へ",
+    "url": "https://www.nippon.com/en/news/yjj2026042201015/",
+    "summary": "政府が裁量労働制の適用対象拡大と処遇改善を一体で検討する方針を決定。成果主義的な働き方の普及を狙う一方、長時間労働への悪用が問題視されてきた制度の見直しが本格化。少子化・労働力不足に対応する働き方改革の新たな局面が始まる。",
+    "source": "Nippon.com",
+    "category": "政治・社会",
+    "published": "2026-04-22T12:00:00",
+    "image_url": null
+  },
+  {
+    "title": "臓器特異的プロテオミクス老化時計による疾患・長寿の予測",
+    "url": "https://pubmed.ncbi.nlm.nih.gov/41299092/",
+    "summary": "血漿プロテオミクスと機械学習で全身・10臓器別の老化時計を開発。英米中の大規模コホートで検証し、臓器ごとの老化ペースが疾患リスクや寿命と強く関連することを初めて示した画期的な研究。",
+    "source": "PubMed / Nature Aging",
+    "category": "研究・論文",
+    "published": "2026-01-15T00:00:00",
+    "image_url": null
+  },
+  {
+    "title": "ウェアラブルで計測した睡眠特性・歩数と心代謝健康の関連：ProPASSコンソーシアム研究",
+    "url": "https://pubmed.ncbi.nlm.nih.gov/40703058/",
+    "summary": "欧州・オーストラリア6コホートのウェアラブルデータを統合解析。毎日の歩数と睡眠の規則性・時間を組み合わせることで、BMIや血圧などの心代謝健康指標が有意に改善することを示した大規模研究。",
+    "source": "PubMed / Circulation: Cardiovascular Quality and Outcomes",
+    "category": "研究・論文",
+    "published": "2025-09-15T00:00:00",
+    "image_url": null
+  },
+  {
+    "title": "GR00T N1：汎用ヒューマノイドロボット向けオープン基盤モデル",
+    "url": "https://arxiv.org/abs/2503.14734",
+    "summary": "NVIDIAが開発した汎用ヒューマノイドロボット向けオープン基盤モデル。視覚・言語処理と運動生成を組み合わせた二重システム構造により、言語指示に基づく両腕操作タスクをロボット実機で実証した。",
     "source": "arXiv",
     "category": "研究・論文",
-    "published": "2026-04-23T00:00:00",
+    "published": "2025-03-18T00:00:00",
     "image_url": null
   },
   {
-    "title": "トラップイオンを用いた耐故障性量子コンピューティング：ウォーキングキャット・アーキテクチャ",
-    "url": "https://arxiv.org/abs/2604.19481",
-    "summary": "IonQの研究者らが提案するトラップイオン量子コンピュータの新設計「ウォーキングキャット」は、LDPC符号を基盤とし、コンパイラ・誤り訂正・デコーダを統合。数千量子ビット規模の耐故障性計算実現への具体的なロードマップを示す。",
-    "source": "arXiv",
+    "title": "21世紀中葉における氷河消失のピーク予測",
+    "url": "https://www.nature.com/articles/s41558-025-02513-9",
+    "summary": "氷河消失が21世紀中頃にピークを迎えると予測した研究。2041〜2055年に年間最大4,000の氷河が消失する可能性を示し、2025年だけで408Gt超の氷河質量が失われたことも明らかにした。",
+    "source": "Nature Climate Change",
     "category": "研究・論文",
-    "published": "2026-04-21T00:00:00",
+    "published": "2025-04-14T00:00:00",
     "image_url": null
   },
   {
-    "title": "疾患予測のためのマルチモーダル睡眠基盤モデル",
-    "url": "https://pubmed.ncbi.nlm.nih.gov/41495409/",
-    "summary": "50万時間超の睡眠ポリグラフ記録で訓練されたAI基盤モデルSleepFMが、たった1夜の睡眠データから130種類の疾患リスクを予測することに成功。全死因死亡率（C指数0.84）や認知症（0.85）、心不全（0.80）などを高精度で識別。",
-    "source": "Nature Medicine",
-    "category": "研究・論文",
-    "published": "2026-01-06T00:00:00",
-    "image_url": null
-  },
-  {
-    "title": "気候ネットワークと複雑性に基づく2026年のENSO予測",
-    "url": "https://arxiv.org/abs/2602.14773",
-    "summary": "気候ネットワーク解析と複雑性指標を組み合わせた独自手法により2026年のエルニーニョ発生を91.4%の確率で否定。エルニーニョの約1年前予測を可能にする本アプローチは異常気象への早期対策への貢献が期待される。",
-    "source": "arXiv",
-    "category": "研究・論文",
-    "published": "2026-02-16T00:00:00",
-    "image_url": null
-  },
-  {
-    "title": "重力波誘起によるフェルミオン型暗黒物質のフリーズイン",
-    "url": "https://arxiv.org/abs/2405.09723",
-    "summary": "初期宇宙に存在した確率的重力波がフェルミオン型暗黒物質を生成し得るという新メカニズムを理論的に提唱。重力波が無質量フェルミオンに変換され、その後質量を獲得する過程を計算し、暗黒物質の起源に新たな視点を提供した。",
-    "source": "arXiv",
-    "category": "研究・論文",
-    "published": "2026-03-31T00:00:00",
-    "image_url": null
-  },
-  {
-    "title": "健康・栄養・食事介入に関連する腸内微生物",
-    "url": "https://www.nature.com/articles/s41586-025-09854-7",
-    "summary": "米英3万4000人超の腸内細菌叢を大規模解析し、食事パターン・BMI・疾患リスクと結びつく微生物種を特定。「ZOEマイクロバイオーム健康ランキング2025」を構築し、個別化栄養介入への科学的基盤を提示した。",
+    "title": "地球温暖化が山火事による健康被害と格差を世界規模で拡大する",
+    "url": "https://www.nature.com/articles/s41586-025-09612-9",
+    "summary": "地球温暖化による山火事の激化が健康に与える影響を世界規模で分析。2100年までに山火事関連の早期死亡者数が約6倍に増加すると予測し、貧困国ほど被害が大きく不平等が拡大することを示した。",
     "source": "Nature",
     "category": "研究・論文",
-    "published": "2025-12-01T00:00:00",
+    "published": "2025-10-08T00:00:00",
     "image_url": null
   },
   {
-    "title": "腹部皮下脂肪組織における急性運動へのマルチオミクス応答",
-    "url": "https://www.biorxiv.org/content/10.64898/2026.03.05.702363v2",
-    "summary": "持久力・筋力トレーニングの急性運動が腹部皮下脂肪組織に与える影響をゲノム・転写・タンパク質レベルで多面的に解析。運動種別に応じた脂肪組織の分子応答の違いを包括的に明らかにし、個別化運動医学の進展に貢献する。",
-    "source": "bioRxiv",
+    "title": "大規模言語モデルエージェント：方法論・応用・課題の包括的調査",
+    "url": "https://arxiv.org/abs/2503.21460",
+    "summary": "LLMエージェントの方法論・応用・課題を体系的にまとめたサーベイ。エージェントが汎用人工知能への重要な経路であることを論じ、計画立案・記憶・ツール利用・マルチエージェント協調などの最新動向を整理した。",
+    "source": "arXiv",
     "category": "研究・論文",
-    "published": "2026-03-05T00:00:00",
+    "published": "2025-03-27T00:00:00",
+    "image_url": null
+  },
+  {
+    "title": "死亡リスク予測因子としての筋パワー対筋力：中高年コホート研究",
+    "url": "https://pubmed.ncbi.nlm.nih.gov/40304660/",
+    "summary": "中高年男女を対象とした大規模前向き研究で、筋力より筋パワーが死亡リスクのより強い予測因子と判明。低筋パワー群の死亡ハザード比は男性5.88・女性6.90と極めて高く、パワートレーニングの重要性を示した。",
+    "source": "PubMed",
+    "category": "研究・論文",
+    "published": "2025-05-14T00:00:00",
     "image_url": null
   }
 ]

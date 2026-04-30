@@ -526,9 +526,8 @@ async def api_papers_page(page: int = 1):
             domain_safe = html_mod.escape(domain or "")
             source_safe = html_mod.escape(item.source or "")
             ellipsis = "..." if len(raw_summary) > 80 else ""
-            filt = html_mod.escape(getattr(item, "paper_filter_code", None) or "")
             img_src = item.image_url or "https://picsum.photos/400/225"
-            cards_html += f'''<article class="news-card animate-fade-in" data-category="{domain_safe}" data-filter="{filt}">
+            cards_html += f'''<article class="news-card animate-fade-in" data-category="{domain_safe}">
 <a href="/topic/{item.id}" class="news-card-link">
 <div class="news-card-body">
 <div class="news-card-meta"><span class="news-card-time">🕒 {pub}</span><span class="news-card-source">{source_safe}</span></div>
