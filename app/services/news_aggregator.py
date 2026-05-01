@@ -89,6 +89,46 @@ SOURCE_TO_PAPER_DOMAIN: dict[str, str] = {
     "PubMed (AI医療)": "工学・応用",
     "PubMed (栄養・代謝)": "医療・ヘルスケア",
     "arXiv math.DS": "総合科学",
+    # ── Claude Code 選定論文用（汎用ソース名） ──────────────────────────────────
+    # AI・テック
+    "arXiv": "AI・テック",
+    # 医療・ヘルスケア
+    "Nature Medicine": "医療・ヘルスケア",
+    "Nature Aging": "医療・ヘルスケア",
+    "Nature Metabolism": "医療・ヘルスケア",
+    "Nature Microbiology": "医療・ヘルスケア",
+    "Nature Human Behaviour": "心理学",
+    "Nature Neuroscience": "心理学",
+    "JAMA": "医療・ヘルスケア",
+    "JAMA Network Open": "医療・ヘルスケア",
+    "JAMA Internal Medicine": "医療・ヘルスケア",
+    "NEJM": "医療・ヘルスケア",
+    "New England Journal of Medicine": "医療・ヘルスケア",
+    "The Lancet": "医療・ヘルスケア",
+    "The BMJ": "医療・ヘルスケア",
+    "BMJ": "医療・ヘルスケア",
+    "Cell": "医療・ヘルスケア",
+    "Cell Reports": "医療・ヘルスケア",
+    "eLife": "医療・ヘルスケア",
+    "PubMed": "医療・ヘルスケア",
+    "PubMed / JAMA Network Open": "医療・ヘルスケア",
+    "PubMed / JAMA": "医療・ヘルスケア",
+    "PubMed / NEJM": "医療・ヘルスケア",
+    "PubMed / The Lancet": "医療・ヘルスケア",
+    "PubMed / BMJ": "医療・ヘルスケア",
+    # 物理・宇宙
+    "Nature Climate Change": "物理・宇宙",
+    "Nature Energy": "物理・宇宙",
+    "Nature Physics": "物理・宇宙",
+    "Nature Astronomy": "物理・宇宙",
+    "Physical Review Letters": "物理・宇宙",
+    # 総合科学
+    "Nature Communications": "総合科学",
+    "Science Advances": "総合科学",
+    "Science": "総合科学",
+    "PNAS": "総合科学",
+    "sciencedaily.com": "総合科学",
+    "ScienceDaily": "総合科学",
 }
 
 # 論文フィルター（A〜I）用キーワード定義（タイトル・要約からタグ付け）
@@ -539,10 +579,12 @@ class NewsAggregator:
                     cls._papers_cache_at = datetime.now()
                     return papers_by_category, pagination
             except Exception as _e:
-                # クォータ超過など Firestore 障害時: メモリキャッシュが残っていればそれを返す（記事0件を防ぐ）
+                # クォータ超過など Firestore 障害時: TTL 内のキャッシュのみ使う（期限切れは get_news() へ）
                 logger.warning("get_papers_by_category: Firestore クエリ失敗（メモリキャッシュにフォールバック）: %s", _e)
-                if cls._papers_cache is not None:
-                    return cls._papers_cache
+                if cls._papers_cache is not None and cls._papers_cache_at:
+                    age = (datetime.now() - cls._papers_cache_at).total_seconds()
+                    if age < cls._PAPERS_CACHE_TTL_SEC:
+                        return cls._papers_cache
 
         news = cls.get_news(force_refresh)
         papers = [a for a in news if a.category == "研究・論文"]

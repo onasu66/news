@@ -1057,8 +1057,34 @@ def _attach_paper_related_tags(items: list) -> None:
 
 
 def _render_papers_page(request: Request, page: int = 1):
-    """論文一覧（トップ `/` と共通）"""
-    papers_by_category, pagination = NewsAggregator.get_papers_by_category(page=page)
+    """論文一覧（トップ `/` と共通）
+
+    インメモリキャッシュから全論文を直接読み込み、全ドメインタブを構築する。
+    ページネーション（Firestore クエリ）は使わず、全件を1ページで描画する。
+    これにより Claude 追加論文を含む全論文がすべてのタブに正しく表示される。
+    """
+    from app.services.news_aggregator import SOURCE_TO_PAPER_DOMAIN, PAPER_DOMAIN_ORDER
+    from datetime import datetime as _dt
+
+    # ── 全論文をインメモリキャッシュから取得 ──────────────────────────────────
+    all_news = NewsAggregator.get_news()
+    all_papers = sorted(
+        [a for a in all_news if a.category == "研究・論文"],
+        key=lambda x: x.added_at or x.published or _dt.min,
+        reverse=True,
+    )
+
+    # ── ドメイン分類（全論文に適用） ─────────────────────────────────────────
+    by_domain: dict[str, list] = {}
+    for item in all_papers:
+        domain = SOURCE_TO_PAPER_DOMAIN.get(item.source, "総合科学")
+        by_domain.setdefault(domain, []).append(item)
+
+    # 表示順（データが存在するドメインのみ）
+    paper_domains = [d for d in PAPER_DOMAIN_ORDER if d in by_domain]
+    papers_by_category = [(d, by_domain[d]) for d in paper_domains]
+
+    # ── 画像 / 関連タグ補完 ───────────────────────────────────────────────────
     for _, items in papers_by_category:
         _attach_paper_related_tags(items)
         for item in items:
@@ -1067,8 +1093,20 @@ def _render_papers_page(request: Request, page: int = 1):
                 item.image_url = get_image_url(item.id, 400, 225)
             elif item.image_url and not item.image_url.startswith("http"):
                 item.image_url = get_image_url(item.image_url, 400, 225)
+
+    # ── ページネーション: 全件を1ページに（無限スクロール不使用） ──────────
+    total = len(all_papers)
+    pagination = {
+        "page": 1,
+        "per_page": total or 1,
+        "total": total,
+        "total_pages": 1,
+        "has_prev": False,
+        "has_next": False,
+    }
+
     site_url = _get_site_url(request)
-    flat_papers = [it for _, items in papers_by_category for it in items]
+    flat_papers = all_papers
     papers_breadcrumb_jsonld = _build_breadcrumb_jsonld(
         [("ホーム", f"{site_url}/"), ("AI論文解説", f"{site_url}/")]
     )
@@ -1077,26 +1115,19 @@ def _render_papers_page(request: Request, page: int = 1):
         site_url=site_url,
         items=flat_papers,
     )
-    has_papers = any(items for _, items in papers_by_category)
+    has_papers = bool(all_papers)
+
     top_recommendations: list = []
     try:
-        latest_papers = [x for x in NewsAggregator.get_news() if x.category == "研究・論文"][:12]
-        top_recommendations = latest_papers[:3]
-        for item in top_recommendations:
-            _ensure_japanese(item)
-            if not item.image_url:
-                item.image_url = get_image_url(item.id, 400, 225)
-            elif item.image_url and not item.image_url.startswith("http"):
-                item.image_url = get_image_url(item.image_url, 400, 225)
+        top_recommendations = all_papers[:3]
     except Exception:
         top_recommendations = []
+
     recent_ai_news: list[dict] = []
     try:
-        all_news = NewsAggregator.get_news()[:120]
-        non_papers = [x for x in all_news if x.category != "研究・論文"][:10]
+        non_papers = [x for x in all_news[:120] if x.category != "研究・論文"][:10]
         if non_papers:
             from app.services.explanation_cache import get_cached_many
-
             cached_map = get_cached_many([x.id for x in non_papers])
             for it in non_papers:
                 c = cached_map.get(it.id, {}) if isinstance(cached_map, dict) else {}
@@ -1111,15 +1142,17 @@ def _render_papers_page(request: Request, page: int = 1):
                 recent_ai_news.append({"id": it.id, "title": it.title or "", "emojis": emojis})
     except Exception:
         recent_ai_news = []
+
     return templates.TemplateResponse(
         "papers.html",
         {
             "request": request,
             "papers_by_category": papers_by_category,
+            "paper_domains": paper_domains,
             "pagination": pagination,
             "has_papers": has_papers,
             "site_url": site_url,
-            "page": page,
+            "page": 1,
             "recent_ai_news": recent_ai_news,
             "top_recommendations": top_recommendations,
             "papers_breadcrumb_jsonld": papers_breadcrumb_jsonld,

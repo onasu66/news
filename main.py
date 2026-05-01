@@ -61,7 +61,8 @@ def _scheduled_claude_research_and_seed():
         from app.services.article_seed_from_curated import process_curated_articles
         count = process_curated_articles(max_per_run=30)
         if count > 0:
-            NewsAggregator.get_news(force_refresh=True)
+            NewsAggregator.sync_list_cache_from_db()
+            NewsAggregator._invalidate_papers_cache()
             logger.info("Claude リサーチ→記事化完了: %d 件追加", count)
         else:
             logger.info("Claude リサーチ: 新規記事なし（重複または生成失敗）")
@@ -222,6 +223,14 @@ if static_path.exists():
     app.mount("/static", StaticFiles(directory=str(static_path)), name="static")
 
 app.include_router(news.router)
+
+
+@app.post("/api/admin/sync-cache")
+def admin_sync_cache():
+    """一覧キャッシュを即時 DB から再同期する。記事追加後に呼ぶ。"""
+    from app.services.news_aggregator import NewsAggregator
+    NewsAggregator.sync_list_cache_from_db()
+    return {"status": "ok", "cached": len(NewsAggregator._news_cache or [])}
 
 
 @app.get("/api/debug/storage")
