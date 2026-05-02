@@ -118,8 +118,8 @@ def load_all() -> list[NewsItem]:
 
 def load_papers_for_site_list() -> list[NewsItem]:
     """
-    論文トップ（/）用: 研究・論文かつ解説キャッシュがある記事だけを取得する。
-    load_all() は全カテゴリ混在で LIMIT 800 のため、論文が多いと一覧に出ない。本関数はそれを避ける。
+    論文トップ（/）用: 研究・論文を取得。解説付きID（get_cached_article_ids）で絞り、
+    Firestore の has_explanation 未設定でも落ちない。IDメタが空のときはカテゴリのみで救済。
     """
     try:
         from app.config import settings
@@ -135,21 +135,29 @@ def load_papers_for_site_list() -> list[NewsItem]:
 
 
 def _sqlite_load_papers_for_site_list(limit: int) -> list[NewsItem]:
+    from .explanation_cache import get_cached_article_ids
+
+    try:
+        processed = get_cached_article_ids()
+    except Exception:
+        processed = set()
+    fetch_cap = min(max(limit * 150, 8000), 100000)
     _init_db()
     items: list[NewsItem] = []
     with _get_conn() as conn:
         rows = conn.execute(
             """
-            SELECT a.id, a.title, a.link, a.summary, a.published, a.source, a.category, a.image_url, a.added_at
-            FROM articles a
-            INNER JOIN explanation_cache e ON e.article_id = a.id
-            WHERE a.category = ?
-            ORDER BY a.published DESC, a.added_at DESC
+            SELECT id, title, link, summary, published, source, category, image_url, added_at
+            FROM articles
+            WHERE category = ?
+            ORDER BY published DESC, added_at DESC
             LIMIT ?
             """,
-            ("研究・論文", limit),
+            ("研究・論文", fetch_cap),
         ).fetchall()
     for row in rows:
+        if processed and row["id"] not in processed:
+            continue
         try:
             pub = datetime.fromisoformat(row["published"]) if row["published"] else datetime.now()
         except Exception:
@@ -173,6 +181,8 @@ def _sqlite_load_papers_for_site_list(limit: int) -> list[NewsItem]:
                 added_at=added_at,
             )
         )
+        if len(items) >= limit:
+            break
     return items
 
 

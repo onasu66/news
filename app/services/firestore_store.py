@@ -6,8 +6,6 @@ from pathlib import Path
 from datetime import datetime
 from typing import Optional
 
-from google.api_core.exceptions import FailedPrecondition
-
 logger = logging.getLogger(__name__)
 
 try:
@@ -163,14 +161,14 @@ def _firestore_article_doc_to_item(doc_id: str, d: dict) -> "NewsItem":
     )
 
 
-def _firestore_papers_fallback_scan(target: int) -> list:
-    """category+has_explanation+published の複合インデックスが無いとき、added_at 新しい順に広く読んで論文だけ拾う。"""
-    cap = max(1, min(int(target), 50000))
-    scan = min(max(cap * 8, 4000), 50000)
+def _firestore_scan_papers_category_only(cap: int) -> list:
+    """解説IDメタが空などの救済: 研究・論文カテゴリのみ（has_explanation や解説メタに依存しない）。"""
+    cap = max(1, min(int(cap), 50000))
+    scan = min(max(cap * 6, 5000), 75000)
     out: list = []
     for doc in _articles_collection().order_by("added_at", direction="DESCENDING").limit(scan).stream():
         d = doc.to_dict() or {}
-        if d.get("category") != "研究・論文" or not d.get("has_explanation"):
+        if (d.get("category") or "").strip() != "研究・論文":
             continue
         out.append(_firestore_article_doc_to_item(doc.id, d))
         if len(out) >= cap:
@@ -178,29 +176,65 @@ def _firestore_papers_fallback_scan(target: int) -> list:
     return out
 
 
-def firestore_load_all_papers_for_site_list(limit: int = 20000) -> list:
-    """論文トップ SSR 用: category=研究・論文かつ has_explanation のみを published 降順で取得。
-    load_all の上位800件（ニュース混在）では落ちる論文を拾う。上限は無料枠のため cap あり。"""
-    cap = max(1, min(int(limit), 50000))
-    items: list = []
-    q = (
-        _articles_collection()
-        .where("category", "==", "研究・論文")
-        .where("has_explanation", "==", True)
-        .order_by("published", direction="DESCENDING")
-        .limit(cap)
-    )
-    try:
-        for doc in q.stream():
+def _firestore_scan_papers_with_processed(processed_ids: set[str], cap: int) -> list:
+    """articles を added_at 降順にページ走査し、解説付きIDかつ研究・論文だけ集める（has_explanation フラグは使わない）。"""
+    if not processed_ids:
+        return []
+    cap = max(1, min(int(cap), 50000))
+    out: list = []
+    page_size = 4000
+    max_batches = 50
+    last_snap = None
+    for _ in range(max_batches):
+        q = _articles_collection().order_by("added_at", direction="DESCENDING").limit(page_size)
+        if last_snap is not None:
+            q = q.start_after(last_snap)
+        docs = list(q.stream())
+        if not docs:
+            break
+        for doc in docs:
+            if doc.id not in processed_ids:
+                continue
             d = doc.to_dict() or {}
-            items.append(_firestore_article_doc_to_item(doc.id, d))
-        return items
-    except FailedPrecondition as e:
+            if (d.get("category") or "").strip() != "研究・論文":
+                continue
+            out.append(_firestore_article_doc_to_item(doc.id, d))
+            if len(out) >= cap:
+                break
+        last_snap = docs[-1]
+        if len(out) >= cap or len(docs) < page_size:
+            break
+    return out
+
+
+def firestore_load_all_papers_for_site_list(limit: int = 20000) -> list:
+    """論文トップ SSR 用。解説キャッシュID（get_cached_article_ids）∩ 研究・論文を列挙。
+    has_explanation 未設定の古い論文や、複合インデックス無し環境でも落ちない。"""
+    from .explanation_cache import get_cached_article_ids
+
+    cap = max(1, min(int(limit), 50000))
+    try:
+        processed = get_cached_article_ids()
+    except Exception as e:
+        logger.warning("firestore_load_all_papers_for_site_list: get_cached_article_ids に失敗 (%s)", e)
+        processed = set()
+    if not processed:
         logger.warning(
-            "firestore_load_all_papers_for_site_list: 複合インデックス未作成のため added_at スキャンにフォールバックします（%s）",
-            e,
+            "firestore_load_all_papers_for_site_list: 解説付きIDが0件—カテゴリのみの論文一覧にフォールバックします"
         )
-        return _firestore_papers_fallback_scan(cap)
+        items = _firestore_scan_papers_category_only(cap)
+    else:
+        items = _firestore_scan_papers_with_processed(processed, cap)
+        if not items:
+            logger.warning(
+                "firestore_load_all_papers_for_site_list: 解説IDと論文の積集合が0件—カテゴリのみにフォールバックします"
+            )
+            items = _firestore_scan_papers_category_only(cap)
+    return sorted(
+        items,
+        key=lambda x: x.added_at or x.published or datetime.min,
+        reverse=True,
+    )[:cap]
 
 
 def firestore_save_articles_batch(items) -> int:
@@ -264,14 +298,19 @@ def _is_bad_fallback_cache(blocks: list) -> bool:
 
 
 def _rebuild_cached_article_ids_meta() -> set:
-    """explanations をスキャンして _meta/cache の ids を書き直す（初回・不整合修復用）"""
-    ids = []
-    for doc in _explanations_collection().limit(2000).stream():
-        ids.append(doc.id)
+    """explanations を全件スキャンして _meta/cache の ids を書き直す（初回・不整合修復用）。
+    旧実装の limit(2000) 打ち切りでは、2000件以降の解説付き記事が一覧から消える。"""
+    ids: list[str] = []
+    try:
+        for doc in _explanations_collection().stream():
+            ids.append(doc.id)
+    except Exception as e:
+        logger.warning("_rebuild_cached_article_ids_meta: explanations 全件走査に失敗 (%s)", e)
+        return set()
     try:
         _meta_doc().set({"ids": ids, "updated_at": _server_timestamp()})
-    except Exception:
-        pass
+    except Exception as e:
+        logger.warning("_rebuild_cached_article_ids_meta: メタ書き込み失敗（ids=%d 件）: %s", len(ids), e)
     return set(ids)
 
 
@@ -603,16 +642,13 @@ def firestore_sync_meta_from_explanations() -> int:
     「記事は8件あるが表示は3件」のようなズレがあるときに実行すると解消する。
     戻り値: 同期した id の個数
     """
-    ids = []
-    for doc in _explanations_collection().limit(2000).stream():
-        ids.append(doc.id)
     try:
-        _meta_doc().set({"ids": ids, "updated_at": _server_timestamp()})
-        logger.info("firestore_sync_meta_from_explanations: %d 件で _meta/cache を更新しました", len(ids))
+        n = len(_rebuild_cached_article_ids_meta())
+        logger.info("firestore_sync_meta_from_explanations: %d 件で _meta/cache を更新しました", n)
+        return n
     except Exception as e:
         logger.warning("firestore_sync_meta_from_explanations 失敗: %s", e)
         return 0
-    return len(ids)
 
 
 def use_firestore() -> bool:
