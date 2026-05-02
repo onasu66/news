@@ -20,12 +20,12 @@ from app.services.news_aggregator import NewsAggregator
 try:
     from app.config import settings, is_rss_and_ai_disabled
     INTERVAL_MIN = settings.NEWS_REFRESH_INTERVAL
-    # 一覧キャッシュ同期間隔（分）: デフォルト60分
-    LIST_CACHE_SYNC_MIN = max(60, int(getattr(settings, "NEWS_LIST_CACHE_SYNC_MINUTES", 60)))
+    # 一覧キャッシュ同期間隔（分）: デフォルト15分（新着記事を早期に反映）
+    LIST_CACHE_SYNC_MIN = max(15, int(getattr(settings, "NEWS_LIST_CACHE_SYNC_MINUTES", 15)))
     _SEED_MAX_PER_RUN = max(7, min(14, int(getattr(settings, "RSS_PROCESS_MAX_PER_BATCH", 22))))
 except Exception:
     INTERVAL_MIN = 240
-    LIST_CACHE_SYNC_MIN = 60
+    LIST_CACHE_SYNC_MIN = 15
     _SEED_MAX_PER_RUN = 12
     is_rss_and_ai_disabled = lambda: False
 
@@ -33,12 +33,14 @@ JST = ZoneInfo("Asia/Tokyo")
 
 
 def _scheduled_rss_fetch_and_article():
-    """指定時刻: RSS取得→新しい記事だけ良い記事を記事化（0:00/9:30/12:30）"""
+    """指定時刻: RSS取得→新しい記事だけ良い記事を記事化（13:00/20:00）"""
+    NewsAggregator._db_backoff_until = None  # スケジュール実行は必ず試みる
     NewsAggregator.get_news(force_refresh=True)
 
 
 def _scheduled_2000_rss_and_ai_daily():
     """20:00 JST: (1) RSS取得→記事化 (2) その後にAI日次コンテンツを1日1回だけ更新"""
+    NewsAggregator._db_backoff_until = None  # スケジュール実行は必ず試みる
     NewsAggregator.get_news(force_refresh=True)
     try:
         from app.services.ai_daily import generate_daily_ai_content
@@ -61,7 +63,7 @@ def _scheduled_claude_research_and_seed():
         from app.services.article_seed_from_curated import process_curated_articles
         count = process_curated_articles(max_per_run=30)
         if count > 0:
-            NewsAggregator.sync_list_cache_from_db()
+            NewsAggregator.sync_list_cache_from_db(force=True)  # 直前の Firestore 書き込み成功 → バックオフ無視
             NewsAggregator._invalidate_papers_cache()
             logger.info("Claude リサーチ→記事化完了: %d 件追加", count)
         else:
@@ -161,7 +163,7 @@ async def lifespan(app: FastAPI):
             minutes=LIST_CACHE_SYNC_MIN,
             id="sync_news_list_cache",
         )
-        logger.info("一覧キャッシュを DB から %d 分ごとに同期します。", LIST_CACHE_SYNC_MIN)
+        logger.info("一覧キャッシュを DB から %d 分ごとに同期します（新着記事の反映）。", LIST_CACHE_SYNC_MIN)
     if not rss_ai_disabled:
         # 13:00: RSS取得→記事化のみ
         scheduler.add_job(
@@ -229,7 +231,7 @@ app.include_router(news.router)
 def admin_sync_cache():
     """一覧キャッシュを即時 DB から再同期する。記事追加後に呼ぶ。"""
     from app.services.news_aggregator import NewsAggregator
-    NewsAggregator.sync_list_cache_from_db()
+    NewsAggregator.sync_list_cache_from_db(force=True)  # 管理者明示実行: バックオフ無視
     return {"status": "ok", "cached": len(NewsAggregator._news_cache or [])}
 
 

@@ -287,7 +287,7 @@ PAGE_DISPLAY_LIMIT = 2000
 # - 通常閲覧時の Firestore 読み取りを最小化する
 # - 再起動時・force_refresh 実行時には再取得される
 CACHE_NEVER_EXPIRE = True
-DB_ERROR_BACKOFF_SECONDS = max(60, int(getattr(settings, "NEWS_DB_ERROR_BACKOFF_SECONDS", 600)))
+DB_ERROR_BACKOFF_SECONDS = max(30, int(getattr(settings, "NEWS_DB_ERROR_BACKOFF_SECONDS", 60)))
 
 logger = logging.getLogger(__name__)
 
@@ -393,11 +393,12 @@ class NewsAggregator:
         return cls._news_cache
 
     @classmethod
-    def sync_list_cache_from_db(cls) -> None:
+    def sync_list_cache_from_db(cls, force: bool = False) -> None:
         """
         RSS・AI は回さず、解説付き ID（Firestore なら _meta/cache 1 読）で一覧キャッシュを揃える。
         ID 集合が前回と同じなら記事ドキュメントは読まない。増えた ID だけ load_by_id し、
         load_all（最大 ~2000 読）を毎回避けて無料枠を守る。
+        force=True: DB バックオフ中でも強制実行（直前に Firestore 書き込みが成功した場合に使う）。
         """
         try:
             from .explanation_cache import invalidate_ids_cache
@@ -405,9 +406,11 @@ class NewsAggregator:
             invalidate_ids_cache()
         except Exception:
             pass
-        if cls._in_db_backoff() and cls._news_cache:
+        if not force and cls._in_db_backoff() and cls._news_cache:
             cls._last_updated = datetime.now()
             return
+        if force:
+            cls._db_backoff_until = None
         try:
             processed_ids = get_cached_article_ids()
         except Exception as e:
