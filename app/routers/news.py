@@ -368,7 +368,7 @@ async def root_home(request: Request, page: int = 1, keyword: str = ""):
 
 @router.api_route("/news", methods=["GET", "POST", "HEAD", "OPTIONS"])
 async def news_index(request: Request, page: int = 1, keyword: str = ""):
-    """ニュース一覧（ジャンル別・ページネーション）。keyword 指定時は関連記事のみ"""
+    """ニュース一覧（ジャンル別）。keyword なし時は論文除く全件を1ページ表示（『すべて』に全ニュース）。"""
     if request.method == "POST":
         return {"message": "ok"}
     if request.method == "OPTIONS":
@@ -392,17 +392,21 @@ async def news_index(request: Request, page: int = 1, keyword: str = ""):
         news_by_category = [(c, by_cat.get(c, [])) for c in news_category_order]
         pagination = {"page": page, "per_page": per_page, "total": total, "total_pages": total_pages, "has_prev": page > 1, "has_next": page < total_pages}
     else:
-        per_page = ITEMS_PER_PAGE
+        # キーワードなし: 一覧は全件（get_news が返す範囲内）。おすすめも同じリストの先頭3件。
         total = len(all_news)
-        total_pages = max(1, (total + per_page - 1) // per_page)
-        page = max(1, min(page, total_pages))
-        start = (page - 1) * per_page
-        page_items = all_news[start : start + per_page]
+        page_items = all_news
         by_cat: dict[str, list] = {}
-        for a in page_items:
+        for a in all_news:
             by_cat.setdefault(a.category, []).append(a)
         news_by_category = [(c, by_cat.get(c, [])) for c in news_category_order]
-        pagination = {"page": page, "per_page": per_page, "total": total, "total_pages": total_pages, "has_prev": page > 1, "has_next": page < total_pages}
+        pagination = {
+            "page": 1,
+            "per_page": total or 1,
+            "total": total,
+            "total_pages": 1,
+            "has_prev": False,
+            "has_next": False,
+        }
     try:
         trends = NewsAggregator.get_trends()
     except Exception:
@@ -418,14 +422,7 @@ async def news_index(request: Request, page: int = 1, keyword: str = ""):
     top_recommendations: list = []
     if not keyword:
         try:
-            latest = [x for x in NewsAggregator.get_news() if x.category != "研究・論文"][:12]
-            top_recommendations = latest[:3]
-            for item in top_recommendations:
-                _ensure_japanese(item)
-                if not item.image_url:
-                    item.image_url = get_image_url(item.id, 400, 225)
-                elif item.image_url and not item.image_url.startswith("http"):
-                    item.image_url = get_image_url(item.image_url, 400, 225)
+            top_recommendations = list(all_news[:3])
         except Exception:
             top_recommendations = []
     site_url = _get_site_url(request)
@@ -460,15 +457,14 @@ async def news_index(request: Request, page: int = 1, keyword: str = ""):
 
 @router.get("/api/news/page")
 async def api_news_page(page: int = 1, keyword: str = ""):
-    """無限スクロール用：ページの記事カードHTMLを返す"""
+    """無限スクロール用：キーワード検索時のみページ分割。通常一覧はSSRで全件のため追加HTMLなし。"""
     from app.services.news_aggregator import ITEMS_PER_PAGE
     keyword = (keyword or "").strip()
     all_news = [a for a in NewsAggregator.get_news() if (a.category or "") != "研究・論文"]
-    if keyword:
-        kw_lower = keyword.lower()
-        news = [a for a in all_news if kw_lower in (a.title or "").lower() or kw_lower in (a.summary or "").lower()]
-    else:
-        news = all_news
+    if not keyword:
+        return {"html": "", "page": max(1, page), "total_pages": 1}
+    kw_lower = keyword.lower()
+    news = [a for a in all_news if kw_lower in (a.title or "").lower() or kw_lower in (a.summary or "").lower()]
     total = len(news)
     per_page = ITEMS_PER_PAGE
     total_pages = max(1, (total + per_page - 1) // per_page)
@@ -1117,6 +1113,7 @@ def _render_papers_page(request: Request, page: int = 1):
     )
     has_papers = bool(all_papers)
 
+    # おすすめは一覧と同じ all_papers の先頭3件（別取得ロジックなし）
     top_recommendations: list = []
     try:
         top_recommendations = all_papers[:3]
