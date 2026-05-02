@@ -116,6 +116,66 @@ def load_all() -> list[NewsItem]:
     return items
 
 
+def load_papers_for_site_list() -> list[NewsItem]:
+    """
+    論文トップ（/）用: 研究・論文かつ解説キャッシュがある記事だけを取得する。
+    load_all() は全カテゴリ混在で LIMIT 800 のため、論文が多いと一覧に出ない。本関数はそれを避ける。
+    """
+    try:
+        from app.config import settings
+
+        limit = max(50, min(int(getattr(settings, "PAPERS_LIST_MAX", 20000)), 50000))
+    except Exception:
+        limit = 20000
+    if _use_firestore():
+        from .firestore_store import firestore_load_all_papers_for_site_list
+
+        return firestore_load_all_papers_for_site_list(limit=limit)
+    return _sqlite_load_papers_for_site_list(limit=limit)
+
+
+def _sqlite_load_papers_for_site_list(limit: int) -> list[NewsItem]:
+    _init_db()
+    items: list[NewsItem] = []
+    with _get_conn() as conn:
+        rows = conn.execute(
+            """
+            SELECT a.id, a.title, a.link, a.summary, a.published, a.source, a.category, a.image_url, a.added_at
+            FROM articles a
+            INNER JOIN explanation_cache e ON e.article_id = a.id
+            WHERE a.category = ?
+            ORDER BY a.published DESC, a.added_at DESC
+            LIMIT ?
+            """,
+            ("研究・論文", limit),
+        ).fetchall()
+    for row in rows:
+        try:
+            pub = datetime.fromisoformat(row["published"]) if row["published"] else datetime.now()
+        except Exception:
+            pub = datetime.now()
+        added_at = None
+        try:
+            if row["added_at"]:
+                added_at = datetime.fromisoformat(str(row["added_at"]))
+        except Exception:
+            added_at = None
+        items.append(
+            NewsItem(
+                id=row["id"],
+                title=row["title"],
+                link=row["link"],
+                summary=sanitize_display_text(row["summary"] or ""),
+                published=pub,
+                source=row["source"] or "",
+                category=row["category"] or "研究・論文",
+                image_url=row["image_url"],
+                added_at=added_at,
+            )
+        )
+    return items
+
+
 def save_articles_batch(items: list[NewsItem]) -> int:
     """記事を一括保存。保存できた件数を返す"""
     if _use_firestore():

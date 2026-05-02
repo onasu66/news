@@ -39,6 +39,8 @@ class Settings:
     RSS_PUBMED_FEED_LIMIT: int = int(os.getenv("RSS_PUBMED_FEED_LIMIT", "120"))
     # 論文記事として採用する最小要約文字数（短すぎる抄録は除外）
     RSS_MIN_PAPER_SUMMARY_CHARS: int = int(os.getenv("RSS_MIN_PAPER_SUMMARY_CHARS", "340"))
+    # 論文トップ「すべて」で読み込む上限（解説付き論文のみの専用クエリ。既定2万・最大5万）
+    PAPERS_LIST_MAX: int = int(os.getenv("PAPERS_LIST_MAX", "20000"))
     # Full-Text RSS 使用時に本文をどれだけ優先するか（0.0〜1.0）
     FULLTEXT_BODY_PRIORITY: float = float(os.getenv("FULLTEXT_BODY_PRIORITY", "0.85"))
     # FiveFilters Full-Text RSS のベースURL（未設定なら通常のRSSをそのまま取得）

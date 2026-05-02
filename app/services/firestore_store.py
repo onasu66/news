@@ -6,6 +6,8 @@ from pathlib import Path
 from datetime import datetime
 from typing import Optional
 
+from google.api_core.exceptions import FailedPrecondition
+
 logger = logging.getLogger(__name__)
 
 try:
@@ -137,6 +139,68 @@ def firestore_load_all():
             added_at=added_at,
         ))
     return items
+
+
+def _firestore_article_doc_to_item(doc_id: str, d: dict) -> "NewsItem":
+    from .rss_service import NewsItem, sanitize_display_text
+
+    try:
+        pub = datetime.fromisoformat(d.get("published", "")) if d.get("published") else datetime.now()
+    except Exception:
+        pub = datetime.now()
+    added_at_raw = d.get("added_at")
+    added_at = added_at_raw.replace(tzinfo=None) if hasattr(added_at_raw, "replace") else None
+    return NewsItem(
+        id=doc_id,
+        title=d.get("title", ""),
+        link=d.get("link", ""),
+        summary=sanitize_display_text(d.get("summary") or ""),
+        published=pub,
+        source=d.get("source", ""),
+        category=d.get("category", "研究・論文"),
+        image_url=d.get("image_url"),
+        added_at=added_at,
+    )
+
+
+def _firestore_papers_fallback_scan(target: int) -> list:
+    """category+has_explanation+published の複合インデックスが無いとき、added_at 新しい順に広く読んで論文だけ拾う。"""
+    cap = max(1, min(int(target), 50000))
+    scan = min(max(cap * 8, 4000), 50000)
+    out: list = []
+    for doc in _articles_collection().order_by("added_at", direction="DESCENDING").limit(scan).stream():
+        d = doc.to_dict() or {}
+        if d.get("category") != "研究・論文" or not d.get("has_explanation"):
+            continue
+        out.append(_firestore_article_doc_to_item(doc.id, d))
+        if len(out) >= cap:
+            break
+    return out
+
+
+def firestore_load_all_papers_for_site_list(limit: int = 20000) -> list:
+    """論文トップ SSR 用: category=研究・論文かつ has_explanation のみを published 降順で取得。
+    load_all の上位800件（ニュース混在）では落ちる論文を拾う。上限は無料枠のため cap あり。"""
+    cap = max(1, min(int(limit), 50000))
+    items: list = []
+    q = (
+        _articles_collection()
+        .where("category", "==", "研究・論文")
+        .where("has_explanation", "==", True)
+        .order_by("published", direction="DESCENDING")
+        .limit(cap)
+    )
+    try:
+        for doc in q.stream():
+            d = doc.to_dict() or {}
+            items.append(_firestore_article_doc_to_item(doc.id, d))
+        return items
+    except FailedPrecondition as e:
+        logger.warning(
+            "firestore_load_all_papers_for_site_list: 複合インデックス未作成のため added_at スキャンにフォールバックします（%s）",
+            e,
+        )
+        return _firestore_papers_fallback_scan(cap)
 
 
 def firestore_save_articles_batch(items) -> int:

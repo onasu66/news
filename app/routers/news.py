@@ -1083,20 +1083,20 @@ def _attach_paper_related_tags(items: list) -> None:
 def _render_papers_page(request: Request, page: int = 1):
     """論文一覧（トップ `/` と共通）
 
-    インメモリキャッシュから全論文を直接読み込み、全ドメインタブを構築する。
-    ページネーション（Firestore クエリ）は使わず、全件を1ページで描画する。
-    これにより Claude 追加論文を含む全論文がすべてのタブに正しく表示される。
+    論文は get_news（load_all 上位800件・ニュース混在）ではなく、研究・論文＋解説付き専用クエリで取得する。
+    ページネーションは使わず PAPERS_LIST_MAX 件まで1ページで描画する。
     """
+    from app.services.article_cache import load_papers_for_site_list
     from app.services.news_aggregator import SOURCE_TO_PAPER_DOMAIN, PAPER_DOMAIN_ORDER
     from datetime import datetime as _dt
 
-    # ── 全論文をインメモリキャッシュから取得 ──────────────────────────────────
-    all_news = NewsAggregator.get_news()
+    # ── 全論文（DB 専用クエリ。800件混合上限で論文が落ちない） ────────────────
     all_papers = sorted(
-        [a for a in all_news if a.category == "研究・論文"],
+        load_papers_for_site_list(),
         key=lambda x: x.added_at or x.published or _dt.min,
         reverse=True,
     )
+    all_news = NewsAggregator.get_news()
 
     # ── ドメイン分類（全論文に適用） ─────────────────────────────────────────
     by_domain: dict[str, list] = {}

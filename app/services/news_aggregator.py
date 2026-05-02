@@ -550,8 +550,7 @@ class NewsAggregator:
             if cls._papers_cache_at and (datetime.now() - cls._papers_cache_at).total_seconds() < cls._PAPERS_CACHE_TTL_SEC:
                 return cls._papers_cache
 
-        # Firestore なら /papers は get_news() 経由で load_all(最大2000件) しない。
-        # has_explanation & category で直接クエリしてページングすることで、初回遷移を速くする。
+        # Firestore なら has_explanation & category で直接クエリしてページング（初回遷移を速くする）。
         if not force_refresh:
             try:
                 from .firestore_store import use_firestore, firestore_query_papers_page
@@ -592,8 +591,9 @@ class NewsAggregator:
                     if age < cls._PAPERS_CACHE_TTL_SEC:
                         return cls._papers_cache
 
-        news = cls.get_news(force_refresh)
-        papers = [a for a in news if a.category == "研究・論文"]
+        from .article_cache import load_papers_for_site_list
+
+        papers = load_papers_for_site_list()
         papers.sort(key=lambda x: x.added_at or x.published or datetime.min, reverse=True)
         total = len(papers)
         per_page = ITEMS_PER_PAGE
