@@ -31,6 +31,27 @@ router = APIRouter()
 templates = Jinja2Templates(directory=str(Path(__file__).resolve().parent.parent / "templates"))
 logger = logging.getLogger(__name__)
 
+# 一覧ジャンルタブの data-cat と一致させる（DB/RSS の category がタブ6種以外だと「すべて」以外で消える）
+_NEWS_TAB_CATEGORY_SET = frozenset({"国内", "国際", "テクノロジー", "政治・社会", "スポーツ", "エンタメ"})
+_NEWS_TAB_OTHER = "その他"
+
+
+def _news_tab_filter_category(item: NewsItem) -> str:
+    """タブ用ジャンル。未登録・空は「その他」（item.category 本体は変更しない）。"""
+    c = (getattr(item, "category", None) or "").strip()
+    if c in _NEWS_TAB_CATEGORY_SET:
+        return c
+    return _NEWS_TAB_OTHER
+
+
+def _news_tab_category_order_for(by_cat: dict) -> list[str]:
+    from app.services.news_aggregator import CATEGORY_ORDER
+
+    base = [c for c in CATEGORY_ORDER if c != "研究・論文"]
+    if by_cat.get(_NEWS_TAB_OTHER):
+        return list(base) + [_NEWS_TAB_OTHER]
+    return base
+
 PERSONA_IMAGE_MAP = {
     "セミナ": "/static/char-imgs/セミナ.png",
     "ヴォルテ・アセット": "/static/char-imgs/ヴぉるて.png",
@@ -373,8 +394,7 @@ async def news_index(request: Request, page: int = 1, keyword: str = ""):
         return {"message": "ok"}
     if request.method == "OPTIONS":
         return Response(status_code=200)
-    from app.services.news_aggregator import CATEGORY_ORDER, ITEMS_PER_PAGE
-    news_category_order = [c for c in CATEGORY_ORDER if c != "研究・論文"]
+    from app.services.news_aggregator import ITEMS_PER_PAGE
     keyword = (keyword or "").strip()
     all_news = [a for a in NewsAggregator.get_news() if (a.category or "") != "研究・論文"]
     if keyword:
@@ -387,9 +407,12 @@ async def news_index(request: Request, page: int = 1, keyword: str = ""):
         start = (page - 1) * per_page
         page_items = filtered[start : start + per_page]
         by_cat: dict[str, list] = {}
-        for a in page_items:
-            by_cat.setdefault(a.category, []).append(a)
+        for a in filtered:
+            t = _news_tab_filter_category(a)
+            by_cat.setdefault(t, []).append(a)
+        news_category_order = _news_tab_category_order_for(by_cat)
         news_by_category = [(c, by_cat.get(c, [])) for c in news_category_order]
+        news_tab_filter_cat = {a.id: _news_tab_filter_category(a) for a in filtered}
         pagination = {"page": page, "per_page": per_page, "total": total, "total_pages": total_pages, "has_prev": page > 1, "has_next": page < total_pages}
     else:
         # キーワードなし: 一覧は全件（get_news が返す範囲内）。おすすめも同じリストの先頭3件。
@@ -397,8 +420,11 @@ async def news_index(request: Request, page: int = 1, keyword: str = ""):
         page_items = all_news
         by_cat: dict[str, list] = {}
         for a in all_news:
-            by_cat.setdefault(a.category, []).append(a)
+            t = _news_tab_filter_category(a)
+            by_cat.setdefault(t, []).append(a)
+        news_category_order = _news_tab_category_order_for(by_cat)
         news_by_category = [(c, by_cat.get(c, [])) for c in news_category_order]
+        news_tab_filter_cat = {a.id: _news_tab_filter_category(a) for a in all_news}
         pagination = {
             "page": 1,
             "per_page": total or 1,
@@ -442,6 +468,7 @@ async def news_index(request: Request, page: int = 1, keyword: str = ""):
             "request": request,
             "news_by_category": news_by_category,
             "page_items": page_items,
+            "news_tab_filter_cat": news_tab_filter_cat,
             "trends": trends,
             "pagination": pagination,
             "added_one": added_one,
@@ -487,8 +514,9 @@ async def api_news_page(page: int = 1, keyword: str = ""):
         ellipsis = "..." if len(raw_summary) > 80 else ""
         source_safe = html_mod.escape(item.source or "")
         cat_safe = html_mod.escape(item.category or "")
+        tab_cat_safe = html_mod.escape(_news_tab_filter_category(item))
         img_src = item.image_url or "https://picsum.photos/400/225"
-        cards_html += f'''<article class="news-card animate-fade-in" data-category="{cat_safe}">
+        cards_html += f'''<article class="news-card animate-fade-in" data-category="{tab_cat_safe}">
 <a href="/topic/{item.id}" class="news-card-link">
 <div class="news-card-body">
 <div class="news-card-meta"><span class="news-card-time">🕒 {pub}</span><span class="news-card-source">{source_safe}</span></div>

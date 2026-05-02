@@ -63,7 +63,7 @@
 
         <div class="news-grid" id="news-grid">
             {% for item in page_items %}
-            <article class="news-card animate-fade-in" data-category="{{ item.category }}">
+            <article class="news-card animate-fade-in" data-category="{{ news_tab_filter_cat.get(item.id, item.category) }}">
                 <a href="/topic/{{ item.id }}" class="news-card-link">
                     <div class="news-card-body">
                         <div class="news-card-meta">
@@ -124,12 +124,15 @@
 {% block scripts %}
 <script>
 (function() {
-    // Genre tab filtering
-    var tabs = document.querySelectorAll('.genre-tab');
-    var cards = document.querySelectorAll('.news-card');
-    var genreTablist = document.querySelector('.genre-tabs-wrap[role="tablist"]');
+    // Genre tab filtering（#news-grid 内のみ。他ページの .news-card と干渉しない）
+    var grid = document.getElementById('news-grid');
+    function gridCards() {
+        return grid ? grid.querySelectorAll('.news-card') : [];
+    }
+    var tabs = document.querySelectorAll('.page-layout--news .genre-tab');
+    var genreTablist = document.querySelector('.page-layout--news .genre-tabs-wrap[role="tablist"]');
     function syncGenreTabIndexes() {
-        tabs = document.querySelectorAll('.genre-tab');
+        tabs = document.querySelectorAll('.page-layout--news .genre-tab');
         tabs.forEach(function(t) {
             t.setAttribute('tabindex', t.classList.contains('is-active') ? '0' : '-1');
         });
@@ -140,7 +143,7 @@
             tabs.forEach(function(t) { t.classList.remove('is-active'); t.setAttribute('aria-selected', 'false'); });
             this.classList.add('is-active');
             this.setAttribute('aria-selected', 'true');
-            cards.forEach(function(card) {
+            gridCards().forEach(function(card) {
                 if (cat === 'all' || card.getAttribute('data-category') === cat) {
                     card.style.display = '';
                 } else {
@@ -154,7 +157,7 @@
     syncGenreTabIndexes();
     if (genreTablist) {
         genreTablist.addEventListener('keydown', function(e) {
-            tabs = document.querySelectorAll('.genre-tab');
+            tabs = document.querySelectorAll('.page-layout--news .genre-tab');
             var tabNodes = Array.prototype.slice.call(tabs);
             var i = tabNodes.indexOf(document.activeElement);
             if (i < 0) return;
@@ -171,7 +174,7 @@
 
     function triggerLoadIfSparse() {
         if (loading || page >= totalPages) return;
-        var allCards = document.querySelectorAll('.news-card');
+        var allCards = gridCards();
         var visible = 0;
         for (var i = 0; i < allCards.length; i++) {
             if (allCards[i].style.display !== 'none') visible++;
@@ -203,12 +206,11 @@
             if (loadErrorEl) loadErrorEl.style.display = 'none';
             if (data.html) {
                 grid.insertAdjacentHTML('beforeend', data.html);
-                cards = document.querySelectorAll('.news-card');
-                var activeTab = document.querySelector('.genre-tab.is-active');
+                var activeTab = document.querySelector('.page-layout--news .genre-tab.is-active');
                 if (activeTab) {
                     var cat = activeTab.getAttribute('data-cat');
                     if (cat !== 'all') {
-                        cards.forEach(function(card) {
+                        gridCards().forEach(function(card) {
                             if (card.getAttribute('data-category') !== cat) card.style.display = 'none';
                         });
                     }
