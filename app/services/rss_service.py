@@ -241,7 +241,7 @@ def _get_feed_url(original_url: str) -> str:
 def fetch_rss_news() -> list[NewsItem]:
     """複数のRSSフィードからニュースを取得。
     研究・論文は source ごとにフィルタ時間を切り替えて絞り込み（例：Nature/Science/Frontiers sports=1週間）。
-    それ以外は6時間以内。過去に同一記事（link+title）の重複は除外済み。"""
+    それ以外は RSS_NEWS_MAX_AGE_HOURS（既定48時間）以内の published。過去に同一記事（link+title）の重複は除外済み。"""
     all_news: list[NewsItem] = []
     seen_ids = set()
 
@@ -324,8 +324,13 @@ def fetch_rss_news() -> list[NewsItem]:
     # - BMJ Open: 48時間
     # - その他の研究・論文: 24時間（現状ロジックのデフォルト）
     now_jst = datetime.now(JST).replace(tzinfo=None)
-    cutoff_6h = now_jst - timedelta(hours=6)
-    cutoff_default_24h = now_jst - timedelta(hours=24)
+    try:
+        from app.config import settings as _cfg_news_age
+
+        news_max_age_h = max(1, int(getattr(_cfg_news_age, "RSS_NEWS_MAX_AGE_HOURS", 48)))
+    except Exception:
+        news_max_age_h = 48
+    cutoff_news = now_jst - timedelta(hours=news_max_age_h)
 
     SOURCE_TO_CUTOFF_HOURS: dict[str, int] = {
         "Nature": 24 * 7,
@@ -370,7 +375,7 @@ def fetch_rss_news() -> list[NewsItem]:
             if x.published >= cutoff and len((x.summary or "").strip()) >= min_paper_summary_chars:
                 filtered.append(x)
         else:
-            if x.published >= cutoff_6h:
+            if x.published >= cutoff_news:
                 filtered.append(x)
 
     # 日付でソート（新しい順＝人気度の代理）

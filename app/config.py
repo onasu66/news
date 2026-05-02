@@ -30,6 +30,8 @@ class Settings:
     RSS_PAPERS_PER_DOMAIN: int = int(os.getenv("RSS_PAPERS_PER_DOMAIN", "4"))
     # 論文: 1バッチで選ぶ合計の上限（max_per_run との小さい方が効く）
     RSS_MAX_TOTAL_PAPERS_PER_RUN: int = int(os.getenv("RSS_MAX_TOTAL_PAPERS_PER_RUN", "32"))
+    # 一般ニュースRSS: この時間より古い published のエントリは候補から除外（フィードの日付表記に依存）
+    RSS_NEWS_MAX_AGE_HOURS: int = int(os.getenv("RSS_NEWS_MAX_AGE_HOURS", "48"))
     # RSS 各フィードから読むエントリ上限・マージ後の候補プール上限
     RSS_ENTRIES_PER_FEED: int = int(os.getenv("RSS_ENTRIES_PER_FEED", "150"))
     RSS_FETCH_MAX_ITEMS: int = int(os.getenv("RSS_FETCH_MAX_ITEMS", "1200"))

@@ -1314,7 +1314,9 @@ async def topic_detail(request: Request, topic_id: str):
     related = [a for a in all_news if a.category == item.category and a.id != topic_id][:4]
     import random as _rnd
     other_cat = [a for a in all_news if a.category != item.category and a.id != topic_id]
-    ai_recommended = _rnd.sample(other_cat, min(3, len(other_cat))) if other_cat else []
+    # 論文のみ・単一ジャンルだけ等で「別カテゴリ」が空だと欄が消えるため、同カテゴリ以外が無ければ全件から補完
+    pool = other_cat if other_cat else [a for a in all_news if a.id != topic_id]
+    ai_recommended = _rnd.sample(pool, min(3, len(pool))) if pool else []
 
     published_text = ""
     try:

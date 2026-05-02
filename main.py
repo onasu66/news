@@ -92,7 +92,9 @@ def _seed_if_needed():
     all_items = load_all()
     news_list = fetch_rss_news()
     if news_list:
-        process_new_rss_articles(news_list, max_per_run=_SEED_MAX_PER_RUN, existing_articles=all_items)
+        added = process_new_rss_articles(news_list, max_per_run=_SEED_MAX_PER_RUN, existing_articles=all_items)
+        if added > 0:
+            NewsAggregator.sync_list_cache_from_db(force=True)
 
 
 def _startup_add_one_each():

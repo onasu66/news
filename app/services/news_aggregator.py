@@ -8,7 +8,7 @@ from .rss_service import fetch_rss_news, NewsItem
 from .trends_service import fetch_trending_searches, TrendItem
 from .article_cache import load_all, load_all_processed, load_by_id, save_article
 from .article_processor import process_new_rss_articles
-from .explanation_cache import get_cached_article_ids
+from .explanation_cache import get_cached_article_ids, invalidate_ids_cache
 
 # ジャンル表示順（研究・論文は論文専用ページで表示）
 # 「総合」はRSS由来で基本付与されないため、タブを出さない（管理者手動記事などは「すべて」から見える想定）
@@ -364,6 +364,9 @@ class NewsAggregator:
                                 break
                 finally:
                     try:
+                        # 先頭で get_cached_article_ids 済みの場合、60秒TTLのままだと
+                        # 直前に保存した解説付きIDが一覧に乗らないため必ず無効化する
+                        invalidate_ids_cache()
                         processed_ids = get_cached_article_ids()
                         # 差分ロード: 処理中に追加された記事のみ load_by_id で補完する。
                         # load_all()（最大800読み取り）の二重呼び出しを避けて無料枠を節約する。
@@ -382,7 +385,7 @@ class NewsAggregator:
                         return cls._news_cache or []
             cls._news_cache = sorted(
                 [x for x in all_items if x.id in processed_ids][:PAGE_DISPLAY_LIMIT],
-                key=lambda x: x.published or datetime.min,
+                key=lambda x: x.added_at or x.published or datetime.min,
                 reverse=True,
             )
             cls._last_updated = datetime.now()
@@ -436,7 +439,7 @@ class NewsAggregator:
                 return
             cls._news_cache = sorted(
                 all_items,
-                key=lambda x: x.published or datetime.min,
+                key=lambda x: x.added_at or x.published or datetime.min,
                 reverse=True,
             )[:PAGE_DISPLAY_LIMIT]
             cls._last_updated = datetime.now()
@@ -457,7 +460,7 @@ class NewsAggregator:
                 items.append(item)
         cls._news_cache = sorted(
             items,
-            key=lambda x: x.published or datetime.min,
+            key=lambda x: x.added_at or x.published or datetime.min,
             reverse=True,
         )[:PAGE_DISPLAY_LIMIT]
         cls._last_updated = datetime.now()
