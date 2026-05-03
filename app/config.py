@@ -41,6 +41,14 @@ class Settings:
     RSS_MIN_PAPER_SUMMARY_CHARS: int = int(os.getenv("RSS_MIN_PAPER_SUMMARY_CHARS", "340"))
     # 論文トップ「すべて」で読み込む上限（解説付き論文のみの専用クエリ。既定2万・最大5万）
     PAPERS_LIST_MAX: int = int(os.getenv("PAPERS_LIST_MAX", "20000"))
+    # Firestore 論文一覧（/ トップ）のメモリキャッシュ秒。記事保存・解説保存で無効化される
+    PAPERS_SITE_LIST_CACHE_TTL_SEC: int = int(os.getenv("PAPERS_SITE_LIST_CACHE_TTL_SEC", "120"))
+    # get_news 等で「解説付き ∩ articles」から並べる最大件数（既定は実質無制限に近い）
+    NEWS_LIST_DISPLAY_MAX: int = int(os.getenv("NEWS_LIST_DISPLAY_MAX", "500000"))
+    # 記事詳細の解説をメモリに保持する最大件数（LRU）。大きいほど Firestore 再読みが減る
+    EXPLANATION_MEMORY_CACHE_MAX: int = int(os.getenv("EXPLANATION_MEMORY_CACHE_MAX", "10000"))
+    # SQLite の load_all 上限（Firestore は全件スナップショット）
+    SQLITE_ARTICLES_LIST_LIMIT: int = int(os.getenv("SQLITE_ARTICLES_LIST_LIMIT", "100000"))
     # Full-Text RSS 使用時に本文をどれだけ優先するか（0.0〜1.0）
     FULLTEXT_BODY_PRIORITY: float = float(os.getenv("FULLTEXT_BODY_PRIORITY", "0.85"))
     # FiveFilters Full-Text RSS のベースURL（未設定なら通常のRSSをそのまま取得）

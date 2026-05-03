@@ -1,9 +1,13 @@
 """ニュース関連ルート"""
 import json
 import logging
+import re
 import uuid
 from datetime import datetime
+from difflib import SequenceMatcher
 import threading
+import unicodedata
+from urllib.parse import urlencode
 
 from fastapi import APIRouter, Request, HTTPException, Form, Header
 from fastapi.responses import HTMLResponse, RedirectResponse, Response
@@ -26,6 +30,75 @@ from app.services.ai_service import (
 router = APIRouter()
 templates = Jinja2Templates(directory=str(Path(__file__).resolve().parent.parent / "templates"))
 logger = logging.getLogger(__name__)
+
+# 一覧ジャンルタブの data-cat と一致させる（DB/RSS の category がタブ6種以外だと「すべて」以外で消える）
+_NEWS_TAB_CATEGORY_SET = frozenset({"国内", "国際", "テクノロジー", "政治・社会", "スポーツ", "エンタメ"})
+_NEWS_TAB_OTHER = "その他"
+
+
+def _news_tab_filter_category(item: NewsItem) -> str:
+    """タブ用ジャンル。未登録・空は「その他」（item.category 本体は変更しない）。"""
+    c = (getattr(item, "category", None) or "").strip()
+    if c in _NEWS_TAB_CATEGORY_SET:
+        return c
+    return _NEWS_TAB_OTHER
+
+
+def _news_tab_category_order_for(by_cat: dict) -> list[str]:
+    from app.services.news_aggregator import CATEGORY_ORDER
+
+    base = [c for c in CATEGORY_ORDER if c != "研究・論文"]
+    if by_cat.get(_NEWS_TAB_OTHER):
+        return list(base) + [_NEWS_TAB_OTHER]
+    return base
+
+PERSONA_IMAGE_MAP = {
+    "セミナ": "/static/char-imgs/セミナ.png",
+    "ヴォルテ・アセット": "/static/char-imgs/ヴぉるて.png",
+    "カゲロウ": "/static/char-imgs/kagerou.png",
+    "くらしあ": "/static/char-imgs/くらしあ.png",
+    "アルシエル": "/static/char-imgs/あるしえる.png",
+    "クロニクル": "/static/char-imgs/くろにくる.png",
+    "ブレイズ": "/static/char-imgs/ぶれいず.png",
+    "ノアフォール": "/static/char-imgs/ノアフォール.png",
+    "そらみ": "/static/char-imgs/そらみ.png",
+    "レガリア": "/static/char-imgs/れがりあ.png",
+    "リュミエ": "/static/char-imgs/りゅみえ.png",
+    "ジャスティア": "/static/char-imgs/ジャスティア.png",
+    "観測体オメガ": "/static/char-imgs/オメガ.png",
+    "ゼロ・カオス": "/static/char-imgs/ゼロカオス.png",
+    "ミドルマン": "/static/char-imgs/ミドルマン.png",
+}
+
+
+def _persona_image_url(name: str | None) -> str:
+    return PERSONA_IMAGE_MAP.get((name or "").strip(), "/static/site-imgs/ロゴ.png")
+
+
+def _build_persona_view(p: dict) -> dict:
+    role = str(p.get("role", "") or "")
+    summary = role.split("。")[0].replace("あなたは", "").replace("である", "").strip()
+    thought = ""
+    style = ""
+    advice = "最後に実行可能な提案・アドバイスを必ず添える"
+    m_thought = re.search(r"思考プロセス（必須）:\s*(.+?)。", role)
+    if m_thought:
+        thought = m_thought.group(1).strip()
+    m_style = re.search(r"文体は(.+?)。", role)
+    if m_style:
+        style = m_style.group(1).strip()
+    return {
+        "id": p.get("id"),
+        "name": p.get("name"),
+        "emoji": p.get("emoji"),
+        "type": "論理型" if p.get("type") == "logic" else "エンタメ型",
+        "summary": summary,
+        "thought_process": thought,
+        "style": style,
+        "advice_rule": advice,
+        "prompt_text": role,
+        "image_url": _persona_image_url(p.get("name")),
+    }
 
 
 def _json_safe_for_template(obj):
@@ -56,23 +129,106 @@ def _coerce_mapping(val):
     return None
 
 
-def _sanitize_quick_understand_for_page(val):
-    d = _coerce_mapping(val)
+def _normalize_quiz_options(raw) -> list[dict[str, str]]:
+    """過去データ互換: options が [{id,label}] でも文字列配列でも受け付ける"""
+    if not isinstance(raw, list):
+        return []
+    out: list[dict[str, str]] = []
+    for opt in raw:
+        if isinstance(opt, dict):
+            oid = opt.get("id")
+            lab = opt.get("label")
+            oid_s = "" if oid is None else str(oid).strip()
+            lab_s = "" if lab is None else str(lab).strip()
+            if lab_s or oid_s:
+                out.append({"id": oid_s, "label": lab_s or oid_s})
+        elif opt is not None:
+            s = str(opt).strip()
+            if s:
+                out.append({"id": s, "label": s})
+    return out
+
+
+def _normalize_quiz_payload(raw):
+    """
+    vote_data / paper_quiz のフィールド名ゆらぎを吸収して共通化する。
+    例:
+      - question / quiz_question / title
+      - options / choices
+      - answer_id / answer / correct_answer / correct_option
+      - explanation / reason / rationale / answer_explanation
+    """
+    d = _coerce_mapping(raw)
     if not d:
         return None
-    return _json_safe_for_template(d)
+    d = _json_safe_for_template(d)
+    if not isinstance(d, dict):
+        return None
+
+    def _pick(*keys):
+        for k in keys:
+            if k in d and d.get(k) not in (None, ""):
+                return d.get(k)
+        return ""
+
+    options = _normalize_quiz_options(_pick("options", "choices", "quiz_options"))
+    question = _pick("question", "quiz_question", "title")
+    answer_id = _pick("answer_id", "answer", "correct_answer", "correct_option")
+    explanation = _pick("explanation", "reason", "rationale", "answer_explanation")
+    learning_point = _pick("learning_point", "point", "takeaway")
+    key_term = _pick("key_term", "term", "keyword")
+    key_term_note = _pick("key_term_note", "term_note", "keyword_note")
+
+    # "A"/"B"/"C"/"D" 形式や "1" 形式も可能な範囲で合わせる
+    aid = str(answer_id).strip().lower()
+    if aid in {"1", "2", "3", "4"}:
+        answer_id = ["a", "b", "c", "d"][int(aid) - 1]
+    elif aid in {"a", "b", "c", "d"}:
+        answer_id = aid
+    else:
+        answer_id = str(answer_id).strip()
+
+    return {
+        "question": "" if question is None else str(question),
+        "options": options,
+        "answer_id": "" if answer_id is None else str(answer_id),
+        "explanation": "" if explanation is None else str(explanation),
+        "learning_point": "" if learning_point is None else str(learning_point),
+        "key_term": "" if key_term is None else str(key_term),
+        "key_term_note": "" if key_term_note is None else str(key_term_note),
+    }
 
 
-def _sanitize_vote_data_for_page(val):
+def _sanitize_quick_understand_for_page(val):
     d = _coerce_mapping(val)
     if not d:
         return None
     d = _json_safe_for_template(d)
     if not isinstance(d, dict):
         return None
-    opts = d.get("options")
-    if not isinstance(opts, list) or len(opts) == 0:
+    for k in ("what", "why", "how"):
+        v = d.get(k)
+        if isinstance(v, str):
+            d[k] = v.strip()
+        elif v is None:
+            d[k] = ""
+        else:
+            d[k] = str(v).strip()
+    return d
+
+
+def _sanitize_vote_data_for_page(val):
+    d = _normalize_quiz_payload(val)
+    if not d:
         return None
+    opts = _normalize_quiz_options(d.get("options"))
+    if not opts:
+        return None
+    d["options"] = opts
+    # Jinja: キー欠落だと vote_data.answer_id が Undefined になり |tojson で落ちるため必ず文字列化
+    for _k in ("answer_id", "explanation", "learning_point", "key_term", "key_term_note", "question"):
+        v = d.get(_k)
+        d[_k] = "" if v is None else str(v)
     return d
 
 
@@ -93,14 +249,22 @@ def _sanitize_paper_graph_for_page(val):
 
 
 def _sanitize_paper_quiz_for_page(val):
-    d = _coerce_mapping(val)
+    d = _normalize_quiz_payload(val)
     if not d:
         return {}
-    d = _json_safe_for_template(d)
-    if not isinstance(d, dict):
-        return {}
-    if not isinstance(d.get("options"), list):
-        d["options"] = []
+    options = _normalize_quiz_options(d.get("options"))
+    # 既存キャッシュ互換: 過去の3択データは4択表示に補完する
+    # （answer_id はそのまま有効。追加肢は「該当なし」に固定）
+    existing_ids = {str(o.get("id", "")).strip() for o in options}
+    if len(options) == 3:
+        for cand in ("d", "4", "none"):
+            if cand not in existing_ids:
+                options.append({"id": cand, "label": "該当なし"})
+                break
+    d["options"] = options
+    for _k in ("answer_id", "explanation", "question", "learning_point", "key_term", "key_term_note"):
+        v = d.get(_k)
+        d[_k] = "" if v is None else str(v)
     return d
 
 
@@ -115,12 +279,16 @@ def _sanitize_deep_insights_for_page(val):
     if mer is None:
         mer = []
     elif not isinstance(mer, list):
-        mer = [str(mer)]
+        mer = [str(mer).strip()] if str(mer).strip() else []
+    else:
+        mer = [str(x).strip() for x in mer if x is not None and str(x).strip()]
     risk = d.get("risks")
     if risk is None:
         risk = []
     elif not isinstance(risk, list):
-        risk = [str(risk)]
+        risk = [str(risk).strip()] if str(risk).strip() else []
+    else:
+        risk = [str(x).strip() for x in risk if x is not None and str(x).strip()]
     fp = d.get("future_prediction")
     if fp is None:
         fp = ""
@@ -148,7 +316,8 @@ async def robots_txt(request: Request):
         f"Disallow: /admin\n"
         f"Disallow: /confirm\n"
         f"Disallow: /saved\n"
-        f"Disallow: /?keyword=\n\n"
+        f"Disallow: /?keyword=\n"
+        f"Disallow: /news?keyword=\n\n"
         f"Sitemap: {site_url}/sitemap.xml\n"
     )
     return Response(content=body, media_type="text/plain; charset=utf-8")
@@ -159,31 +328,76 @@ async def sitemap_xml(request: Request):
     """SEO用 sitemap.xml（一覧は NewsAggregator キャッシュ利用で Firestore 読取を抑える）"""
     site_url = _get_site_url(request)
     articles = NewsAggregator.get_news()
+    today = datetime.now().date().isoformat()
     lines = [
         '<?xml version="1.0" encoding="UTF-8"?>',
         '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">',
-        f"  <url><loc>{site_url}/</loc><changefreq>hourly</changefreq><priority>1.0</priority></url>",
-        f"  <url><loc>{site_url}/papers</loc><changefreq>weekly</changefreq><priority>0.6</priority></url>",
+        f"  <url><loc>{site_url}/</loc><lastmod>{today}</lastmod><changefreq>hourly</changefreq><priority>1.0</priority></url>",
+        f"  <url><loc>{site_url}/news</loc><lastmod>{today}</lastmod><changefreq>hourly</changefreq><priority>1.0</priority></url>",
+        f"  <url><loc>{site_url}/trend</loc><lastmod>{today}</lastmod><changefreq>hourly</changefreq><priority>0.8</priority></url>",
+        f"  <url><loc>{site_url}/search</loc><lastmod>{today}</lastmod><changefreq>daily</changefreq><priority>0.7</priority></url>",
+        f"  <url><loc>{site_url}/ai</loc><lastmod>{today}</lastmod><changefreq>daily</changefreq><priority>0.6</priority></url>",
+        f"  <url><loc>{site_url}/about</loc><lastmod>{today}</lastmod><changefreq>monthly</changefreq><priority>0.5</priority></url>",
+        f"  <url><loc>{site_url}/personas</loc><lastmod>{today}</lastmod><changefreq>monthly</changefreq><priority>0.5</priority></url>",
     ]
     for a in articles[:5000]:
-        lines.append(f"  <url><loc>{site_url}/topic/{a.id}</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>")
+        try:
+            lastmod = a.published.date().isoformat() if getattr(a, "published", None) and hasattr(a.published, "date") else today
+        except Exception:
+            lastmod = today
+        priority = "0.9" if getattr(a, "category", "") == "研究・論文" else "0.8"
+        lines.append(f"  <url><loc>{site_url}/topic/{a.id}</loc><lastmod>{lastmod}</lastmod><changefreq>never</changefreq><priority>{priority}</priority></url>")
     lines.append("</urlset>")
     return Response(content="\n".join(lines), media_type="application/xml; charset=utf-8")
 
 
 @router.api_route("/", methods=["GET", "POST", "HEAD", "OPTIONS"])
-async def index(request: Request, page: int = 1, keyword: str = ""):
-    """トップページ（ジャンル別表示・ページネーション対応）。keyword 指定時は関連記事のみ表示"""
-    # Render/Cloudflare のヘルスチェックやプリフライト等で別メソッドが飛んできても 405 にしない
+async def root_home(request: Request, page: int = 1, keyword: str = ""):
+    """トップは論文一覧。キーワード検索は従来どおりニュース一覧へ誘導"""
     if request.method == "POST":
         return {"message": "ok"}
     if request.method == "OPTIONS":
         return Response(status_code=200)
-    from app.services.news_aggregator import CATEGORY_ORDER, ITEMS_PER_PAGE
+    if request.method in ("GET", "HEAD"):
+        keyword = (keyword or "").strip()
+        if keyword:
+            q = [("keyword", keyword)]
+            if page > 1:
+                q.append(("page", str(page)))
+            return RedirectResponse(url="/news?" + urlencode(q), status_code=302)
+        try:
+            return _render_papers_page(request, page)
+        except Exception as e:
+            logger.warning("papers page fallback: %s", e)
+            return templates.TemplateResponse(
+                "papers.html",
+                {
+                    "request": request,
+                    "papers_by_category": [],
+                    "pagination": {"page": 1, "per_page": 24, "total": 0, "total_pages": 1, "has_prev": False, "has_next": False},
+                    "has_papers": False,
+                    "site_url": _get_site_url(request),
+                    "page": 1,
+                    "recent_ai_news": [],
+                    "top_recommendations": [],
+                    "papers_breadcrumb_jsonld": None,
+                    "papers_itemlist_jsonld": None,
+                },
+            )
+    return Response(status_code=405)
+
+
+@router.api_route("/news", methods=["GET", "POST", "HEAD", "OPTIONS"])
+async def news_index(request: Request, page: int = 1, keyword: str = ""):
+    """ニュース一覧（ジャンル別）。keyword なし時は論文除く全件を1ページ表示（『すべて』に全ニュース）。"""
+    if request.method == "POST":
+        return {"message": "ok"}
+    if request.method == "OPTIONS":
+        return Response(status_code=200)
+    from app.services.news_aggregator import ITEMS_PER_PAGE
     keyword = (keyword or "").strip()
+    all_news = [a for a in NewsAggregator.get_news() if (a.category or "") != "研究・論文"]
     if keyword:
-        # キーワードでフィルタ：全記事からタイトル・要約に含まれるものだけ残し、ページネーション＋ジャンル再集計
-        all_news = NewsAggregator.get_news()
         kw_lower = keyword.lower()
         filtered = [a for a in all_news if kw_lower in (a.title or "").lower() or kw_lower in (a.summary or "").lower()]
         per_page = ITEMS_PER_PAGE
@@ -193,13 +407,36 @@ async def index(request: Request, page: int = 1, keyword: str = ""):
         start = (page - 1) * per_page
         page_items = filtered[start : start + per_page]
         by_cat: dict[str, list] = {}
-        for a in page_items:
-            by_cat.setdefault(a.category, []).append(a)
-        news_by_category = [(c, by_cat.get(c, [])) for c in CATEGORY_ORDER]
+        for a in filtered:
+            t = _news_tab_filter_category(a)
+            by_cat.setdefault(t, []).append(a)
+        news_category_order = _news_tab_category_order_for(by_cat)
+        news_by_category = [(c, by_cat.get(c, [])) for c in news_category_order]
+        news_tab_filter_cat = {a.id: _news_tab_filter_category(a) for a in filtered}
         pagination = {"page": page, "per_page": per_page, "total": total, "total_pages": total_pages, "has_prev": page > 1, "has_next": page < total_pages}
     else:
-        news_by_category, pagination = NewsAggregator.get_news_by_category(page=page)
-    trends = NewsAggregator.get_trends()
+        # キーワードなし: 一覧は全件（get_news が返す範囲内）。おすすめも同じリストの先頭3件。
+        total = len(all_news)
+        page_items = all_news
+        by_cat: dict[str, list] = {}
+        for a in all_news:
+            t = _news_tab_filter_category(a)
+            by_cat.setdefault(t, []).append(a)
+        news_category_order = _news_tab_category_order_for(by_cat)
+        news_by_category = [(c, by_cat.get(c, [])) for c in news_category_order]
+        news_tab_filter_cat = {a.id: _news_tab_filter_category(a) for a in all_news}
+        pagination = {
+            "page": 1,
+            "per_page": total or 1,
+            "total": total,
+            "total_pages": 1,
+            "has_prev": False,
+            "has_next": False,
+        }
+    try:
+        trends = NewsAggregator.get_trends()
+    except Exception:
+        trends = []
     added_one = None
     for _, items in news_by_category:
         for item in items:
@@ -208,34 +445,53 @@ async def index(request: Request, page: int = 1, keyword: str = ""):
                 item.image_url = get_image_url(item.id, 400, 225)
             elif item.image_url and not item.image_url.startswith("http"):
                 item.image_url = get_image_url(item.image_url, 400, 225)
+    top_recommendations: list = []
+    if not keyword:
+        try:
+            top_recommendations = list(all_news[:3])
+        except Exception:
+            top_recommendations = []
     site_url = _get_site_url(request)
     og_image = "https://picsum.photos/1200/630"
+    flat_news = [it for _, items in news_by_category for it in items]
+    news_breadcrumb_jsonld = _build_breadcrumb_jsonld(
+        [("ホーム", f"{site_url}/"), ("AIニュースアーカイブ", f"{site_url}/news")]
+    )
+    news_itemlist_jsonld = _build_itemlist_jsonld(
+        page_name="AIニュースアーカイブ一覧",
+        site_url=site_url,
+        items=flat_news,
+    )
     return templates.TemplateResponse(
         "index.html",
         {
             "request": request,
             "news_by_category": news_by_category,
+            "page_items": page_items,
+            "news_tab_filter_cat": news_tab_filter_cat,
             "trends": trends,
             "pagination": pagination,
             "added_one": added_one,
             "site_url": site_url,
             "og_image": og_image,
             "search_keyword": keyword,
-        }
+            "top_recommendations": top_recommendations,
+            "news_breadcrumb_jsonld": news_breadcrumb_jsonld,
+            "news_itemlist_jsonld": news_itemlist_jsonld,
+        },
     )
 
 
 @router.get("/api/news/page")
 async def api_news_page(page: int = 1, keyword: str = ""):
-    """無限スクロール用：ページの記事カードHTMLを返す"""
-    from app.services.news_aggregator import CATEGORY_ORDER, ITEMS_PER_PAGE
+    """無限スクロール用：キーワード検索時のみページ分割。通常一覧はSSRで全件のため追加HTMLなし。"""
+    from app.services.news_aggregator import ITEMS_PER_PAGE
     keyword = (keyword or "").strip()
-    if keyword:
-        all_news = NewsAggregator.get_news()
-        kw_lower = keyword.lower()
-        news = [a for a in all_news if kw_lower in (a.title or "").lower() or kw_lower in (a.summary or "").lower()]
-    else:
-        news = NewsAggregator.get_news()
+    all_news = [a for a in NewsAggregator.get_news() if (a.category or "") != "研究・論文"]
+    if not keyword:
+        return {"html": "", "page": max(1, page), "total_pages": 1}
+    kw_lower = keyword.lower()
+    news = [a for a in all_news if kw_lower in (a.title or "").lower() or kw_lower in (a.summary or "").lower()]
     total = len(news)
     per_page = ITEMS_PER_PAGE
     total_pages = max(1, (total + per_page - 1) // per_page)
@@ -253,18 +509,23 @@ async def api_news_page(page: int = 1, keyword: str = ""):
     for item in items:
         pub = item.published.strftime('%m/%d %H:%M') if item.published else ''
         title_safe = html_mod.escape(item.title or "")
-        summary_safe = html_mod.escape((item.summary or "")[:80])
+        raw_summary = item.summary or ""
+        summary_safe = html_mod.escape(raw_summary[:80])
+        ellipsis = "..." if len(raw_summary) > 80 else ""
         source_safe = html_mod.escape(item.source or "")
         cat_safe = html_mod.escape(item.category or "")
-        cards_html += f'''<article class="news-card animate-fade-in" data-category="{cat_safe}">
+        tab_cat_safe = html_mod.escape(_news_tab_filter_category(item))
+        img_src = item.image_url or "https://picsum.photos/400/225"
+        cards_html += f'''<article class="news-card animate-fade-in" data-category="{tab_cat_safe}">
 <a href="/topic/{item.id}" class="news-card-link">
-<div class="news-card-image"><img src="{item.image_url or 'https://picsum.photos/400/225'}" alt="{title_safe}" loading="lazy"><span class="news-card-category">{cat_safe}</span></div>
 <div class="news-card-body">
 <div class="news-card-meta"><span class="news-card-time">🕒 {pub}</span><span class="news-card-source">{source_safe}</span></div>
 <h3 class="news-title">{title_safe}</h3>
-<p class="news-summary-line">👀 {summary_safe}...</p>
+<p class="news-summary-line">👀 {summary_safe}{ellipsis}</p>
 <div class="news-card-footer"><span class="news-card-ai">✍ AIが解説</span><span class="news-badge">AI解説</span></div>
-</div></a></article>'''
+</div>
+<div class="news-card-image"><img src="{img_src}" alt="{title_safe}" loading="lazy" onerror="this.src='https://picsum.photos/seed/{item.id}/400/225'"><span class="news-card-category">{cat_safe}</span></div>
+</a></article>'''
     return {"html": cards_html, "page": page, "total_pages": total_pages}
 
 
@@ -288,46 +549,26 @@ async def api_papers_page(page: int = 1):
             summary_safe = html_mod.escape(raw_summary[:80])
             domain_safe = html_mod.escape(domain or "")
             source_safe = html_mod.escape(item.source or "")
-            tags = getattr(item, "related_tags", []) or []
-            chips = "".join([f'<span class="news-badge">{html_mod.escape(t)}</span>' for t in tags[:3]])
             ellipsis = "..." if len(raw_summary) > 80 else ""
+            img_src = item.image_url or "https://picsum.photos/400/225"
             cards_html += f'''<article class="news-card animate-fade-in" data-category="{domain_safe}">
 <a href="/topic/{item.id}" class="news-card-link">
-<div class="news-card-image"><img src="{item.image_url or 'https://picsum.photos/400/225'}" alt="{title_safe}" loading="lazy"><span class="news-card-category">{domain_safe}</span></div>
 <div class="news-card-body">
 <div class="news-card-meta"><span class="news-card-time">🕒 {pub}</span><span class="news-card-source">{source_safe}</span></div>
 <h3 class="news-title">{title_safe}</h3>
 <p class="news-summary-line">👀 {summary_safe}{ellipsis}</p>
-<div class="tag-list">{chips}</div>
 <div class="news-card-footer"><span class="news-card-ai">✍ AIが解説</span><span class="news-badge">AI解説</span></div>
-</div></a></article>'''
+</div>
+<div class="news-card-image"><img src="{img_src}" alt="{title_safe}" loading="lazy" onerror="this.src='https://picsum.photos/seed/{item.id}/400/225'"><span class="news-card-category">{domain_safe}</span></div>
+</a></article>'''
     return {"html": cards_html, "page": pagination["page"], "total_pages": pagination["total_pages"]}
 
 
-@router.get("/papers", response_class=HTMLResponse)
-async def papers_page(request: Request, page: int = 1):
-    """論文専用ページ：研究・論文を上位ジャンル（ドメイン）ごとに表示（ニュース一覧と同じUI）"""
-    papers_by_category, pagination = NewsAggregator.get_papers_by_category(page=page)
-    for _, items in papers_by_category:
-        _attach_paper_related_tags(items)
-        for item in items:
-            _ensure_japanese(item)
-            if not item.image_url:
-                item.image_url = get_image_url(item.id, 400, 225)
-            elif not item.image_url.startswith("http"):
-                item.image_url = get_image_url(item.image_url, 400, 225)
-    has_papers = any(items for _, items in papers_by_category)
-    return templates.TemplateResponse(
-        "papers.html",
-        {
-            "request": request,
-            "papers_by_category": papers_by_category,
-            "pagination": pagination,
-            "has_papers": has_papers,
-            "site_url": _get_site_url(request),
-            "page": page,
-        },
-    )
+@router.get("/papers")
+async def papers_legacy_redirect(request: Request):
+    """旧URL互換：トップ（論文一覧）へ統合"""
+    q = request.url.query
+    return RedirectResponse(url=("/?" + q) if q else "/", status_code=301)
 
 
 @router.get("/trend", response_class=HTMLResponse)
@@ -371,9 +612,25 @@ async def ai_page(request: Request):
         if daily:
             ai_memo = daily.get("memo", "")
             ai_personas = daily.get("persona_comments", [])
+            if isinstance(ai_personas, list):
+                patched = []
+                for pc in ai_personas:
+                    if isinstance(pc, dict):
+                        p = dict(pc)
+                        p["image_url"] = _persona_image_url(p.get("name"))
+                        patched.append(p)
+                ai_personas = patched
     except Exception:
         pass
-    return templates.TemplateResponse("ai.html", {"request": request, "recommended": recommended, "ai_memo": ai_memo, "ai_personas": ai_personas})
+    return templates.TemplateResponse(
+        "ai.html",
+        {
+            "request": request,
+            "recommended": recommended,
+            "ai_memo": ai_memo,
+            "ai_personas": ai_personas,
+        },
+    )
 
 
 @router.get("/about", response_class=HTMLResponse)
@@ -388,15 +645,116 @@ async def authors_page(request: Request):
     return templates.TemplateResponse("authors.html", {"request": request})
 
 
+@router.get("/personas", response_class=HTMLResponse)
+async def personas_page(request: Request):
+    """14キャラクター紹介ページ"""
+    personas = [_build_persona_view(p) for p in PERSONAS]
+    return templates.TemplateResponse(
+        "personas.html",
+        {
+            "request": request,
+            "personas": personas,
+        },
+    )
+
+
+@router.get("/personas/{persona_id}", response_class=HTMLResponse)
+async def persona_detail_page(request: Request, persona_id: int):
+    """キャラクター詳細ページ"""
+    target = next((p for p in PERSONAS if int(p.get("id", -1)) == int(persona_id)), None)
+    if not target:
+        raise HTTPException(status_code=404, detail="キャラクターが見つかりません")
+    persona = _build_persona_view(target)
+    other_personas = [_build_persona_view(p) for p in PERSONAS if int(p.get("id", -1)) != int(persona_id)][:6]
+    return templates.TemplateResponse(
+        "persona_detail.html",
+        {
+            "request": request,
+            "persona": persona,
+            "other_personas": other_personas,
+        },
+    )
+
+
 @router.get("/search", response_class=HTMLResponse)
 async def search_page(request: Request, q: str = ""):
     """探すページ"""
+    def _hira_to_kata(text: str) -> str:
+        # ひらがな(3041-3096)をカタカナ(30A1-30F6)へ
+        return "".join(chr(ord(ch) + 0x60) if "\u3041" <= ch <= "\u3096" else ch for ch in text)
+
+    def _normalize_search_text(text: str) -> str:
+        s = unicodedata.normalize("NFKC", (text or "")).strip().lower()
+        s = _hira_to_kata(s)
+        s = re.sub(r"\s+", " ", s)
+        return s
+
+    def _tokenize_query(query: str) -> list[str]:
+        nq = _normalize_search_text(query)
+        return [t for t in nq.split(" ") if t]
+
+    def _extract_search_terms(text: str) -> list[str]:
+        # 日本語/英数字の連続を候補語として抽出
+        return re.findall(r"[a-z0-9ぁ-んァ-ヶー一-龯]+", text)
+
+    def _fuzzy_hit(token: str, haystack_norm: str, terms: list[str]) -> bool:
+        if not token:
+            return False
+        # まずは通常一致
+        if token in haystack_norm:
+            return True
+        # 1文字はあいまい一致するとノイズが多すぎるため除外
+        if len(token) <= 1:
+            return False
+        # 近い長さの語だけ比較して負荷と誤検知を抑える
+        for term in terms:
+            if not term:
+                continue
+            if abs(len(term) - len(token)) > max(2, len(token) // 2):
+                continue
+            ratio = SequenceMatcher(None, token, term).ratio()
+            if ratio >= 0.78:
+                return True
+        return False
+
     q = (q or "").strip()
     results = []
     if q:
         all_news = NewsAggregator.get_news()
-        ql = q.lower()
-        results = [a for a in all_news if ql in (a.title or "").lower() or ql in (a.summary or "").lower()][:50]
+        tokens = _tokenize_query(q)
+        scored: list[tuple[int, datetime, object]] = []
+
+        for a in all_news:
+            title_n = _normalize_search_text(a.title or "")
+            summary_n = _normalize_search_text(a.summary or "")
+            category_n = _normalize_search_text(a.category or "")
+            source_n = _normalize_search_text(a.source or "")
+            full_n = " ".join([title_n, summary_n, category_n, source_n]).strip()
+            terms = _extract_search_terms(full_n)
+            token_hits = [(_fuzzy_hit(t, full_n, terms)) for t in tokens]
+            if not tokens or not all(token_hits):
+                continue
+
+            # タイトル一致を最優先し、次にカテゴリ/ソース、要約の順で重み付け
+            score = 0
+            for t in tokens:
+                if t in title_n:
+                    score += 12
+                if t in category_n:
+                    score += 7
+                if t in source_n:
+                    score += 6
+                if t in summary_n:
+                    score += 4
+            # 完全一致に近い短いクエリはブースト
+            joined = "".join(tokens)
+            if joined and joined in title_n:
+                score += 8
+
+            scored.append((score, a.published or datetime.min, a))
+
+        scored.sort(key=lambda x: (x[0], x[1]), reverse=True)
+        results = [x[2] for x in scored]
         for item in results:
             _ensure_japanese(item)
             if not item.image_url:
@@ -461,6 +819,100 @@ def _meta_description_qa(title: str, summary: str | None, max_len: int = 160) ->
         return question[:max_len]
     answer = s[: max_len - len(question) - 4] + "..." if len(s) > max_len - len(question) - 2 else s
     return f"{question} {answer}"[:max_len]
+
+
+def _iso_date(dt) -> str:
+    try:
+        if dt and hasattr(dt, "isoformat"):
+            return dt.isoformat()
+    except Exception:
+        pass
+    return datetime.now().isoformat()
+
+
+def _build_article_jsonld(
+    *,
+    item,
+    article_url: str,
+    og_image: str,
+    meta_desc: str,
+    site_url: str,
+    display_persona_ids: list[int] | None,
+) -> dict:
+    article_type = "ScholarlyArticle" if (item.category == "研究・論文") else "NewsArticle"
+    ai_authors = [{"@type": "Person", "name": p.get("name", "")} for p in PERSONAS]
+    contributors = []
+    for pid in (display_persona_ids or []):
+        try:
+            p = PERSONAS[int(pid)]
+            contributors.append({"@type": "Person", "name": p.get("name", "")})
+        except Exception:
+            continue
+    return {
+        "@context": "https://schema.org",
+        "@type": article_type,
+        "mainEntityOfPage": {"@type": "WebPage", "@id": article_url},
+        "headline": (item.title or "").strip(),
+        "description": (meta_desc or "").strip(),
+        "datePublished": _iso_date(getattr(item, "published", None)),
+        "dateModified": _iso_date(getattr(item, "published", None)),
+        "author": ai_authors,
+        "contributor": contributors,
+        "publisher": {"@type": "Organization", "name": "知リポAI", "url": site_url},
+        "image": [og_image] if og_image else [],
+        "articleSection": item.category or "ニュース",
+        "isAccessibleForFree": True,
+    }
+
+
+def _build_breadcrumb_jsonld(items: list[tuple[str, str]]) -> dict:
+    return {
+        "@context": "https://schema.org",
+        "@type": "BreadcrumbList",
+        "itemListElement": [
+            {
+                "@type": "ListItem",
+                "position": i + 1,
+                "name": name,
+                "item": url,
+            }
+            for i, (name, url) in enumerate(items)
+        ],
+    }
+
+
+def _build_itemlist_jsonld(*, page_name: str, site_url: str, items: list) -> dict:
+    list_items = []
+    for idx, it in enumerate(items[:30]):
+        title = (getattr(it, "title", "") or "").strip()
+        if not title:
+            continue
+        list_items.append(
+            {
+                "@type": "ListItem",
+                "position": idx + 1,
+                "url": f"{site_url.rstrip('/')}/topic/{it.id}",
+                "name": title,
+            }
+        )
+    return {
+        "@context": "https://schema.org",
+        "@type": "ItemList",
+        "name": page_name,
+        "itemListOrder": "https://schema.org/ItemListOrderDescending",
+        "numberOfItems": len(list_items),
+        "itemListElement": list_items,
+    }
+
+
+def _plain_text_for_copy(html_or_text: str | None, max_len: int = 1200) -> str:
+    """コピー用に HTML タグを除いたプレーンテキスト（|striptags|tojson より型事故が少ない）"""
+    import re as _re
+    if not html_or_text:
+        return ""
+    t = _re.sub(r"<[^>]+>", " ", str(html_or_text))
+    t = _re.sub(r"\s+", " ", t).strip()
+    return t[:max_len] if len(t) > max_len else t
 
 
 def _build_short_summary(quick_understand: dict | None, fallback_summary: str | None) -> str:
@@ -628,18 +1080,125 @@ def _attach_paper_related_tags(items: list) -> None:
     _apply_tags_to_items(full_map)
 
 
+def _render_papers_page(request: Request, page: int = 1):
+    """論文一覧（トップ `/` と共通）
+
+    論文は get_news（load_all 上位800件・ニュース混在）ではなく、研究・論文＋解説付き専用クエリで取得する。
+    ページネーションは使わず PAPERS_LIST_MAX 件まで1ページで描画する。
+    """
+    from app.services.article_cache import load_papers_for_site_list
+    from app.services.news_aggregator import SOURCE_TO_PAPER_DOMAIN, PAPER_DOMAIN_ORDER
+    from datetime import datetime as _dt
+
+    # ── 全論文（DB 専用クエリ。800件混合上限で論文が落ちない） ────────────────
+    all_papers = sorted(
+        load_papers_for_site_list(),
+        key=lambda x: x.added_at or x.published or _dt.min,
+        reverse=True,
+    )
+    all_news = NewsAggregator.get_news()
+
+    # ── ドメイン分類（全論文に適用） ─────────────────────────────────────────
+    by_domain: dict[str, list] = {}
+    for item in all_papers:
+        domain = SOURCE_TO_PAPER_DOMAIN.get(item.source, "総合科学")
+        by_domain.setdefault(domain, []).append(item)
+
+    # 表示順（データが存在するドメインのみ）
+    paper_domains = [d for d in PAPER_DOMAIN_ORDER if d in by_domain]
+    papers_by_category = [(d, by_domain[d]) for d in paper_domains]
+
+    # ── 画像 / 関連タグ補完 ───────────────────────────────────────────────────
+    for _, items in papers_by_category:
+        _attach_paper_related_tags(items)
+        for item in items:
+            _ensure_japanese(item)
+            if not item.image_url:
+                item.image_url = get_image_url(item.id, 400, 225)
+            elif item.image_url and not item.image_url.startswith("http"):
+                item.image_url = get_image_url(item.image_url, 400, 225)
+
+    # ── ページネーション: 全件を1ページに（無限スクロール不使用） ──────────
+    total = len(all_papers)
+    pagination = {
+        "page": 1,
+        "per_page": total or 1,
+        "total": total,
+        "total_pages": 1,
+        "has_prev": False,
+        "has_next": False,
+    }
+
+    site_url = _get_site_url(request)
+    flat_papers = all_papers
+    papers_breadcrumb_jsonld = _build_breadcrumb_jsonld(
+        [("ホーム", f"{site_url}/"), ("AI論文解説", f"{site_url}/")]
+    )
+    papers_itemlist_jsonld = _build_itemlist_jsonld(
+        page_name="AI論文解説一覧",
+        site_url=site_url,
+        items=flat_papers,
+    )
+    has_papers = bool(all_papers)
+
+    # おすすめは一覧と同じ all_papers の先頭3件（別取得ロジックなし）
+    top_recommendations: list = []
+    try:
+        top_recommendations = all_papers[:3]
+    except Exception:
+        top_recommendations = []
+
+    recent_ai_news: list[dict] = []
+    try:
+        non_papers = [x for x in all_news[:120] if x.category != "研究・論文"][:10]
+        if non_papers:
+            from app.services.explanation_cache import get_cached_many
+            cached_map = get_cached_many([x.id for x in non_papers])
+            for it in non_papers:
+                c = cached_map.get(it.id, {}) if isinstance(cached_map, dict) else {}
+                pids = c.get("display_persona_ids") if isinstance(c, dict) else []
+                emojis: list[str] = []
+                if isinstance(pids, list):
+                    for pid in pids[:3]:
+                        try:
+                            emojis.append(PERSONAS[int(pid)]["emoji"])
+                        except Exception:
+                            continue
+                recent_ai_news.append({"id": it.id, "title": it.title or "", "emojis": emojis})
+    except Exception:
+        recent_ai_news = []
+
+    return templates.TemplateResponse(
+        "papers.html",
+        {
+            "request": request,
+            "papers_by_category": papers_by_category,
+            "paper_domains": paper_domains,
+            "pagination": pagination,
+            "has_papers": has_papers,
+            "site_url": site_url,
+            "page": 1,
+            "recent_ai_news": recent_ai_news,
+            "top_recommendations": top_recommendations,
+            "papers_breadcrumb_jsonld": papers_breadcrumb_jsonld,
+            "papers_itemlist_jsonld": papers_itemlist_jsonld,
+        },
+    )
+
+
 def _blocks_to_html(blocks: list) -> str:
     """ブロックをHTMLに変換。本文のみ表示。ミドルマン解説はフローティング吹き出し用の JSON データとして埋め込む"""
-    if not blocks:
+    safe = [b for b in (blocks or []) if isinstance(b, dict)]
+    if not safe:
         return ""
     import html as _h
     import json as _json
     text_parts: list[str] = []
     float_items: list[dict] = []
-    is_navigator = blocks and blocks[0].get("type") == "navigator_section"
+    is_navigator = safe[0].get("type") == "navigator_section"
     nav_labels = {"facts": "ニュース", "background": "背景", "impact": "影響範囲", "prediction": "予測", "caution": "注意"}
     if is_navigator:
-        for b in blocks:
+        for b in safe:
             if b.get("type") != "navigator_section" or not b.get("section"):
                 continue
             body = (b.get("content") or "").strip()
@@ -654,7 +1213,7 @@ def _blocks_to_html(blocks: list) -> str:
                 label = nav_labels.get(b["section"], b["section"])
                 float_items.append({"label": label, "body": _h.escape(body).replace("\n", "<br>")})
     else:
-        for b in blocks:
+        for b in safe:
             if b.get("type") == "text":
                 for p in (b.get("content") or "").strip().split("\n\n"):
                     p = p.strip()
@@ -710,7 +1269,7 @@ async def topic_detail(request: Request, topic_id: str):
     cached_personas = cached.get("personas", []) if cached else []
     if cached_ids and isinstance(cached_personas, list) and len(cached_personas) == 3:
         display_persona_ids = cached_ids[:3]
-        display_personas = [PERSONAS[i] for i in display_persona_ids]
+        display_personas = [{**PERSONAS[i], "image_url": _persona_image_url(PERSONAS[i].get("name"))} for i in display_persona_ids]
         personas_data = [str(x) if x is not None else "" for x in cached_personas[:3]]
     else:
         raw_personas = cached.get("personas", []) if cached else []
@@ -725,7 +1284,7 @@ async def topic_detail(request: Request, topic_id: str):
             _rnd.shuffle(display_indices)
         else:
             display_indices = list(range(min(3, len(PERSONAS))))
-        display_personas = [PERSONAS[i] for i in display_indices]
+        display_personas = [{**PERSONAS[i], "image_url": _persona_image_url(PERSONAS[i].get("name"))} for i in display_indices]
         personas_data = [
             str(all_personas_data[i]) if i < len(all_personas_data) and all_personas_data[i] is not None else ""
             for i in display_indices
@@ -739,6 +1298,12 @@ async def topic_detail(request: Request, topic_id: str):
     vote_data = _sanitize_vote_data_for_page(cached.get("vote_data") if cached else None)
     paper_graph = _sanitize_paper_graph_for_page(cached.get("paper_graph") if cached else None)
     paper_quiz = _sanitize_paper_quiz_for_page(cached.get("paper_quiz") if cached else None)
+    # Firestore/過去データ互換:
+    # 片方にしか入っていない場合でも、クイズ/投票のどちらにも表示できるようにする
+    if (not vote_data) and paper_quiz and paper_quiz.get("options"):
+        vote_data = dict(paper_quiz)
+    if (not paper_quiz or not paper_quiz.get("options")) and vote_data and vote_data.get("options"):
+        paper_quiz = dict(vote_data)
     deep_insights = _sanitize_deep_insights_for_page(cached.get("deep_insights") if cached else None)
     body_html = _blocks_to_html(blocks) if blocks else ""
     short_summary = _build_short_summary(quick_understand, item.summary)
@@ -758,6 +1323,7 @@ async def topic_detail(request: Request, topic_id: str):
     meta_desc = _meta_description_qa(item.title, item.summary)
     # 見た目演出用（記事ごとに安定した値）
     readers_now = 20 + (abs(hash(topic_id)) % 130)
+    copy_blurb = _plain_text_for_copy(short_summary) or (item.summary or "").strip()
 
     try:
         all_news = NewsAggregator.get_news()
@@ -776,7 +1342,9 @@ async def topic_detail(request: Request, topic_id: str):
     related = [a for a in all_news if a.category == item.category and a.id != topic_id][:4]
     import random as _rnd
     other_cat = [a for a in all_news if a.category != item.category and a.id != topic_id]
-    ai_recommended = _rnd.sample(other_cat, min(3, len(other_cat))) if other_cat else []
+    # 論文のみ・単一ジャンルだけ等で「別カテゴリ」が空だと欄が消えるため、同カテゴリ以外が無ければ全件から補完
+    pool = other_cat if other_cat else [a for a in all_news if a.id != topic_id]
+    ai_recommended = _rnd.sample(pool, min(3, len(pool))) if pool else []
 
     published_text = ""
     try:
@@ -788,6 +1356,18 @@ async def topic_detail(request: Request, topic_id: str):
                 published_text = str(p)[:16]
     except Exception:
         published_text = ""
+    article_jsonld = _build_article_jsonld(
+        item=item,
+        article_url=article_url,
+        og_image=og_image,
+        meta_desc=meta_desc,
+        site_url=site_url,
+        display_persona_ids=display_persona_ids,
+    )
+    _article_cat = (getattr(item, "category", None) or "").strip()
+    mobile_nav_papers_highlight = _article_cat == "研究・論文"
+    mobile_nav_news_highlight = not mobile_nav_papers_highlight
+    all_personas_enriched = [{**p, "image_url": _persona_image_url(p.get("name"))} for p in PERSONAS]
 
     return templates.TemplateResponse(
         "article.html",
@@ -797,7 +1377,7 @@ async def topic_detail(request: Request, topic_id: str):
             "image_url": image_url,
             "personas": display_personas,
             "display_persona_ids": display_persona_ids,
-            "all_personas": PERSONAS,
+            "all_personas": all_personas_enriched,
             "site_url": site_url,
             "article_url": article_url,
             "og_image": og_image,
@@ -821,6 +1401,11 @@ async def topic_detail(request: Request, topic_id: str):
             "deep_insights": deep_insights,
             "readers_now": readers_now,
             "published_text": published_text,
+            "copy_blurb": copy_blurb,
+            "article_jsonld": article_jsonld,
+            "mobile_nav_papers_highlight": mobile_nav_papers_highlight,
+            "mobile_nav_news_highlight": mobile_nav_news_highlight,
+            "midorman_image_url": _persona_image_url("ミドルマン"),
         }
     )
 
@@ -839,7 +1424,9 @@ def _sanitize_blocks(blocks: list) -> list:
     """ブロックのcontentからHTML断片を除去（キャッシュ済み悪データ対策）"""
     out = []
     for b in (blocks or []):
-        if isinstance(b, dict) and "content" in b and b.get("content"):
+        if not isinstance(b, dict):
+            continue
+        if "content" in b and b.get("content"):
             b = {**b, "content": sanitize_display_text(str(b["content"]))}
         out.append(b)
     return out
@@ -903,12 +1490,9 @@ async def api_persona_opinion(article_id: str, persona_id: int):
 
 @router.get("/api/status")
 async def api_status():
-    """状態確認（高速）。Firestorm/DBへの重い読取を避ける"""
-    from app.services.explanation_cache import get_cached_article_ids
-
-    # API疎通確認用エンドポイントは軽量に保つ（重いDB読取はしない）
+    """状態確認（高速）。DB読取をせずメモリ情報のみ返す"""
     displayable = len(getattr(NewsAggregator, "_news_cache", []) or [])
-    processed = get_cached_article_ids()
+    processed_count = int(getattr(NewsAggregator, "_last_processed_count", 0) or 0)
     try:
         from app.config import settings
         has_key = bool(getattr(settings, "OPENAI_API_KEY", ""))
@@ -917,7 +1501,7 @@ async def api_status():
 
     return {
         "articles_in_db": displayable,
-        "ai_processed": len(processed),
+        "ai_processed": processed_count,
         "displayable": displayable,
         "openai_key_set": has_key,
     }
@@ -1076,6 +1660,49 @@ async def api_seed_articles():
 
     news = fetch_rss_news()
     added = process_new_rss_articles(news, max_per_run=5)
+    NewsAggregator.get_news(force_refresh=True)
+    total = len(get_cached_article_ids())
+    return {"status": "ok", "added": added, "total": total}
+
+
+@router.post("/api/admin/seed-curated")
+async def api_seed_curated(
+    request: Request,
+    x_admin_secret: str | None = Header(None, alias="X-Admin-Secret"),
+    max: int = 30,
+):
+    """
+    curated_articles.json の記事を既存パイプラインで記事化する（管理者のみ）。
+    リクエストボディに JSON 配列を渡すと curated_articles.json を上書きしてから処理する。
+    ボディなし（空）の場合はサーバー上の既存 curated_articles.json をそのまま処理する。
+    """
+    if not _is_admin(request, x_admin_secret):
+        raise HTTPException(status_code=403, detail="管理者のみ利用できます")
+    if is_rss_and_ai_disabled():
+        raise HTTPException(status_code=503, detail="この環境ではAI要約は無効です。")
+
+    # ボディに JSON 配列が渡された場合、サーバー上の curated_articles.json を上書きする
+    from pathlib import Path as _Path
+    _curated_file = _Path(__file__).resolve().parent.parent.parent / "curated_articles.json"
+    try:
+        body_bytes = await request.body()
+        if body_bytes and body_bytes.strip():
+            articles_data = json.loads(body_bytes)
+            if isinstance(articles_data, list) and articles_data:
+                _curated_file.write_text(
+                    json.dumps(articles_data, ensure_ascii=False, indent=2),
+                    encoding="utf-8",
+                )
+                logger.info("seed-curated: %d 件の記事リストをアップロードしました", len(articles_data))
+    except Exception as e:
+        logger.warning("seed-curated: ボディ解析エラー（既存ファイルをそのまま使用）: %s", e)
+
+    import asyncio
+    from app.services.article_seed_from_curated import process_curated_articles
+    from app.services.explanation_cache import get_cached_article_ids
+    added = await asyncio.get_event_loop().run_in_executor(
+        None, lambda: process_curated_articles(max_per_run=max)
+    )
     NewsAggregator.get_news(force_refresh=True)
     total = len(get_cached_article_ids())
     return {"status": "ok", "added": added, "total": total}

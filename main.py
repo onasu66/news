@@ -146,8 +146,22 @@ async def lifespan(app: FastAPI):
     def _init():
         # 起動直後は軽い処理だけ先に実行して、API応答を阻害しない
         NewsAggregator.get_trends(force_refresh=True)
+
+    def _warm_firestore_articles():
+        """数秒後に Firestore の articles を全件メモリへ載せ、以降の閲覧で読み取りを抑える。"""
+        import time
+        time.sleep(5)
+        try:
+            from app.services.firestore_store import use_firestore, firestore_warm_articles_snapshot
+            if use_firestore():
+                n = firestore_warm_articles_snapshot()
+                logger.info("Firestore 全記事スナップショット: %d 件をメモリに読み込みました。", n)
+        except Exception as e:
+            logger.warning("Firestore 記事ウォームアップ: %s", e)
+
     t = threading.Thread(target=_init, daemon=True)
     t.start()
+    threading.Thread(target=_warm_firestore_articles, daemon=True).start()
 
     scheduler = BackgroundScheduler(timezone=JST)
     # 記事一覧は閲覧時TTL破棄をしない運用。RSS 取り込みは cron（force_refresh=True）のみ。

@@ -2,8 +2,6 @@
 無料枠（読 5万/日・書 2万/日）を考慮し、cached_article_ids はメタ1ドキュメントで管理・load_all は limit 付き。"""
 import json
 import logging
-import threading
-import time
 from pathlib import Path
 from datetime import datetime
 from typing import Optional
@@ -86,66 +84,12 @@ def _meta_doc():
     return _get_client().collection("_meta").document("cache")
 
 
-# Firestore: articles 全件メモリスナップショット（保存・削除で無効化。閲覧は原則これ経由で読み取り0）
-_articles_snapshot_lock = threading.Lock()
-_articles_snapshot: list | None = None
-_articles_snapshot_by_id: dict[str, object] | None = None  # id -> NewsItem
-
-# 論文トップ用一覧のメモリキャッシュ（同一プロセス内の Firestore 読取削減）
-_papers_site_list_lock = threading.Lock()
-_papers_site_list_at: float = 0.0
-_papers_site_list_cap: int = 0
-_papers_site_list_items: list | None = None
-
-# _meta/cache の ids を batch get するときの参照数（Firestore の getAll 都合で控えめ）
-_PAPERS_META_BATCH = 100
-
-
-def firestore_invalidate_articles_snapshot() -> None:
-    """articles 全件スナップショット・ニュース一覧キャッシュ・論文TTL・解説メモリを破棄（記事・解説の保存・削除後）。"""
-    global _articles_snapshot, _articles_snapshot_by_id
-    with _articles_snapshot_lock:
-        _articles_snapshot = None
-        _articles_snapshot_by_id = None
-    try:
-        from .explanation_cache import clear_explanation_memory_cache
-
-        clear_explanation_memory_cache()
-    except Exception:
-        pass
-    firestore_invalidate_papers_site_list_cache()
-    try:
-        from .news_aggregator import NewsAggregator
-
-        NewsAggregator._news_cache = []
-    except Exception:
-        pass
-
-
-def firestore_invalidate_papers_site_list_cache() -> None:
-    """論文トップ用のメモリキャッシュを破棄。解説・記事の保存・削除・メタ同期後に呼ぶ。"""
-    global _papers_site_list_at, _papers_site_list_cap, _papers_site_list_items
-    with _papers_site_list_lock:
-        _papers_site_list_items = None
-        _papers_site_list_at = 0.0
-        _papers_site_list_cap = 0
-    try:
-        from .news_aggregator import NewsAggregator
-
-        NewsAggregator._invalidate_papers_cache()
-    except Exception:
-        pass
+# 一覧取得の上限（無料枠 5万読/日 を考慮。過剰読取を抑える）
+_LOAD_ALL_LIMIT = 800
 
 # --- articles ---
 def firestore_load_by_id(article_id: str):
     from .rss_service import NewsItem, sanitize_display_text
-
-    with _articles_snapshot_lock:
-        snap = _articles_snapshot_by_id
-    if snap is not None:
-        hit = snap.get(article_id)
-        if hit is not None:
-            return hit  # type: ignore
     doc = _articles_collection().document(article_id).get()
     if not doc.exists:
         return None
@@ -169,13 +113,11 @@ def firestore_load_by_id(article_id: str):
     )
 
 
-def _firestore_stream_all_articles_into_memory():
-    """Firestore の articles を added_at 降順で全件読み、(list, id->item) を返す。読み取りは件数分。"""
+def firestore_load_all():
+    """保存済み記事を新しい順で取得。読み取り数削減のため上限あり"""
     from .rss_service import NewsItem, sanitize_display_text
-
-    items: list = []
-    by_id: dict[str, NewsItem] = {}
-    for doc in _articles_collection().order_by("added_at", direction="DESCENDING").stream():
+    items = []
+    for doc in _articles_collection().order_by("added_at", direction="DESCENDING").limit(_LOAD_ALL_LIMIT).stream():
         d = doc.to_dict()
         try:
             pub = datetime.fromisoformat(d.get("published", "")) if d.get("published") else datetime.now()
@@ -183,7 +125,7 @@ def _firestore_stream_all_articles_into_memory():
             pub = datetime.now()
         added_at_raw = d.get("added_at")
         added_at = added_at_raw.replace(tzinfo=None) if hasattr(added_at_raw, "replace") else None
-        item = NewsItem(
+        items.append(NewsItem(
             id=doc.id,
             title=d.get("title", ""),
             link=d.get("link", ""),
@@ -193,30 +135,8 @@ def _firestore_stream_all_articles_into_memory():
             category=d.get("category", "総合"),
             image_url=d.get("image_url"),
             added_at=added_at,
-        )
-        items.append(item)
-        by_id[doc.id] = item
-    return items, by_id
-
-
-def firestore_load_all():
-    """保存済み記事を新しい順で全件返す。初回のみ Firestore を全走査し、以降はメモリスナップショット（保存時まで再読なし）。"""
-    global _articles_snapshot, _articles_snapshot_by_id
-    with _articles_snapshot_lock:
-        if _articles_snapshot is not None:
-            return list(_articles_snapshot)
-    built, by_id = _firestore_stream_all_articles_into_memory()
-    with _articles_snapshot_lock:
-        if _articles_snapshot is None:
-            _articles_snapshot = built
-            _articles_snapshot_by_id = by_id
-        return list(_articles_snapshot)
-
-
-def firestore_warm_articles_snapshot() -> int:
-    """起動時など: 全 articles を一度読みメモリに載せる。戻り値は載せた件数。"""
-    items = firestore_load_all()
-    return len(items)
+        ))
+    return items
 
 
 def _firestore_article_doc_to_item(doc_id: str, d: dict) -> "NewsItem":
@@ -239,73 +159,6 @@ def _firestore_article_doc_to_item(doc_id: str, d: dict) -> "NewsItem":
         image_url=d.get("image_url"),
         added_at=added_at,
     )
-
-
-def _firestore_get_meta_ids_ordered() -> list[str]:
-    """_meta/cache の ids を1読で取得（順序は保存時の配列順を維持）。"""
-    meta = _meta_doc().get()
-    if not meta.exists:
-        return []
-    raw = (meta.to_dict() or {}).get("ids")
-    if not raw:
-        return []
-    return [str(x) for x in raw if x]
-
-
-def _firestore_ensure_meta_ids_ordered() -> list[str]:
-    """メタに ids が無いが explanations にある場合は再構築してから返す。"""
-    ids = _firestore_get_meta_ids_ordered()
-    if ids:
-        return ids
-    try:
-        if not any(_explanations_collection().limit(1).stream()):
-            return []
-    except Exception:
-        return []
-    logger.warning(
-        "_meta/cache の ids が空だが explanations にデータがあります。メタを explanations から再構築します。"
-    )
-    _rebuild_cached_article_ids_meta()
-    return _firestore_get_meta_ids_ordered()
-
-
-def _firestore_load_papers_from_meta_batch_get(meta_ids: list[str], cap: int) -> list:
-    """メタの article_id を batch get し、研究・論文だけ最大 cap 件まで集める（added_at 全件走査しない）。"""
-    if not meta_ids or cap <= 0:
-        return []
-    cap = max(1, min(int(cap), 50000))
-    client = _get_client()
-    col = _articles_collection()
-    out: list = []
-    # 新しい解説は ids の末尾に付くことが多いので後ろから batch 取得し、早めに cap に到達しやすくする
-    ordered = list(reversed(meta_ids))
-    for i in range(0, len(ordered), _PAPERS_META_BATCH):
-        if len(out) >= cap:
-            break
-        chunk = ordered[i : i + _PAPERS_META_BATCH]
-        refs = [col.document(aid) for aid in chunk if aid]
-        if not refs:
-            continue
-        try:
-            snaps = client.get_all(refs)
-        except Exception as e:
-            logger.warning("_firestore_load_papers_from_meta_batch_get: get_all 失敗 (%s)", e)
-            snaps = []
-            for r in refs:
-                try:
-                    snaps.append(r.get())
-                except Exception:
-                    pass
-        for doc in snaps:
-            if not getattr(doc, "exists", False):
-                continue
-            d = doc.to_dict() or {}
-            if (d.get("category") or "").strip() != "研究・論文":
-                continue
-            out.append(_firestore_article_doc_to_item(doc.id, d))
-            if len(out) >= cap:
-                break
-    return out
 
 
 def _firestore_scan_papers_category_only(cap: int) -> list:
@@ -355,63 +208,33 @@ def _firestore_scan_papers_with_processed(processed_ids: set[str], cap: int) -> 
 
 
 def firestore_load_all_papers_for_site_list(limit: int = 20000) -> list:
-    """論文トップ SSR 用。_meta/cache の id 順で articles を batch get し、研究・論文を列挙。
-    メタが空・batch 失敗時は従来の走査にフォールバック。結果は短時間 TTL でメモリキャッシュする。"""
+    """論文トップ SSR 用。解説キャッシュID（get_cached_article_ids）∩ 研究・論文を列挙。
+    has_explanation 未設定の古い論文や、複合インデックス無し環境でも落ちない。"""
+    from .explanation_cache import get_cached_article_ids
+
     cap = max(1, min(int(limit), 50000))
     try:
-        ttl = float(getattr(settings, "PAPERS_SITE_LIST_CACHE_TTL_SEC", 120))
-    except Exception:
-        ttl = 120.0
-    now = time.monotonic()
-    global _papers_site_list_at, _papers_site_list_cap, _papers_site_list_items
-    with _papers_site_list_lock:
-        if (
-            _papers_site_list_items is not None
-            and _papers_site_list_cap == cap
-            and (now - _papers_site_list_at) < ttl
-        ):
-            return list(_papers_site_list_items)
-
-    items: list = []
-    try:
-        meta_ids = _firestore_ensure_meta_ids_ordered()
+        processed = get_cached_article_ids()
     except Exception as e:
-        logger.warning("firestore_load_all_papers_for_site_list: メタ取得に失敗 (%s)", e)
-        meta_ids = []
-
-    if not meta_ids:
+        logger.warning("firestore_load_all_papers_for_site_list: get_cached_article_ids に失敗 (%s)", e)
+        processed = set()
+    if not processed:
         logger.warning(
             "firestore_load_all_papers_for_site_list: 解説付きIDが0件—カテゴリのみの論文一覧にフォールバックします"
         )
         items = _firestore_scan_papers_category_only(cap)
     else:
-        try:
-            items = _firestore_load_papers_from_meta_batch_get(meta_ids, cap)
-        except Exception as e:
-            logger.warning("firestore_load_all_papers_for_site_list: batch get 失敗 (%s)—スキャンにフォールバック", e)
-            items = []
-        if not items:
-            try:
-                items = _firestore_scan_papers_with_processed(set(meta_ids), cap)
-            except Exception as e:
-                logger.warning("firestore_load_all_papers_for_site_list: 積集合スキャン失敗 (%s)", e)
-                items = []
+        items = _firestore_scan_papers_with_processed(processed, cap)
         if not items:
             logger.warning(
-                "firestore_load_all_papers_for_site_list: メタ経由で論文0件—カテゴリのみにフォールバックします"
+                "firestore_load_all_papers_for_site_list: 解説IDと論文の積集合が0件—カテゴリのみにフォールバックします"
             )
             items = _firestore_scan_papers_category_only(cap)
-
-    out = sorted(
+    return sorted(
         items,
         key=lambda x: x.added_at or x.published or datetime.min,
         reverse=True,
     )[:cap]
-    with _papers_site_list_lock:
-        _papers_site_list_items = out
-        _papers_site_list_at = time.monotonic()
-        _papers_site_list_cap = cap
-    return list(out)
 
 
 def firestore_save_articles_batch(items) -> int:
@@ -434,8 +257,6 @@ def firestore_save_articles_batch(items) -> int:
             count += 1
         except Exception:
             pass
-    if count:
-        firestore_invalidate_articles_snapshot()
     return count
 
 
@@ -451,7 +272,6 @@ def firestore_save_article(item) -> bool:
             "image_url": item.image_url,
             "added_at": _server_timestamp(),
         })
-        firestore_invalidate_articles_snapshot()
         return True
     except Exception:
         return False
@@ -461,7 +281,6 @@ def firestore_delete_article(article_id: str) -> bool:
     ref = _articles_collection().document(article_id)
     if ref.get().exists:
         ref.delete()
-        firestore_invalidate_articles_snapshot()
         return True
     return False
 
@@ -492,8 +311,6 @@ def _rebuild_cached_article_ids_meta() -> set:
         _meta_doc().set({"ids": ids, "updated_at": _server_timestamp()})
     except Exception as e:
         logger.warning("_rebuild_cached_article_ids_meta: メタ書き込み失敗（ids=%d 件）: %s", len(ids), e)
-        return set()
-    firestore_invalidate_articles_snapshot()
     return set(ids)
 
 
@@ -758,7 +575,6 @@ def firestore_delete_cache(article_id: str) -> bool:
                 meta_ref.set({"ids": ids, "updated_at": _server_timestamp()})
         except Exception:
             pass
-        firestore_invalidate_articles_snapshot()
         return True
     return False
 
@@ -818,7 +634,6 @@ def firestore_save_cache(
             meta_ref.set({"ids": ids, "updated_at": _server_timestamp()})
     except Exception:
         pass
-    firestore_invalidate_articles_snapshot()
 
 
 def firestore_sync_meta_from_explanations() -> int:

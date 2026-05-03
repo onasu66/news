@@ -10,8 +10,23 @@ from typing import Optional
 _ids_cache: Optional[tuple[float, set[str]]] = None  # (cached_at, set of ids)
 _ids_cache_ttl_sec = 60
 _explanation_cache: dict[str, dict] = {}  # article_id -> 解説 dict
-_explanation_cache_max = 200
 _explanation_cache_lock = threading.Lock()
+
+
+def _explanation_cache_max() -> int:
+    try:
+        from app.config import settings
+
+        return max(200, int(getattr(settings, "EXPLANATION_MEMORY_CACHE_MAX", 10000)))
+    except Exception:
+        return 10000
+
+
+def clear_explanation_memory_cache() -> None:
+    """Firestore 用の解説メモリキャッシュを全消去（記事・解説更新後に firestore 側から呼ぶ）。"""
+    global _explanation_cache
+    with _explanation_cache_lock:
+        _explanation_cache.clear()
 
 def _use_firestore():
     try:
@@ -62,6 +77,12 @@ def invalidate_ids_cache() -> None:
     """Firestore 用のメモリキャッシュ（get_cached_article_ids）を無効化。同期API実行後に呼ぶ"""
     global _ids_cache
     _ids_cache = None
+    try:
+        from .firestore_store import firestore_invalidate_papers_site_list_cache
+
+        firestore_invalidate_papers_site_list_cache()
+    except Exception:
+        pass
 
 
 def get_cached_article_ids() -> set[str]:
@@ -94,7 +115,7 @@ def _is_bad_fallback_cache(blocks: list) -> bool:
 
 
 def get_cached(article_id: str) -> Optional[dict]:
-    """キャッシュから取得。なければNone。Firestore 時はメモリキャッシュ（最大200件）で同一記事の再読を削減。
+    """キャッシュから取得。なければNone。Firestore 時はメモリキャッシュ（件数は設定）で同一記事の再読を削減。
     Firestore のクォータ超過・エラー時は例外を握りつぶして None を返す（500エラーを防ぐ）。"""
     global _explanation_cache
     if _use_firestore():
@@ -114,7 +135,7 @@ def get_cached(article_id: str) -> Optional[dict]:
             return None
         if result is not None:
             with _explanation_cache_lock:
-                if len(_explanation_cache) >= _explanation_cache_max:
+                if len(_explanation_cache) >= _explanation_cache_max():
                     oldest = next(iter(_explanation_cache))
                     del _explanation_cache[oldest]
                 _explanation_cache[article_id] = result

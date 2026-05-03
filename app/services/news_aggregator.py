@@ -281,8 +281,11 @@ def _pick_best_trending_article(
 
 # 1ページあたりの表示件数（ページネーション用）
 ITEMS_PER_PAGE = 24
-# キャッシュ上の最大件数（全件取得してページネーション）
-PAGE_DISPLAY_LIMIT = 2000
+# キャッシュ上の最大件数（Firestore は articles 全件スナップショット＋解説IDの積集合。既定は実質無制限に近い）
+try:
+    PAGE_DISPLAY_LIMIT = max(1, int(getattr(settings, "NEWS_LIST_DISPLAY_MAX", 500000)))
+except Exception:
+    PAGE_DISPLAY_LIMIT = 500000
 # 閲覧時の一覧キャッシュは期限で破棄しない（更新イベント時のみ再取得）
 # - 通常閲覧時の Firestore 読み取りを最小化する
 # - 再起動時・force_refresh 実行時には再取得される

@@ -1083,19 +1083,14 @@ def _attach_paper_related_tags(items: list) -> None:
 def _render_papers_page(request: Request, page: int = 1):
     """論文一覧（トップ `/` と共通）
 
-    論文は get_news（load_all 上位800件・ニュース混在）ではなく、研究・論文＋解説付き専用クエリで取得する。
+    論文は get_news（Firestore 時は articles 全件メモリ）ではなく、研究・論文＋解説付き専用クエリで取得する。
     ページネーションは使わず PAPERS_LIST_MAX 件まで1ページで描画する。
     """
     from app.services.article_cache import load_papers_for_site_list
     from app.services.news_aggregator import SOURCE_TO_PAPER_DOMAIN, PAPER_DOMAIN_ORDER
-    from datetime import datetime as _dt
 
-    # ── 全論文（DB 専用クエリ。800件混合上限で論文が落ちない） ────────────────
-    all_papers = sorted(
-        load_papers_for_site_list(),
-        key=lambda x: x.added_at or x.published or _dt.min,
-        reverse=True,
-    )
+    # ── 全論文（DB 専用クエリ。Firestore は全件スナップショット＋論文専用経路） ──
+    all_papers = load_papers_for_site_list()
     all_news = NewsAggregator.get_news()
 
     # ── ドメイン分類（全論文に適用） ─────────────────────────────────────────
