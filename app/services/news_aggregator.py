@@ -754,7 +754,9 @@ class NewsAggregator:
                         item.paper_filter_code = _detect_paper_filter(domain, item.title, item.summary)
                         by_domain.setdefault(domain, []).append(item)
 
-                    domains_order = [d for d in PAPER_DOMAIN_ORDER if d in by_domain]
+                    known_domains = [d for d in PAPER_DOMAIN_ORDER if d in by_domain]
+                    extra_domains = sorted([d for d in by_domain.keys() if d not in PAPER_DOMAIN_ORDER])
+                    domains_order = known_domains + extra_domains
                     papers_by_category = [(dom, by_domain.get(dom, [])) for dom in domains_order]
 
                     pagination = {
@@ -789,7 +791,9 @@ class NewsAggregator:
         start = (page - 1) * per_page
         page_items = papers[start : start + per_page]
         domains_with_articles = {SOURCE_TO_PAPER_DOMAIN.get(p.source, "総合科学") for p in papers}
-        domains_order = [d for d in PAPER_DOMAIN_ORDER if d in domains_with_articles]
+        known_domains = [d for d in PAPER_DOMAIN_ORDER if d in domains_with_articles]
+        extra_domains = sorted([d for d in domains_with_articles if d not in PAPER_DOMAIN_ORDER])
+        domains_order = known_domains + extra_domains
         by_domain: dict[str, list[NewsItem]] = {}
         for item in page_items:
             domain = SOURCE_TO_PAPER_DOMAIN.get(item.source, "総合科学")

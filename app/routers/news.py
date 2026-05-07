@@ -378,7 +378,6 @@ async def root_home(request: Request, page: int = 1, keyword: str = ""):
                     "has_papers": False,
                     "site_url": _get_site_url(request),
                     "page": 1,
-                    "recent_ai_news": [],
                     "top_recommendations": [],
                     "papers_breadcrumb_jsonld": None,
                     "papers_itemlist_jsonld": None,
@@ -1082,7 +1081,6 @@ def _render_papers_page(request: Request, page: int = 1):
 
     # ── 全論文（DB 専用クエリ。Firestore は全件スナップショット＋論文専用経路） ──
     all_papers = load_papers_for_site_list()
-    all_news = NewsAggregator.get_news()
 
     # ── ドメイン分類（全論文に適用） ─────────────────────────────────────────
     by_domain: dict[str, list] = {}
@@ -1090,8 +1088,10 @@ def _render_papers_page(request: Request, page: int = 1):
         domain = SOURCE_TO_PAPER_DOMAIN.get(item.source, "総合科学")
         by_domain.setdefault(domain, []).append(item)
 
-    # 表示順（データが存在するドメインのみ）
-    paper_domains = [d for d in PAPER_DOMAIN_ORDER if d in by_domain]
+    # 表示順（既知ドメイン優先 + 未定義ドメインも末尾に表示）
+    known_domains = [d for d in PAPER_DOMAIN_ORDER if d in by_domain]
+    extra_domains = sorted([d for d in by_domain.keys() if d not in PAPER_DOMAIN_ORDER])
+    paper_domains = known_domains + extra_domains
     papers_by_category = [(d, by_domain[d]) for d in paper_domains]
 
     # ── 画像 / 関連タグ補完 ───────────────────────────────────────────────────
@@ -1134,26 +1134,6 @@ def _render_papers_page(request: Request, page: int = 1):
     except Exception:
         top_recommendations = []
 
-    recent_ai_news: list[dict] = []
-    try:
-        non_papers = [x for x in all_news[:120] if x.category != "研究・論文"][:10]
-        if non_papers:
-            from app.services.explanation_cache import get_cached_many
-            cached_map = get_cached_many([x.id for x in non_papers])
-            for it in non_papers:
-                c = cached_map.get(it.id, {}) if isinstance(cached_map, dict) else {}
-                pids = c.get("display_persona_ids") if isinstance(c, dict) else []
-                emojis: list[str] = []
-                if isinstance(pids, list):
-                    for pid in pids[:3]:
-                        try:
-                            emojis.append(PERSONAS[int(pid)]["emoji"])
-                        except Exception:
-                            continue
-                recent_ai_news.append({"id": it.id, "title": it.title or "", "emojis": emojis})
-    except Exception:
-        recent_ai_news = []
-
     return templates.TemplateResponse(
         "papers.html",
         {
@@ -1164,7 +1144,6 @@ def _render_papers_page(request: Request, page: int = 1):
             "has_papers": has_papers,
             "site_url": site_url,
             "page": 1,
-            "recent_ai_news": recent_ai_news,
             "top_recommendations": top_recommendations,
             "papers_breadcrumb_jsonld": papers_breadcrumb_jsonld,
             "papers_itemlist_jsonld": papers_itemlist_jsonld,

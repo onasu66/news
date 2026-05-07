@@ -35,7 +35,7 @@
                 {% for rec in top_recommendations[:3] %}
                 <article class="top-pick-card">
                     <a href="/topic/{{ rec.id }}" class="top-pick-link">
-                        <img src="{{ rec.image_url or 'https://picsum.photos/400/225' }}" alt="{{ rec.title }}" loading="lazy">
+                        <img src="{{ rec.image_url or 'https://picsum.photos/400/225' }}" alt="{{ rec.title }}" loading="lazy" decoding="async">
                         <div class="top-pick-body">
                             <span class="top-pick-meta">{{ rec.source }}</span>
                             <h3>{{ rec.title }}</h3>
@@ -78,7 +78,7 @@
                         </div>
                     </div>
                     <div class="news-card-image">
-                        <img src="{{ item.image_url or 'https://picsum.photos/400/225' }}" alt="{{ item.title }}" loading="lazy" onerror="this.src='https://picsum.photos/seed/{{ item.id }}/400/225'">
+                        <img src="{{ item.image_url or 'https://picsum.photos/400/225' }}" alt="{{ item.title }}" loading="lazy" decoding="async" onerror="this.src='https://picsum.photos/seed/{{ item.id }}/400/225'">
                         <span class="news-card-category">{{ domain }}</span>
                     </div>
                 </a>
@@ -94,29 +94,6 @@
         </div>
         {% endif %}
 
-        {% if recent_ai_news %}
-        <aside class="ai-news-widget" aria-label="最近話題のAIニュース">
-            <h2>最近話題のAIニュース（14人のAI解説付き）</h2>
-            <ul class="ai-news-widget-list">
-                {% for n in recent_ai_news %}
-                <li>
-                    <a href="/topic/{{ n.id }}" class="ai-news-widget-link">
-                        <span class="ai-news-widget-title">{{ n.title }}</span>
-                        <span class="ai-news-widget-icons">
-                            {% if n.emojis %}
-                                {% for e in n.emojis %}
-                                <span class="ai-news-widget-icon">{{ e }}</span>
-                                {% endfor %}
-                            {% else %}
-                                <span class="ai-news-widget-icon">🤖</span>
-                            {% endif %}
-                        </span>
-                    </a>
-                </li>
-                {% endfor %}
-            </ul>
-        </aside>
-        {% endif %}
     </div>
 </div>
 {% endblock %}
