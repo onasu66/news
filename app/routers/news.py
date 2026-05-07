@@ -53,21 +53,21 @@ def _news_tab_category_order_for(by_cat: dict) -> list[str]:
     return base
 
 PERSONA_IMAGE_MAP = {
-    "セミナ": "/static/char-imgs/セミナ.png",
-    "ヴォルテ・アセット": "/static/char-imgs/ヴぉるて.png",
-    "カゲロウ": "/static/char-imgs/kagerou.png",
-    "くらしあ": "/static/char-imgs/くらしあ.png",
-    "アルシエル": "/static/char-imgs/あるしえる.png",
-    "クロニクル": "/static/char-imgs/くろにくる.png",
-    "ブレイズ": "/static/char-imgs/ぶれいず.png",
-    "ノアフォール": "/static/char-imgs/ノアフォール.png",
-    "そらみ": "/static/char-imgs/そらみ.png",
-    "レガリア": "/static/char-imgs/れがりあ.png",
-    "リュミエ": "/static/char-imgs/りゅみえ.png",
-    "ジャスティア": "/static/char-imgs/ジャスティア.png",
-    "観測体オメガ": "/static/char-imgs/オメガ.png",
-    "ゼロ・カオス": "/static/char-imgs/ゼロカオス.png",
-    "ミドルマン": "/static/char-imgs/ミドルマン.png",
+    "ブッダ":       "/static/char-imgs/buddha.png",
+    "織田信長":     "/static/char-imgs/nobunaga.png",
+    "吉田松陰":     "/static/char-imgs/shoin.png",
+    "坂本龍馬":     "/static/char-imgs/ryoma.png",
+    "太宰治":       "/static/char-imgs/dazai.png",
+    "葛飾北斎":     "/static/char-imgs/hokusai.png",
+    "ソクラテス":   "/static/char-imgs/socrates.png",
+    "野口英世":     "/static/char-imgs/noguchi.png",
+    "ダヴィンチ":   "/static/char-imgs/davinci.png",
+    "エジソン":     "/static/char-imgs/edison.png",
+    "アインシュタイン": "/static/char-imgs/einstein.png",
+    "ナイチンゲール":   "/static/char-imgs/nightingale.png",
+    "ガリレオ":     "/static/char-imgs/galileo.png",
+    "ニーチェ":     "/static/char-imgs/nietzsche.png",
+    "ミドルマン":   "/static/char-imgs/ミドルマン.png",
 }
 
 

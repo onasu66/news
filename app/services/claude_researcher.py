@@ -113,6 +113,51 @@ def is_claude_available() -> bool:
     return _find_claude_cmd() is not None
 
 
+def run_claude_text_gen(prompt: str, timeout: int = 120) -> str:
+    """Claude CLI にプロンプトを渡してテキストを生成する（記事リサーチ以外の汎用用途）。
+    出力をファイルに書かせて読み返す方式。失敗・タイムアウト時は空文字を返す。"""
+    cmd_path = _find_claude_cmd()
+    if not cmd_path:
+        return ""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        out_file = Path(tmpdir) / "out.txt"
+        slash_path = str(out_file).replace("\\", "/")
+        full_prompt = (
+            f"{prompt}\n\n"
+            f"上記の内容を {slash_path} に書き込んでください。"
+            "他のファイルへの書き込みや Web 検索は不要です。"
+        )
+        cmd = _build_cmd_text_only(cmd_path)
+        try:
+            proc = subprocess.run(
+                cmd,
+                input=full_prompt,
+                capture_output=True,
+                text=True,
+                encoding="utf-8",
+                timeout=timeout,
+                cwd=str(PROJECT_ROOT),
+                env=os.environ.copy(),
+                shell=False,
+            )
+            if proc.returncode != 0:
+                logger.warning(
+                    "run_claude_text_gen 失敗 code=%d stderr=%s",
+                    proc.returncode,
+                    (proc.stderr or "")[:300],
+                )
+                return ""
+            if out_file.exists():
+                return out_file.read_text(encoding="utf-8").strip()
+            return (proc.stdout or "").strip()
+        except subprocess.TimeoutExpired:
+            logger.warning("run_claude_text_gen タイムアウト (%d 秒)", timeout)
+            return ""
+        except Exception as e:
+            logger.warning("run_claude_text_gen エラー: %s", e)
+            return ""
+
+
 def _find_claude_cmd() -> str | None:
     for candidate in ("claude", "claude.cmd"):
         found = shutil.which(candidate)
@@ -130,6 +175,19 @@ def _build_cmd(cmd_path: str) -> list[str]:
     base = [
         "--dangerously-skip-permissions",
         "--allowed-tools", "WebSearch,Write",
+        "-p",
+        "--input-format", "text",
+    ]
+    if sys.platform == "win32":
+        return ["cmd", "/c", cmd_path] + base
+    return [cmd_path] + base
+
+
+def _build_cmd_text_only(cmd_path: str) -> list[str]:
+    """テキスト生成用: Write ツールのみ（WebSearch 不要でコスト・時間を節約）"""
+    base = [
+        "--dangerously-skip-permissions",
+        "--allowed-tools", "Write",
         "-p",
         "--input-format", "text",
     ]
