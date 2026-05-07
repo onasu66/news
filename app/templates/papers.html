@@ -61,9 +61,8 @@
             {% if not has_papers %}
             <p class="empty-msg">論文の記事がまだありません。RSS取り込み後に表示されます。</p>
             {% else %}
-            {% for domain, items in papers_by_category %}
-            {% for item in items %}
-            <article class="news-card animate-fade-in" data-category="{{ domain }}">
+            {% for item in all_papers %}
+            <article class="news-card animate-fade-in" data-category="{{ item.paper_domain or '総合科学' }}">
                 <a href="/topic/{{ item.id }}" class="news-card-link">
                     <div class="news-card-body">
                         <div class="news-card-meta">
@@ -79,11 +78,10 @@
                     </div>
                     <div class="news-card-image">
                         <img src="{{ item.image_url or 'https://picsum.photos/400/225' }}" alt="{{ item.title }}" loading="lazy" decoding="async" onerror="this.src='https://picsum.photos/seed/{{ item.id }}/400/225'">
-                        <span class="news-card-category">{{ domain }}</span>
+                        <span class="news-card-category">{{ item.paper_domain or '総合科学' }}</span>
                     </div>
                 </a>
             </article>
-            {% endfor %}
             {% endfor %}
             {% endif %}
         </div>

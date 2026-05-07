@@ -1086,6 +1086,8 @@ def _render_papers_page(request: Request, page: int = 1):
     by_domain: dict[str, list] = {}
     for item in all_papers:
         domain = SOURCE_TO_PAPER_DOMAIN.get(item.source, "総合科学")
+        # テンプレートで「すべて」表示を全件保証するため、各記事に表示ドメインを明示保持
+        item.paper_domain = domain
         by_domain.setdefault(domain, []).append(item)
 
     # 表示順（既知ドメイン優先 + 未定義ドメインも末尾に表示）
@@ -1138,6 +1140,7 @@ def _render_papers_page(request: Request, page: int = 1):
         "papers.html",
         {
             "request": request,
+            "all_papers": all_papers,
             "papers_by_category": papers_by_category,
             "paper_domains": paper_domains,
             "pagination": pagination,
