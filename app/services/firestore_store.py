@@ -86,10 +86,31 @@ def _meta_doc():
     return _get_client().collection("_meta").document("cache")
 
 
+def firestore_meta_cache_fingerprint() -> tuple:
+    """_meta/cache を 1 回だけ読み、解説付き ID 一覧の変化検知用の軽い署名（件数・末尾 id・更新時刻）。"""
+    try:
+        meta = _meta_doc().get()
+    except Exception:
+        return (-1, "", "")
+    if not meta.exists:
+        return (0, "", "")
+    d = meta.to_dict() or {}
+    ids = d.get("ids") or []
+    tail = str(ids[-1]) if ids else ""
+    ut_raw = d.get("updated_at")
+    try:
+        ut = ut_raw.isoformat() if hasattr(ut_raw, "isoformat") else str(ut_raw)
+    except Exception:
+        ut = str(ut_raw)
+    return (len(ids), tail, ut)
+
+
 # Firestore: articles 全件メモリスナップショット（保存・削除で無効化。閲覧は原則これ経由で読み取り0）
 _articles_snapshot_lock = threading.Lock()
 _articles_snapshot: list | None = None
 _articles_snapshot_by_id: dict[str, object] | None = None  # id -> NewsItem
+# articles 全件ストリームの二重実行防止（起動ウォームと初回アクセスが同時だと全件を 2 倍読みになり極端に重い）
+_load_all_build_lock = threading.Lock()
 
 # 論文トップ用一覧のメモリキャッシュ（同一プロセス内の Firestore 読取削減）
 _papers_site_list_lock = threading.Lock()
@@ -99,6 +120,41 @@ _papers_site_list_items: list | None = None
 
 # _meta/cache の ids を batch get するときの参照数（Firestore の getAll 都合で控えめ）
 _PAPERS_META_BATCH = 100
+
+
+def firestore_merge_article_into_snapshot(item) -> None:
+    """既存の articles メモリスナップショットに 1 件を上書き／追加する（Firestore の再ストリームなし）。"""
+    global _articles_snapshot, _articles_snapshot_by_id
+    from dataclasses import replace
+
+    from .rss_service import NewsItem
+
+    if not isinstance(item, NewsItem):
+        return
+    with _articles_snapshot_lock:
+        if _articles_snapshot_by_id is None or _articles_snapshot is None:
+            return
+        eff_added = item.added_at or item.published
+        merged = replace(item, added_at=eff_added)
+        _articles_snapshot_by_id[item.id] = merged
+        _articles_snapshot = sorted(
+            _articles_snapshot_by_id.values(),
+            key=lambda x: x.added_at or x.published or datetime.min,
+            reverse=True,
+        )
+
+
+def firestore_soft_refresh_after_article_write(merge_item=None) -> None:
+    """解説メモリ・論文一覧 TTL を捨てるが、articles 全件スナップショットとニュース一覧キャッシュは保持（新着時の読み取り抑制）。"""
+    if merge_item is not None:
+        firestore_merge_article_into_snapshot(merge_item)
+    try:
+        from .explanation_cache import clear_explanation_memory_cache
+
+        clear_explanation_memory_cache()
+    except Exception:
+        pass
+    firestore_invalidate_papers_site_list_cache()
 
 
 def firestore_invalidate_articles_snapshot() -> None:
@@ -170,13 +226,14 @@ def firestore_load_by_id(article_id: str):
 
 
 def _firestore_stream_all_articles_into_memory():
-    """Firestore の articles を added_at 降順で全件読み、(list, id->item) を返す。読み取りは件数分。"""
+    """Firestore の articles を全件読み（order_by なしで added_at 欠落ドキュメントも漏れない）、メモリで新しい順に並べる。"""
     from .rss_service import NewsItem, sanitize_display_text
 
     items: list = []
     by_id: dict[str, NewsItem] = {}
-    for doc in _articles_collection().order_by("added_at", direction="DESCENDING").stream():
-        d = doc.to_dict()
+    # order_by("added_at") だと added_at 未設定の記事がクエリから除外され一覧に出ないことがあるため、全件 stream してからソートする。
+    for doc in _articles_collection().stream():
+        d = doc.to_dict() or {}
         try:
             pub = datetime.fromisoformat(d.get("published", "")) if d.get("published") else datetime.now()
         except Exception:
@@ -196,6 +253,10 @@ def _firestore_stream_all_articles_into_memory():
         )
         items.append(item)
         by_id[doc.id] = item
+    items.sort(
+        key=lambda x: x.added_at or x.published or datetime.min,
+        reverse=True,
+    )
     return items, by_id
 
 
@@ -205,12 +266,19 @@ def firestore_load_all():
     with _articles_snapshot_lock:
         if _articles_snapshot is not None:
             return list(_articles_snapshot)
-    built, by_id = _firestore_stream_all_articles_into_memory()
-    with _articles_snapshot_lock:
-        if _articles_snapshot is None:
-            _articles_snapshot = built
-            _articles_snapshot_by_id = by_id
-        return list(_articles_snapshot)
+    with _load_all_build_lock:
+        with _articles_snapshot_lock:
+            if _articles_snapshot is not None:
+                return list(_articles_snapshot)
+        built, by_id = _firestore_stream_all_articles_into_memory()
+        with _articles_snapshot_lock:
+            if _articles_snapshot is None:
+                # 0件でスナップショットを載せると「一瞬0件」や不整合で永久に空のまま固定されるため、件数があるときだけキャッシュする。
+                if built:
+                    _articles_snapshot = built
+                    _articles_snapshot_by_id = by_id
+                return list(built)
+            return list(_articles_snapshot)
 
 
 def firestore_warm_articles_snapshot() -> int:
@@ -432,10 +500,11 @@ def firestore_save_articles_batch(items) -> int:
             }
             col.document(item.id).set(data)
             count += 1
+            firestore_merge_article_into_snapshot(item)
         except Exception:
             pass
     if count:
-        firestore_invalidate_articles_snapshot()
+        firestore_soft_refresh_after_article_write()
     return count
 
 
@@ -451,7 +520,7 @@ def firestore_save_article(item) -> bool:
             "image_url": item.image_url,
             "added_at": _server_timestamp(),
         })
-        firestore_invalidate_articles_snapshot()
+        firestore_soft_refresh_after_article_write(merge_item=item)
         return True
     except Exception:
         return False
@@ -476,6 +545,41 @@ def _is_bad_fallback_cache(blocks: list) -> bool:
     explain_content = next((b.get("content", "") for b in blocks if isinstance(b, dict) and b.get("type") == "explain"), "")
     bad_phrases = ("構造化に失敗", "通常の解説を表示", "しばらくしてから再度")
     return any(p in explain_content for p in bad_phrases)
+
+
+def _meta_append_id(article_id: str, retries: int = 2) -> bool:
+    """_meta/cache の ids に article_id を追記する。失敗時は retries 回リトライ。
+    戻り値: 成功した（または既に含まれていた）場合 True。"""
+    import time as _time
+    for attempt in range(retries + 1):
+        try:
+            meta_ref = _meta_doc()
+            meta = meta_ref.get()
+            ids = list(meta.to_dict().get("ids", [])) if meta.exists else []
+            if article_id not in ids:
+                ids.append(article_id)
+                meta_ref.set({"ids": ids, "updated_at": _server_timestamp()})
+            return True
+        except Exception as e:
+            if attempt < retries:
+                _time.sleep(0.4 * (attempt + 1))
+            else:
+                logger.warning("_meta/cache への %s 追記が %d 回すべて失敗: %s", article_id, retries + 1, e)
+    return False
+
+
+def firestore_check_explanation_and_repair_meta(article_id: str) -> bool:
+    """explanations に解説が存在すれば _meta/cache を修復する。
+    _meta/cache が更新されずに記事が非表示になった場合の自己修復用。
+    Firestore 読み取り: 1（explanations ドキュメント）＋修復時に 1読1書。
+    戻り値: 解説が存在した（修復を試みた）場合 True。"""
+    try:
+        if _explanations_collection().document(article_id).get().exists:
+            _meta_append_id(article_id)
+            return True
+    except Exception as e:
+        logger.warning("firestore_check_explanation_and_repair_meta 失敗 (%s): %s", article_id, e)
+    return False
 
 
 def _rebuild_cached_article_ids_meta() -> set:
@@ -808,17 +912,15 @@ def firestore_save_cache(
         doc_data["deep_insights"] = deep_insights
     _explanations_collection().document(article_id).set(doc_data)
     _articles_collection().document(article_id).set({"has_explanation": True}, merge=True)
-    # メタの cached_article_ids を更新（1読1書）
+    # _meta/cache に ID を追記（リトライあり。失敗は警告ログに残し upsert 側で自己修復）
+    _meta_append_id(article_id)
+    firestore_soft_refresh_after_article_write()
     try:
-        meta_ref = _meta_doc()
-        meta = meta_ref.get()
-        ids = list(meta.to_dict().get("ids", [])) if meta.exists else []
-        if article_id not in ids:
-            ids.append(article_id)
-            meta_ref.set({"ids": ids, "updated_at": _server_timestamp()})
+        from .news_aggregator import NewsAggregator
+
+        NewsAggregator.upsert_article_in_news_cache(article_id)
     except Exception:
         pass
-    firestore_invalidate_articles_snapshot()
 
 
 def firestore_sync_meta_from_explanations() -> int:

@@ -211,8 +211,14 @@
                     var cat = activeTab.getAttribute('data-cat');
                     if (cat !== 'all') {
                         gridCards().forEach(function(card) {
-                            if (card.getAttribute('data-category') !== cat) card.style.display = 'none';
+                            if (card.getAttribute('data-category') !== cat) {
+                                card.style.display = 'none';
+                            } else {
+                                card.style.display = '';
+                            }
                         });
+                    } else {
+                        gridCards().forEach(function(card) { card.style.display = ''; });
                     }
                 }
             }

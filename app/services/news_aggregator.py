@@ -1,5 +1,6 @@
 """ニュース集約・キャッシュサービス"""
 import logging
+import time
 from datetime import datetime, timedelta
 from typing import Optional
 
@@ -286,6 +287,11 @@ try:
     PAGE_DISPLAY_LIMIT = max(1, int(getattr(settings, "NEWS_LIST_DISPLAY_MAX", 500000)))
 except Exception:
     PAGE_DISPLAY_LIMIT = 500000
+# Firestore: _meta/cache の変化を低頻度で検知し、他ワーカーや upsert 失敗後も一覧を追従させる（get 1 回／この秒数）
+try:
+    _META_FP_POLL_INTERVAL_SEC = max(5.0, float(getattr(settings, "NEWS_META_FP_POLL_SEC", 12.0)))
+except Exception:
+    _META_FP_POLL_INTERVAL_SEC = 12.0
 # 閲覧時の一覧キャッシュは期限で破棄しない（更新イベント時のみ再取得）
 # - 通常閲覧時の Firestore 読み取りを最小化する
 # - 再起動時・force_refresh 実行時には再取得される
@@ -308,6 +314,49 @@ class NewsAggregator:
     _papers_cache_page: int = 0
     _papers_cache_at: Optional[datetime] = None
     _PAPERS_CACHE_TTL_SEC: int = 120  # 2分間はメモリキャッシュを使い回す
+    _last_meta_fp: object | None = None
+    _last_meta_poll_mono: float = 0.0
+
+    @classmethod
+    def _prime_meta_fingerprint(cls) -> None:
+        """一覧を今の _meta/cache と一致させた直後に呼ぶ（無駄な sync を減らす）。"""
+        try:
+            from app.services.firestore_store import use_firestore, firestore_meta_cache_fingerprint
+
+            if not use_firestore():
+                return
+            cls._last_meta_fp = firestore_meta_cache_fingerprint()
+            cls._last_meta_poll_mono = time.monotonic()
+        except Exception:
+            pass
+
+    @classmethod
+    def _maybe_resync_news_from_meta_fingerprint(cls) -> None:
+        """メモリ一覧が古いまま返らないよう、_meta/cache の軽い署名が変わったときだけ sync する。"""
+        if cls._in_db_backoff():
+            return
+        try:
+            from app.services.firestore_store import use_firestore, firestore_meta_cache_fingerprint
+
+            if not use_firestore():
+                return
+        except Exception:
+            return
+        now = time.monotonic()
+        if now - cls._last_meta_poll_mono < _META_FP_POLL_INTERVAL_SEC:
+            return
+        cls._last_meta_poll_mono = now
+        try:
+            fp = firestore_meta_cache_fingerprint()
+        except Exception:
+            return
+        if fp == cls._last_meta_fp:
+            return
+        try:
+            cls.sync_list_cache_from_db(force=False)
+        except Exception:
+            return
+        cls._last_meta_fp = fp
 
     @classmethod
     def _set_db_backoff(cls, reason: str, exc: Exception) -> None:
@@ -342,6 +391,7 @@ class NewsAggregator:
                 cls._last_updated = datetime.now()
                 cls._db_backoff_until = None
                 cls._last_processed_count = len(processed_ids)
+                cls._prime_meta_fingerprint()
                 return cls._news_cache
             if force_refresh:
                 # RSS/AI の途中で例外が出ても、ここまで保存された記事を一覧に載せる（finally で必ず再読込）
@@ -396,6 +446,9 @@ class NewsAggregator:
             cls._last_processed_count = len(processed_ids)
             # _news_cache が更新されたら論文一覧のメモリキャッシュも破棄（新着を反映させる）
             cls._invalidate_papers_cache()
+            cls._prime_meta_fingerprint()
+        if not force_refresh and cls._news_cache:
+            cls._maybe_resync_news_from_meta_fingerprint()
         return cls._news_cache
 
     @classmethod
@@ -427,11 +480,13 @@ class NewsAggregator:
             cls._last_updated = datetime.now()
             cls._db_backoff_until = None
             cls._last_processed_count = 0
+            cls._prime_meta_fingerprint()
             return
 
         cached_ids = {x.id for x in cls._news_cache}
         if processed_ids == cached_ids and cls._news_cache:
             cls._last_updated = datetime.now()
+            cls._prime_meta_fingerprint()
             return
 
         if not cls._news_cache:
@@ -449,6 +504,7 @@ class NewsAggregator:
             if cls._news_cache:
                 cls._db_backoff_until = None
             cls._last_processed_count = len(processed_ids)
+            cls._prime_meta_fingerprint()
             return
 
         new_ids = processed_ids - cached_ids
@@ -472,6 +528,83 @@ class NewsAggregator:
         # 論文一覧のメモリキャッシュも破棄（新着が反映されるようにする）
         if new_ids or gone_ids:
             cls._invalidate_papers_cache()
+        cls._prime_meta_fingerprint()
+
+    @classmethod
+    def upsert_article_in_news_cache(cls, article_id: str) -> None:
+        """
+        save_cache 直後など: _meta/cache に載った 1 件を一覧キャッシュへ反映する。
+        articles メモリスナップショットがあれば load_by_id は Firestore を読まない。
+        """
+        from .article_cache import load_by_id
+
+        def _load_ids_and_item() -> tuple[set[str], NewsItem | None]:
+            try:
+                invalidate_ids_cache()
+            except Exception:
+                pass
+            try:
+                pids = get_cached_article_ids()
+            except Exception:
+                return set(), None
+            if not pids:
+                return set(), None
+            try:
+                it = load_by_id(article_id)
+            except Exception:
+                it = None
+            return pids, it
+
+        processed_ids, item = _load_ids_and_item()
+        if processed_ids and article_id not in processed_ids:
+            time.sleep(0.12)
+            processed_ids, item = _load_ids_and_item()
+        if not processed_ids or not item or item.id not in processed_ids:
+            # _meta/cache に ID がない → explanations ドキュメントを直接確認して不整合を自己修復
+            repaired = False
+            if item:
+                try:
+                    from .firestore_store import use_firestore, firestore_check_explanation_and_repair_meta
+                    if use_firestore() and firestore_check_explanation_and_repair_meta(article_id):
+                        # explanations に解説あり・_meta/cache を修復した → _news_cache に直接追加
+                        rest = [x for x in cls._news_cache if x.id != item.id]
+                        rest.append(item)
+                        cls._news_cache = sorted(
+                            rest,
+                            key=lambda x: x.added_at or x.published or datetime.min,
+                            reverse=True,
+                        )[:PAGE_DISPLAY_LIMIT]
+                        cls._last_updated = datetime.now()
+                        cls._db_backoff_until = None
+                        cls._invalidate_papers_cache()
+                        cls._prime_meta_fingerprint()
+                        logger.info("upsert: _meta/cache 不整合を修復して %s を _news_cache に追加", article_id)
+                        repaired = True
+                except Exception as _repair_err:
+                    logger.warning("upsert: 自己修復試行でエラー: %s", _repair_err)
+            if not repaired:
+                try:
+                    cls.sync_list_cache_from_db(force=True)
+                except Exception:
+                    pass
+                cls._prime_meta_fingerprint()
+            return
+        if not cls._news_cache:
+            cls.sync_list_cache_from_db(force=True)
+            cls._prime_meta_fingerprint()
+            return
+        rest = [x for x in cls._news_cache if x.id != item.id]
+        rest.append(item)
+        cls._news_cache = sorted(
+            rest,
+            key=lambda x: x.added_at or x.published or datetime.min,
+            reverse=True,
+        )[:PAGE_DISPLAY_LIMIT]
+        cls._last_updated = datetime.now()
+        cls._db_backoff_until = None
+        cls._last_processed_count = len(processed_ids)
+        cls._invalidate_papers_cache()
+        cls._prime_meta_fingerprint()
 
     @classmethod
     def get_news_by_category(cls, force_refresh: bool = False, page: int = 1) -> tuple[list[tuple[str, list[NewsItem]]], dict]:
