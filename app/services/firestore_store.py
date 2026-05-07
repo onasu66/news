@@ -10,6 +10,13 @@ from typing import Optional
 
 logger = logging.getLogger(__name__)
 
+def _readtag(tag: str, detail: str = "") -> None:
+    """Firestore 読み取り原因の簡易トレース用ログ。"""
+    if detail:
+        logger.info("READTAG:%s %s", tag, detail)
+    else:
+        logger.info("READTAG:%s", tag)
+
 try:
     from app.config import settings
     _FIREBASE_JSON = (getattr(settings, "FIREBASE_SERVICE_ACCOUNT_JSON", "") or "").strip()
@@ -89,6 +96,7 @@ def _meta_doc():
 def firestore_meta_cache_fingerprint() -> tuple:
     """_meta/cache を 1 回だけ読み、解説付き ID 一覧の変化検知用の軽い署名（件数・末尾 id・更新時刻）。"""
     try:
+        _readtag("meta_fingerprint", "_meta/cache.get")
         meta = _meta_doc().get()
     except Exception:
         return (-1, "", "")
@@ -202,6 +210,7 @@ def firestore_load_by_id(article_id: str):
         hit = snap.get(article_id)
         if hit is not None:
             return hit  # type: ignore
+    _readtag("article_by_id", article_id)
     doc = _articles_collection().document(article_id).get()
     if not doc.exists:
         return None
@@ -232,6 +241,7 @@ def _firestore_stream_all_articles_into_memory():
     items: list = []
     by_id: dict[str, NewsItem] = {}
     # order_by("added_at") だと added_at 未設定の記事がクエリから除外され一覧に出ないことがあるため、全件 stream してからソートする。
+    _readtag("articles_stream_all", "articles.stream")
     for doc in _articles_collection().stream():
         d = doc.to_dict() or {}
         try:
@@ -311,6 +321,7 @@ def _firestore_article_doc_to_item(doc_id: str, d: dict) -> "NewsItem":
 
 def _firestore_get_meta_ids_ordered() -> list[str]:
     """_meta/cache の ids を1読で取得（順序は保存時の配列順を維持）。"""
+    _readtag("meta_ids_ordered", "_meta/cache.get")
     meta = _meta_doc().get()
     if not meta.exists:
         return []
@@ -355,6 +366,7 @@ def _firestore_load_papers_from_meta_batch_get(meta_ids: list[str], cap: int) ->
         if not refs:
             continue
         try:
+            _readtag("papers_batch_get", f"refs={len(refs)}")
             snaps = client.get_all(refs)
         except Exception as e:
             logger.warning("_firestore_load_papers_from_meta_batch_get: get_all 失敗 (%s)", e)
@@ -381,6 +393,7 @@ def _firestore_scan_papers_category_only(cap: int) -> list:
     cap = max(1, min(int(cap), 50000))
     scan = min(max(cap * 6, 5000), 75000)
     out: list = []
+    _readtag("papers_scan_category_only", f"scan={scan}")
     for doc in _articles_collection().order_by("added_at", direction="DESCENDING").limit(scan).stream():
         d = doc.to_dict() or {}
         if (d.get("category") or "").strip() != "研究・論文":
@@ -404,6 +417,7 @@ def _firestore_scan_papers_with_processed(processed_ids: set[str], cap: int) -> 
         q = _articles_collection().order_by("added_at", direction="DESCENDING").limit(page_size)
         if last_snap is not None:
             q = q.start_after(last_snap)
+        _readtag("papers_scan_with_processed", f"page_size={page_size}")
         docs = list(q.stream())
         if not docs:
             break
@@ -604,6 +618,7 @@ def _rebuild_cached_article_ids_meta() -> set:
 
 def firestore_get_cached_article_ids() -> set:
     """AI処理済み記事ID。メタドキュメント1読で返す（explanations 全件ストリーム廃止・読み取り削減）"""
+    _readtag("meta_ids_get", "_meta/cache.get")
     meta = _meta_doc().get()
     if meta.exists:
         ids = meta.to_dict().get("ids") or []
@@ -820,6 +835,7 @@ def firestore_query_news_page(page: int, per_page: int) -> tuple[list["NewsItem"
 
 
 def firestore_get_cached(article_id: str) -> Optional[dict]:
+    _readtag("explanation_by_id", article_id)
     doc = _explanations_collection().document(article_id).get()
     if not doc.exists:
         return None

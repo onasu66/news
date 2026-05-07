@@ -3,7 +3,7 @@
 {% block content %}
 <section class="page-header ai-page-header">
     <h1 class="page-title">🤖 AIページ</h1>
-    <p class="page-desc">AIがおすすめ・分析・コメントします</p>
+    <p class="page-desc">AIの分析メモと人格コメントを表示します</p>
 </section>
 <div class="ai-page-content" style="max-width:800px; margin:0 auto; padding:0 1rem;">
     {% if ai_memo %}
@@ -30,24 +30,5 @@
     </section>
     {% endif %}
 
-    <section class="ai-section">
-        <h2 class="ai-section-title">🎯 AIおすすめ記事</h2>
-        <div class="news-grid">
-            {% for item in recommended %}
-            <article class="news-card animate-fade-in">
-                <a href="/topic/{{ item.id }}" class="news-card-link">
-                    <div class="news-card-body">
-                        <h3 class="news-title">{{ item.title }}</h3>
-                        <p class="news-summary-line">👀 {{ item.summary[:80] }}{% if item.summary|length > 80 %}...{% endif %}</p>
-                    </div>
-                    <div class="news-card-image">
-                        <img src="{{ item.image_url or 'https://picsum.photos/400/225' }}" alt="{{ item.title }}" loading="lazy">
-                        <span class="news-card-category">{{ item.category }}</span>
-                    </div>
-                </a>
-            </article>
-            {% endfor %}
-        </div>
-    </section>
 </div>
 {% endblock %}

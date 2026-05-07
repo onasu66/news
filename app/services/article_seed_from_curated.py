@@ -42,6 +42,15 @@ _CATEGORY_MAP = {
     "AI・テクノロジー": "テクノロジー",
     "テック": "テクノロジー",
     "科学": "研究・論文",
+    "研究": "研究・論文",
+    "論文": "研究・論文",
+    "学術": "研究・論文",
+    "サイエンス": "研究・論文",
+    "paper": "研究・論文",
+    "papers": "研究・論文",
+    "research": "研究・論文",
+    "research paper": "研究・論文",
+    "science": "研究・論文",
     "ビジネス": "政治・社会",
     "環境": "政治・社会",
 }
@@ -114,7 +123,7 @@ def load_curated_articles(path: Optional[Path] = None) -> list[NewsItem]:
             published = datetime.now(JST).replace(tzinfo=None)
 
         raw_cat = (entry.get("category") or "").strip()
-        category = _CATEGORY_MAP.get(raw_cat, raw_cat)
+        category = _CATEGORY_MAP.get(raw_cat, _CATEGORY_MAP.get(raw_cat.lower(), raw_cat))
         if category not in _VALID_CATEGORIES:
             logger.warning("未知のカテゴリ '%s' -> 'テクノロジー' に変換", raw_cat)
             category = "テクノロジー"
@@ -162,21 +171,27 @@ def process_curated_articles(path: Optional[Path] = None, max_per_run: int = 30)
     processed_urls: set[str] = set()
     count = 0
 
-    for item in to_process:
-        try:
-            ok = process_rss_to_site_article(item, force=False)
-            if ok:
-                count += 1
-                processed_urls.add(item.link)
-                _log_save(item.id, item.title, True, source="curated")
-                logger.info("[OK] %s", item.title[:60])
-            else:
-                _log_save(item.id, item.title, False,
-                          error="スキップ（既存または生成失敗）", source="curated")
-                logger.warning("[SKIP] %s", item.title[:60])
-        except Exception as e:
-            _log_save(item.id, item.title, False, error=str(e), source="curated")
-            logger.error("[ERR] %s: %s", item.title[:60], e)
+    from .news_aggregator import NewsAggregator
+
+    NewsAggregator.begin_bulk_update()
+    try:
+        for item in to_process:
+            try:
+                ok = process_rss_to_site_article(item, force=False)
+                if ok:
+                    count += 1
+                    processed_urls.add(item.link)
+                    _log_save(item.id, item.title, True, source="curated")
+                    logger.info("[OK] %s", item.title[:60])
+                else:
+                    _log_save(item.id, item.title, False,
+                              error="スキップ（既存または生成失敗）", source="curated")
+                    logger.warning("[SKIP] %s", item.title[:60])
+            except Exception as e:
+                _log_save(item.id, item.title, False, error=str(e), source="curated")
+                logger.error("[ERR] %s: %s", item.title[:60], e)
+    finally:
+        NewsAggregator.end_bulk_update()
 
     # 処理済み URL を履歴に記録（次回の重複除外に使う）
     if processed_urls:

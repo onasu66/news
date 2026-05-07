@@ -49,7 +49,7 @@ class Settings:
     # get_news の _meta/cache 変化検知間隔（秒）。大きいほど Firestore 読み取りが減る
     NEWS_META_FP_POLL_SEC: float = float(os.getenv("NEWS_META_FP_POLL_SEC", "30"))
     # sync_list_cache で _news_cache が空のとき、差分復元に使う最大件数（全件 load_all 回避用）
-    NEWS_SYNC_SEED_MAX: int = int(os.getenv("NEWS_SYNC_SEED_MAX", "300"))
+    NEWS_SYNC_SEED_MAX: int = int(os.getenv("NEWS_SYNC_SEED_MAX", "50"))
     # 起動時に Firestore 全記事ウォームアップを行うか（0/false で無効）
     FIRESTORE_WARM_ON_STARTUP: str = os.getenv("FIRESTORE_WARM_ON_STARTUP", "false")
     # 記事詳細の解説をメモリに保持する最大件数（LRU）。大きいほど Firestore 再読みが減る

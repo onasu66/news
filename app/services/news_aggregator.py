@@ -316,6 +316,7 @@ class NewsAggregator:
     _PAPERS_CACHE_TTL_SEC: int = 120  # 2分間はメモリキャッシュを使い回す
     _last_meta_fp: object | None = None
     _last_meta_poll_mono: float = 0.0
+    _bulk_update_depth: int = 0
 
     @classmethod
     def _prime_meta_fingerprint(cls) -> None:
@@ -365,6 +366,23 @@ class NewsAggregator:
     def _set_db_backoff(cls, reason: str, exc: Exception) -> None:
         cls._db_backoff_until = datetime.now() + timedelta(seconds=DB_ERROR_BACKOFF_SECONDS)
         logger.warning("NewsAggregator DB読み取りを一時停止: %s (%s)", reason, exc)
+
+    @classmethod
+    def begin_bulk_update(cls) -> None:
+        """記事一括追加の開始。途中の upsert 同期を抑制する。"""
+        cls._bulk_update_depth += 1
+
+    @classmethod
+    def end_bulk_update(cls) -> None:
+        """記事一括追加の終了。最後に1回だけ一覧同期する。"""
+        if cls._bulk_update_depth > 0:
+            cls._bulk_update_depth -= 1
+        if cls._bulk_update_depth > 0:
+            return
+        try:
+            cls.sync_list_cache_from_db(force=True)
+        except Exception:
+            pass
 
     @classmethod
     def _in_db_backoff(cls) -> bool:
@@ -499,7 +517,7 @@ class NewsAggregator:
 
                 if use_firestore():
                     ordered_ids = firestore_get_cached_article_ids_ordered()
-                    seed_cap = max(50, int(getattr(settings, "NEWS_SYNC_SEED_MAX", 300)))
+                    seed_cap = max(50, int(getattr(settings, "NEWS_SYNC_SEED_MAX", 50)))
                     seed_items: list[NewsItem] = []
                     for aid in reversed(ordered_ids[-seed_cap:]):
                         try:
@@ -567,6 +585,8 @@ class NewsAggregator:
         save_cache 直後など: _meta/cache に載った 1 件を一覧キャッシュへ反映する。
         articles メモリスナップショットがあれば load_by_id は Firestore を読まない。
         """
+        if cls._bulk_update_depth > 0:
+            return
         from .article_cache import load_by_id
 
         def _load_ids_and_item() -> tuple[set[str], NewsItem | None]:

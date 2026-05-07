@@ -595,15 +595,7 @@ async def trend_page(request: Request):
 
 @router.get("/ai", response_class=HTMLResponse)
 async def ai_page(request: Request):
-    """AIページ：おすすめ・昨日のメモ・人格コメント"""
-    all_news = NewsAggregator.get_news()
-    recommended = all_news[:6]
-    for item in recommended:
-        _ensure_japanese(item)
-        if not item.image_url:
-            item.image_url = get_image_url(item.id, 400, 225)
-        elif not item.image_url.startswith("http"):
-            item.image_url = get_image_url(item.image_url, 400, 225)
+    """AIページ：昨日のメモ・人格コメント"""
     ai_memo = None
     ai_personas = []
     try:
@@ -626,7 +618,6 @@ async def ai_page(request: Request):
         "ai.html",
         {
             "request": request,
-            "recommended": recommended,
             "ai_memo": ai_memo,
             "ai_personas": ai_personas,
         },
