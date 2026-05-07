@@ -548,17 +548,18 @@ def _is_bad_fallback_cache(blocks: list) -> bool:
 
 
 def _meta_append_id(article_id: str, retries: int = 2) -> bool:
-    """_meta/cache の ids に article_id を追記する。失敗時は retries 回リトライ。
-    戻り値: 成功した（または既に含まれていた）場合 True。"""
+    """_meta/cache の ids に article_id を追記する（read なしの ArrayUnion）。
+    失敗時は retries 回リトライ。戻り値: 成功した（または既に含まれていた）場合 True。"""
     import time as _time
     for attempt in range(retries + 1):
         try:
             meta_ref = _meta_doc()
-            meta = meta_ref.get()
-            ids = list(meta.to_dict().get("ids", [])) if meta.exists else []
-            if article_id not in ids:
-                ids.append(article_id)
-                meta_ref.set({"ids": ids, "updated_at": _server_timestamp()})
+            from google.cloud.firestore_v1 import ArrayUnion
+
+            meta_ref.set(
+                {"ids": ArrayUnion([article_id]), "updated_at": _server_timestamp()},
+                merge=True,
+            )
             return True
         except Exception as e:
             if attempt < retries:
@@ -571,7 +572,7 @@ def _meta_append_id(article_id: str, retries: int = 2) -> bool:
 def firestore_check_explanation_and_repair_meta(article_id: str) -> bool:
     """explanations に解説が存在すれば _meta/cache を修復する。
     _meta/cache が更新されずに記事が非表示になった場合の自己修復用。
-    Firestore 読み取り: 1（explanations ドキュメント）＋修復時に 1読1書。
+    Firestore 読み取り: 1（explanations ドキュメント）＋修復時に 1書（ArrayUnion）。
     戻り値: 解説が存在した（修復を試みた）場合 True。"""
     try:
         if _explanations_collection().document(article_id).get().exists:
@@ -620,6 +621,14 @@ def firestore_get_cached_article_ids() -> set:
         )
         return _rebuild_cached_article_ids_meta()
     return _rebuild_cached_article_ids_meta()
+
+
+def firestore_get_cached_article_ids_ordered() -> list[str]:
+    """AI処理済み記事IDを順序付きで返す（_meta/cache 1読）。"""
+    try:
+        return _firestore_ensure_meta_ids_ordered()
+    except Exception:
+        return []
 
 
 def firestore_get_related_tags_bulk(article_ids: list[str], *, max_tags_per_article: int = 3) -> dict[str, list[str]]:

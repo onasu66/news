@@ -289,9 +289,9 @@ except Exception:
     PAGE_DISPLAY_LIMIT = 500000
 # Firestore: _meta/cache の変化を低頻度で検知し、他ワーカーや upsert 失敗後も一覧を追従させる（get 1 回／この秒数）
 try:
-    _META_FP_POLL_INTERVAL_SEC = max(5.0, float(getattr(settings, "NEWS_META_FP_POLL_SEC", 12.0)))
+    _META_FP_POLL_INTERVAL_SEC = float(getattr(settings, "NEWS_META_FP_POLL_SEC", 30.0))
 except Exception:
-    _META_FP_POLL_INTERVAL_SEC = 12.0
+    _META_FP_POLL_INTERVAL_SEC = 30.0
 # 閲覧時の一覧キャッシュは期限で破棄しない（更新イベント時のみ再取得）
 # - 通常閲覧時の Firestore 読み取りを最小化する
 # - 再起動時・force_refresh 実行時には再取得される
@@ -333,6 +333,9 @@ class NewsAggregator:
     @classmethod
     def _maybe_resync_news_from_meta_fingerprint(cls) -> None:
         """メモリ一覧が古いまま返らないよう、_meta/cache の軽い署名が変わったときだけ sync する。"""
+        # 案A: 通知で更新するため、ポーリングは 0 以下で無効化できる
+        if _META_FP_POLL_INTERVAL_SEC <= 0:
+            return
         if cls._in_db_backoff():
             return
         try:
@@ -343,7 +346,7 @@ class NewsAggregator:
         except Exception:
             return
         now = time.monotonic()
-        if now - cls._last_meta_poll_mono < _META_FP_POLL_INTERVAL_SEC:
+        if now - cls._last_meta_poll_mono < max(5.0, _META_FP_POLL_INTERVAL_SEC):
             return
         cls._last_meta_poll_mono = now
         try:
@@ -490,6 +493,34 @@ class NewsAggregator:
             return
 
         if not cls._news_cache:
+            # Firestore では _meta/cache 順序IDから差分復元して全件 load_all を避ける（read バースト抑制）
+            try:
+                from .firestore_store import use_firestore, firestore_get_cached_article_ids_ordered
+
+                if use_firestore():
+                    ordered_ids = firestore_get_cached_article_ids_ordered()
+                    seed_cap = max(50, int(getattr(settings, "NEWS_SYNC_SEED_MAX", 300)))
+                    seed_items: list[NewsItem] = []
+                    for aid in reversed(ordered_ids[-seed_cap:]):
+                        try:
+                            hit = load_by_id(aid)
+                        except Exception:
+                            hit = None
+                        if hit:
+                            seed_items.append(hit)
+                    if seed_items:
+                        cls._news_cache = sorted(
+                            seed_items,
+                            key=lambda x: x.added_at or x.published or datetime.min,
+                            reverse=True,
+                        )[:PAGE_DISPLAY_LIMIT]
+                        cls._last_updated = datetime.now()
+                        cls._db_backoff_until = None
+                        cls._last_processed_count = len(processed_ids)
+                        cls._prime_meta_fingerprint()
+                        return
+            except Exception:
+                pass
             try:
                 all_items = load_all()
             except Exception as e:

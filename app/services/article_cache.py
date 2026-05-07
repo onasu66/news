@@ -128,9 +128,9 @@ def load_papers_for_site_list() -> list[NewsItem]:
     try:
         from app.config import settings
 
-        limit = max(50, min(int(getattr(settings, "PAPERS_LIST_MAX", 20000)), 50000))
+        limit = max(50, min(int(getattr(settings, "PAPERS_LIST_MAX", 500)), 50000))
     except Exception:
-        limit = 20000
+        limit = 500
     if _use_firestore():
         from .firestore_store import firestore_load_all_papers_for_site_list
 

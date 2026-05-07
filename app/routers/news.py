@@ -1703,6 +1703,31 @@ async def api_seed_curated(
     return {"status": "ok", "added": added, "total": total}
 
 
+@router.post("/api/admin/cache/refresh")
+async def api_admin_cache_refresh(
+    request: Request,
+    x_admin_secret: str | None = Header(None, alias="X-Admin-Secret"),
+):
+    """（案A）外部（ローカル記事化）からの通知で、Render 側のメモリキャッシュを更新する。"""
+    if not _is_admin(request, x_admin_secret):
+        raise HTTPException(status_code=403, detail="管理者のみ利用できます")
+    try:
+        from app.services.explanation_cache import invalidate_ids_cache
+
+        invalidate_ids_cache()
+    except Exception:
+        pass
+    try:
+        NewsAggregator.sync_list_cache_from_db(force=True)
+    except Exception:
+        pass
+    try:
+        NewsAggregator._invalidate_papers_cache()
+    except Exception:
+        pass
+    return {"status": "ok"}
+
+
 @router.post("/api/admin/sync-meta")
 async def api_admin_sync_meta(
     request: Request,

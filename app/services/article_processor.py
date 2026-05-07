@@ -523,6 +523,14 @@ def process_new_rss_articles(
                 )
         except Exception as e:
             _log_save(item.id, item.title, False, error=str(e), source="rss_seed")
+    # （案A）ローカルで記事化したら Render に通知して一覧キャッシュを更新させる
+    if count > 0:
+        try:
+            from .render_notifier import notify_render_cache_refresh
+
+            notify_render_cache_refresh(reason=f"rss_added:{count}")
+        except Exception:
+            pass
     return count
 
 

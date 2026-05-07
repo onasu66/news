@@ -161,7 +161,11 @@ async def lifespan(app: FastAPI):
 
     t = threading.Thread(target=_init, daemon=True)
     t.start()
-    threading.Thread(target=_warm_firestore_articles, daemon=True).start()
+    warm_on_start = str(getattr(settings, "FIRESTORE_WARM_ON_STARTUP", "false")).strip().lower() in ("1", "true", "yes")
+    if warm_on_start:
+        threading.Thread(target=_warm_firestore_articles, daemon=True).start()
+    else:
+        logger.info("Firestore 記事ウォームアップは無効化されています（FIRESTORE_WARM_ON_STARTUP=false）。")
 
     scheduler = BackgroundScheduler(timezone=JST)
     # 記事一覧は閲覧時TTL破棄をしない運用。RSS 取り込みは cron（force_refresh=True）のみ。

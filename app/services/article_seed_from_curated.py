@@ -183,4 +183,12 @@ def process_curated_articles(path: Optional[Path] = None, max_per_run: int = 30)
         _save_history(processed_urls)
 
     logger.info("記事化完了: %d / %d 件", count, len(to_process))
+    # （案A）ローカルで記事化したら Render に通知して一覧キャッシュを更新させる
+    if count > 0:
+        try:
+            from .render_notifier import notify_render_cache_refresh
+
+            notify_render_cache_refresh(reason=f"curated_added:{count}")
+        except Exception:
+            pass
     return count
