@@ -18,7 +18,7 @@ class Settings:
     CDN_BASE_URL: str = os.getenv("CDN_BASE_URL", "https://picsum.photos")
     NEWS_REFRESH_INTERVAL: int = int(os.getenv("NEWS_REFRESH_INTERVAL", "240"))
     # 一覧メモリキャッシュを DB と照合する間隔（分）。0 で無効。無料枠向け既定は 180。
-    NEWS_LIST_CACHE_SYNC_MINUTES: int = int(os.getenv("NEWS_LIST_CACHE_SYNC_MINUTES", "180"))
+    NEWS_LIST_CACHE_SYNC_MINUTES: int = int(os.getenv("NEWS_LIST_CACHE_SYNC_MINUTES", "0"))
     DAILY_ARTICLE_LIMIT: int = int(os.getenv("DAILY_ARTICLE_LIMIT", "6"))
     # 1回の RSS 強制更新で目標とする最小追加本数（無料枠向けに小さめ）
     RSS_MIN_ADDED_PER_REFRESH: int = int(os.getenv("RSS_MIN_ADDED_PER_REFRESH", "5"))
@@ -41,17 +41,19 @@ class Settings:
     RSS_MIN_PAPER_SUMMARY_CHARS: int = int(os.getenv("RSS_MIN_PAPER_SUMMARY_CHARS", "340"))
     # 論文トップ「すべて」で読み込む上限（解説付き論文のみの専用クエリ。既定2万・最大5万）
     # 論文トップ「すべて」で読み込む上限（SSR で Firestore 読み取りが発生するため、無料枠向け既定は小さくする）
-    PAPERS_LIST_MAX: int = int(os.getenv("PAPERS_LIST_MAX", "500"))
+    PAPERS_LIST_MAX: int = int(os.getenv("PAPERS_LIST_MAX", "120"))
     # Firestore 論文一覧（/ トップ）のメモリキャッシュ秒。記事保存・解説保存で無効化される
-    PAPERS_SITE_LIST_CACHE_TTL_SEC: int = int(os.getenv("PAPERS_SITE_LIST_CACHE_TTL_SEC", "120"))
+    PAPERS_SITE_LIST_CACHE_TTL_SEC: int = int(os.getenv("PAPERS_SITE_LIST_CACHE_TTL_SEC", "86400"))
     # get_news 等で「解説付き ∩ articles」から並べる最大件数（既定は実質無制限に近い）
     NEWS_LIST_DISPLAY_MAX: int = int(os.getenv("NEWS_LIST_DISPLAY_MAX", "500000"))
     # get_news の _meta/cache 変化検知間隔（秒）。大きいほど Firestore 読み取りが減る
-    NEWS_META_FP_POLL_SEC: float = float(os.getenv("NEWS_META_FP_POLL_SEC", "30"))
+    NEWS_META_FP_POLL_SEC: float = float(os.getenv("NEWS_META_FP_POLL_SEC", "0"))
     # sync_list_cache で _news_cache が空のとき、差分復元に使う最大件数（全件 load_all 回避用）
     NEWS_SYNC_SEED_MAX: int = int(os.getenv("NEWS_SYNC_SEED_MAX", "50"))
     # 起動時に Firestore 全記事ウォームアップを行うか（0/false で無効）
     FIRESTORE_WARM_ON_STARTUP: str = os.getenv("FIRESTORE_WARM_ON_STARTUP", "false")
+    # 起動後の自動シード（RSS取得→記事化）を有効化するか（無料枠向け既定は無効）
+    STARTUP_SEED_ENABLED: str = os.getenv("STARTUP_SEED_ENABLED", "false")
     # 記事詳細の解説をメモリに保持する最大件数（LRU）。大きいほど Firestore 再読みが減る
     EXPLANATION_MEMORY_CACHE_MAX: int = int(os.getenv("EXPLANATION_MEMORY_CACHE_MAX", "10000"))
     # SQLite の load_all 上限（Firestore は全件スナップショット）

@@ -20,12 +20,12 @@ from app.services.news_aggregator import NewsAggregator
 try:
     from app.config import settings, is_rss_and_ai_disabled
     INTERVAL_MIN = settings.NEWS_REFRESH_INTERVAL
-    # 一覧キャッシュ同期間隔（分）: デフォルト15分（新着記事を早期に反映）
-    LIST_CACHE_SYNC_MIN = max(15, int(getattr(settings, "NEWS_LIST_CACHE_SYNC_MINUTES", 15)))
+    # 一覧キャッシュ同期間隔（分）。0 で無効化できる（無料枠向け）。
+    LIST_CACHE_SYNC_MIN = max(0, int(getattr(settings, "NEWS_LIST_CACHE_SYNC_MINUTES", 180)))
     _SEED_MAX_PER_RUN = max(7, min(14, int(getattr(settings, "RSS_PROCESS_MAX_PER_BATCH", 22))))
 except Exception:
     INTERVAL_MIN = 240
-    LIST_CACHE_SYNC_MIN = 15
+    LIST_CACHE_SYNC_MIN = 0
     _SEED_MAX_PER_RUN = 12
     is_rss_and_ai_disabled = lambda: False
 
@@ -135,13 +135,17 @@ async def lifespan(app: FastAPI):
             logger.warning("ストレージ確認でエラー: %s", e)
 
     # Firestore は起動時に import しない（firebase-admin が重く 512MB で OOM になるため）。初回の記事取得時に読み込まれる。
-    if not rss_ai_disabled:
+    startup_seed_enabled = str(getattr(settings, "STARTUP_SEED_ENABLED", "false")).strip().lower() in ("1", "true", "yes")
+
+    if not rss_ai_disabled and startup_seed_enabled:
         # シードは _init 完了後に実行（同時の load_all で Firestore 読取バーストを防ぐ）
         def _run_seed_delayed():
             import time
             time.sleep(90)
             _seed_if_needed()
         threading.Thread(target=_run_seed_delayed, daemon=True).start()
+    elif not rss_ai_disabled:
+        logger.info("起動時シードは無効化されています（STARTUP_SEED_ENABLED=false）。")
 
     def _init():
         # 起動直後は軽い処理だけ先に実行して、API応答を阻害しない

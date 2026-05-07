@@ -388,7 +388,7 @@ async def root_home(request: Request, page: int = 1, keyword: str = ""):
 
 @router.api_route("/news", methods=["GET", "POST", "HEAD", "OPTIONS"])
 async def news_index(request: Request, page: int = 1, keyword: str = ""):
-    """ニュース一覧（ジャンル別）。keyword なし時は論文除く全件を1ページ表示（『すべて』に全ニュース）。"""
+    """ニュース一覧（ジャンル別）。初回は1ページ分のみ表示し、以降は無限スクロール。"""
     if request.method == "POST":
         return {"message": "ok"}
     if request.method == "OPTIONS":
@@ -396,42 +396,24 @@ async def news_index(request: Request, page: int = 1, keyword: str = ""):
     from app.services.news_aggregator import ITEMS_PER_PAGE
     keyword = (keyword or "").strip()
     all_news = [a for a in NewsAggregator.get_news() if (a.category or "") != "研究・論文"]
+    filtered = all_news
     if keyword:
         kw_lower = keyword.lower()
         filtered = [a for a in all_news if kw_lower in (a.title or "").lower() or kw_lower in (a.summary or "").lower()]
-        per_page = ITEMS_PER_PAGE
-        total = len(filtered)
-        total_pages = max(1, (total + per_page - 1) // per_page)
-        page = max(1, min(page, total_pages))
-        start = (page - 1) * per_page
-        page_items = filtered[start : start + per_page]
-        by_cat: dict[str, list] = {}
-        for a in filtered:
-            t = _news_tab_filter_category(a)
-            by_cat.setdefault(t, []).append(a)
-        news_category_order = _news_tab_category_order_for(by_cat)
-        news_by_category = [(c, by_cat.get(c, [])) for c in news_category_order]
-        news_tab_filter_cat = {a.id: _news_tab_filter_category(a) for a in filtered}
-        pagination = {"page": page, "per_page": per_page, "total": total, "total_pages": total_pages, "has_prev": page > 1, "has_next": page < total_pages}
-    else:
-        # キーワードなし: 一覧は全件（get_news が返す範囲内）。おすすめも同じリストの先頭3件。
-        total = len(all_news)
-        page_items = all_news
-        by_cat: dict[str, list] = {}
-        for a in all_news:
-            t = _news_tab_filter_category(a)
-            by_cat.setdefault(t, []).append(a)
-        news_category_order = _news_tab_category_order_for(by_cat)
-        news_by_category = [(c, by_cat.get(c, [])) for c in news_category_order]
-        news_tab_filter_cat = {a.id: _news_tab_filter_category(a) for a in all_news}
-        pagination = {
-            "page": 1,
-            "per_page": total or 1,
-            "total": total,
-            "total_pages": 1,
-            "has_prev": False,
-            "has_next": False,
-        }
+    per_page = ITEMS_PER_PAGE
+    total = len(filtered)
+    total_pages = max(1, (total + per_page - 1) // per_page)
+    page = max(1, min(page, total_pages))
+    start = (page - 1) * per_page
+    page_items = filtered[start : start + per_page]
+    by_cat: dict[str, list] = {}
+    for a in filtered:
+        t = _news_tab_filter_category(a)
+        by_cat.setdefault(t, []).append(a)
+    news_category_order = _news_tab_category_order_for(by_cat)
+    news_by_category = [(c, by_cat.get(c, [])) for c in news_category_order]
+    news_tab_filter_cat = {a.id: _news_tab_filter_category(a) for a in filtered}
+    pagination = {"page": page, "per_page": per_page, "total": total, "total_pages": total_pages, "has_prev": page > 1, "has_next": page < total_pages}
     try:
         trends = NewsAggregator.get_trends()
     except Exception:
@@ -483,14 +465,14 @@ async def news_index(request: Request, page: int = 1, keyword: str = ""):
 
 @router.get("/api/news/page")
 async def api_news_page(page: int = 1, keyword: str = ""):
-    """無限スクロール用：キーワード検索時のみページ分割。通常一覧はSSRで全件のため追加HTMLなし。"""
+    """無限スクロール用：ニュース一覧の指定ページHTMLを返す。"""
     from app.services.news_aggregator import ITEMS_PER_PAGE
     keyword = (keyword or "").strip()
     all_news = [a for a in NewsAggregator.get_news() if (a.category or "") != "研究・論文"]
-    if not keyword:
-        return {"html": "", "page": max(1, page), "total_pages": 1}
-    kw_lower = keyword.lower()
-    news = [a for a in all_news if kw_lower in (a.title or "").lower() or kw_lower in (a.summary or "").lower()]
+    news = all_news
+    if keyword:
+        kw_lower = keyword.lower()
+        news = [a for a in all_news if kw_lower in (a.title or "").lower() or kw_lower in (a.summary or "").lower()]
     total = len(news)
     per_page = ITEMS_PER_PAGE
     total_pages = max(1, (total + per_page - 1) // per_page)
@@ -1074,27 +1056,21 @@ def _render_papers_page(request: Request, page: int = 1):
     """論文一覧（トップ `/` と共通）
 
     論文は get_news（Firestore 時は articles 全件メモリ）ではなく、研究・論文＋解説付き専用クエリで取得する。
-    ページネーションは使わず PAPERS_LIST_MAX 件まで1ページで描画する。
+    初回は1ページ分のみ描画し、以降は無限スクロールで追加する。
     """
-    from app.services.article_cache import load_papers_for_site_list
-    from app.services.news_aggregator import SOURCE_TO_PAPER_DOMAIN, PAPER_DOMAIN_ORDER
+    from app.services.news_aggregator import NewsAggregator as _NA
 
-    # ── 全論文（DB 専用クエリ。Firestore は全件スナップショット＋論文専用経路） ──
-    all_papers = load_papers_for_site_list()
-
-    # ── ドメイン分類（全論文に適用） ─────────────────────────────────────────
-    by_domain: dict[str, list] = {}
-    for item in all_papers:
-        domain = SOURCE_TO_PAPER_DOMAIN.get(item.source, "総合科学")
-        # テンプレートで「すべて」表示を全件保証するため、各記事に表示ドメインを明示保持
-        item.paper_domain = domain
-        by_domain.setdefault(domain, []).append(item)
-
-    # 表示順（既知ドメイン優先 + 未定義ドメインも末尾に表示）
-    known_domains = [d for d in PAPER_DOMAIN_ORDER if d in by_domain]
-    extra_domains = sorted([d for d in by_domain.keys() if d not in PAPER_DOMAIN_ORDER])
-    paper_domains = known_domains + extra_domains
-    papers_by_category = [(d, by_domain[d]) for d in paper_domains]
+    papers_by_category, pagination = _NA.get_papers_by_category(page=page)
+    all_papers: list = []
+    paper_domains: list[str] = []
+    seen_domains: set[str] = set()
+    for domain, items in papers_by_category:
+        if domain not in seen_domains:
+            paper_domains.append(domain)
+            seen_domains.add(domain)
+        for item in items:
+            item.paper_domain = domain
+            all_papers.append(item)
 
     # ── 画像 / 関連タグ補完 ───────────────────────────────────────────────────
     for _, items in papers_by_category:
@@ -1105,17 +1081,6 @@ def _render_papers_page(request: Request, page: int = 1):
                 item.image_url = get_image_url(item.id, 400, 225)
             elif item.image_url and not item.image_url.startswith("http"):
                 item.image_url = get_image_url(item.image_url, 400, 225)
-
-    # ── ページネーション: 全件を1ページに（無限スクロール不使用） ──────────
-    total = len(all_papers)
-    pagination = {
-        "page": 1,
-        "per_page": total or 1,
-        "total": total,
-        "total_pages": 1,
-        "has_prev": False,
-        "has_next": False,
-    }
 
     site_url = _get_site_url(request)
     flat_papers = all_papers
@@ -1146,7 +1111,7 @@ def _render_papers_page(request: Request, page: int = 1):
             "pagination": pagination,
             "has_papers": has_papers,
             "site_url": site_url,
-            "page": 1,
+            "page": pagination.get("page", 1),
             "top_recommendations": top_recommendations,
             "papers_breadcrumb_jsonld": papers_breadcrumb_jsonld,
             "papers_itemlist_jsonld": papers_itemlist_jsonld,

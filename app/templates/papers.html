@@ -87,7 +87,17 @@
         </div>
 
         {% if has_papers %}
-        <div id="papers-end" class="infinite-end" style="display:block;">
+        <div id="papers-sentinel" style="height:1px;"></div>
+        <div id="papers-loader" class="infinite-loader" style="display:none;" aria-busy="true" aria-label="追加の論文を読み込み中">
+            <div class="loader-spinner" aria-hidden="true"></div>
+            <p>読み込み中...</p>
+        </div>
+        <div id="papers-load-error" class="infinite-load-error" role="alert">
+            <p>論文一覧の読み込みに失敗しました。</p>
+            <button type="button" class="infinite-retry-btn" id="papers-retry">もう一度試す</button>
+        </div>
+        <div id="papers-feed-announcer" class="visually-hidden" aria-live="polite" aria-atomic="true"></div>
+        <div id="papers-end" class="infinite-end" style="display:none;">
             <p>すべての論文を表示しました</p>
         </div>
         {% endif %}
@@ -99,14 +109,26 @@
 {% block scripts %}
 <script>
 (function() {
-    var tabs = document.querySelectorAll('.genre-tab');
-    var cards = document.querySelectorAll('#papers-grid .news-card');
+    var tabs = document.querySelectorAll('.page-layout--papers .genre-tab');
+    var grid = document.getElementById('papers-grid');
+    function gridCards() {
+        return grid ? grid.querySelectorAll('.news-card') : [];
+    }
     var activeDomain = 'all';
-    var papersTablist = document.querySelector('.genre-tabs-wrap[role="tablist"]');
+    var papersTablist = document.querySelector('.page-layout--papers .genre-tabs-wrap[role="tablist"]');
+    var page = {{ pagination.page }};
+    var totalPages = {{ pagination.total_pages }};
+    var loading = false;
+    var loader = document.getElementById('papers-loader');
+    var endMsg = document.getElementById('papers-end');
+    var loadErrorEl = document.getElementById('papers-load-error');
+    var retryBtn = document.getElementById('papers-retry');
+    var feedAnnouncer = document.getElementById('papers-feed-announcer');
+    var sentinel = document.getElementById('papers-sentinel');
 
     function applyFilters() {
         var visibleCount = 0;
-        cards.forEach(function(card) {
+        gridCards().forEach(function(card) {
             var dom = card.getAttribute('data-category') || '';
             var show = (activeDomain === 'all' || dom === activeDomain);
             card.style.display = show ? '' : 'none';
@@ -117,7 +139,7 @@
     }
 
     function syncPapersTabIndexes() {
-        tabs = document.querySelectorAll('.genre-tab');
+        tabs = document.querySelectorAll('.page-layout--papers .genre-tab');
         tabs.forEach(function(t) {
             t.setAttribute('tabindex', t.classList.contains('is-active') ? '0' : '-1');
         });
@@ -136,7 +158,7 @@
     syncPapersTabIndexes();
     if (papersTablist) {
         papersTablist.addEventListener('keydown', function(e) {
-            tabs = document.querySelectorAll('.genre-tab');
+            tabs = document.querySelectorAll('.page-layout--papers .genre-tab');
             var tabNodes = Array.prototype.slice.call(tabs);
             var i = tabNodes.indexOf(document.activeElement);
             if (i < 0) return;
@@ -149,6 +171,65 @@
             tabNodes[ni].focus();
             tabNodes[ni].click();
         });
+    }
+
+    function announceFeed(msg) {
+        if (!feedAnnouncer || !msg) return;
+        feedAnnouncer.textContent = '';
+        setTimeout(function() { feedAnnouncer.textContent = msg; }, 50);
+    }
+
+    function triggerLoadIfSparse() {
+        if (loading || page >= totalPages) return;
+        var visible = 0;
+        gridCards().forEach(function(card) {
+            if (card.style.display !== 'none') visible++;
+        });
+        if (visible < 8) loadMore();
+    }
+
+    function loadMore() {
+        if (loading || page >= totalPages) return;
+        loading = true;
+        if (loader) loader.style.display = 'flex';
+        page++;
+        fetch('/api/papers/page?page=' + page)
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                if (loadErrorEl) loadErrorEl.style.display = 'none';
+                if (data.html) grid.insertAdjacentHTML('beforeend', data.html);
+                if (activeDomain !== 'all') applyFilters();
+                else gridCards().forEach(function(card) { card.style.display = ''; });
+                if (page >= data.total_pages) {
+                    if (endMsg) endMsg.style.display = 'block';
+                }
+                loading = false;
+                if (loader) loader.style.display = 'none';
+                triggerLoadIfSparse();
+            })
+            .catch(function() {
+                loading = false;
+                if (loader) loader.style.display = 'none';
+                if (loadErrorEl) loadErrorEl.style.display = 'block';
+                announceFeed('論文一覧の読み込みに失敗しました');
+            });
+    }
+
+    if (retryBtn) {
+        retryBtn.addEventListener('click', function() {
+            if (loadErrorEl) loadErrorEl.style.display = 'none';
+            page = Math.max(0, page - 1);
+            loadMore();
+        });
+    }
+
+    if (page >= totalPages) {
+        if (endMsg && gridCards().length > 0) endMsg.style.display = 'block';
+    } else if (sentinel && 'IntersectionObserver' in window) {
+        var obs = new IntersectionObserver(function(entries) {
+            if (entries[0].isIntersecting) loadMore();
+        }, { rootMargin: '600px' });
+        obs.observe(sentinel);
     }
 })();
 </script>
