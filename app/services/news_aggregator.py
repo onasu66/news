@@ -511,12 +511,19 @@ class NewsAggregator:
             return
 
         if not cls._news_cache:
-            # Firestore では _meta/cache 順序IDから差分復元して全件 load_all を避ける（read バースト抑制）
+            # Neon / Firestore では順序IDから差分復元して全件 load_all を避ける（read バースト抑制）
             try:
+                from .neon_store import use_neon, neon_get_cached_article_ids_ordered
                 from .firestore_store import use_firestore, firestore_get_cached_article_ids_ordered
 
-                if use_firestore():
+                if use_neon():
+                    ordered_ids = neon_get_cached_article_ids_ordered()
+                elif use_firestore():
                     ordered_ids = firestore_get_cached_article_ids_ordered()
+                else:
+                    ordered_ids = None
+
+                if ordered_ids is not None:
                     seed_cap = max(50, int(getattr(settings, "NEWS_SYNC_SEED_MAX", 50)))
                     seed_items: list[NewsItem] = []
                     for aid in reversed(ordered_ids[-seed_cap:]):
@@ -668,10 +675,17 @@ class NewsAggregator:
         per_page = ITEMS_PER_PAGE
         if not force_refresh:
             try:
+                from .neon_store import use_neon, neon_query_news_page
                 from .firestore_store import use_firestore, firestore_query_news_page
 
-                if use_firestore():
+                if use_neon():
+                    page_items, total = neon_query_news_page(page=page, per_page=per_page)
+                elif use_firestore():
                     page_items, total = firestore_query_news_page(page=page, per_page=per_page)
+                else:
+                    raise Exception("no db")
+
+                if True:
                     total_pages = max(1, (int(total) + per_page - 1) // per_page) if total else 1
                     page = max(1, min(int(page), total_pages))
 
@@ -737,14 +751,22 @@ class NewsAggregator:
             if cls._papers_cache_at and (datetime.now() - cls._papers_cache_at).total_seconds() < cls._PAPERS_CACHE_TTL_SEC:
                 return cls._papers_cache
 
-        # Firestore なら has_explanation & category で直接クエリしてページング（初回遷移を速くする）。
+        # Neon / Firestore なら has_explanation & category で直接クエリしてページング（初回遷移を速くする）。
         if not force_refresh:
             try:
+                from .neon_store import use_neon, neon_query_papers_page
                 from .firestore_store import use_firestore, firestore_query_papers_page
 
-                if use_firestore():
+                if use_neon():
+                    per_page = ITEMS_PER_PAGE
+                    page_items, total = neon_query_papers_page(page=page, per_page=per_page)
+                elif use_firestore():
                     per_page = ITEMS_PER_PAGE
                     page_items, total = firestore_query_papers_page(page=page, per_page=per_page)
+                else:
+                    raise Exception("no db")
+
+                if True:
                     total_pages = max(1, (int(total) + per_page - 1) // per_page) if total else 1
                     page = max(1, min(int(page), total_pages))
 

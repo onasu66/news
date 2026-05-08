@@ -11,7 +11,12 @@
       "Bash(git push *)",
       "Bash(curl *)",
       "Bash(echo \"EXIT:$?\")",
-      "PowerShell(Invoke-WebRequest -Uri \"http://localhost:8001/api/admin/sync-cache\" -Method POST -TimeoutSec 60 | Select-Object -ExpandProperty Content)"
+      "PowerShell(Invoke-WebRequest -Uri \"http://localhost:8001/api/admin/sync-cache\" -Method POST -TimeoutSec 60 | Select-Object -ExpandProperty Content)",
+      "WebFetch(domain:neon.com)",
+      "mcp__Neon__list_projects",
+      "mcp__Neon__list_organizations",
+      "mcp__Neon__get_connection_string",
+      "mcp__Neon__run_sql_transaction"
     ]
   }
 }

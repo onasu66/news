@@ -15,7 +15,17 @@ def _sqlite_articles_list_limit() -> int:
     except Exception:
         return 100000
 
+def _use_neon():
+    try:
+        from .neon_store import use_neon
+        return use_neon()
+    except Exception:
+        return False
+
+
 def _use_firestore():
+    if _use_neon():
+        return False
     try:
         from .firestore_store import use_firestore
         return use_firestore()
@@ -52,6 +62,9 @@ def _init_db():
 
 def load_by_id(article_id: str) -> NewsItem | None:
     """IDで1件取得"""
+    if _use_neon():
+        from .neon_store import neon_load_by_id
+        return neon_load_by_id(article_id)
     if _use_firestore():
         from .firestore_store import firestore_load_by_id
         return firestore_load_by_id(article_id)
@@ -89,6 +102,9 @@ def load_all_processed(processed_ids: set[str]) -> list[NewsItem]:
 
 def load_all() -> list[NewsItem]:
     """保存済みの全記事を読み込み（新しい順）"""
+    if _use_neon():
+        from .neon_store import neon_load_all
+        return neon_load_all()
     if _use_firestore():
         from .firestore_store import firestore_load_all
         return firestore_load_all()
@@ -131,7 +147,10 @@ def load_papers_for_site_list() -> list[NewsItem]:
         limit = max(50, min(int(getattr(settings, "PAPERS_LIST_MAX", 500)), 50000))
     except Exception:
         limit = 500
-    if _use_firestore():
+    if _use_neon():
+        from .neon_store import neon_load_all_papers_for_site_list
+        items = neon_load_all_papers_for_site_list(limit=limit)
+    elif _use_firestore():
         from .firestore_store import firestore_load_all_papers_for_site_list
 
         items = firestore_load_all_papers_for_site_list(limit=limit)
@@ -198,6 +217,9 @@ def _sqlite_load_papers_for_site_list(limit: int) -> list[NewsItem]:
 
 def save_articles_batch(items: list[NewsItem]) -> int:
     """記事を一括保存。保存できた件数を返す"""
+    if _use_neon():
+        from .neon_store import neon_save_articles_batch
+        return neon_save_articles_batch(items)
     if _use_firestore():
         from .firestore_store import firestore_save_articles_batch
         return firestore_save_articles_batch(items)
@@ -232,6 +254,9 @@ def save_articles_batch(items: list[NewsItem]) -> int:
 
 def save_article(item: NewsItem) -> bool:
     """記事を1件保存（既存は上書き＝再取り込みで一覧の先頭に反映）"""
+    if _use_neon():
+        from .neon_store import neon_save_article
+        return neon_save_article(item)
     if _use_firestore():
         from .firestore_store import firestore_save_article
         return firestore_save_article(item)
@@ -262,6 +287,9 @@ def save_article(item: NewsItem) -> bool:
 
 def delete_article(article_id: str) -> bool:
     """記事を1件削除。存在したらTrue"""
+    if _use_neon():
+        from .neon_store import neon_delete_article
+        return neon_delete_article(article_id)
     if _use_firestore():
         from .firestore_store import firestore_delete_article
         return firestore_delete_article(article_id)

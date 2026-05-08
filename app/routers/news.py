@@ -1013,19 +1013,25 @@ def _attach_paper_related_tags(items: list) -> None:
         _apply_tags_to_items(tags_map)
         return
 
-    # Firestore の場合、関連タグだけバルクリードする
-    try:
-        from app.services.firestore_store import use_firestore, firestore_get_related_tags_bulk
-
-        firestore_mode = bool(use_firestore())
-    except Exception:
-        firestore_mode = False
-        firestore_get_related_tags_bulk = None
-
+    # Neon / Firestore の場合、関連タグだけバルクリードする
     tags_by_id: dict[str, list[str]] = {}
-    if firestore_mode and firestore_get_related_tags_bulk:
-        tags_by_id = firestore_get_related_tags_bulk(missing_ids, max_tags_per_article=3)
-    else:
+    _bulk_done = False
+    try:
+        from app.services.neon_store import use_neon, neon_get_related_tags_bulk
+        if use_neon():
+            tags_by_id = neon_get_related_tags_bulk(missing_ids, max_tags_per_article=3)
+            _bulk_done = True
+    except Exception:
+        pass
+    if not _bulk_done:
+        try:
+            from app.services.firestore_store import use_firestore, firestore_get_related_tags_bulk
+            if use_firestore():
+                tags_by_id = firestore_get_related_tags_bulk(missing_ids, max_tags_per_article=3)
+                _bulk_done = True
+        except Exception:
+            pass
+    if not _bulk_done:
         # SQLite などは explanation_cache からまとめ読み
         try:
             from app.services.explanation_cache import get_cached_many

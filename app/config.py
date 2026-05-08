@@ -62,6 +62,8 @@ class Settings:
     FULLTEXT_BODY_PRIORITY: float = float(os.getenv("FULLTEXT_BODY_PRIORITY", "0.85"))
     # FiveFilters Full-Text RSS のベースURL（未設定なら通常のRSSをそのまま取得）
     FULLTEXT_RSS_BASE_URL: str = os.getenv("FULLTEXT_RSS_BASE_URL", "").rstrip("/")
+    # Neon Postgres 接続文字列（設定されていれば Firestore / SQLite より優先）
+    DATABASE_URL: str = os.getenv("DATABASE_URL", "").strip()
     # 管理者用シークレット（手動記事追加・管理画面）。未設定なら管理機能は利用不可
     ADMIN_SECRET: str = os.getenv("ADMIN_SECRET", "").strip()
     # Firebase（未設定ならSQLiteを使用）。サービスアカウントJSON文字列 or 空

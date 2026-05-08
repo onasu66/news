@@ -28,7 +28,17 @@ def clear_explanation_memory_cache() -> None:
     with _explanation_cache_lock:
         _explanation_cache.clear()
 
+def _use_neon():
+    try:
+        from .neon_store import use_neon
+        return use_neon()
+    except Exception:
+        return False
+
+
 def _use_firestore():
+    if _use_neon():
+        return False
     try:
         from .firestore_store import use_firestore
         return use_firestore()
@@ -88,6 +98,14 @@ def invalidate_ids_cache() -> None:
 def get_cached_article_ids() -> set[str]:
     """AI処理済み（ミドルマン解説あり）のarticle_id一覧。Firestore 時はメモリで 60 秒キャッシュ"""
     global _ids_cache
+    if _use_neon():
+        now = time.monotonic()
+        if _ids_cache is not None and (now - _ids_cache[0]) < _ids_cache_ttl_sec:
+            return _ids_cache[1]
+        from .neon_store import neon_get_cached_article_ids
+        ids = neon_get_cached_article_ids()
+        _ids_cache = (now, ids)
+        return ids
     if _use_firestore():
         now = time.monotonic()
         if _ids_cache is not None and (now - _ids_cache[0]) < _ids_cache_ttl_sec:
@@ -115,9 +133,27 @@ def _is_bad_fallback_cache(blocks: list) -> bool:
 
 
 def get_cached(article_id: str) -> Optional[dict]:
-    """キャッシュから取得。なければNone。Firestore 時はメモリキャッシュ（件数は設定）で同一記事の再読を削減。
-    Firestore のクォータ超過・エラー時は例外を握りつぶして None を返す（500エラーを防ぐ）。"""
+    """キャッシュから取得。なければNone。メモリキャッシュで同一記事の再読を削減。"""
     global _explanation_cache
+    if _use_neon():
+        with _explanation_cache_lock:
+            cached = _explanation_cache.get(article_id)
+        if cached is not None:
+            return cached
+        from .neon_store import neon_get_cached
+        try:
+            result = neon_get_cached(article_id)
+        except Exception as e:
+            import logging as _logging
+            _logging.getLogger(__name__).warning("get_cached: Neon読み取り失敗 article_id=%s: %s", article_id, e)
+            return None
+        if result is not None:
+            with _explanation_cache_lock:
+                if len(_explanation_cache) >= _explanation_cache_max():
+                    oldest = next(iter(_explanation_cache))
+                    del _explanation_cache[oldest]
+                _explanation_cache[article_id] = result
+        return result
     if _use_firestore():
         with _explanation_cache_lock:
             cached = _explanation_cache.get(article_id)
@@ -265,6 +301,12 @@ def get_cached_many(article_ids: list[str]) -> dict[str, dict]:
 def delete_cache(article_id: str) -> bool:
     """指定記事の解説キャッシュを削除。存在したらTrue"""
     global _ids_cache, _explanation_cache
+    if _use_neon():
+        from .neon_store import neon_delete_cache
+        out = neon_delete_cache(article_id)
+        _ids_cache = None
+        _explanation_cache.pop(article_id, None)
+        return out
     if _use_firestore():
         from .firestore_store import firestore_delete_cache
         out = firestore_delete_cache(article_id)
@@ -334,6 +376,28 @@ def save_cache(
 ):
     """キャッシュに保存。display_persona_ids あり時は personas は3件のみ。"""
     global _ids_cache
+    if _use_neon():
+        from .neon_store import neon_save_cache
+        neon_save_cache(
+            article_id,
+            blocks,
+            personas,
+            display_persona_ids=display_persona_ids,
+            quick_understand=quick_understand,
+            vote_data=vote_data,
+            paper_graph=paper_graph,
+            paper_quiz=paper_quiz,
+            deep_insights=deep_insights,
+        )
+        _ids_cache = None
+        with _explanation_cache_lock:
+            _explanation_cache.pop(article_id, None)
+        try:
+            from .news_aggregator import NewsAggregator
+            NewsAggregator.upsert_article_in_news_cache(article_id)
+        except Exception:
+            pass
+        return
     if _use_firestore():
         from .firestore_store import firestore_save_cache
         firestore_save_cache(
