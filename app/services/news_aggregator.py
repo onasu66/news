@@ -282,18 +282,18 @@ def _pick_best_trending_article(
 
 # 1ページあたりの表示件数（ページネーション用）
 ITEMS_PER_PAGE = 24
-# キャッシュ上の最大件数（Firestore は articles 全件スナップショット＋解説IDの積集合。既定は実質無制限に近い）
+# キャッシュ上の最大件数
 try:
     PAGE_DISPLAY_LIMIT = max(1, int(getattr(settings, "NEWS_LIST_DISPLAY_MAX", 500000)))
 except Exception:
     PAGE_DISPLAY_LIMIT = 500000
-# Firestore: _meta/cache の変化を低頻度で検知し、他ワーカーや upsert 失敗後も一覧を追従させる（get 1 回／この秒数）
+# 旧 Firestore メタ指紋ポーリング間隔（0 で無効。現在は未使用）
 try:
     _META_FP_POLL_INTERVAL_SEC = float(getattr(settings, "NEWS_META_FP_POLL_SEC", 30.0))
 except Exception:
     _META_FP_POLL_INTERVAL_SEC = 30.0
 # 閲覧時の一覧キャッシュは期限で破棄しない（更新イベント時のみ再取得）
-# - 通常閲覧時の Firestore 読み取りを最小化する
+# - 通常閲覧時の DB アクセスを抑える
 # - 再起動時・force_refresh 実行時には再取得される
 CACHE_NEVER_EXPIRE = True
 DB_ERROR_BACKOFF_SECONDS = max(30, int(getattr(settings, "NEWS_DB_ERROR_BACKOFF_SECONDS", 60)))
@@ -309,7 +309,7 @@ class NewsAggregator:
     _trends_last_updated: Optional[datetime] = None
     _db_backoff_until: Optional[datetime] = None
     _last_processed_count: int = 0
-    # 論文一覧の Firestore クエリ結果をメモリにキャッシュ（毎リクエスト Firestore を叩くのを防ぐ）
+    # 論文一覧の DB クエリ結果をメモリにキャッシュ
     _papers_cache: Optional[tuple[list, dict]] = None  # (papers_by_category, pagination)
     _papers_cache_page: int = 0
     _papers_cache_at: Optional[datetime] = None
@@ -320,53 +320,13 @@ class NewsAggregator:
 
     @classmethod
     def _prime_meta_fingerprint(cls) -> None:
-        """一覧を今の _meta/cache と一致させた直後に呼ぶ（無駄な sync を減らす）。"""
-        try:
-            from app.services.neon_store import use_neon
-            if use_neon():
-                return  # Neon 使用時は Firestore メタ不要
-            from app.services.firestore_store import use_firestore, firestore_meta_cache_fingerprint
-
-            if not use_firestore():
-                return
-            cls._last_meta_fp = firestore_meta_cache_fingerprint()
-            cls._last_meta_poll_mono = time.monotonic()
-        except Exception:
-            pass
+        """後方互換のため残す（現状は no-op）。"""
+        return
 
     @classmethod
     def _maybe_resync_news_from_meta_fingerprint(cls) -> None:
-        """メモリ一覧が古いまま返らないよう、_meta/cache の軽い署名が変わったときだけ sync する。"""
-        # 案A: 通知で更新するため、ポーリングは 0 以下で無効化できる
-        if _META_FP_POLL_INTERVAL_SEC <= 0:
-            return
-        if cls._in_db_backoff():
-            return
-        try:
-            from app.services.neon_store import use_neon
-            if use_neon():
-                return  # Neon 使用時は Firestore メタポーリング不要
-            from app.services.firestore_store import use_firestore, firestore_meta_cache_fingerprint
-
-            if not use_firestore():
-                return
-        except Exception:
-            return
-        now = time.monotonic()
-        if now - cls._last_meta_poll_mono < max(5.0, _META_FP_POLL_INTERVAL_SEC):
-            return
-        cls._last_meta_poll_mono = now
-        try:
-            fp = firestore_meta_cache_fingerprint()
-        except Exception:
-            return
-        if fp == cls._last_meta_fp:
-            return
-        try:
-            cls.sync_list_cache_from_db(force=False)
-        except Exception:
-            return
-        cls._last_meta_fp = fp
+        """旧 Firestore メタ同期。廃止のためポーリングは無効（NEWS_META_FP_POLL_SEC<=0 が既定）。"""
+        return
 
     @classmethod
     def _set_db_backoff(cls, reason: str, exc: Exception) -> None:
@@ -471,7 +431,7 @@ class NewsAggregator:
     def sync_list_cache_from_db(cls, force: bool = False) -> None:
         """
         RSS・AI は回さず、保存済み記事一覧で _news_cache を同期する。
-        force=True: DB バックオフ中でも強制実行（直前に Firestore 書き込みが成功した場合に使う）。
+        force=True: DB バックオフ中でも強制実行（直前に DB 書き込みが成功した場合に使う）。
         """
         try:
             invalidate_ids_cache()
@@ -501,7 +461,7 @@ class NewsAggregator:
     def upsert_article_in_news_cache(cls, article_id: str) -> None:
         """
         save_cache 直後など: _meta/cache に載った 1 件を一覧キャッシュへ反映する。
-        articles メモリスナップショットがあれば load_by_id は Firestore を読まない。
+        一覧同期でメモリに載っている記事なら追加の一覧取得が減る。
         """
         if cls._bulk_update_depth > 0:
             return
@@ -529,34 +489,11 @@ class NewsAggregator:
             time.sleep(0.12)
             processed_ids, item = _load_ids_and_item()
         if not processed_ids or not item or item.id not in processed_ids:
-            # _meta/cache に ID がない → explanations ドキュメントを直接確認して不整合を自己修復
-            repaired = False
-            if item:
-                try:
-                    from .firestore_store import use_firestore, firestore_check_explanation_and_repair_meta
-                    if use_firestore() and firestore_check_explanation_and_repair_meta(article_id):
-                        # explanations に解説あり・_meta/cache を修復した → _news_cache に直接追加
-                        rest = [x for x in cls._news_cache if x.id != item.id]
-                        rest.append(item)
-                        cls._news_cache = sorted(
-                            rest,
-                            key=lambda x: x.added_at or x.published or datetime.min,
-                            reverse=True,
-                        )[:PAGE_DISPLAY_LIMIT]
-                        cls._last_updated = datetime.now()
-                        cls._db_backoff_until = None
-                        cls._invalidate_papers_cache()
-                        cls._prime_meta_fingerprint()
-                        logger.info("upsert: _meta/cache 不整合を修復して %s を _news_cache に追加", article_id)
-                        repaired = True
-                except Exception as _repair_err:
-                    logger.warning("upsert: 自己修復試行でエラー: %s", _repair_err)
-            if not repaired:
-                try:
-                    cls.sync_list_cache_from_db(force=True)
-                except Exception:
-                    pass
-                cls._prime_meta_fingerprint()
+            try:
+                cls.sync_list_cache_from_db(force=True)
+            except Exception:
+                pass
+            cls._prime_meta_fingerprint()
             return
         if not cls._news_cache:
             cls.sync_list_cache_from_db(force=True)
@@ -587,12 +524,9 @@ class NewsAggregator:
         if not force_refresh:
             try:
                 from .neon_store import use_neon, neon_query_news_page
-                from .firestore_store import use_firestore, firestore_query_news_page
 
                 if use_neon():
                     page_items, total = neon_query_news_page(page=page, per_page=per_page)
-                elif use_firestore():
-                    page_items, total = firestore_query_news_page(page=page, per_page=per_page)
                 else:
                     raise Exception("no db")
 
@@ -615,7 +549,6 @@ class NewsAggregator:
                     }
                     return news_by_category, pagination
             except Exception:
-                # Firestore 側で何か起きても、従来の挙動へフォールバック
                 pass
 
         news = cls.get_news(force_refresh)
@@ -655,25 +588,21 @@ class NewsAggregator:
         論文（研究・論文ジャンル）を上位ジャンル（ドメイン）ごとにグループ化。
         戻り値: (papers_by_category, pagination_info)
         papers_by_category は (domain_name, list[NewsItem]) のリスト（表示順は PAPER_DOMAIN_ORDER）。
-        Firestore のクォータ超過時はメモリキャッシュ（TTL 2分）を返し、記事0件にならないようにする。
+        DB 障害時はメモリキャッシュ（TTL 2分）を返し、記事0件にならないようにする。
         """
         # メモリキャッシュが有効かチェック（TTL 内かつ同じページ）
         if not force_refresh and cls._papers_cache is not None and cls._papers_cache_page == page:
             if cls._papers_cache_at and (datetime.now() - cls._papers_cache_at).total_seconds() < cls._PAPERS_CACHE_TTL_SEC:
                 return cls._papers_cache
 
-        # Neon / Firestore なら has_explanation & category で直接クエリしてページング（初回遷移を速くする）。
+        # Neon なら category で直接クエリしてページング（初回遷移を速くする）。
         if not force_refresh:
             try:
                 from .neon_store import use_neon, neon_query_papers_page
-                from .firestore_store import use_firestore, firestore_query_papers_page
 
                 if use_neon():
                     per_page = ITEMS_PER_PAGE
                     page_items, total = neon_query_papers_page(page=page, per_page=per_page)
-                elif use_firestore():
-                    per_page = ITEMS_PER_PAGE
-                    page_items, total = firestore_query_papers_page(page=page, per_page=per_page)
                 else:
                     raise Exception("no db")
 
@@ -706,8 +635,7 @@ class NewsAggregator:
                     cls._papers_cache_at = datetime.now()
                     return papers_by_category, pagination
             except Exception as _e:
-                # クォータ超過など Firestore 障害時: TTL 内のキャッシュのみ使う（期限切れは get_news() へ）
-                logger.warning("get_papers_by_category: Firestore クエリ失敗（メモリキャッシュにフォールバック）: %s", _e)
+                logger.warning("get_papers_by_category: DB クエリ失敗（メモリキャッシュにフォールバック）: %s", _e)
                 if cls._papers_cache is not None and cls._papers_cache_at:
                     age = (datetime.now() - cls._papers_cache_at).total_seconds()
                     if age < cls._PAPERS_CACHE_TTL_SEC:

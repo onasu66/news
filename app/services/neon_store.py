@@ -1,5 +1,5 @@
-"""Neon Postgres ストア - 記事・解説を Neon に永続化。
-Firestore / SQLite の代替として DATABASE_URL が設定されている場合に使用する。"""
+"""Neon Postgres ストア - 記事・解説を Neon に永続化する。
+DATABASE_URL が設定され psycopg2 が使えるときに有効（未設定時は SQLite）。"""
 import json
 import logging
 import os
@@ -30,11 +30,14 @@ def _get_database_url() -> str:
 def use_neon() -> bool:
     url = _get_database_url()
     if not url:
+        logger.debug("use_neon: DATABASE_URL が未設定のため Neon を使用しません")
         return False
     try:
         import psycopg2  # noqa: F401
+        logger.debug("use_neon: True (psycopg2 OK, URL=%s...)", url[:40])
         return True
-    except ModuleNotFoundError:
+    except Exception as e:
+        logger.warning("use_neon: psycopg2 import 失敗 (%s: %s) → Neon を使用しません", type(e).__name__, e)
         return False
 
 
@@ -106,6 +109,13 @@ def neon_init_schema():
             """)
             cur.execute("CREATE INDEX IF NOT EXISTS idx_articles_added_at ON articles(added_at DESC)")
             cur.execute("CREATE INDEX IF NOT EXISTS idx_articles_cat_expl ON articles(category, has_explanation, published DESC)")
+            cur.execute("""
+                CREATE TABLE IF NOT EXISTS ai_daily (
+                    id TEXT PRIMARY KEY CHECK (id = 'latest'),
+                    payload TEXT NOT NULL,
+                    updated_at TIMESTAMPTZ DEFAULT NOW()
+                )
+            """)
 
 
 # --- ヘルパー ---
@@ -516,3 +526,34 @@ def neon_query_news_page(page: int, per_page: int) -> tuple:
     cols = ["id", "title", "link", "summary", "published", "source", "category", "image_url", "added_at"]
     items = [_row_to_news_item(dict(zip(cols, r))) for r in rows]
     return items, total
+
+
+# --- 日次AIコンテンツ ---
+
+def neon_ai_daily_get() -> Optional[dict]:
+    with _conn() as conn:
+        with conn.cursor() as cur:
+            cur.execute("SELECT payload FROM ai_daily WHERE id = 'latest'")
+            row = cur.fetchone()
+    if not row or not row[0]:
+        return None
+    try:
+        return json.loads(row[0])
+    except Exception:
+        return None
+
+
+def neon_ai_daily_save(data: dict) -> None:
+    blob = json.dumps(data, ensure_ascii=False)
+    with _conn() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                INSERT INTO ai_daily (id, payload, updated_at)
+                VALUES ('latest', %s, NOW())
+                ON CONFLICT (id) DO UPDATE SET
+                    payload = EXCLUDED.payload,
+                    updated_at = NOW()
+                """,
+                (blob,),
+            )

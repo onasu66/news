@@ -6,9 +6,11 @@ import json
 import logging
 import random
 import re
+from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor
 
 logger = logging.getLogger(__name__)
+from app.config import settings
 
 from app.services.ai_service import (
     explain_article_as_navigator,
@@ -23,6 +25,90 @@ from app.services.ai_service import (
 )
 from app.services.explanation_cache import get_cached, save_cache
 
+_MIDDLEMAN_YAML = Path(__file__).resolve().parent.parent / "prompts" / "middleman.yaml"
+
+
+def _load_middleman_prompt_config() -> dict:
+    defaults = {
+        "language": "日本語",
+        "style": {
+            "narration_tone": "友達に話す喋り言葉（です・ます調）",
+            "allow_speculation_format": "推測は『〜とみられてます』などで控えめに",
+            "forbidden_styles": ["新聞調", "体言止め", "堅すぎる書き言葉"],
+        },
+        "length": {
+            "reading_time_minutes": 3,
+            "article_chars_min": 1200,
+            "article_chars_max": 2500,
+        },
+        "blocks": {
+            "types": ["text", "explain"],
+            "explain_min": 3,
+            "explain_max": 6,
+            "explain_sentence_range": "1〜3文",
+        },
+        "comment_focus": [
+            "記事の事実を崩さず、背景や難語を噛み砕いて補足する",
+            "難しいポイントの直後に explain を入れる",
+            "過剰な煽りを避け、読者理解を優先する",
+        ],
+    }
+    try:
+        import yaml
+
+        if not _MIDDLEMAN_YAML.exists():
+            return defaults
+        with open(_MIDDLEMAN_YAML, encoding="utf-8") as f:
+            loaded = yaml.safe_load(f) or {}
+        if not isinstance(loaded, dict):
+            return defaults
+        merged = dict(defaults)
+        for k, v in loaded.items():
+            if isinstance(v, dict) and isinstance(merged.get(k), dict):
+                d = dict(merged[k])
+                d.update(v)
+                merged[k] = d
+            else:
+                merged[k] = v
+        return merged
+    except Exception:
+        return defaults
+
+
+def _build_middleman_claude_prompt(title: str, content: str) -> str:
+    cfg = _load_middleman_prompt_config()
+    style = cfg.get("style", {}) if isinstance(cfg.get("style"), dict) else {}
+    length = cfg.get("length", {}) if isinstance(cfg.get("length"), dict) else {}
+    blocks = cfg.get("blocks", {}) if isinstance(cfg.get("blocks"), dict) else {}
+    focus = cfg.get("comment_focus", [])
+    if not isinstance(focus, list):
+        focus = []
+    focus_text = "\n".join(f"- {str(x)}" for x in focus if str(x).strip())
+
+    from app.services.ai_service import MIDDLEMAN_ROLE
+
+    return f"""{MIDDLEMAN_ROLE}
+
+【タイトル】{title}
+【内容】
+{content[:8000]}
+
+上記の内容を読んで、ミドルマンとして記事本文（text）と解説（explain）のブロックを書いてください。
+
+出力ルール:
+- JSON配列のみ出力（説明文不要）
+- 形式: [{{"type": "text", "content": "..."}}, {{"type": "explain", "content": "..."}} ...]
+- 言語: {cfg.get("language", "日本語")}
+- 文体: {style.get("narration_tone", "友達に話す喋り言葉")}
+- 推測表現: {style.get("allow_speculation_format", "控えめに示す")}
+- explain（吹き出し解説）は{blocks.get("explain_min", 3)}〜{blocks.get("explain_max", 6)}個
+- explain は{blocks.get("explain_sentence_range", "1〜3文")}で簡潔に
+- 全体で約{length.get("reading_time_minutes", 3)}分で読める分量
+- 本文目安: {length.get("article_chars_min", 1200)}〜{length.get("article_chars_max", 2500)}文字
+
+補足方針:
+{focus_text if focus_text else "- 記事理解を最優先し、難所を補足する"}"""
+
 
 # ── Claude CLI を使ったミドルマン・ペルソナ生成 ──────────────────────────────
 
@@ -35,29 +121,13 @@ def _generate_blocks_via_claude(navigator_blocks: list, title: str) -> list[dict
     except Exception:
         return []
 
-    from app.services.ai_service import MIDDLEMAN_ROLE
-
     parts = [b["content"].strip() for b in (navigator_blocks or []) if isinstance(b, dict) and b.get("content")]
     content = "\n\n".join(parts)
     if not content.strip():
         return []
+    prompt = _build_middleman_claude_prompt(title, content)
 
-    prompt = f"""{MIDDLEMAN_ROLE}
-
-【タイトル】{title}
-【内容】
-{content[:8000]}
-
-上記の内容を読んで、ミドルマンとして記事本文（text）と解説（explain）のブロックを書いてください。
-
-出力ルール:
-- JSON配列のみ出力（説明文不要）
-- 形式: [{{"type": "text", "content": "..."}}, {{"type": "explain", "content": "..."}} ...]
-- explain（吹き出し解説）は3〜6個挟む
-- 全体で約3分で読める分量
-- すべて日本語で"""
-
-    raw = run_claude_text_gen(prompt, timeout=180)
+    raw = run_claude_text_gen(prompt, timeout=180, usage_kind="middleman_blocks")
     if not raw:
         return []
     try:
@@ -122,7 +192,7 @@ JSON配列形式で出力してください:
   {{"name": "{selected[2]['name']}", "comment": "..."}}
 ]"""
 
-    raw = run_claude_text_gen(prompt, timeout=120)
+    raw = run_claude_text_gen(prompt, timeout=120, usage_kind="persona_comments")
     if not raw:
         return []
     try:
@@ -196,11 +266,15 @@ def generate_all_explanations(article_id: str, title: str, content: str, categor
     #    ミドルマンとペルソナは Claude CLI（サブスク） → OpenAI フォールバック
 
     def do_blocks():
-        # Claude CLI で生成を試みる
-        claude_blocks = _generate_blocks_via_claude(navigator_blocks, title)
-        if claude_blocks:
-            return claude_blocks
-        return expand_navigator_to_article(navigator_blocks, title)
+        provider = (getattr(settings, "MIDDLEMAN_PROVIDER", "claude_first") or "claude_first").strip().lower()
+        # openai 指定時は Claude を使わず OpenAI へ直行
+        if provider != "openai":
+            claude_blocks = _generate_blocks_via_claude(navigator_blocks, title)
+            if claude_blocks:
+                return claude_blocks
+        model = (getattr(settings, "MIDDLEMAN_OPENAI_MODEL", "") or "").strip() or "gpt-4o"
+        logger.info("ミドルマン記事生成: provider=%s model=%s", provider, model)
+        return expand_navigator_to_article(navigator_blocks, title, model=model)
 
     def do_vote():
         return generate_vote_question(title, summary_text)

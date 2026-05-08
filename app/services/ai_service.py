@@ -455,6 +455,90 @@ NAVIGATOR_ROLE_PAPER = """あなたは研究解説者（リサーチアナリス
 「何が新しいのか」「従来と何が違うのか」「どんな価値があるのか」を意識しつつ、断定しすぎない表現を使ってください。"""
 
 _NAVIGATOR_SECTION_ORDER = ("facts", "background", "impact", "prediction", "caution")
+_NAVIGATOR_PROMPT_PATH = Path(__file__).resolve().parent.parent / "prompts" / "navigator.yaml"
+
+
+def _load_navigator_prompt_config() -> dict:
+    defaults = {
+        "language": "日本語",
+        "sections": list(_NAVIGATOR_SECTION_ORDER),
+        "facts_max_chars": 120,
+        "news": {
+            "role_name": "ニュース編集者",
+            "tone": "正確・簡潔・事実重視",
+            "focus_points": [
+                "事実を重視し、誇張しない",
+                "背景・影響・予測・注意を構造化して伝える",
+                "平易な日本語で読者理解を優先する",
+            ],
+        },
+        "paper": {
+            "role_name": "研究解説者（リサーチアナリスト）",
+            "tone": "客観・実証重視",
+            "focus_points": [
+                "研究の新規性と実用性をバランスよく整理する",
+                "研究機関・対象・方法を可能な範囲で明記する",
+                "過大解釈を避け、未確定要素は明示する",
+            ],
+        },
+        "output_rules": [
+            "出力はJSONオブジェクトのみ",
+            "keys は facts/background/impact/prediction/caution の5つ",
+            "推測は断定せず控えめに表現する",
+        ],
+    }
+    try:
+        import yaml
+
+        if not _NAVIGATOR_PROMPT_PATH.exists():
+            return defaults
+        with open(_NAVIGATOR_PROMPT_PATH, encoding="utf-8") as f:
+            loaded = yaml.safe_load(f) or {}
+        if not isinstance(loaded, dict):
+            return defaults
+        merged = dict(defaults)
+        for k, v in loaded.items():
+            if isinstance(v, dict) and isinstance(merged.get(k), dict):
+                d = dict(merged[k])
+                d.update(v)
+                merged[k] = d
+            else:
+                merged[k] = v
+        return merged
+    except Exception:
+        return defaults
+
+
+def _build_navigator_system_prompt(*, is_paper: bool) -> str:
+    cfg = _load_navigator_prompt_config()
+    section_line = "・".join(cfg.get("sections", list(_NAVIGATOR_SECTION_ORDER)))
+    role_cfg = cfg.get("paper") if is_paper else cfg.get("news")
+    if not isinstance(role_cfg, dict):
+        role_cfg = {}
+    focus = role_cfg.get("focus_points", [])
+    if not isinstance(focus, list):
+        focus = []
+    focus_text = "\n".join(f"- {str(x)}" for x in focus if str(x).strip())
+    rules = cfg.get("output_rules", [])
+    if not isinstance(rules, list):
+        rules = []
+    rules_text = "\n".join(f"- {str(x)}" for x in rules if str(x).strip())
+    facts_max = int(cfg.get("facts_max_chars", 120) or 120)
+
+    return f"""あなたは{role_cfg.get("role_name", "理解ナビゲーター")}です。
+言語は必ず{cfg.get("language", "日本語")}。
+文体: {role_cfg.get("tone", "正確・簡潔")}
+
+重視点:
+{focus_text if focus_text else "- 記事を構造化して要点を伝える"}
+
+対象セクション:
+{section_line}
+
+出力ルール:
+{rules_text if rules_text else "- JSONのみで出力"}
+- facts は必ず1文・{facts_max}文字以内
+- background / impact / prediction / caution は各2〜5文程度"""
 
 _JSON_SCHEMA_NAVIGATOR = {
     "type": "json_schema",
@@ -497,6 +581,8 @@ def explain_article_as_navigator(
 
     model = model or settings.OPENAI_MODEL
     client = OpenAI(api_key=settings.OPENAI_API_KEY)
+    cfg = _load_navigator_prompt_config()
+    facts_max = int(cfg.get("facts_max_chars", 120) or 120)
     user_prompt = f"""以下の記事を、理解ナビゲーターの5項目で再構成してください。
 
 【タイトル】{title}
@@ -507,7 +593,7 @@ def explain_article_as_navigator(
 facts（何が起きたか・事実）, background（なぜ起きたか・背景）, impact（誰に影響するか・影響範囲）, prediction（次に何が起きそうか・予測）, caution（誤解しやすい点・注意）
 
 追加ルール：
-- facts は必ず1文、120文字以内（重要）"""
+- facts は必ず1文、{facts_max}文字以内（重要）"""
 
     raw = ""
     try:
@@ -517,7 +603,7 @@ facts（何が起きたか・事実）, background（なぜ起きたか・背景
                 5000,
                 model=model,
                 messages=[
-                    {"role": "system", "content": NAVIGATOR_ROLE_PAPER if is_paper else NAVIGATOR_ROLE_NEWS},
+                    {"role": "system", "content": _build_navigator_system_prompt(is_paper=is_paper)},
                     {"role": "user", "content": user_prompt},
                 ],
                 response_format=_JSON_SCHEMA_NAVIGATOR,
@@ -535,7 +621,7 @@ facts（何が起きたか・事実）, background（なぜ起きたか・背景
                 messages=[
                     {
                         "role": "system",
-                        "content": (NAVIGATOR_ROLE_PAPER if is_paper else NAVIGATOR_ROLE_NEWS)
+                        "content": _build_navigator_system_prompt(is_paper=is_paper)
                         + " 出力はJSONのみ。facts, background, impact, prediction, caution の5キーを必ず含めてください。",
                     },
                     {"role": "user", "content": user_prompt},

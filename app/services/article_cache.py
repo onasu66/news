@@ -1,4 +1,4 @@
-"""掲載記事の永続キャッシュ（SQLite / Firestore） - 過去記事を蓄積しニュースサイトとして表示"""
+"""掲載記事の永続キャッシュ（Neon Postgres / SQLite）"""
 import json
 import sqlite3
 from pathlib import Path
@@ -6,7 +6,7 @@ from datetime import datetime
 
 from .rss_service import NewsItem, sanitize_display_text
 
-# SQLite: 一覧用の取得上限（Firestore は全件メモリスナップショット）
+# SQLite: 一覧用の取得上限
 def _sqlite_articles_list_limit() -> int:
     try:
         from app.config import settings
@@ -22,15 +22,6 @@ def _use_neon():
     except Exception:
         return False
 
-
-def _use_firestore():
-    if _use_neon():
-        return False
-    try:
-        from .firestore_store import use_firestore
-        return use_firestore()
-    except Exception:
-        return False
 
 _DB_PATH = Path(__file__).resolve().parent.parent.parent / "data" / "articles.db"
 
@@ -65,9 +56,6 @@ def load_by_id(article_id: str) -> NewsItem | None:
     if _use_neon():
         from .neon_store import neon_load_by_id
         return neon_load_by_id(article_id)
-    if _use_firestore():
-        from .firestore_store import firestore_load_by_id
-        return firestore_load_by_id(article_id)
     _init_db()
     with _get_conn() as conn:
         row = conn.execute(
@@ -105,9 +93,6 @@ def load_all() -> list[NewsItem]:
     if _use_neon():
         from .neon_store import neon_load_all
         return neon_load_all()
-    if _use_firestore():
-        from .firestore_store import firestore_load_all
-        return firestore_load_all()
     _init_db()
     items = []
     with _get_conn() as conn:
@@ -138,8 +123,8 @@ def load_all() -> list[NewsItem]:
 
 def load_papers_for_site_list() -> list[NewsItem]:
     """
-    論文トップ（/）用: 研究・論文を取得。解説付きID（get_cached_article_ids）で絞り、
-    Firestore の has_explanation 未設定でも落ちない。IDメタが空のときはカテゴリのみで救済。
+    論文トップ（/）用: 研究・論文を取得。
+    Neon では専用クエリ、SQLite ではカテゴリで絞る。
     """
     try:
         from app.config import settings
@@ -150,10 +135,6 @@ def load_papers_for_site_list() -> list[NewsItem]:
     if _use_neon():
         from .neon_store import neon_load_all_papers_for_site_list
         items = neon_load_all_papers_for_site_list(limit=limit)
-    elif _use_firestore():
-        from .firestore_store import firestore_load_all_papers_for_site_list
-
-        items = firestore_load_all_papers_for_site_list(limit=limit)
     else:
         items = _sqlite_load_papers_for_site_list(limit=limit)
     return sorted(
@@ -212,9 +193,6 @@ def save_articles_batch(items: list[NewsItem]) -> int:
     if _use_neon():
         from .neon_store import neon_save_articles_batch
         return neon_save_articles_batch(items)
-    if _use_firestore():
-        from .firestore_store import firestore_save_articles_batch
-        return firestore_save_articles_batch(items)
     _init_db()
     count = 0
     with _get_conn() as conn:
@@ -249,9 +227,6 @@ def save_article(item: NewsItem) -> bool:
     if _use_neon():
         from .neon_store import neon_save_article
         return neon_save_article(item)
-    if _use_firestore():
-        from .firestore_store import firestore_save_article
-        return firestore_save_article(item)
     _init_db()
     try:
         with _get_conn() as conn:
@@ -282,12 +257,8 @@ def delete_article(article_id: str) -> bool:
     if _use_neon():
         from .neon_store import neon_delete_article
         return neon_delete_article(article_id)
-    if _use_firestore():
-        from .firestore_store import firestore_delete_article
-        return firestore_delete_article(article_id)
     _init_db()
     with _get_conn() as conn:
         cur = conn.execute("DELETE FROM articles WHERE id = ?", (article_id,))
         conn.commit()
     return cur.rowcount > 0
-

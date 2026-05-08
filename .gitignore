@@ -6,3 +6,11 @@ credentials/
 
 # AI解説キャッシュDB
 data/
+
+# VS Code ローカル履歴（.env のコピーが含まれるため除外）
+.history/
+
+# Python キャッシュ
+__pycache__/
+*.pyc
+*.pyo

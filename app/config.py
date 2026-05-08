@@ -47,35 +47,30 @@ class Settings:
     RSS_PUBMED_FEED_LIMIT: int = int(os.getenv("RSS_PUBMED_FEED_LIMIT", "120"))
     # 論文記事として採用する最小要約文字数（短すぎる抄録は除外）
     RSS_MIN_PAPER_SUMMARY_CHARS: int = int(os.getenv("RSS_MIN_PAPER_SUMMARY_CHARS", "340"))
-    # 論文トップ「すべて」で読み込む上限（解説付き論文のみの専用クエリ。既定2万・最大5万）
-    # 論文トップ「すべて」で読み込む上限（SSR で Firestore 読み取りが発生するため、無料枠向け既定は小さくする）
+    # 論文トップ「すべて」で読み込む上限（Neon/SQLite いずれも一覧の負荷に直結）
     PAPERS_LIST_MAX: int = int(os.getenv("PAPERS_LIST_MAX", "120"))
-    # Firestore 論文一覧（/ トップ）のメモリキャッシュ秒。記事保存・解説保存で無効化される
+    # 論文一覧のメモリキャッシュ秒（アプリ側）
     PAPERS_SITE_LIST_CACHE_TTL_SEC: int = int(os.getenv("PAPERS_SITE_LIST_CACHE_TTL_SEC", "86400"))
-    # get_news 等で「解説付き ∩ articles」から並べる最大件数（既定は実質無制限に近い）
+    # get_news 等で並べる最大件数（既定は実質無制限に近い）
     NEWS_LIST_DISPLAY_MAX: int = int(os.getenv("NEWS_LIST_DISPLAY_MAX", "500000"))
-    # get_news の _meta/cache 変化検知間隔（秒）。大きいほど Firestore 読み取りが減る
+    # 旧 Firestore メタ検知（互換のみ。未使用なら 0）
     NEWS_META_FP_POLL_SEC: float = float(os.getenv("NEWS_META_FP_POLL_SEC", "0"))
     # sync_list_cache で _news_cache が空のとき、差分復元に使う最大件数（全件 load_all 回避用）
     NEWS_SYNC_SEED_MAX: int = int(os.getenv("NEWS_SYNC_SEED_MAX", "50"))
-    # 起動時に Firestore 全記事ウォームアップを行うか（0/false で無効）
-    FIRESTORE_WARM_ON_STARTUP: str = os.getenv("FIRESTORE_WARM_ON_STARTUP", "false")
     # 起動後の自動シード（RSS取得→記事化）を有効化するか（無料枠向け既定は無効）
     STARTUP_SEED_ENABLED: str = os.getenv("STARTUP_SEED_ENABLED", "false")
-    # 記事詳細の解説をメモリに保持する最大件数（LRU）。大きいほど Firestore 再読みが減る
+    # 記事詳細の解説をメモリに保持する最大件数（LRU）
     EXPLANATION_MEMORY_CACHE_MAX: int = int(os.getenv("EXPLANATION_MEMORY_CACHE_MAX", "10000"))
-    # SQLite の load_all 上限（Firestore は全件スナップショット）
+    # SQLite の load_all 上限
     SQLITE_ARTICLES_LIST_LIMIT: int = int(os.getenv("SQLITE_ARTICLES_LIST_LIMIT", "100000"))
     # Full-Text RSS 使用時に本文をどれだけ優先するか（0.0〜1.0）
     FULLTEXT_BODY_PRIORITY: float = float(os.getenv("FULLTEXT_BODY_PRIORITY", "0.85"))
     # FiveFilters Full-Text RSS のベースURL（未設定なら通常のRSSをそのまま取得）
     FULLTEXT_RSS_BASE_URL: str = os.getenv("FULLTEXT_RSS_BASE_URL", "").rstrip("/")
-    # Neon Postgres 接続文字列（設定されていれば Firestore / SQLite より優先）
+    # Neon Postgres 接続文字列（設定されていれば SQLite より優先）
     DATABASE_URL: str = os.getenv("DATABASE_URL", "").strip()
     # 管理者用シークレット（手動記事追加・管理画面）。未設定なら管理機能は利用不可
     ADMIN_SECRET: str = os.getenv("ADMIN_SECRET", "").strip()
-    # Firebase（未設定ならSQLiteを使用）。サービスアカウントJSON文字列 or 空
-    FIREBASE_SERVICE_ACCOUNT_JSON: str = os.getenv("FIREBASE_SERVICE_ACCOUNT_JSON", "").strip()
     # サイトの絶対URL（sitemap・OG・canonical用）。未設定時はリクエストの base_url を使用
     SITE_URL: str = os.getenv("SITE_URL", "").rstrip("/")
     # RapidAPI（Super Duper Trends 等）。未設定ならGoogleトレンドRSSのみ使用

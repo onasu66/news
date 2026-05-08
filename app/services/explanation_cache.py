@@ -1,4 +1,4 @@
-"""AI解説・人格意見の永続キャッシュ（SQLite / Firestore）。Firestore 利用時はメモリキャッシュで読み取り削減"""
+"""AI解説・人格意見の永続キャッシュ（Neon Postgres / SQLite）"""
 import json
 import sqlite3
 import time
@@ -6,7 +6,7 @@ import threading
 from pathlib import Path
 from typing import Optional
 
-# Firestore 時のメモリキャッシュ（無料枠 5万読/日 対策）
+# ID 一覧・詳細のメモリキャッシュ
 _ids_cache: Optional[tuple[float, set[str]]] = None  # (cached_at, set of ids)
 _ids_cache_ttl_sec = 60
 _explanation_cache: dict[str, dict] = {}  # article_id -> 解説 dict
@@ -23,7 +23,7 @@ def _explanation_cache_max() -> int:
 
 
 def clear_explanation_memory_cache() -> None:
-    """Firestore 用の解説メモリキャッシュを全消去（記事・解説更新後に firestore 側から呼ぶ）。"""
+    """解説メモリキャッシュを全消去する。"""
     global _explanation_cache
     with _explanation_cache_lock:
         _explanation_cache.clear()
@@ -32,16 +32,6 @@ def _use_neon():
     try:
         from .neon_store import use_neon
         return use_neon()
-    except Exception:
-        return False
-
-
-def _use_firestore():
-    if _use_neon():
-        return False
-    try:
-        from .firestore_store import use_firestore
-        return use_firestore()
     except Exception:
         return False
 
@@ -84,19 +74,19 @@ def _init_db():
 
 
 def invalidate_ids_cache() -> None:
-    """Firestore 用のメモリキャッシュ（get_cached_article_ids）を無効化。同期API実行後に呼ぶ"""
+    """get_cached_article_ids のメモリキャッシュを無効化し、論文一覧のメモリも破棄する。"""
     global _ids_cache
     _ids_cache = None
     try:
-        from .firestore_store import firestore_invalidate_papers_site_list_cache
+        from .news_aggregator import NewsAggregator
 
-        firestore_invalidate_papers_site_list_cache()
+        NewsAggregator._invalidate_papers_cache()
     except Exception:
         pass
 
 
 def get_cached_article_ids() -> set[str]:
-    """AI処理済み（ミドルマン解説あり）のarticle_id一覧。Firestore 時はメモリで 60 秒キャッシュ"""
+    """AI処理済み（ミドルマン解説あり）の article_id 一覧。"""
     global _ids_cache
     if _use_neon():
         now = time.monotonic()
@@ -104,14 +94,6 @@ def get_cached_article_ids() -> set[str]:
             return _ids_cache[1]
         from .neon_store import neon_get_cached_article_ids
         ids = neon_get_cached_article_ids()
-        _ids_cache = (now, ids)
-        return ids
-    if _use_firestore():
-        now = time.monotonic()
-        if _ids_cache is not None and (now - _ids_cache[0]) < _ids_cache_ttl_sec:
-            return _ids_cache[1]
-        from .firestore_store import firestore_get_cached_article_ids
-        ids = firestore_get_cached_article_ids()
         _ids_cache = (now, ids)
         return ids
     _init_db()
@@ -146,28 +128,6 @@ def get_cached(article_id: str) -> Optional[dict]:
         except Exception as e:
             import logging as _logging
             _logging.getLogger(__name__).warning("get_cached: Neon読み取り失敗 article_id=%s: %s", article_id, e)
-            return None
-        if result is not None:
-            with _explanation_cache_lock:
-                if len(_explanation_cache) >= _explanation_cache_max():
-                    oldest = next(iter(_explanation_cache))
-                    del _explanation_cache[oldest]
-                _explanation_cache[article_id] = result
-        return result
-    if _use_firestore():
-        with _explanation_cache_lock:
-            cached = _explanation_cache.get(article_id)
-        if cached is not None:
-            return cached
-        from .firestore_store import firestore_get_cached
-        try:
-            result = firestore_get_cached(article_id)
-        except Exception as e:
-            import logging as _logging
-            _logging.getLogger(__name__).warning(
-                "get_cached: Firestore 読み取り失敗（クォータ超過の可能性）article_id=%s: %s",
-                article_id, e,
-            )
             return None
         if result is not None:
             with _explanation_cache_lock:
@@ -230,15 +190,11 @@ def get_cached(article_id: str) -> Optional[dict]:
 
 
 def get_cached_many(article_ids: list[str]) -> dict[str, dict]:
-    """
-    複数 article_id をまとめてキャッシュから取得（SQLite 用の直列削減）
-    Firestore は既存 get_cached がメモリキャッシュを持っているため、ここでは利用者側で呼び分ける前提。
-    """
+    """複数 article_id をまとめてキャッシュから取得（SQLite 用の直列削減）。"""
     if not article_ids:
         return {}
 
-    # Firestore は別途行う（必要なら caller 側で Firestore バルクリードを使う）
-    if _use_firestore():
+    if _use_neon():
         out: dict[str, dict] = {}
         for aid in article_ids:
             d = get_cached(aid)
@@ -307,12 +263,6 @@ def delete_cache(article_id: str) -> bool:
         _ids_cache = None
         _explanation_cache.pop(article_id, None)
         return out
-    if _use_firestore():
-        from .firestore_store import firestore_delete_cache
-        out = firestore_delete_cache(article_id)
-        _ids_cache = None
-        _explanation_cache.pop(article_id, None)
-        return out
     _init_db()
     with _get_conn() as conn:
         cur = conn.execute("DELETE FROM explanation_cache WHERE article_id = ?", (article_id,))
@@ -338,7 +288,7 @@ def _get_extra_conn():
 
 
 def _get_extra(article_id: str) -> Optional[dict]:
-    if _use_firestore():
+    if _use_neon():
         return None
     try:
         with _get_extra_conn() as conn:
@@ -349,7 +299,7 @@ def _get_extra(article_id: str) -> Optional[dict]:
 
 
 def _save_extra(article_id: str, data: dict):
-    if _use_firestore():
+    if _use_neon():
         return
     try:
         with _get_extra_conn() as conn:
@@ -397,21 +347,6 @@ def save_cache(
             NewsAggregator.upsert_article_in_news_cache(article_id)
         except Exception:
             pass
-        return
-    if _use_firestore():
-        from .firestore_store import firestore_save_cache
-        firestore_save_cache(
-            article_id,
-            blocks,
-            personas,
-            display_persona_ids=display_persona_ids,
-            quick_understand=quick_understand,
-            vote_data=vote_data,
-            paper_graph=paper_graph,
-            paper_quiz=paper_quiz,
-            deep_insights=deep_insights,
-        )
-        _ids_cache = None  # 次回 get_cached_article_ids で再取得
         return
     _init_db()
     if display_persona_ids is not None and len(display_persona_ids) == 3 and len(personas) == 3:

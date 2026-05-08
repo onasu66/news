@@ -1,7 +1,8 @@
-"""AI日次コンテンツ生成 - 朝9時に1日1回更新。AIおすすめ・昨日のメモ・人格コメント"""
+"""AI日次コンテンツ生成 - 朝9時に1日1回更新。昨日のメモ・人格コメント"""
 import json
 import logging
 from datetime import datetime, timedelta
+from pathlib import Path
 from typing import Optional
 
 logger = logging.getLogger(__name__)
@@ -9,35 +10,48 @@ logger = logging.getLogger(__name__)
 _daily_cache: Optional[dict] = None
 _daily_date: Optional[str] = None
 
+_LOCAL_STATE = Path(__file__).resolve().parent.parent.parent / "data" / "ai_daily.json"
 
-def _use_firestore():
+
+def _use_neon():
     try:
-        from .firestore_store import use_firestore
-        return use_firestore()
+        from .neon_store import use_neon
+        return use_neon()
     except Exception:
         return False
 
 
-def _load_from_firestore() -> Optional[dict]:
+def _load_from_store() -> Optional[dict]:
+    if _use_neon():
+        try:
+            from .neon_store import neon_ai_daily_get
+
+            return neon_ai_daily_get()
+        except Exception as e:
+            logger.warning("ai_daily: Neon からの読み込みに失敗: %s", e)
+            return None
     try:
-        from .firestore_store import _get_client
-        client = _get_client()
-        doc = client.collection("ai_daily").document("latest").get()
-        if doc.exists:
-            return doc.to_dict()
+        if _LOCAL_STATE.exists():
+            return json.loads(_LOCAL_STATE.read_text(encoding="utf-8"))
     except Exception as e:
-        logger.warning("Failed to load ai_daily from Firestore: %s", e)
+        logger.warning("ai_daily: ローカルファイル読み込み失敗: %s", e)
     return None
 
 
-def _save_to_firestore(data: dict):
+def _save_to_store(data: dict) -> None:
+    if _use_neon():
+        try:
+            from .neon_store import neon_ai_daily_save
+
+            neon_ai_daily_save(data)
+        except Exception as e:
+            logger.warning("ai_daily: Neon への保存に失敗: %s", e)
+        return
     try:
-        from .firestore_store import _get_client, _server_timestamp
-        client = _get_client()
-        data["updated_at"] = _server_timestamp()
-        client.collection("ai_daily").document("latest").set(data)
+        _LOCAL_STATE.parent.mkdir(parents=True, exist_ok=True)
+        _LOCAL_STATE.write_text(json.dumps(data, ensure_ascii=False), encoding="utf-8")
     except Exception as e:
-        logger.warning("Failed to save ai_daily to Firestore: %s", e)
+        logger.warning("ai_daily: ローカルファイル保存失敗: %s", e)
 
 
 def get_daily_ai_content() -> Optional[dict]:
@@ -48,18 +62,17 @@ def get_daily_ai_content() -> Optional[dict]:
     if _daily_cache and _daily_date == today:
         return _daily_cache
 
-    if _use_firestore():
-        stored = _load_from_firestore()
-        if stored and stored.get("date") == today:
-            _daily_cache = stored
-            _daily_date = today
-            return stored
+    stored = _load_from_store()
+    if stored and stored.get("date") == today:
+        _daily_cache = stored
+        _daily_date = today
+        return stored
 
     return _daily_cache
 
 
 def generate_daily_ai_content():
-    """日次AIコンテンツを生成（朝9時にスケジューラから呼ぶ）"""
+    """日次AIコンテンツを生成（スケジューラから呼ぶ）"""
     global _daily_cache, _daily_date
     from app.config import settings
 
@@ -125,8 +138,7 @@ def generate_daily_ai_content():
     _daily_cache = data
     _daily_date = today
 
-    if _use_firestore():
-        _save_to_firestore(data)
+    _save_to_store(data)
 
     logger.info("Generated daily AI content for %s", today)
     return data

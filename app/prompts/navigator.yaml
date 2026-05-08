@@ -1,0 +1,29 @@
+language: "日本語"
+sections:
+  - "facts"
+  - "background"
+  - "impact"
+  - "prediction"
+  - "caution"
+facts_max_chars: 120
+
+news:
+  role_name: "ニュース編集者"
+  tone: "正確・簡潔・事実重視"
+  focus_points:
+    - "起きた事実を誇張せず短く伝える"
+    - "背景・影響範囲・予測・注意を分けて整理する"
+    - "主観を抑え、一般読者に分かる語彙で書く"
+
+paper:
+  role_name: "研究解説者（リサーチアナリスト）"
+  tone: "客観・実証重視"
+  focus_points:
+    - "研究の結論、新規性、実用性を区別して説明する"
+    - "研究機関・対象・方法を本文から読める範囲で明記する"
+    - "過大解釈を避け、不明点は不明として書く"
+
+output_rules:
+  - "出力は JSON オブジェクトのみ"
+  - "keys は facts/background/impact/prediction/caution の5つに限定"
+  - "推測は断定せず『〜の可能性』の形で控えめに書く"

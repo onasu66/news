@@ -15,6 +15,7 @@ import subprocess
 import sys
 import tempfile
 import threading
+import time
 from datetime import datetime
 from pathlib import Path
 from zoneinfo import ZoneInfo
@@ -24,6 +25,8 @@ JST = ZoneInfo("Asia/Tokyo")
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 CURATED_FILE = PROJECT_ROOT / "curated_articles.json"
+_usage_lock = threading.Lock()
+_usage_stats: dict[str, dict[str, float]] = {}
 
 _NEWS_PROMPT = """\
 今日は {today}（日本時間）です。
@@ -113,11 +116,74 @@ def is_claude_available() -> bool:
     return _find_claude_cmd() is not None
 
 
-def run_claude_text_gen(prompt: str, timeout: int = 120) -> str:
+def _estimate_tokens(text: str) -> int:
+    # 日本語は 1token あたり文字数が揺れるため、簡易に 1token ~= 3.2 chars で概算
+    t = text or ""
+    return max(1, int(len(t) / 3.2))
+
+
+def _record_usage(kind: str, *, prompt: str, output: str, elapsed_sec: float, ok: bool) -> None:
+    in_tok = _estimate_tokens(prompt)
+    out_tok = _estimate_tokens(output)
+    with _usage_lock:
+        cur = _usage_stats.get(kind) or {
+            "calls": 0.0,
+            "success_calls": 0.0,
+            "failed_calls": 0.0,
+            "input_tokens_est": 0.0,
+            "output_tokens_est": 0.0,
+            "elapsed_sec_total": 0.0,
+            "last_elapsed_sec": 0.0,
+            "last_input_tokens_est": 0.0,
+            "last_output_tokens_est": 0.0,
+        }
+        cur["calls"] += 1
+        if ok:
+            cur["success_calls"] += 1
+        else:
+            cur["failed_calls"] += 1
+        cur["input_tokens_est"] += in_tok
+        cur["output_tokens_est"] += out_tok
+        cur["elapsed_sec_total"] += max(0.0, float(elapsed_sec))
+        cur["last_elapsed_sec"] = max(0.0, float(elapsed_sec))
+        cur["last_input_tokens_est"] = in_tok
+        cur["last_output_tokens_est"] = out_tok
+        _usage_stats[kind] = cur
+    logger.info(
+        "CLAUDE_USAGE kind=%s ok=%s in_tok~%d out_tok~%d elapsed=%.2fs",
+        kind,
+        ok,
+        in_tok,
+        out_tok,
+        elapsed_sec,
+    )
+
+
+def get_claude_usage_stats() -> dict:
+    with _usage_lock:
+        # JSONで返しやすいようにコピーして整数化
+        snap = {}
+        for k, v in _usage_stats.items():
+            snap[k] = {
+                "calls": int(v.get("calls", 0)),
+                "success_calls": int(v.get("success_calls", 0)),
+                "failed_calls": int(v.get("failed_calls", 0)),
+                "input_tokens_est": int(v.get("input_tokens_est", 0)),
+                "output_tokens_est": int(v.get("output_tokens_est", 0)),
+                "elapsed_sec_total": round(float(v.get("elapsed_sec_total", 0.0)), 2),
+                "last_elapsed_sec": round(float(v.get("last_elapsed_sec", 0.0)), 2),
+                "last_input_tokens_est": int(v.get("last_input_tokens_est", 0)),
+                "last_output_tokens_est": int(v.get("last_output_tokens_est", 0)),
+            }
+        return snap
+
+
+def run_claude_text_gen(prompt: str, timeout: int = 120, usage_kind: str = "text_gen") -> str:
     """Claude CLI にプロンプトを渡してテキストを生成する（記事リサーチ以外の汎用用途）。
     出力をファイルに書かせて読み返す方式。失敗・タイムアウト時は空文字を返す。"""
     cmd_path = _find_claude_cmd()
     if not cmd_path:
+        _record_usage(usage_kind, prompt=prompt, output="", elapsed_sec=0.0, ok=False)
         return ""
     with tempfile.TemporaryDirectory() as tmpdir:
         out_file = Path(tmpdir) / "out.txt"
@@ -128,6 +194,7 @@ def run_claude_text_gen(prompt: str, timeout: int = 120) -> str:
             "他のファイルへの書き込みや Web 検索は不要です。"
         )
         cmd = _build_cmd_text_only(cmd_path)
+        started = time.perf_counter()
         try:
             proc = subprocess.run(
                 cmd,
@@ -146,15 +213,52 @@ def run_claude_text_gen(prompt: str, timeout: int = 120) -> str:
                     proc.returncode,
                     (proc.stderr or "")[:300],
                 )
+                _record_usage(
+                    usage_kind,
+                    prompt=full_prompt,
+                    output=(proc.stdout or "")[:5000],
+                    elapsed_sec=time.perf_counter() - started,
+                    ok=False,
+                )
                 return ""
             if out_file.exists():
-                return out_file.read_text(encoding="utf-8").strip()
-            return (proc.stdout or "").strip()
+                out = out_file.read_text(encoding="utf-8").strip()
+                _record_usage(
+                    usage_kind,
+                    prompt=full_prompt,
+                    output=out,
+                    elapsed_sec=time.perf_counter() - started,
+                    ok=True,
+                )
+                return out
+            out = (proc.stdout or "").strip()
+            _record_usage(
+                usage_kind,
+                prompt=full_prompt,
+                output=out,
+                elapsed_sec=time.perf_counter() - started,
+                ok=True,
+            )
+            return out
         except subprocess.TimeoutExpired:
             logger.warning("run_claude_text_gen タイムアウト (%d 秒)", timeout)
+            _record_usage(
+                usage_kind,
+                prompt=full_prompt,
+                output="",
+                elapsed_sec=time.perf_counter() - started,
+                ok=False,
+            )
             return ""
         except Exception as e:
             logger.warning("run_claude_text_gen エラー: %s", e)
+            _record_usage(
+                usage_kind,
+                prompt=full_prompt,
+                output="",
+                elapsed_sec=time.perf_counter() - started,
+                ok=False,
+            )
             return ""
 
 

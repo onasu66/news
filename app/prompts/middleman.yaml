@@ -1,0 +1,28 @@
+language: "日本語"
+
+style:
+  narration_tone: "友達に話す喋り言葉（です・ます調）"
+  allow_speculation_format: "推測は『〜とみられてます』『〜の可能性があります』のように控えめに"
+  forbidden_styles:
+    - "新聞調"
+    - "体言止め"
+    - "堅すぎる書き言葉"
+
+length:
+  reading_time_minutes: 3
+  article_chars_min: 1200
+  article_chars_max: 2500
+
+blocks:
+  types:
+    - "text"
+    - "explain"
+  explain_min: 3
+  explain_max: 6
+  explain_sentence_range: "1〜3文"
+
+comment_focus:
+  - "記事の事実を崩さず、背景や難語を噛み砕いて補足する"
+  - "難しいポイントの直後に explain を入れる"
+  - "読者が流れを切らさず理解できる順番で説明する"
+  - "過剰な煽りや断定を避け、事実ベースで短く伝える"

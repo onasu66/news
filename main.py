@@ -63,7 +63,7 @@ def _scheduled_claude_research_and_seed():
         from app.services.article_seed_from_curated import process_curated_articles
         count = process_curated_articles(max_per_run=30)
         if count > 0:
-            NewsAggregator.sync_list_cache_from_db(force=True)  # 直前の Firestore 書き込み成功 → バックオフ無視
+            NewsAggregator.sync_list_cache_from_db(force=True)  # DB 書き込み直後ならバックオフ無視
             NewsAggregator._invalidate_papers_cache()
             logger.info("Claude リサーチ→記事化完了: %d 件追加", count)
         else:
@@ -81,7 +81,7 @@ def _scheduled_sync_list_cache_from_db():
 
 
 def _seed_if_needed():
-    """キャッシュが少ないときだけRSS取得→記事化。Firestore 読取削減のため existing_articles を渡す。"""
+    """キャッシュが少ないときだけRSS取得→記事化。"""
     from app.services.explanation_cache import get_cached_article_ids
     from app.services.article_cache import load_all
     from app.services.rss_service import fetch_rss_news
@@ -98,8 +98,8 @@ def _seed_if_needed():
 
 
 def _startup_add_one_each():
-    """起動時に日本関連記事1本＋海外記事1本をFirestoreに追加（バックグラウンド実行）。
-    1本あたりRSS取得・翻訳・本文取得・解説生成のため目安2〜5分、2本で合計おおよそ4〜10分かかることがあります。"""
+    """起動時に日本関連記事1本＋海外記事1本をDBに追加（バックグラウンド実行）。
+    1本あたりRSS取得・翻訳・本文取得・解説生成のため目安2〜5分かかることがあります。"""
     try:
         from app.services.article_processor import process_startup_articles
         from app.services.news_aggregator import NewsAggregator
@@ -113,32 +113,47 @@ def _startup_add_one_each():
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """起動時にスケジューラ開始。Firestore は初回アクセス時に遅延読み込み（512MB 制限で OOM にならないようにする）。"""
+    """起動時にスケジューラ開始。"""
     import os
     import threading
     rss_ai_disabled = is_rss_and_ai_disabled()
     if rss_ai_disabled:
         logger.info("RSS取得・AI要約は無効です（DISABLE_RSS_AND_AI=true）。表示はキャッシュのみ。")
 
-    # Render では credentials ファイルがデプロイされないため、Firestore を使うには FIREBASE_SERVICE_ACCOUNT_JSON が必須
+    # ストレージ: Neon があれば Postgres、なければローカル SQLite
+    try:
+        from app.services.neon_store import use_neon, neon_init_schema
+
+        db_url = os.environ.get("DATABASE_URL", "").strip()
+        if use_neon():
+            try:
+                neon_init_schema()
+            except Exception as e:
+                logger.warning("Neon スキーマ初期化でエラー: %s", e)
+            logger.info("ストレージ: Neon Postgres（DATABASE_URL 先頭40文字: %s...）", db_url[:40])
+        else:
+            if db_url:
+                logger.warning("ストレージ: DATABASE_URL はありますが psycopg2 が使えないため SQLite にフォールバックしています")
+            else:
+                logger.info("ストレージ: DATABASE_URL 未設定 → ローカル SQLite（data/articles.db）を使用します")
+    except Exception as e:
+        logger.warning("ストレージ確認でエラー: %s", e)
+
     if os.environ.get("RENDER", "").strip().lower() == "true":
         try:
-            from app.services.firestore_store import use_firestore
-            if use_firestore():
-                logger.info("ストレージ: Firestore を使用しています。")
-            else:
+            from app.services.neon_store import use_neon as _un
+
+            if not _un():
                 logger.error(
-                    "Render で Firestore を使うには、ダッシュボードの Environment に "
-                    "FIREBASE_SERVICE_ACCOUNT_JSON を設定してください。未設定のため SQLite（空）を使用しており、記事は表示されません。"
+                    "Render 本番では DATABASE_URL（Neon の接続文字列）と psycopg2-binary の利用を推奨します。"
                 )
         except Exception as e:
-            logger.warning("ストレージ確認でエラー: %s", e)
+            logger.warning("Render ストレージ確認でエラー: %s", e)
 
-    # Firestore は起動時に import しない（firebase-admin が重く 512MB で OOM になるため）。初回の記事取得時に読み込まれる。
     startup_seed_enabled = str(getattr(settings, "STARTUP_SEED_ENABLED", "false")).strip().lower() in ("1", "true", "yes")
 
     if not rss_ai_disabled and startup_seed_enabled:
-        # シードは _init 完了後に実行（同時の load_all で Firestore 読取バーストを防ぐ）
+        # シードは _init 完了後に実行
         def _run_seed_delayed():
             import time
             time.sleep(90)
@@ -151,25 +166,8 @@ async def lifespan(app: FastAPI):
         # 起動直後は軽い処理だけ先に実行して、API応答を阻害しない
         NewsAggregator.get_trends(force_refresh=True)
 
-    def _warm_firestore_articles():
-        """数秒後に Firestore の articles を全件メモリへ載せ、以降の閲覧で読み取りを抑える。"""
-        import time
-        time.sleep(5)
-        try:
-            from app.services.firestore_store import use_firestore, firestore_warm_articles_snapshot
-            if use_firestore():
-                n = firestore_warm_articles_snapshot()
-                logger.info("Firestore 全記事スナップショット: %d 件をメモリに読み込みました。", n)
-        except Exception as e:
-            logger.warning("Firestore 記事ウォームアップ: %s", e)
-
     t = threading.Thread(target=_init, daemon=True)
     t.start()
-    warm_on_start = str(getattr(settings, "FIRESTORE_WARM_ON_STARTUP", "false")).strip().lower() in ("1", "true", "yes")
-    if warm_on_start:
-        threading.Thread(target=_warm_firestore_articles, daemon=True).start()
-    else:
-        logger.info("Firestore 記事ウォームアップは無効化されています（FIRESTORE_WARM_ON_STARTUP=false）。")
 
     scheduler = BackgroundScheduler(timezone=JST)
     # 記事一覧は閲覧時TTL破棄をしない運用。RSS 取り込みは cron（force_refresh=True）のみ。
@@ -259,45 +257,72 @@ def admin_sync_cache():
     return {"status": "ok", "cached": len(NewsAggregator._news_cache or [])}
 
 
+@app.get("/api/debug/neon-status")
+async def debug_neon_status():
+    """Neon Postgres の接続状態を診断する。"""
+    import os
+    import traceback
+    db_url = os.environ.get("DATABASE_URL", "").strip()
+    result = {
+        "database_url_set": bool(db_url),
+        "database_url_preview": (db_url[:40] + "...") if db_url else "",
+        "psycopg2_importable": False,
+        "use_neon": False,
+        "connection_ok": False,
+        "articles_count": None,
+        "error": None,
+    }
+    try:
+        import psycopg2  # noqa: F401
+        result["psycopg2_importable"] = True
+    except Exception as e:
+        result["error"] = f"psycopg2 import 失敗: {type(e).__name__}: {e}"
+        return result
+    try:
+        from app.services.neon_store import use_neon
+        result["use_neon"] = use_neon()
+    except Exception as e:
+        result["error"] = f"use_neon() 呼び出し失敗: {e}"
+        return result
+    if not result["use_neon"]:
+        result["error"] = "use_neon() が False を返しました（DATABASE_URL 未設定の可能性があります）"
+        return result
+    try:
+        import psycopg2 as pg2
+        conn = pg2.connect(dsn=db_url)
+        conn.autocommit = True
+        with conn.cursor() as cur:
+            cur.execute("SELECT COUNT(*) FROM articles")
+            result["articles_count"] = cur.fetchone()[0]
+        conn.close()
+        result["connection_ok"] = True
+    except Exception as e:
+        result["error"] = f"接続テスト失敗: {type(e).__name__}: {e}\n{traceback.format_exc()}"
+    return result
+
+
 @app.get("/api/debug/storage")
 async def debug_storage():
-    """Firebase/Firestore が有効か確認。認証設定の診断用。"""
+    """Neon Postgres または SQLite のどちらを使っているか確認する。"""
+    import os
+
+    db_url = os.environ.get("DATABASE_URL", "").strip()
     try:
-        from app.services.firestore_store import use_firestore, _load_credential_dict, _FIREBASE_JSON, _CREDENTIALS_PATH
-        cred_dict = _load_credential_dict()
-        credentials_set = bool(_FIREBASE_JSON or _CREDENTIALS_PATH.exists())
-        credentials_valid = cred_dict is not None
-        try:
-            import firebase_admin  # noqa: F401
-            firebase_available = True
-        except ModuleNotFoundError:
-            firebase_available = False
-        use_firestore_result = use_firestore()
-        storage = "firestore" if use_firestore_result else "sqlite"
-        if not use_firestore_result and credentials_set:
-            if not credentials_valid:
-                msg = "FIREBASE_SERVICE_ACCOUNT_JSON が不正です。JSON 形式を確認してください。"
-            elif not firebase_available:
-                msg = "firebase-admin がインストールされていません。pip install firebase-admin を実行してください。"
-            else:
-                msg = "Firestore が無効です。上記を確認してください。"
-        else:
-            msg = "Firestore を使用しています。" if use_firestore_result else "認証が未設定のため SQLite を使用しています。"
-        return {
-            "storage": storage,
-            "credentials_set": credentials_set,
-            "credentials_valid_json": credentials_valid,
-            "firebase_admin_available": firebase_available,
-            "message": msg,
-        }
+        from app.services.neon_store import use_neon
+
+        if use_neon():
+            return {
+                "storage": "neon",
+                "database_url_preview": (db_url[:40] + "...") if db_url else "",
+                "message": "Neon Postgres を使用しています。/api/debug/neon-status で詳細を確認できます。",
+            }
     except Exception as e:
-        return {
-            "storage": "sqlite",
-            "credentials_set": False,
-            "credentials_valid_json": False,
-            "firebase_admin_available": False,
-            "message": "確認中にエラー: " + str(e),
-        }
+        return {"storage": "unknown", "message": str(e)}
+    return {
+        "storage": "sqlite",
+        "database_url_set": bool(db_url),
+        "message": "DATABASE_URL が未設定か Neon が無効のため SQLite（data/*.db）を使用しています。",
+    }
 
 
 @app.get("/api/debug/articles-status")
@@ -307,8 +332,9 @@ async def debug_articles_status():
     from app.services.article_cache import load_all
     from app.services.explanation_cache import get_cached_article_ids
     try:
-        from app.services.firestore_store import use_firestore
-        storage = "firestore" if use_firestore() else "sqlite"
+        from app.services.neon_store import use_neon
+
+        storage = "neon" if use_neon() else "sqlite"
     except Exception:
         storage = "sqlite"
     all_articles = []
@@ -331,7 +357,7 @@ async def debug_articles_status():
         "displayable": len(displayable),
         "load_all_error": load_all_error,
         "get_ids_error": get_ids_error,
-        "message": "表示されるのは「記事が保存されている」かつ「AI解説済み」のものだけです。",
+        "message": "ストレージに保存された記事件数／解説付きフラグ情報です（一覧は load_all と同期）。",
     }
 
 
@@ -419,8 +445,9 @@ async def debug_page():
 <li><a href="/">トップ</a></li>
 <li><a href="/confirm">確認用</a></li>
 <li><a href="/admin/login">ログイン</a></li>
+<li><a href="/api/debug/neon-status" target="_blank">Neon Postgres 接続確認</a></li>
 <li><a href="/api/debug/articles-status" target="_blank">記事ステータス（なぜ出ないか確認）</a></li>
-<li><a href="/api/debug/storage" target="_blank">ストレージ確認（Firebase / SQLite どちらか）</a></li>
+<li><a href="/api/debug/storage" target="_blank">ストレージ確認（Neon / SQLite）</a></li>
 <li><a href="/debug/save-history">記事保存履歴（保存できた・できなかった）</a></li>
 </ul>
 <h2>同じWi‑Fi内から</h2>

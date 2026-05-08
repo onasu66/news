@@ -12,7 +12,7 @@ def notify_render_cache_refresh(*, reason: str = "articles_added", timeout_sec: 
     """Render（SITE_URL）へキャッシュ更新通知を送る。
 
     成功すると Render 側が NewsAggregator.sync_list_cache_from_db(force=True) などを実行して
-    メモリキャッシュを更新する。失敗しても記事自体は Firestore に保存済みなので致命的ではない。
+    メモリキャッシュを更新する。失敗しても記事自体は DB に保存済みなので致命的ではない。
     """
     site_url = (getattr(settings, "SITE_URL", "") or "").strip().rstrip("/")
     secret = (getattr(settings, "ADMIN_SECRET", "") or "").strip()

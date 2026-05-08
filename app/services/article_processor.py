@@ -73,10 +73,8 @@ def process_rss_to_site_article(item: NewsItem, force: bool = False) -> bool:
             if not text_mainly_japanese(title_ja) or not text_mainly_japanese(summary_ja):
                 return False
 
-    # タイトルは「元のタイトルをベースに、事実を変えず、誇張せず、必要なら少しだけ分かりやすく」整える
-    # 論文（研究・論文）は見出し加工を避け、元タイトルを基本そのまま使う
-    if item.category != "研究・論文":
-        title_ja = _rewrite_news_title(title_ja)
+    # タイトルは記事化時に毎回生成（事実は維持し、誇張は避ける）
+    title_ja = _rewrite_news_title(title_ja, summary_ja, item.category)
 
     # ジャンルはRSSごとの設定（＋総合ソースはタイトルキーワード補正）のまま使う。AI分類は使わない。
     # 公開日時は「記事として取り込んだ時刻」を使う（元のRSSが古い日時でも、サイト上では追加順に並ぶようにする）
@@ -111,7 +109,7 @@ def process_rss_to_site_article(item: NewsItem, force: bool = False) -> bool:
     if not blocks:
         return False
 
-    # 記事を先に保存してから解説を保存（Firestore で has_explanation を正しく付与するため）
+    # 記事を先に保存してから解説を保存（Neon で has_explanation を付与するため）
     if not save_article(item):
         return False  # 記事の保存に失敗した場合は成功にしない
     save_cache(
@@ -123,8 +121,8 @@ def process_rss_to_site_article(item: NewsItem, force: bool = False) -> bool:
     return True
 
 
-def _rewrite_news_title(title: str) -> str:
-    """ニュース用タイトルを編集方針で整形（感情の温度を少し上げつつ事実ベース）。"""
+def _rewrite_news_title(title: str, summary: str = "", category: str = "") -> str:
+    """記事化時タイトルを生成。OpenAI失敗時はルールベース短縮へフォールバック。"""
     t = (title or "").strip()
     if not t:
         return ""
@@ -141,7 +139,8 @@ def _rewrite_news_title(title: str) -> str:
     # AI が使える場合は「編集者リライト」を1回だけ試す
     try:
         from app.config import settings
-        if settings.OPENAI_API_KEY:
+        enabled = str(getattr(settings, "TITLE_GENERATION_ENABLED", "true")).strip().lower() in ("1", "true", "yes")
+        if settings.OPENAI_API_KEY and enabled:
             from openai import OpenAI
             from app.utils.openai_compat import create_with_retry
             client = OpenAI(api_key=settings.OPENAI_API_KEY)
@@ -154,11 +153,19 @@ def _rewrite_news_title(title: str) -> str:
 - 思わず続きが気になる言い回しにする
 - 長いタイトルは短く、スマホで見切れにくい長さにする
 - 出力はタイトル1行のみ（引用符や説明不要）"""
-            user_prompt = f"元タイトル：{t}\n\n上のルールで、自然な日本語の見出しに整えてください。"
+            if (category or "").strip() == "研究・論文":
+                system_prompt += "\n- 論文は研究対象・結果が分かる実直な見出しにする（コピー調禁止）"
+            user_prompt = (
+                f"カテゴリ：{category or 'ニュース'}\n"
+                f"元タイトル：{t}\n"
+                f"要約：{(summary or '')[:800]}\n\n"
+                "上のルールで、自然な日本語の見出しに整えてください。"
+            )
+            model = (getattr(settings, "TITLE_OPENAI_MODEL", "") or "").strip() or settings.OPENAI_MODEL
             resp = create_with_retry(
                 client,
                 120,
-                model=settings.OPENAI_MODEL,
+                model=model,
                 messages=[
                     {"role": "system", "content": system_prompt},
                     {"role": "user", "content": user_prompt},
@@ -296,7 +303,7 @@ def process_new_rss_articles(
     """
     RSS記事を Autocomplete スコアリング → 軽量フィルタ → 同一内容は1本に → 上位N件をAI処理して掲載。
 
-    existing_articles を渡すと load_all() を呼ばずに既存タイトルで重複排除（Firestore 読取削減）。
+    existing_articles を渡すと load_all() を呼ばずに既存タイトルで重複排除。
     """
     if not rss_items:
         return 0
@@ -542,7 +549,7 @@ def process_new_rss_articles(
 
 def process_random_rss_articles(rss_items: list[NewsItem], count: int = 3) -> int:
     """
-    RSS記事からランダムに count 件を選び、AI解説付きでFirestore/SQLiteに保存する。
+    RSS記事からランダムに count 件を選び、AI解説付きで DB に保存する。
     軽量フィルタ通過・未保存・同一内容重複排除のあと、シャッフルして先頭 count 件を処理。
     """
     if not rss_items:

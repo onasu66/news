@@ -325,7 +325,7 @@ async def robots_txt(request: Request):
 
 @router.get("/sitemap.xml")
 async def sitemap_xml(request: Request):
-    """SEO用 sitemap.xml（一覧は NewsAggregator キャッシュ利用で Firestore 読取を抑える）"""
+    """SEO用 sitemap.xml（一覧は NewsAggregator キャッシュ利用）"""
     site_url = _get_site_url(request)
     articles = NewsAggregator.get_news()
     today = datetime.now().date().isoformat()
@@ -1013,7 +1013,7 @@ def _attach_paper_related_tags(items: list) -> None:
         _apply_tags_to_items(tags_map)
         return
 
-    # Neon / Firestore の場合、関連タグだけバルクリードする
+    # Neon の場合、関連タグだけバルクリードする
     tags_by_id: dict[str, list[str]] = {}
     _bulk_done = False
     try:
@@ -1023,14 +1023,6 @@ def _attach_paper_related_tags(items: list) -> None:
             _bulk_done = True
     except Exception:
         pass
-    if not _bulk_done:
-        try:
-            from app.services.firestore_store import use_firestore, firestore_get_related_tags_bulk
-            if use_firestore():
-                tags_by_id = firestore_get_related_tags_bulk(missing_ids, max_tags_per_article=3)
-                _bulk_done = True
-        except Exception:
-            pass
     if not _bulk_done:
         # SQLite などは explanation_cache からまとめ読み
         try:
@@ -1061,7 +1053,7 @@ def _attach_paper_related_tags(items: list) -> None:
 def _render_papers_page(request: Request, page: int = 1):
     """論文一覧（トップ `/` と共通）
 
-    論文は get_news（Firestore 時は articles 全件メモリ）ではなく、研究・論文＋解説付き専用クエリで取得する。
+    論文は研究・論文カテゴリの専用クエリ（Neon）または SQLite から取得する。
     初回は1ページ分のみ描画し、以降は無限スクロールで追加する。
     """
     from app.services.news_aggregator import NewsAggregator as _NA
@@ -1694,23 +1686,15 @@ async def api_admin_sync_meta(
     x_admin_secret: str | None = Header(None, alias="X-Admin-Secret"),
 ):
     """
-    Firestore の _meta/cache（表示対象の記事ID一覧）を explanations コレクションと同期する。
-    「記事は8件あるが表示は3件」のとき、explanations に8件あれば同期後に8件表示される。
-    管理者のみ。実行後に一覧キャッシュを強制更新する。
+    一覧キャッシュと解説 ID キャッシュを DB 状態に合わせて強制リフレッシュする（旧 Firestore メタ同期の代替）。
     """
     if not _is_admin(request, x_admin_secret):
         raise HTTPException(status_code=403, detail="管理者のみ利用できます")
-    try:
-        from app.services.firestore_store import use_firestore, firestore_sync_meta_from_explanations
-        from app.services.explanation_cache import invalidate_ids_cache
-    except ImportError:
-        raise HTTPException(status_code=501, detail="Firestore 未使用のためこのAPIは利用できません")
-    if not use_firestore():
-        return {"status": "ok", "synced": 0, "message": "Firestore 未使用のためスキップしました"}
-    synced = firestore_sync_meta_from_explanations()
+    from app.services.explanation_cache import invalidate_ids_cache
+
     invalidate_ids_cache()
-    NewsAggregator.get_news(force_refresh=True)
-    return {"status": "ok", "synced": synced}
+    NewsAggregator.sync_list_cache_from_db(force=True)
+    return {"status": "ok", "synced": 0, "message": "一覧キャッシュを DB から再同期しました"}
 
 
 def _do_seed_one_sync():
