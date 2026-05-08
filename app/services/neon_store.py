@@ -60,6 +60,7 @@ def _conn():
         pool = _get_pool()
         conn = pool.getconn()
         try:
+            conn.rollback()  # プール返却時の残留トランザクションをクリア
             yield conn
             conn.commit()
         except Exception:
@@ -91,7 +92,7 @@ def neon_init_schema():
             """)
             cur.execute("""
                 CREATE TABLE IF NOT EXISTS explanations (
-                    article_id TEXT PRIMARY KEY REFERENCES articles(id) ON DELETE CASCADE,
+                    article_id TEXT PRIMARY KEY,
                     inline_blocks TEXT NOT NULL,
                     personas TEXT,
                     display_persona_ids TEXT,
@@ -177,14 +178,14 @@ def neon_load_all() -> list:
 
 
 def neon_load_all_papers_for_site_list(limit: int = 20000) -> list:
-    """論文トップ用: 研究・論文かつ has_explanation=true を added_at 降順で取得。"""
+    """論文トップ用: 研究・論文を added_at 降順で取得。"""
     cap = max(1, min(int(limit), 50000))
     with _conn() as conn:
         with conn.cursor() as cur:
             cur.execute(
                 "SELECT id, title, link, summary, published, source, category, image_url, added_at "
                 "FROM articles "
-                "WHERE category = '研究・論文' AND has_explanation = TRUE "
+                "WHERE category = '研究・論文' "
                 "ORDER BY added_at DESC NULLS LAST, published DESC NULLS LAST "
                 "LIMIT %s",
                 (cap,),
@@ -478,14 +479,14 @@ def neon_query_papers_page(page: int, per_page: int) -> tuple:
             cur.execute(
                 "SELECT id, title, link, summary, published, source, category, image_url, added_at "
                 "FROM articles "
-                "WHERE category = '研究・論文' AND has_explanation = TRUE "
+                "WHERE category = '研究・論文' "
                 "ORDER BY published DESC NULLS LAST "
                 "LIMIT %s OFFSET %s",
                 (per_page, offset),
             )
             rows = cur.fetchall()
             cur.execute(
-                "SELECT COUNT(*) FROM articles WHERE category = '研究・論文' AND has_explanation = TRUE"
+                "SELECT COUNT(*) FROM articles WHERE category = '研究・論文'"
             )
             total = cur.fetchone()[0]
     cols = ["id", "title", "link", "summary", "published", "source", "category", "image_url", "added_at"]
@@ -502,14 +503,14 @@ def neon_query_news_page(page: int, per_page: int) -> tuple:
             cur.execute(
                 "SELECT id, title, link, summary, published, source, category, image_url, added_at "
                 "FROM articles "
-                "WHERE has_explanation = TRUE AND category != '研究・論文' "
+                "WHERE category != '研究・論文' "
                 "ORDER BY published DESC NULLS LAST "
                 "LIMIT %s OFFSET %s",
                 (per_page, offset),
             )
             rows = cur.fetchall()
             cur.execute(
-                "SELECT COUNT(*) FROM articles WHERE has_explanation = TRUE AND category != '研究・論文'"
+                "SELECT COUNT(*) FROM articles WHERE category != '研究・論文'"
             )
             total = cur.fetchone()[0]
     cols = ["id", "title", "link", "summary", "published", "source", "category", "image_url", "added_at"]

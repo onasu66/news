@@ -322,6 +322,9 @@ class NewsAggregator:
     def _prime_meta_fingerprint(cls) -> None:
         """一覧を今の _meta/cache と一致させた直後に呼ぶ（無駄な sync を減らす）。"""
         try:
+            from app.services.neon_store import use_neon
+            if use_neon():
+                return  # Neon 使用時は Firestore メタ不要
             from app.services.firestore_store import use_firestore, firestore_meta_cache_fingerprint
 
             if not use_firestore():
@@ -340,6 +343,9 @@ class NewsAggregator:
         if cls._in_db_backoff():
             return
         try:
+            from app.services.neon_store import use_neon
+            if use_neon():
+                return  # Neon 使用時は Firestore メタポーリング不要
             from app.services.firestore_store import use_firestore, firestore_meta_cache_fingerprint
 
             if not use_firestore():
@@ -391,7 +397,7 @@ class NewsAggregator:
     @classmethod
     def get_news(cls, force_refresh: bool = False) -> list[NewsItem]:
         """
-        AI処理済みのサイト記事のみ表示。
+        保存済みのサイト記事を表示（解説有無では絞らない）。
         通常リクエスト時はDBから即返却（ブロックしない）。
         force_refresh時のみRSS取得→AI処理を実行し、一覧を再取得する。
         閲覧時はTTLで破棄しない（更新イベント駆動）。
@@ -400,18 +406,18 @@ class NewsAggregator:
             if cls._in_db_backoff():
                 return cls._news_cache or []
             try:
-                processed_ids = get_cached_article_ids()
-                # 読み取り削減: load_all の回数を最小化し、force_refresh 時も既存スナップショットを使い回す
                 all_items = load_all()
             except Exception as e:
                 cls._set_db_backoff("initial_load", e)
                 return cls._news_cache or []
-            cached = [x for x in all_items if x.id in processed_ids][:PAGE_DISPLAY_LIMIT]
-            if cached and not force_refresh:
-                cls._news_cache = sorted(cached, key=lambda x: x.added_at or x.published or datetime.min, reverse=True)
+            if all_items and not force_refresh:
+                cls._news_cache = sorted(all_items[:PAGE_DISPLAY_LIMIT], key=lambda x: x.added_at or x.published or datetime.min, reverse=True)
                 cls._last_updated = datetime.now()
                 cls._db_backoff_until = None
-                cls._last_processed_count = len(processed_ids)
+                try:
+                    cls._last_processed_count = len(get_cached_article_ids())
+                except Exception:
+                    cls._last_processed_count = 0
                 cls._prime_meta_fingerprint()
                 return cls._news_cache
             if force_refresh:
@@ -438,33 +444,22 @@ class NewsAggregator:
                                 break
                 finally:
                     try:
-                        # 先頭で get_cached_article_ids 済みの場合、60秒TTLのままだと
-                        # 直前に保存した解説付きIDが一覧に乗らないため必ず無効化する
                         invalidate_ids_cache()
-                        processed_ids = get_cached_article_ids()
-                        # 差分ロード: 処理中に追加された記事のみ load_by_id で補完する。
-                        # load_all()（最大800読み取り）の二重呼び出しを避けて無料枠を節約する。
-                        existing_ids = {x.id for x in all_items}
-                        for nid in processed_ids:
-                            if nid not in existing_ids:
-                                try:
-                                    item = load_by_id(nid)
-                                    if item:
-                                        all_items.append(item)
-                                        existing_ids.add(nid)
-                                except Exception:
-                                    pass
+                        all_items = load_all()
                     except Exception as e:
                         cls._set_db_backoff("refresh_reload", e)
                         return cls._news_cache or []
             cls._news_cache = sorted(
-                [x for x in all_items if x.id in processed_ids][:PAGE_DISPLAY_LIMIT],
+                all_items[:PAGE_DISPLAY_LIMIT],
                 key=lambda x: x.added_at or x.published or datetime.min,
                 reverse=True,
             )
             cls._last_updated = datetime.now()
             cls._db_backoff_until = None
-            cls._last_processed_count = len(processed_ids)
+            try:
+                cls._last_processed_count = len(get_cached_article_ids())
+            except Exception:
+                cls._last_processed_count = 0
             # _news_cache が更新されたら論文一覧のメモリキャッシュも破棄（新着を反映させる）
             cls._invalidate_papers_cache()
             cls._prime_meta_fingerprint()
@@ -475,14 +470,10 @@ class NewsAggregator:
     @classmethod
     def sync_list_cache_from_db(cls, force: bool = False) -> None:
         """
-        RSS・AI は回さず、解説付き ID（Firestore なら _meta/cache 1 読）で一覧キャッシュを揃える。
-        ID 集合が前回と同じなら記事ドキュメントは読まない。増えた ID だけ load_by_id し、
-        load_all（最大 ~2000 読）を毎回避けて無料枠を守る。
+        RSS・AI は回さず、保存済み記事一覧で _news_cache を同期する。
         force=True: DB バックオフ中でも強制実行（直前に Firestore 書き込みが成功した場合に使う）。
         """
         try:
-            from .explanation_cache import invalidate_ids_cache
-
             invalidate_ids_cache()
         except Exception:
             pass
@@ -492,98 +483,18 @@ class NewsAggregator:
         if force:
             cls._db_backoff_until = None
         try:
-            processed_ids = get_cached_article_ids()
+            all_items = load_all()
         except Exception as e:
-            cls._set_db_backoff("sync_ids", e)
+            cls._set_db_backoff("sync_load_all", e)
             return
-        if not processed_ids:
-            cls._news_cache = []
-            cls._last_updated = datetime.now()
-            cls._db_backoff_until = None
-            cls._last_processed_count = 0
-            cls._prime_meta_fingerprint()
-            return
-
-        cached_ids = {x.id for x in cls._news_cache}
-        if processed_ids == cached_ids and cls._news_cache:
-            cls._last_updated = datetime.now()
-            cls._prime_meta_fingerprint()
-            return
-
-        if not cls._news_cache:
-            # Neon / Firestore では順序IDから差分復元して全件 load_all を避ける（read バースト抑制）
-            try:
-                from .neon_store import use_neon, neon_get_cached_article_ids_ordered
-                from .firestore_store import use_firestore, firestore_get_cached_article_ids_ordered
-
-                if use_neon():
-                    ordered_ids = neon_get_cached_article_ids_ordered()
-                elif use_firestore():
-                    ordered_ids = firestore_get_cached_article_ids_ordered()
-                else:
-                    ordered_ids = None
-
-                if ordered_ids is not None:
-                    seed_cap = max(50, int(getattr(settings, "NEWS_SYNC_SEED_MAX", 50)))
-                    seed_items: list[NewsItem] = []
-                    for aid in reversed(ordered_ids[-seed_cap:]):
-                        try:
-                            hit = load_by_id(aid)
-                        except Exception:
-                            hit = None
-                        if hit:
-                            seed_items.append(hit)
-                    if seed_items:
-                        cls._news_cache = sorted(
-                            seed_items,
-                            key=lambda x: x.added_at or x.published or datetime.min,
-                            reverse=True,
-                        )[:PAGE_DISPLAY_LIMIT]
-                        cls._last_updated = datetime.now()
-                        cls._db_backoff_until = None
-                        cls._last_processed_count = len(processed_ids)
-                        cls._prime_meta_fingerprint()
-                        return
-            except Exception:
-                pass
-            try:
-                all_items = load_all()
-            except Exception as e:
-                cls._set_db_backoff("sync_load_all", e)
-                return
-            cls._news_cache = sorted(
-                all_items,
-                key=lambda x: x.added_at or x.published or datetime.min,
-                reverse=True,
-            )[:PAGE_DISPLAY_LIMIT]
-            cls._last_updated = datetime.now()
-            if cls._news_cache:
-                cls._db_backoff_until = None
-            cls._last_processed_count = len(processed_ids)
-            cls._prime_meta_fingerprint()
-            return
-
-        new_ids = processed_ids - cached_ids
-        gone_ids = cached_ids - processed_ids
-        items = [x for x in cls._news_cache if x.id not in gone_ids]
-        for nid in new_ids:
-            try:
-                item = load_by_id(nid)
-            except Exception:
-                item = None
-            if item:
-                items.append(item)
-        cls._news_cache = sorted(
-            items,
-            key=lambda x: x.added_at or x.published or datetime.min,
-            reverse=True,
-        )[:PAGE_DISPLAY_LIMIT]
+        cls._news_cache = sorted(all_items, key=lambda x: x.added_at or x.published or datetime.min, reverse=True)[:PAGE_DISPLAY_LIMIT]
         cls._last_updated = datetime.now()
         cls._db_backoff_until = None
-        cls._last_processed_count = len(processed_ids)
-        # 論文一覧のメモリキャッシュも破棄（新着が反映されるようにする）
-        if new_ids or gone_ids:
-            cls._invalidate_papers_cache()
+        try:
+            cls._last_processed_count = len(get_cached_article_ids())
+        except Exception:
+            cls._last_processed_count = 0
+        cls._invalidate_papers_cache()
         cls._prime_meta_fingerprint()
 
     @classmethod

@@ -15,6 +15,14 @@ if _env_path.exists():
 class Settings:
     OPENAI_API_KEY: str = os.getenv("OPENAI_API_KEY", "")
     OPENAI_MODEL: str = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
+    # ミドルマン記事本文の生成プロバイダ: "claude_first"（既定） or "openai"
+    MIDDLEMAN_PROVIDER: str = os.getenv("MIDDLEMAN_PROVIDER", "claude_first").strip().lower()
+    # MIDDLEMAN_PROVIDER=openai のときに使うモデル（未設定なら gpt-4o）
+    MIDDLEMAN_OPENAI_MODEL: str = os.getenv("MIDDLEMAN_OPENAI_MODEL", "gpt-4o").strip()
+    # 記事化時のタイトル生成を有効化するか
+    TITLE_GENERATION_ENABLED: str = os.getenv("TITLE_GENERATION_ENABLED", "true").strip().lower()
+    # 記事化時タイトル生成に使うモデル
+    TITLE_OPENAI_MODEL: str = os.getenv("TITLE_OPENAI_MODEL", "gpt-4o").strip()
     CDN_BASE_URL: str = os.getenv("CDN_BASE_URL", "https://picsum.photos")
     NEWS_REFRESH_INTERVAL: int = int(os.getenv("NEWS_REFRESH_INTERVAL", "240"))
     # 一覧メモリキャッシュを DB と照合する間隔（分）。0 で無効。無料枠向け既定は 180。

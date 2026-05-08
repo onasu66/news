@@ -164,12 +164,6 @@ def load_papers_for_site_list() -> list[NewsItem]:
 
 
 def _sqlite_load_papers_for_site_list(limit: int) -> list[NewsItem]:
-    from .explanation_cache import get_cached_article_ids
-
-    try:
-        processed = get_cached_article_ids()
-    except Exception:
-        processed = set()
     fetch_cap = min(max(limit * 150, 8000), 100000)
     _init_db()
     items: list[NewsItem] = []
@@ -185,8 +179,6 @@ def _sqlite_load_papers_for_site_list(limit: int) -> list[NewsItem]:
             ("研究・論文", fetch_cap),
         ).fetchall()
     for row in rows:
-        if processed and row["id"] not in processed:
-            continue
         try:
             pub = datetime.fromisoformat(row["published"]) if row["published"] else datetime.now()
         except Exception:

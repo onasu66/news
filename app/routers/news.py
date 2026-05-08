@@ -53,20 +53,20 @@ def _news_tab_category_order_for(by_cat: dict) -> list[str]:
     return base
 
 PERSONA_IMAGE_MAP = {
-    "ブッダ":       "/static/char-imgs/buddha.png",
-    "織田信長":     "/static/char-imgs/nobunaga.png",
-    "吉田松陰":     "/static/char-imgs/shoin.png",
-    "坂本龍馬":     "/static/char-imgs/ryoma.png",
-    "太宰治":       "/static/char-imgs/dazai.png",
-    "葛飾北斎":     "/static/char-imgs/hokusai.png",
-    "ソクラテス":   "/static/char-imgs/socrates.png",
-    "野口英世":     "/static/char-imgs/noguchi.png",
-    "ダヴィンチ":   "/static/char-imgs/davinci.png",
-    "エジソン":     "/static/char-imgs/edison.png",
-    "アインシュタイン": "/static/char-imgs/einstein.png",
-    "ナイチンゲール":   "/static/char-imgs/nightingale.png",
-    "ガリレオ":     "/static/char-imgs/galileo.png",
-    "ニーチェ":     "/static/char-imgs/nietzsche.png",
+    "ブッダ":       "/static/char-imgs/そらみ.png",
+    "織田信長":     "/static/char-imgs/ヴぉるて.png",
+    "吉田松陰":     "/static/char-imgs/りゅみえ.png",
+    "坂本龍馬":     "/static/char-imgs/くらしあ.png",
+    "太宰治":       "/static/char-imgs/ゼロカオス.png",
+    "葛飾北斎":     "/static/char-imgs/kagerou.png",
+    "ソクラテス":   "/static/char-imgs/オメガ.png",
+    "野口英世":     "/static/char-imgs/ぶれいず.png",
+    "ダヴィンチ":   "/static/char-imgs/あるしえる.png",
+    "エジソン":     "/static/char-imgs/れがりあ.png",
+    "アインシュタイン": "/static/char-imgs/くろにくる.png",
+    "ナイチンゲール":   "/static/char-imgs/ノアフォール.png",
+    "ガリレオ":     "/static/char-imgs/ジャスティア.png",
+    "ニーチェ":     "/static/char-imgs/セミナ.png",
     "ミドルマン":   "/static/char-imgs/ミドルマン.png",
 }
 
@@ -1670,6 +1670,22 @@ async def api_admin_cache_refresh(
     except Exception:
         pass
     return {"status": "ok"}
+
+
+@router.get("/api/admin/claude-usage")
+async def api_admin_claude_usage(
+    request: Request,
+    x_admin_secret: str | None = Header(None, alias="X-Admin-Secret"),
+):
+    """Claude 使用量の概算（項目別）を返す。"""
+    if not _is_admin(request, x_admin_secret):
+        raise HTTPException(status_code=403, detail="管理者のみ利用できます")
+    try:
+        from app.services.claude_researcher import get_claude_usage_stats
+
+        return {"status": "ok", "usage": get_claude_usage_stats()}
+    except Exception as e:
+        return {"status": "error", "usage": {}, "message": str(e)}
 
 
 @router.post("/api/admin/sync-meta")
