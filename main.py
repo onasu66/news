@@ -260,9 +260,11 @@ def admin_sync_cache():
 @app.get("/api/debug/neon-status")
 async def debug_neon_status():
     """Neon Postgres の接続状態を診断する。"""
-    import os
     import traceback
-    db_url = os.environ.get("DATABASE_URL", "").strip()
+    from app.config import settings
+
+    # os.environ ではなく settings と同じ値（.env 読み込み後）を表示する
+    db_url = (getattr(settings, "DATABASE_URL", "") or "").strip()
     result = {
         "database_url_set": bool(db_url),
         "database_url_preview": (db_url[:40] + "...") if db_url else "",
@@ -271,6 +273,7 @@ async def debug_neon_status():
         "connection_ok": False,
         "articles_count": None,
         "error": None,
+        "hint": None,
     }
     try:
         import psycopg2  # noqa: F401
@@ -285,7 +288,12 @@ async def debug_neon_status():
         result["error"] = f"use_neon() 呼び出し失敗: {e}"
         return result
     if not result["use_neon"]:
-        result["error"] = "use_neon() が False を返しました（DATABASE_URL 未設定の可能性があります）"
+        result["error"] = "use_neon() が False（DATABASE_URL が空です）"
+        result["hint"] = (
+            "本番(Render)ではダッシュボードの Environment に Neon の接続文字列を "
+            "DATABASE_URL という名前で設定してください（.env はサーバーに自動では乗りません）。"
+            " ローカルではリポジトリ直下の .env に DATABASE_URL=… を書き、プロジェクトルートから起動してください。"
+        )
         return result
     try:
         import psycopg2 as pg2
@@ -304,9 +312,9 @@ async def debug_neon_status():
 @app.get("/api/debug/storage")
 async def debug_storage():
     """Neon Postgres または SQLite のどちらを使っているか確認する。"""
-    import os
+    from app.config import settings
 
-    db_url = os.environ.get("DATABASE_URL", "").strip()
+    db_url = (getattr(settings, "DATABASE_URL", "") or "").strip()
     try:
         from app.services.neon_store import use_neon
 
