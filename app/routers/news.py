@@ -1522,6 +1522,12 @@ def _do_create_manual_article_sync(title: str, summary: str, link: str = "", sou
     if not save_article(item):
         return {"status": "error", "article_id": None, "message": "記事の保存に失敗しました"}
     NewsAggregator.get_news(force_refresh=not is_rss_and_ai_disabled())
+    try:
+        from app.services.render_notifier import notify_render_cache_refresh
+
+        notify_render_cache_refresh(reason="manual_added:1")
+    except Exception:
+        pass
     return {"status": "ok", "article_id": article_id}
 
 
@@ -1708,6 +1714,12 @@ def _do_seed_one_sync():
     if added <= 0:
         return {"status": "none", "article_id": None, "message": "取り込める記事がありません"}
     NewsAggregator.get_news(force_refresh=True)
+    try:
+        from app.services.render_notifier import notify_render_cache_refresh
+
+        notify_render_cache_refresh(reason=f"seed_one_added:{added}")
+    except Exception:
+        pass
     updated = NewsAggregator.get_news()
     new_id = updated[0].id if updated else None
     return {"status": "ok", "article_id": new_id}
@@ -1753,6 +1765,12 @@ def _do_force_add_one_sync():
     delete_cache(item.id)
     if process_rss_to_site_article(item, force=True):
         NewsAggregator.get_news(force_refresh=True)
+        try:
+            from app.services.render_notifier import notify_render_cache_refresh
+
+            notify_render_cache_refresh(reason="force_add_one:1")
+        except Exception:
+            pass
         if NewsAggregator.get_article(item.id) is None:
             return {"status": "error", "article_id": None, "message": "記事の保存後に取得できませんでした。data フォルダの権限やDBを確認してください。"}
         return {"status": "ok", "article_id": item.id}

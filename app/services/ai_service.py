@@ -2,6 +2,8 @@
 import json
 import logging
 import re
+import random
+import threading
 from pathlib import Path
 from typing import Optional, Any
 
@@ -940,9 +942,111 @@ blocks配列のJSONのみ返す。"""
 
 
 # 人格コメントはこの文字数以下に収める（プロンプトで厳守させ、APIトークンも十分に確保して途中打ち切りを防ぐ）
-PERSONA_COMMENT_MAX_LEN = 150
-# 出力が150文字程度でも日本語で完結するまで生成できるよう余裕を持たせる
-PERSONA_COMMENT_MAX_COMPLETION_TOKENS = 350
+PERSONA_COMMENT_MAX_LEN = 180
+# 出力が180文字程度でも日本語で完結するまで生成できるよう余裕を持たせる
+PERSONA_COMMENT_MAX_COMPLETION_TOKENS = 420
+
+# 各偉人コメントで触れる固有要素（プロンプトでハード指定）
+PERSONA_SIGNATURE_ELEMENTS: dict[str, list[str]] = {
+    "ブッダ": ["出家", "四諦", "八正道", "無常", "執着"],
+    "織田信長": ["天下布武", "桶狭間", "比叡山焼き討ち", "楽市楽座", "本能寺"],
+    "吉田松陰": ["松下村塾", "黒船密航未遂", "安政の大獄", "志", "尊王攘夷"],
+    "坂本龍馬": ["薩長同盟", "船中八策", "亀山社中", "大政奉還", "日本を洗濯"],
+    "太宰治": ["人間失格", "走れメロス", "斜陽", "無頼派", "自己嫌悪"],
+    "葛飾北斎": ["富嶽三十六景", "神奈川沖浪裏", "画狂老人卍", "北斎漫画", "観察と線"],
+    "ソクラテス": ["無知の知", "問答法", "アテナイ", "善く生きる", "毒杯"],
+    "野口英世": ["黄熱病研究", "ロックフェラー研究所", "左手の障害", "努力", "献身"],
+    "ダヴィンチ": ["モナ・リザ", "最後の晩餐", "解剖手稿", "飛行機械", "観察と実験"],
+    "エジソン": ["白熱電球", "蓄音機", "キネトスコープ", "1%のひらめきと99%の努力", "試行錯誤"],
+    "アインシュタイン": ["相対性理論", "光電効果", "E=mc^2", "想像力", "平和主義"],
+    "ナイチンゲール": ["クリミア戦争", "ランプの貴婦人", "衛生改革", "統計図表", "看護教育"],
+    "ガリレオ": ["望遠鏡観測", "地動説擁護", "宗教裁判", "それでも地球は動く", "実証主義"],
+    "ニーチェ": ["神は死んだ", "力への意志", "超人", "ルサンチマン批判", "価値の創造"],
+}
+
+
+def get_persona_signature_elements(name: str) -> list[str]:
+    return list(PERSONA_SIGNATURE_ELEMENTS.get((name or "").strip(), []))
+
+
+# 偉人ごとの論点ローテーション（毎回ランダム。直前と同じ論点は避ける）
+PERSONA_ROTATION_TOPICS: dict[str, list[str]] = {
+    "ブッダ": ["執着を手放す", "無常の理解", "苦の原因分析", "慈悲と中道", "欲望との距離"],
+    "織田信長": ["既得権の破壊", "実利優先の判断", "速度と決断", "組織再編", "結果責任"],
+    "吉田松陰": ["志と覚悟", "教育と次世代", "国家観", "義の実践", "行動の緊急性"],
+    "坂本龍馬": ["対立の橋渡し", "制度設計", "自由と実務", "変革の合意形成", "大局観"],
+    "太宰治": ["人間の弱さ", "偽善批判", "孤独と共感", "自己欺瞞", "時代との不和"],
+    "葛飾北斎": ["観察と技術", "美と構図", "職人の鍛錬", "自然の捉え方", "表現の革新"],
+    "ソクラテス": ["前提への問い", "善悪の定義", "無知の自覚", "対話による検証", "論理の矛盾"],
+    "野口英世": ["努力と継続", "科学への献身", "逆境克服", "実証重視", "医療への責任"],
+    "ダヴィンチ": ["分野横断の発想", "観察と実験", "構造理解", "芸術と科学の融合", "未解決への好奇心"],
+    "エジソン": ["試行錯誤", "実装主義", "失敗の価値", "市場性", "反復改善"],
+    "アインシュタイン": ["常識の再定義", "想像力の活用", "物理法則の視点", "倫理と科学", "平和主義"],
+    "ナイチンゲール": ["データで改革", "衛生と制度", "現場改善", "弱者保護", "実務的リーダーシップ"],
+    "ガリレオ": ["観測事実の重視", "権威との対峙", "仮説検証", "反証可能性", "実証精神"],
+    "ニーチェ": ["価値創造", "ルサンチマン批判", "強者倫理", "ニヒリズム対処", "自己超克"],
+}
+
+_PERSONA_RECENT_MAX = 2
+_persona_recent_comments: dict[str, list[str]] = {}
+_persona_last_topic: dict[str, str] = {}
+_persona_state_lock = threading.Lock()
+
+
+def _extract_ban_phrases(comment: str) -> list[str]:
+    text = (comment or "").strip()
+    if not text:
+        return []
+    chunks = re.split(r"[。！？\n]", text)
+    out: list[str] = []
+    for c in chunks:
+        s = c.strip()
+        if 4 <= len(s) <= 22:
+            out.append(s)
+        if len(out) >= 4:
+            break
+    return out
+
+
+def get_persona_focus_topic(name: str) -> str:
+    n = (name or "").strip()
+    topics = PERSONA_ROTATION_TOPICS.get(n, [])
+    if not topics:
+        return ""
+    with _persona_state_lock:
+        last = _persona_last_topic.get(n, "")
+        candidates = [t for t in topics if t != last] or topics
+        topic = random.choice(candidates)
+        _persona_last_topic[n] = topic
+        return topic
+
+
+def get_persona_banned_phrases(name: str) -> list[str]:
+    n = (name or "").strip()
+    with _persona_state_lock:
+        recents = list(_persona_recent_comments.get(n, []))
+    phrases: list[str] = []
+    for c in recents[:_PERSONA_RECENT_MAX]:
+        phrases.extend(_extract_ban_phrases(c))
+    # 重複を除いて先頭優先
+    uniq: list[str] = []
+    seen = set()
+    for p in phrases:
+        if p not in seen:
+            seen.add(p)
+            uniq.append(p)
+    return uniq[:8]
+
+
+def remember_persona_comment(name: str, comment: str) -> None:
+    n = (name or "").strip()
+    c = (comment or "").strip()
+    if not n or not c:
+        return
+    with _persona_state_lock:
+        arr = list(_persona_recent_comments.get(n, []))
+        arr.insert(0, c)
+        _persona_recent_comments[n] = arr[:_PERSONA_RECENT_MAX]
 
 
 def _fit_persona_comment_to_max(text: str, max_len: int) -> str:
@@ -1000,7 +1104,7 @@ def get_persona_opinion(
     model: str | None = None,
     other_comments: list[str] | None = None,
 ) -> str:
-    """指定された偉人キャラがニュースに対し主観100%で150文字以内コメントを返す。
+    """指定された偉人キャラがニュースに対し主観100%で180文字以内コメントを返す。
     other_comments: 先に生成済みの他キャラのコメント（重複表現を避けるために渡す）。"""
     if not settings.OPENAI_API_KEY:
         return "（APIキーが設定されていません）"
@@ -1023,11 +1127,30 @@ def get_persona_opinion(
             )
 
     max_len = PERSONA_COMMENT_MAX_LEN
+    signature_elements = get_persona_signature_elements(p["name"])
+    signature_note = ""
+    if signature_elements:
+        signature_note = (
+            "\n【固有要素（必須）】\n"
+            + "・" + "\n・".join(signature_elements)
+            + "\n上の固有要素から最低1つは必ず入れる。面白くなるなら2つ以上入れてよい。"
+        )
+    focus_topic = get_persona_focus_topic(p["name"])
+    focus_note = f"\n【今回の優先論点】\n{focus_topic}\nこの論点を中心に語ること。" if focus_topic else ""
+    banned_phrases = get_persona_banned_phrases(p["name"])
+    banned_note = ""
+    if banned_phrases:
+        banned_note = (
+            "\n【禁止語・禁止フレーズ（直近2件との重複防止）】\n"
+            + "・" + "\n・".join(banned_phrases)
+            + "\n上記の語句・言い回しをそのまま繰り返さないこと。"
+        )
     system_prompt = f"""あなたは{p['name']}である。以下の人物設定に厳密に従え。
 {p['role']}
 必ず日本語のみ。丁寧語不要。主観100%で語れ。
 ニュース内容の要約・説明から入るな。最初の一文から{p['name']}としての意見・感想・哲学を述べよ。
 出力は本文のみ（見出し・前置き不要）。箇条書き禁止。
+その人物が実際に歩んだ時代背景・経験・歴史的立場を具体的に織り込むこと。{signature_note}{focus_note}{banned_note}
 出力全体を必ず{max_len}文字以下に収める。句点「。」で終わること。{avoid_note}"""
     user_prompt = f"""【タイトル】{title}
 
@@ -1053,6 +1176,7 @@ def get_persona_opinion(
         text = _fit_persona_comment_to_max(text, max_len)
         if len(text) > max_len:
             text = text[:max_len].rstrip()
+        remember_persona_comment(p["name"], text)
         return text
     except Exception as e:
         return f"（取得失敗: {str(e)}）"

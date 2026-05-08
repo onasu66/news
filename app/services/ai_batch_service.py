@@ -155,16 +155,22 @@ def _generate_personas_via_claude(title: str, summary_text: str, display_persona
     except Exception:
         return []
 
-    from app.services.ai_service import PERSONAS, PERSONA_COMMENT_MAX_LEN
+    from app.services.ai_service import PERSONAS, PERSONA_COMMENT_MAX_LEN, get_persona_signature_elements
 
     selected = [PERSONAS[pid] for pid in display_persona_ids if 0 <= pid < len(PERSONAS)]
     if not selected:
         return []
 
-    personas_desc = "\n".join(
-        f"{i + 1}. {p['name']}（{p['emoji']}）\n   人物設定: {p['role']}"
-        for i, p in enumerate(selected)
-    )
+    personas_desc_parts = []
+    for i, p in enumerate(selected):
+        elems = get_persona_signature_elements(p["name"])
+        elems_text = " / ".join(elems) if elems else "（指定なし）"
+        personas_desc_parts.append(
+            f"{i + 1}. {p['name']}（{p['emoji']}）\n"
+            f"   人物設定: {p['role']}\n"
+            f"   固有要素（この中から最低1つ必須・複数歓迎）: {elems_text}"
+        )
+    personas_desc = "\n".join(personas_desc_parts)
 
     prompt = f"""以下の3人の歴史上の偉人が、それぞれの思想・価値観でニュース記事にコメントします。
 
@@ -181,6 +187,7 @@ def _generate_personas_via_claude(title: str, summary_text: str, display_persona
 - 各人物が{PERSONA_COMMENT_MAX_LEN}文字以内でコメントする
 - 丁寧語不要。その人物の哲学・価値観で主観100%で語る
 - ニュース内容の要約・説明から入らない（最初の一文から意見・感想・哲学を述べる）
+- その人物が実際に生きた時代背景・経験・歴史的立場を最低1要素は必ず織り込む
 - 句点「。」で終わる
 - 3人それぞれが全く違う切り口で語る
 - 他の人物と同じ表現・結論は使わない
