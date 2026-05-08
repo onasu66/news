@@ -9,7 +9,16 @@ if _env_path.exists():
             line = line.strip()
             if line and not line.startswith("#") and "=" in line:
                 k, v = line.split("=", 1)
-                os.environ.setdefault(k.strip(), v.strip().strip('"\''))
+                k = k.strip()
+                v = v.strip().strip('"\'')
+                if not k:
+                    continue
+                # setdefault は「キーがあるが値が空文字」のときに .env を反映しないため、
+                # 未設定または空のみ .env で上書きする（Render の非空環境変数は優先）
+                prev = os.environ.get(k)
+                if prev is None or (isinstance(prev, str) and prev.strip() == ""):
+                    if v != "":
+                        os.environ[k] = v
 
 
 class Settings:

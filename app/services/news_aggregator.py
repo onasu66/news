@@ -610,6 +610,21 @@ class NewsAggregator:
                     total_pages = max(1, (int(total) + per_page - 1) // per_page) if total else 1
                     page = max(1, min(int(page), total_pages))
 
+                    # 移行初期に category が未整備で論文0件になる場合は、画面を空にしないため全記事からフォールバック。
+                    if int(total or 0) == 0:
+                        from .article_cache import load_all as _load_all_any
+
+                        all_items = sorted(
+                            _load_all_any(),
+                            key=lambda x: x.added_at or x.published or datetime.min,
+                            reverse=True,
+                        )
+                        total = len(all_items)
+                        total_pages = max(1, (int(total) + per_page - 1) // per_page) if total else 1
+                        page = max(1, min(int(page), total_pages))
+                        start = (page - 1) * per_page
+                        page_items = all_items[start : start + per_page]
+
                     by_domain: dict[str, list[NewsItem]] = {}
                     for item in page_items:
                         domain = SOURCE_TO_PAPER_DOMAIN.get(item.source, "総合科学")

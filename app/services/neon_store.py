@@ -187,15 +187,23 @@ def neon_load_all() -> list:
     return [_row_to_news_item(dict(zip(cols, r))) for r in rows]
 
 
+def _papers_category_sql_predicate() -> str:
+    """トップ論文一覧用: 「研究・論文」と中黒無し「研究論文」のみ論文側に載せる。"""
+    return (
+        "TRIM(BOTH FROM COALESCE(category, '')) IN ('研究・論文', '研究論文')"
+    )
+
+
 def neon_load_all_papers_for_site_list(limit: int = 20000) -> list:
     """論文トップ用: 研究・論文を added_at 降順で取得。"""
     cap = max(1, min(int(limit), 50000))
+    pc = _papers_category_sql_predicate()
     with _conn() as conn:
         with conn.cursor() as cur:
             cur.execute(
                 "SELECT id, title, link, summary, published, source, category, image_url, added_at "
                 "FROM articles "
-                "WHERE category = '研究・論文' "
+                f"WHERE {pc} "
                 "ORDER BY added_at DESC NULLS LAST, published DESC NULLS LAST "
                 "LIMIT %s",
                 (cap,),
@@ -486,17 +494,18 @@ def neon_query_papers_page(page: int, per_page: int) -> tuple:
     offset = (page - 1) * per_page
     with _conn() as conn:
         with conn.cursor() as cur:
+            pc = _papers_category_sql_predicate()
             cur.execute(
                 "SELECT id, title, link, summary, published, source, category, image_url, added_at "
                 "FROM articles "
-                "WHERE category = '研究・論文' "
+                f"WHERE {pc} "
                 "ORDER BY published DESC NULLS LAST "
                 "LIMIT %s OFFSET %s",
                 (per_page, offset),
             )
             rows = cur.fetchall()
             cur.execute(
-                "SELECT COUNT(*) FROM articles WHERE category = '研究・論文'"
+                f"SELECT COUNT(*) FROM articles WHERE {pc}"
             )
             total = cur.fetchone()[0]
     cols = ["id", "title", "link", "summary", "published", "source", "category", "image_url", "added_at"]
@@ -510,17 +519,18 @@ def neon_query_news_page(page: int, per_page: int) -> tuple:
     offset = (page - 1) * per_page
     with _conn() as conn:
         with conn.cursor() as cur:
+            pc = _papers_category_sql_predicate()
             cur.execute(
                 "SELECT id, title, link, summary, published, source, category, image_url, added_at "
                 "FROM articles "
-                "WHERE category != '研究・論文' "
+                f"WHERE NOT ({pc}) "
                 "ORDER BY published DESC NULLS LAST "
                 "LIMIT %s OFFSET %s",
                 (per_page, offset),
             )
             rows = cur.fetchall()
             cur.execute(
-                "SELECT COUNT(*) FROM articles WHERE category != '研究・論文'"
+                f"SELECT COUNT(*) FROM articles WHERE NOT ({pc})"
             )
             total = cur.fetchone()[0]
     cols = ["id", "title", "link", "summary", "published", "source", "category", "image_url", "added_at"]
