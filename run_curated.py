@@ -6,7 +6,7 @@
     python run_curated.py --max 10
 
 使い方（Renderへ転送して処理）:
-    python run_curated.py --push https://chirippo.onrender.com --secret <ADMIN_SECRET>
+    python run_curated.py --push https://tiripo-ai.site --secret <ADMIN_SECRET>
     python run_curated.py --push https://... --secret xxx --max 15
 """
 import argparse
@@ -55,7 +55,7 @@ def main():
     parser.add_argument("--file", default=None, help="JSONファイルのパス（省略時: curated_articles.json）")
     parser.add_argument("--max", type=int, default=30, help="最大記事化件数（デフォルト: 30）")
     parser.add_argument("--push", default=None, metavar="URL",
-                        help="Render サーバーの URL（例: https://chirippo.onrender.com）。指定するとローカル処理ではなくサーバーに転送する")
+                        help="Render サーバーの URL（例: https://tiripo-ai.site）。指定するとローカル処理ではなくサーバーに転送する")
     parser.add_argument("--secret", default=None, help="X-Admin-Secret ヘッダの値（--push 時に必要）")
     args = parser.parse_args()
 

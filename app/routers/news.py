@@ -18,7 +18,8 @@ from app.config import settings, is_rss_and_ai_disabled
 from app.services.news_aggregator import NewsAggregator
 from app.services.rss_service import NewsItem, sanitize_display_text
 from app.services.article_cache import save_article
-from app.services.ai_batch_service import generate_all_explanations
+from app.services.ai_batch_service import generate_all_explanations, upgrade_personas_with_claude_if_configured
+from app.services.explanation_cache import save_cache
 from app.services.ai_service import (
     explain_article_with_ai,
     get_image_url,
@@ -325,9 +326,25 @@ async def robots_txt(request: Request):
 
 @router.get("/sitemap.xml")
 async def sitemap_xml(request: Request):
-    """SEO用 sitemap.xml（一覧は NewsAggregator キャッシュ利用）"""
+    """SEO用 sitemap.xml。
+
+    通常は保存済みスナップショットを返し、bot 巡回だけで DB を起こさないようにする。
+    """
+    from app.services.sitemap_service import read_sitemap_snapshot, write_sitemap_snapshot
+
+    xml = read_sitemap_snapshot()
+    if xml:
+        return Response(content=xml, media_type="application/xml; charset=utf-8")
+
+    articles = list(getattr(NewsAggregator, "_news_cache", []) or [])
+    if articles:
+        site_url = _get_site_url(request)
+        xml = write_sitemap_snapshot(articles, site_url=site_url)
+        if xml:
+            return Response(content=xml, media_type="application/xml; charset=utf-8")
+
+    logger.info("sitemap.xml: スナップショット未生成のため静的URLのみ返します（DB 起床回避）")
     site_url = _get_site_url(request)
-    articles = NewsAggregator.get_news()
     today = datetime.now().date().isoformat()
     lines = [
         '<?xml version="1.0" encoding="UTF-8"?>',
@@ -339,15 +356,8 @@ async def sitemap_xml(request: Request):
         f"  <url><loc>{site_url}/ai</loc><lastmod>{today}</lastmod><changefreq>daily</changefreq><priority>0.6</priority></url>",
         f"  <url><loc>{site_url}/about</loc><lastmod>{today}</lastmod><changefreq>monthly</changefreq><priority>0.5</priority></url>",
         f"  <url><loc>{site_url}/personas</loc><lastmod>{today}</lastmod><changefreq>monthly</changefreq><priority>0.5</priority></url>",
+        "</urlset>",
     ]
-    for a in articles[:5000]:
-        try:
-            lastmod = a.published.date().isoformat() if getattr(a, "published", None) and hasattr(a.published, "date") else today
-        except Exception:
-            lastmod = today
-        priority = "0.9" if getattr(a, "category", "") == "研究・論文" else "0.8"
-        lines.append(f"  <url><loc>{site_url}/topic/{a.id}</loc><lastmod>{lastmod}</lastmod><changefreq>never</changefreq><priority>{priority}</priority></url>")
-    lines.append("</urlset>")
     return Response(content="\n".join(lines), media_type="application/xml; charset=utf-8")
 
 
@@ -1502,10 +1512,10 @@ async def admin_manual_article_page(request: Request):
 
 
 def _do_create_manual_article_sync(title: str, summary: str, link: str = "", source: str = "編集部") -> dict:
-    """手動記事をAIで生成して保存（同期・スレッド実行用）。generate_all_explanations 内で save_cache 済み"""
+    """手動記事をAIで生成して保存（同期・スレッド実行用）。記事保存成功後に save_cache。"""
     article_id = "manual-" + uuid.uuid4().hex[:16]
     content = sanitize_display_text(f"{title}\n\n{summary}")[:20000]
-    data = generate_all_explanations(article_id, title, content, category="総合")
+    data = generate_all_explanations(article_id, title, content, category="総合", persist_cache=False)
     blocks = data.get("blocks", [])
     if not blocks:
         return {"status": "error", "article_id": None, "message": "AIによる記事生成に失敗しました"}
@@ -1521,6 +1531,25 @@ def _do_create_manual_article_sync(title: str, summary: str, link: str = "", sou
     )
     if not save_article(item):
         return {"status": "error", "article_id": None, "message": "記事の保存に失敗しました"}
+    personas = list(data.get("personas") or ["", "", ""])
+    while len(personas) < 3:
+        personas.append("")
+    personas = personas[:3]
+    dips = list(data.get("display_persona_ids") or [])
+    personas = upgrade_personas_with_claude_if_configured(
+        title, str(data.get("navigator_summary") or ""), dips, personas
+    )
+    save_cache(
+        article_id,
+        blocks,
+        personas,
+        display_persona_ids=data.get("display_persona_ids"),
+        quick_understand=data.get("quick_understand"),
+        vote_data=data.get("vote_data"),
+        paper_graph=data.get("paper_graph"),
+        paper_quiz=data.get("paper_quiz"),
+        deep_insights=data.get("deep_insights"),
+    )
     NewsAggregator.get_news(force_refresh=not is_rss_and_ai_disabled())
     try:
         from app.services.render_notifier import notify_render_cache_refresh

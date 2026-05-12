@@ -58,22 +58,103 @@ _CATEGORY_MAP = {
 
 # ── 重複履歴の管理 ────────────────────────────────────────────────────────────
 
-def _load_history() -> set[str]:
-    """過去に選定済みの URL セットを返す"""
+def _history_max_entries() -> int:
+    try:
+        from app.config import settings as _s
+
+        return max(50, int(getattr(_s, "CURATED_HISTORY_MAX", 300)))
+    except Exception:
+        return 300
+
+
+def _history_lookback_days() -> int:
+    try:
+        from app.config import settings as _s
+
+        return max(1, int(getattr(_s, "CURATED_HISTORY_LOOKBACK_DAYS", 14)))
+    except Exception:
+        return 14
+
+
+def _load_history_records() -> list[dict]:
+    """履歴を [{"url": "...", "at": "..."}] 形式で返す（旧フォーマット互換）。"""
     if not HISTORY_FILE.exists():
-        return set()
+        return []
     try:
         data = json.loads(HISTORY_FILE.read_text(encoding="utf-8"))
-        return set(data) if isinstance(data, list) else set()
     except Exception:
+        return []
+    if not isinstance(data, list):
+        return []
+
+    out: list[dict] = []
+    # 旧形式（URL文字列配列）は「直近N件のみ有効」にして重複判定を緩める
+    if data and all(isinstance(x, str) for x in data):
+        tail = data[-_history_max_entries():]
+        now_iso = datetime.now(JST).replace(tzinfo=None).isoformat()
+        for u in tail:
+            su = str(u).strip()
+            if su:
+                out.append({"url": su, "at": now_iso})
+        return out
+
+    for row in data:
+        if not isinstance(row, dict):
+            continue
+        u = str(row.get("url", "")).strip()
+        if not u:
+            continue
+        at = str(row.get("at", "")).strip()
+        out.append({"url": u, "at": at})
+    return out
+
+
+def _load_history() -> set[str]:
+    """重複除外に使う「有効期間内」の URL セットを返す。"""
+    records = _load_history_records()
+    if not records:
         return set()
+    now = datetime.now(JST).replace(tzinfo=None)
+    lookback = _history_lookback_days()
+    active: set[str] = set()
+    for r in records:
+        at_raw = r.get("at", "")
+        try:
+            at = datetime.fromisoformat(at_raw) if at_raw else now
+        except Exception:
+            at = now
+        # 直近 lookback 日の履歴だけ重複判定に使う（古いURLは再利用可）
+        if (now - at).days <= lookback:
+            active.add(str(r.get("url", "")).strip())
+    return active
 
 
 def _save_history(urls: set[str]) -> None:
-    """選定済み URL を履歴ファイルに保存（上限 2000 件）"""
+    """選定済み URL を履歴ファイルに保存（時刻付き・上限件数付き）。"""
+    if not urls:
+        return
     try:
-        existing = _load_history()
-        merged = list(existing | urls)[-2000:]
+        existing = _load_history_records()
+        now_iso = datetime.now(JST).replace(tzinfo=None).isoformat()
+        for u in urls:
+            su = str(u).strip()
+            if su:
+                existing.append({"url": su, "at": now_iso})
+
+        # URL単位で最新だけ残す
+        dedup_latest: dict[str, str] = {}
+        for r in existing:
+            u = str(r.get("url", "")).strip()
+            at = str(r.get("at", "")).strip()
+            if not u:
+                continue
+            prev = dedup_latest.get(u)
+            if (not prev) or (at and at > prev):
+                dedup_latest[u] = at
+
+        merged = [{"url": u, "at": dedup_latest[u]} for u in dedup_latest.keys()]
+        merged.sort(key=lambda x: x.get("at", ""), reverse=True)
+        merged = merged[: _history_max_entries()]
         HISTORY_FILE.write_text(json.dumps(merged, ensure_ascii=False, indent=2), encoding="utf-8")
     except Exception as e:
         logger.warning("履歴保存に失敗: %s", e)

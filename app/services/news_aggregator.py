@@ -313,7 +313,11 @@ class NewsAggregator:
     _papers_cache: Optional[tuple[list, dict]] = None  # (papers_by_category, pagination)
     _papers_cache_page: int = 0
     _papers_cache_at: Optional[datetime] = None
-    _PAPERS_CACHE_TTL_SEC: int = 120  # 2分間はメモリキャッシュを使い回す
+    try:
+        # トップ `/` は bot に頻繁に叩かれやすいため、論文一覧は長めにメモリキャッシュする。
+        _PAPERS_CACHE_TTL_SEC: int = max(60, int(getattr(settings, "PAPERS_SITE_LIST_CACHE_TTL_SEC", 86400)))
+    except Exception:
+        _PAPERS_CACHE_TTL_SEC = 86400
     _last_meta_fp: object | None = None
     _last_meta_poll_mono: float = 0.0
     _bulk_update_depth: int = 0
@@ -379,6 +383,7 @@ class NewsAggregator:
                 except Exception:
                     cls._last_processed_count = 0
                 cls._prime_meta_fingerprint()
+                cls._refresh_sitemap_snapshot()
                 return cls._news_cache
             if force_refresh:
                 # RSS/AI の途中で例外が出ても、ここまで保存された記事を一覧に載せる（finally で必ず再読込）
@@ -423,6 +428,7 @@ class NewsAggregator:
             # _news_cache が更新されたら論文一覧のメモリキャッシュも破棄（新着を反映させる）
             cls._invalidate_papers_cache()
             cls._prime_meta_fingerprint()
+            cls._refresh_sitemap_snapshot()
         if not force_refresh and cls._news_cache:
             cls._maybe_resync_news_from_meta_fingerprint()
         return cls._news_cache
@@ -456,6 +462,7 @@ class NewsAggregator:
             cls._last_processed_count = 0
         cls._invalidate_papers_cache()
         cls._prime_meta_fingerprint()
+        cls._refresh_sitemap_snapshot()
 
     @classmethod
     def upsert_article_in_news_cache(cls, article_id: str) -> None:
@@ -511,6 +518,7 @@ class NewsAggregator:
         cls._last_processed_count = len(processed_ids)
         cls._invalidate_papers_cache()
         cls._prime_meta_fingerprint()
+        cls._refresh_sitemap_snapshot()
 
     @classmethod
     def get_news_by_category(cls, force_refresh: bool = False, page: int = 1) -> tuple[list[tuple[str, list[NewsItem]]], dict]:
@@ -583,17 +591,86 @@ class NewsAggregator:
         cls._papers_cache_at = None
 
     @classmethod
+    def _refresh_sitemap_snapshot(cls) -> None:
+        """現在の一覧メモリキャッシュから sitemap.xml スナップショットを更新する。"""
+        try:
+            from .sitemap_service import write_sitemap_snapshot
+
+            write_sitemap_snapshot(cls._news_cache)
+        except Exception as e:
+            logger.warning("sitemap スナップショット更新に失敗: %s", e)
+
+    @classmethod
+    def _store_papers_cache(
+        cls,
+        page: int,
+        papers_by_category: list[tuple[str, list[NewsItem]]],
+        pagination: dict,
+    ) -> tuple[list[tuple[str, list[NewsItem]]], dict]:
+        payload = (papers_by_category, pagination)
+        cls._papers_cache = payload
+        cls._papers_cache_page = page
+        cls._papers_cache_at = datetime.now()
+        return payload
+
+    @classmethod
+    def _build_papers_payload_from_memory(
+        cls,
+        papers: list[NewsItem],
+        page: int,
+    ) -> tuple[list[tuple[str, list[NewsItem]]], dict]:
+        papers = sorted(
+            list(papers),
+            key=lambda x: x.added_at or x.published or datetime.min,
+            reverse=True,
+        )
+        total = len(papers)
+        per_page = ITEMS_PER_PAGE
+        total_pages = max(1, (total + per_page - 1) // per_page)
+        page = max(1, min(page, total_pages))
+        start = (page - 1) * per_page
+        page_items = papers[start : start + per_page]
+        domains_with_articles = {SOURCE_TO_PAPER_DOMAIN.get(p.source, "総合科学") for p in papers}
+        known_domains = [d for d in PAPER_DOMAIN_ORDER if d in domains_with_articles]
+        extra_domains = sorted([d for d in domains_with_articles if d not in PAPER_DOMAIN_ORDER])
+        domains_order = known_domains + extra_domains
+        by_domain: dict[str, list[NewsItem]] = {}
+        for item in page_items:
+            domain = SOURCE_TO_PAPER_DOMAIN.get(item.source, "総合科学")
+            item.paper_filter_code = _detect_paper_filter(domain, item.title, item.summary)
+            by_domain.setdefault(domain, []).append(item)
+        papers_by_category = [(dom, by_domain.get(dom, [])) for dom in domains_order]
+        pagination = {
+            "page": page,
+            "per_page": per_page,
+            "total": total,
+            "total_pages": total_pages,
+            "has_prev": page > 1,
+            "has_next": page < total_pages,
+        }
+        return cls._store_papers_cache(page, papers_by_category, pagination)
+
+    @classmethod
     def get_papers_by_category(cls, force_refresh: bool = False, page: int = 1) -> tuple[list[tuple[str, list[NewsItem]]], dict]:
         """
         論文（研究・論文ジャンル）を上位ジャンル（ドメイン）ごとにグループ化。
         戻り値: (papers_by_category, pagination_info)
         papers_by_category は (domain_name, list[NewsItem]) のリスト（表示順は PAPER_DOMAIN_ORDER）。
-        DB 障害時はメモリキャッシュ（TTL 2分）を返し、記事0件にならないようにする。
+        DB 障害時はメモリキャッシュ（TTL は設定値）を返し、記事0件にならないようにする。
         """
         # メモリキャッシュが有効かチェック（TTL 内かつ同じページ）
         if not force_refresh and cls._papers_cache is not None and cls._papers_cache_page == page:
             if cls._papers_cache_at and (datetime.now() - cls._papers_cache_at).total_seconds() < cls._PAPERS_CACHE_TTL_SEC:
                 return cls._papers_cache
+
+        # 一覧メモリキャッシュがあればそこから論文ページを構築し、bot 巡回時の DB 起床を避ける。
+        if not force_refresh and cls._news_cache:
+            cached_papers = [
+                x for x in cls._news_cache
+                if (getattr(x, "category", "") or "").strip() in ("研究・論文", "研究論文")
+            ]
+            if cached_papers:
+                return cls._build_papers_payload_from_memory(cached_papers, page=page)
 
         # Neon なら category で直接クエリしてページング（初回遷移を速くする）。
         if not force_refresh:
@@ -644,11 +721,7 @@ class NewsAggregator:
                         "has_prev": page > 1,
                         "has_next": page < total_pages,
                     }
-                    # メモリキャッシュに保存
-                    cls._papers_cache = (papers_by_category, pagination)
-                    cls._papers_cache_page = page
-                    cls._papers_cache_at = datetime.now()
-                    return papers_by_category, pagination
+                    return cls._store_papers_cache(page, papers_by_category, pagination)
             except Exception as _e:
                 logger.warning("get_papers_by_category: DB クエリ失敗（メモリキャッシュにフォールバック）: %s", _e)
                 if cls._papers_cache is not None and cls._papers_cache_at:
@@ -659,32 +732,7 @@ class NewsAggregator:
         from .article_cache import load_papers_for_site_list
 
         papers = load_papers_for_site_list()
-        papers.sort(key=lambda x: x.added_at or x.published or datetime.min, reverse=True)
-        total = len(papers)
-        per_page = ITEMS_PER_PAGE
-        total_pages = max(1, (total + per_page - 1) // per_page)
-        page = max(1, min(page, total_pages))
-        start = (page - 1) * per_page
-        page_items = papers[start : start + per_page]
-        domains_with_articles = {SOURCE_TO_PAPER_DOMAIN.get(p.source, "総合科学") for p in papers}
-        known_domains = [d for d in PAPER_DOMAIN_ORDER if d in domains_with_articles]
-        extra_domains = sorted([d for d in domains_with_articles if d not in PAPER_DOMAIN_ORDER])
-        domains_order = known_domains + extra_domains
-        by_domain: dict[str, list[NewsItem]] = {}
-        for item in page_items:
-            domain = SOURCE_TO_PAPER_DOMAIN.get(item.source, "総合科学")
-            item.paper_filter_code = _detect_paper_filter(domain, item.title, item.summary)
-            by_domain.setdefault(domain, []).append(item)
-        papers_by_category = [(dom, by_domain.get(dom, [])) for dom in domains_order]
-        pagination = {
-            "page": page,
-            "per_page": per_page,
-            "total": total,
-            "total_pages": total_pages,
-            "has_prev": page > 1,
-            "has_next": page < total_pages,
-        }
-        return papers_by_category, pagination
+        return cls._build_papers_payload_from_memory(papers, page=page)
 
     @classmethod
     def get_trends(cls, force_refresh: bool = False) -> list[TrendItem]:

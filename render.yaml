@@ -23,6 +23,8 @@ services:
       #   value: "false"  # true にすると定時の記事更新を停止
       # - key: ADMIN_SECRET
       #   sync: false
+      - key: SITE_URL
+        value: "https://tiripo-ai.site"
       # - key: NEWS_REFRESH_INTERVAL
       #   value: "240"
       # 無料枠向けの省エネ推奨値（必要に応じて有効化）

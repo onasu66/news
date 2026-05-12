@@ -3,7 +3,7 @@ import re
 from datetime import datetime
 from .rss_service import NewsItem, sanitize_display_text, JST
 from .translate_service import is_foreign_article, translate_and_rewrite, translate_title_to_japanese, text_mainly_japanese, FOREIGN_SOURCES
-from .ai_batch_service import generate_all_explanations
+from .ai_batch_service import generate_all_explanations, upgrade_personas_with_claude_if_configured
 from .explanation_cache import save_cache, get_cached, get_cached_article_ids
 from .article_cache import save_article, load_all
 from .article_fetcher import fetch_article_body
@@ -101,9 +101,14 @@ def process_rss_to_site_article(item: NewsItem, force: bool = False) -> bool:
         content = sanitize_display_text(f"{item.title}\n\n{item.summary}\n\n{body_clean}")
     else:
         content = sanitize_display_text(f"{item.title}\n\n{item.summary}")
-    data = generate_all_explanations(item.id, item.title, content, category=item.category)
+    data = generate_all_explanations(
+        item.id, item.title, content, category=item.category, persist_cache=False
+    )
     blocks = data.get("blocks", [])
-    personas = data.get("personas", [])
+    personas = list(data.get("personas") or ["", "", ""])
+    while len(personas) < 3:
+        personas.append("")
+    personas = personas[:3]
     display_persona_ids = data.get("display_persona_ids")
 
     if not blocks:
@@ -112,11 +117,19 @@ def process_rss_to_site_article(item: NewsItem, force: bool = False) -> bool:
     # 記事を先に保存してから解説を保存（Neon で has_explanation を付与するため）
     if not save_article(item):
         return False  # 記事の保存に失敗した場合は成功にしない
+    summary_for_persona = str(data.get("navigator_summary") or "")
+    dips = list(display_persona_ids) if display_persona_ids is not None else []
+    personas = upgrade_personas_with_claude_if_configured(
+        item.title, summary_for_persona, dips, personas
+    )
     save_cache(
         item.id, blocks, personas,
         display_persona_ids=display_persona_ids,
         quick_understand=data.get("quick_understand"),
         vote_data=data.get("vote_data"),
+        paper_graph=data.get("paper_graph"),
+        paper_quiz=data.get("paper_quiz"),
+        deep_insights=data.get("deep_insights"),
     )
     return True
 
@@ -422,10 +435,19 @@ def process_new_rss_articles(
 
         papers_per_domain = max(1, int(getattr(_ap_settings, "RSS_PAPERS_PER_DOMAIN", 2)))
         max_total_papers = max(1, int(getattr(_ap_settings, "RSS_MAX_TOTAL_PAPERS_PER_RUN", 18)))
+        min_news_slots = max(0, int(getattr(_ap_settings, "RSS_MIN_NEWS_SLOTS_PER_RUN", 5)))
     except Exception:
         papers_per_domain = 2
         max_total_papers = 18
-    paper_budget = min(max_total_papers, max_per_run)
+        min_news_slots = 5
+
+    # 論文が max_per_run 本まで先に埋まると remaining_slots=0 になりニュースが0本になるため、
+    # 一般ニュース用に最低枠を差し引いてから論文の上限を決める。
+    if max_per_run >= 2:
+        min_news_slots = min(min_news_slots, max_per_run - 1)
+    else:
+        min_news_slots = 0
+    paper_budget = min(max_total_papers, max(0, max_per_run - min_news_slots))
 
     deduped_papers = _dedup(paper_candidates)
     paper_picks: list[NewsItem] = []

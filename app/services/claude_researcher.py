@@ -6,6 +6,9 @@
   - Claude Code CLI (npm i -g @anthropic-ai/claude-code) がインストール済み
   - claude login 済み（OAuth または ANTHROPIC_API_KEY 設定済み）
   - Render 本番環境では自動スキップ（claude CLI がないため）
+
+Windows では PATH 上の node_modules\\...\\bin\\claude.exe が先に拾われ非互換になることがあるため、
+既定では %APPDATA%\\npm\\claude.cmd（npm シム）を優先する。上書きは環境変数 CLAUDE_CODE_CMD にフルパス。
 """
 import json
 import logging
@@ -27,6 +30,62 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 CURATED_FILE = PROJECT_ROOT / "curated_articles.json"
 _usage_lock = threading.Lock()
 _usage_stats: dict[str, dict[str, float]] = {}
+_claude_json_repair_lock = threading.Lock()
+
+
+def _claude_user_config_path() -> Path:
+    return Path.home() / ".claude.json"
+
+
+def _claude_backups_dir() -> Path:
+    return Path.home() / ".claude" / "backups"
+
+
+def _is_valid_json_file(path: Path) -> bool:
+    try:
+        if not path.is_file():
+            return False
+        raw = path.read_text(encoding="utf-8").strip()
+        if not raw:
+            return False
+        json.loads(raw)
+        return True
+    except Exception:
+        return False
+
+
+def repair_claude_user_config_if_corrupted() -> bool:
+    """~/.claude.json が壊れている場合、.claude/backups の最新正常バックアップで復元する。"""
+    with _claude_json_repair_lock:
+        cfg = _claude_user_config_path()
+        if _is_valid_json_file(cfg):
+            return True
+        backups_dir = _claude_backups_dir()
+        if not backups_dir.is_dir():
+            logger.warning(
+                ".claude.json が無効ですが backups がありません (%s)。Claude Code の再インストールや claude login を確認してください。",
+                backups_dir,
+            )
+            return False
+        candidates = sorted(
+            backups_dir.glob(".claude.json.backup.*"),
+            key=lambda p: p.stat().st_mtime,
+            reverse=True,
+        )
+        for bp in candidates:
+            if not _is_valid_json_file(bp):
+                continue
+            try:
+                shutil.copy2(bp, cfg)
+                logger.info("破損した .claude.json をバックアップから復元しました: %s", bp.name)
+                return True
+            except Exception as e:
+                logger.warning(".claude.json 復元コピーに失敗 (%s): %s", bp, e)
+        logger.warning(
+            "有効な .claude.json バックアップが見つかりません。Claude CLI の案内に従い手動復元するか、claude login をやり直してください。"
+        )
+        return False
+
 
 _NEWS_PROMPT = """\
 今日は {today}（日本時間）です。
@@ -181,6 +240,7 @@ def get_claude_usage_stats() -> dict:
 def run_claude_text_gen(prompt: str, timeout: int = 120, usage_kind: str = "text_gen") -> str:
     """Claude CLI にプロンプトを渡してテキストを生成する（記事リサーチ以外の汎用用途）。
     出力をファイルに書かせて読み返す方式。失敗・タイムアウト時は空文字を返す。"""
+    repair_claude_user_config_if_corrupted()
     cmd_path = _find_claude_cmd()
     if not cmd_path:
         _record_usage(usage_kind, prompt=prompt, output="", elapsed_sec=0.0, ok=False)
@@ -262,16 +322,52 @@ def run_claude_text_gen(prompt: str, timeout: int = 120, usage_kind: str = "text
             return ""
 
 
+def _npm_claude_cmd_paths() -> list[Path]:
+    """Windows で Node 経由の公式 npm シム候補（優先順）。"""
+    out: list[Path] = []
+    for key in ("APPDATA", "LOCALAPPDATA"):
+        root = os.environ.get(key, "").strip()
+        if root:
+            p = Path(root) / "npm" / "claude.cmd"
+            if p.is_file():
+                out.append(p)
+    return out
+
+
+def _is_windows_packaged_claude_exe(path: str) -> bool:
+    """PATH が先に拾うパッケージ内 claude.exe（環境によっては非互換）かどうか。"""
+    low = path.replace("/", "\\").lower()
+    if not low.endswith("\\claude.exe"):
+        return False
+    return "node_modules" in low and "claude-code" in low
+
+
 def _find_claude_cmd() -> str | None:
+    override = os.environ.get("CLAUDE_CODE_CMD", "").strip()
+    if override:
+        o = Path(override)
+        if o.is_file():
+            return str(o.resolve())
+        w = shutil.which(override)
+        if w:
+            return w
+
+    if sys.platform == "win32":
+        for p in _npm_claude_cmd_paths():
+            return str(p.resolve())
+        found_cmd = shutil.which("claude.cmd")
+        if found_cmd:
+            return found_cmd
+        for candidate in ("claude",):
+            found = shutil.which(candidate)
+            if found and not _is_windows_packaged_claude_exe(found):
+                return found
+        return None
+
     for candidate in ("claude", "claude.cmd"):
         found = shutil.which(candidate)
         if found:
-            return candidate
-    appdata = os.environ.get("APPDATA", "")
-    if appdata:
-        npm_cmd = Path(appdata) / "npm" / "claude.cmd"
-        if npm_cmd.exists():
-            return str(npm_cmd)
+            return found
     return None
 
 
@@ -302,6 +398,7 @@ def _build_cmd_text_only(cmd_path: str) -> list[str]:
 
 def _run_one(label: str, prompt: str, output_file: Path, timeout: int, result: dict) -> None:
     """単一の Claude サブプロセスを実行し、result[label] にパース済みリストを格納する。"""
+    repair_claude_user_config_if_corrupted()
     cmd_path = _find_claude_cmd()
     if not cmd_path:
         logger.error("[%s] claude コマンドが見つかりません", label)
@@ -333,11 +430,30 @@ def _run_one(label: str, prompt: str, output_file: Path, timeout: int, result: d
             )
             return
 
-        if not output_file.exists():
-            logger.error("[%s] 出力ファイルが書き込まれませんでした", label)
+        raw = ""
+        if output_file.exists():
+            raw = output_file.read_text(encoding="utf-8").strip()
+        else:
+            # 終了0でも Write 先を誤る・ツールを使わず stdout のみ、などでファイルが無いことがある
+            stdout = (proc.stdout or "").strip()
+            stderr_tail = (proc.stderr or "")[-800:]
+            logger.warning(
+                "[%s] 指定パスに出力なし。stdout から JSON 配列を救済します (stderr末尾=%r)",
+                label,
+                stderr_tail,
+            )
+            raw = stdout
+            if "```" in raw:
+                raw = "\n".join(l for l in raw.splitlines() if not l.strip().startswith("```")).strip()
+            if raw and not raw.lstrip().startswith("["):
+                i, j = raw.find("["), raw.rfind("]")
+                if i != -1 and j != -1 and j > i:
+                    raw = raw[i : j + 1].strip()
+
+        if not raw:
+            logger.error("[%s] 指定ファイルにも stdout にも有効な JSON がありませんでした", label)
             return
 
-        raw = output_file.read_text(encoding="utf-8").strip()
         if raw.startswith("```"):
             raw = "\n".join(l for l in raw.splitlines() if not l.startswith("```")).strip()
 

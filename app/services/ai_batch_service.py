@@ -12,6 +12,27 @@ from concurrent.futures import ThreadPoolExecutor
 logger = logging.getLogger(__name__)
 from app.config import settings
 
+
+def persona_claude_after_article_save_enabled() -> bool:
+    v = str(getattr(settings, "PERSONA_CLAUDE_AFTER_SAVE", "true")).strip().lower()
+    return v in ("1", "true", "yes", "")
+
+
+def upgrade_personas_with_claude_if_configured(
+    title: str,
+    navigator_summary: str,
+    display_persona_ids: list[int],
+    current_personas: list[str],
+) -> list[str]:
+    """PERSONA_PROVIDER=claude_first かつ PERSONA_CLAUDE_AFTER_SAVE のときだけ Claude で上書き。失敗時は current のまま。"""
+    prov = (getattr(settings, "PERSONA_PROVIDER", "openai") or "openai").strip().lower()
+    if prov != "claude_first" or not persona_claude_after_article_save_enabled():
+        return current_personas
+    cl = _generate_personas_via_claude(title, navigator_summary or "", display_persona_ids)
+    if cl and len(cl) == 3:
+        return cl
+    return current_personas
+
 from app.services.ai_service import (
     explain_article_as_navigator,
     expand_navigator_to_article,
@@ -155,7 +176,14 @@ def _generate_personas_via_claude(title: str, summary_text: str, display_persona
     except Exception:
         return []
 
-    from app.services.ai_service import PERSONAS, PERSONA_COMMENT_MAX_LEN, get_persona_signature_elements
+    from app.services.ai_service import (
+        PERSONAS,
+        PERSONA_COMMENT_MAX_LEN,
+        get_persona_signature_elements,
+        get_persona_focus_topic,
+        get_persona_banned_phrases,
+        remember_persona_comment,
+    )
 
     selected = [PERSONAS[pid] for pid in display_persona_ids if 0 <= pid < len(PERSONAS)]
     if not selected:
@@ -165,10 +193,15 @@ def _generate_personas_via_claude(title: str, summary_text: str, display_persona
     for i, p in enumerate(selected):
         elems = get_persona_signature_elements(p["name"])
         elems_text = " / ".join(elems) if elems else "（指定なし）"
+        focus_topic = get_persona_focus_topic(p["name"]) or "（自由）"
+        banned = get_persona_banned_phrases(p["name"])
+        banned_text = " / ".join(banned) if banned else "（なし）"
         personas_desc_parts.append(
             f"{i + 1}. {p['name']}（{p['emoji']}）\n"
             f"   人物設定: {p['role']}\n"
-            f"   固有要素（この中から最低1つ必須・複数歓迎）: {elems_text}"
+            f"   固有要素（この中から最低1つ必須・複数歓迎）: {elems_text}\n"
+            f"   今回の優先論点: {focus_topic}\n"
+            f"   禁止語・禁止フレーズ（直近2件との重複防止）: {banned_text}"
         )
     personas_desc = "\n".join(personas_desc_parts)
 
@@ -211,6 +244,11 @@ JSON配列形式で出力してください:
             if isinstance(data, list) and len(data) >= len(selected):
                 comments = [str(item.get("comment", ""))[:PERSONA_COMMENT_MAX_LEN] for item in data[:len(selected)]]
                 if all(c.strip() for c in comments):
+                    for idx, c in enumerate(comments):
+                        try:
+                            remember_persona_comment(selected[idx]["name"], c)
+                        except Exception:
+                            pass
                     logger.info("Claude ペルソナ生成成功: %d 人", len(comments))
                     return comments
     except Exception as e:
@@ -243,11 +281,21 @@ def _quick_understand_from_navigator(navigator_blocks: list) -> dict:
     }
 
 
-def generate_all_explanations(article_id: str, title: str, content: str, category: str | None = None) -> dict:
+def generate_all_explanations(
+    article_id: str,
+    title: str,
+    content: str,
+    category: str | None = None,
+    *,
+    persist_cache: bool = True,
+) -> dict:
     """
     理解を1回（理解ナビゲーター）だけ行い、その結果を記事・秒速理解・投票に流用。
     人格は先にランダムで3人（論理2＋エンタメ1）を選び、その3人分だけAPI呼び出し。
-    API呼び出し: 1（ナビ）+ 1（記事展開）+ 3（人格）+ 1（投票）= 6回/記事。
+
+    persist_cache=False（RSS/手動記事パイプライン向け）:
+      解説をDBに書かず返すのみ。PERSONA_CLAUDE_AFTER_SAVE=true かつ claude_first のときは
+      ペルソナはこの中では OpenAI のみ生成し、記事保存後に upgrade_personas_with_claude_if_configured を呼ぶ想定。
     """
     cached = get_cached(article_id)
     if cached:
@@ -311,12 +359,21 @@ def generate_all_explanations(article_id: str, title: str, content: str, categor
 
         blocks = fut_blocks.result()
 
-        # ペルソナ: Claude CLI で3人一括生成 → 失敗時は OpenAI で1人ずつ
-        claude_comments = _generate_personas_via_claude(title, summary_text, display_persona_ids)
-        if claude_comments and len(claude_comments) == 3:
-            personas_3 = claude_comments
-        else:
-            # OpenAI フォールバック: 順に生成し先のコメントを渡して重複を避ける
+        # ペルソナ: claude_first でも persist_cache=False かつ「保存後Claude」ならここでは OpenAI のみ（記事化成功後にClaude）
+        persona_provider = (getattr(settings, "PERSONA_PROVIDER", "openai") or "openai").strip().lower()
+        skip_claude_in_batch = (
+            not persist_cache
+            and persona_provider == "claude_first"
+            and persona_claude_after_article_save_enabled()
+        )
+        claude_comments: list[str] = []
+        if persona_provider == "claude_first" and not skip_claude_in_batch:
+            claude_comments = _generate_personas_via_claude(title, summary_text, display_persona_ids)
+            if claude_comments and len(claude_comments) == 3:
+                personas_3 = claude_comments
+
+        if not (claude_comments and len(claude_comments) == 3):
+            # OpenAI（既定）: 順に生成し先のコメントを渡して重複を避ける
             generated_comments: list[str] = []
             for slot_idx, pid in enumerate(display_persona_ids):
                 try:
@@ -364,13 +421,16 @@ def generate_all_explanations(article_id: str, title: str, content: str, categor
         "paper_quiz": paper_quiz,
         "deep_insights": deep_insights,
     }
-    save_cache(
-        article_id, blocks, personas_3,
-        display_persona_ids=display_persona_ids,
-        quick_understand=quick_understand,
-        vote_data=vote_data,
-        paper_graph=paper_graph,
-        paper_quiz=paper_quiz,
-        deep_insights=deep_insights,
-    )
+    if not persist_cache:
+        result["navigator_summary"] = summary_text
+    if persist_cache:
+        save_cache(
+            article_id, blocks, personas_3,
+            display_persona_ids=display_persona_ids,
+            quick_understand=quick_understand,
+            vote_data=vote_data,
+            paper_graph=paper_graph,
+            paper_quiz=paper_quiz,
+            deep_insights=deep_insights,
+        )
     return result

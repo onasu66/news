@@ -28,6 +28,11 @@ class Settings:
     MIDDLEMAN_PROVIDER: str = os.getenv("MIDDLEMAN_PROVIDER", "claude_first").strip().lower()
     # MIDDLEMAN_PROVIDER=openai のときに使うモデル（未設定なら gpt-4o）
     MIDDLEMAN_OPENAI_MODEL: str = os.getenv("MIDDLEMAN_OPENAI_MODEL", "gpt-4o").strip()
+    # ペルソナコメント生成プロバイダ: "openai"(既定) or "claude_first"
+    # Neon/Claude利用枠を節約したい場合は openai を推奨
+    PERSONA_PROVIDER: str = os.getenv("PERSONA_PROVIDER", "openai").strip().lower()
+    # claude_first 時: true なら Claude は「記事DB保存成功後」のみ（失敗記事にClaudeを使わない）
+    PERSONA_CLAUDE_AFTER_SAVE: str = os.getenv("PERSONA_CLAUDE_AFTER_SAVE", "true").strip().lower()
     # 記事化時のタイトル生成を有効化するか
     TITLE_GENERATION_ENABLED: str = os.getenv("TITLE_GENERATION_ENABLED", "true").strip().lower()
     # 記事化時タイトル生成に使うモデル
@@ -47,6 +52,8 @@ class Settings:
     RSS_PAPERS_PER_DOMAIN: int = int(os.getenv("RSS_PAPERS_PER_DOMAIN", "4"))
     # 論文: 1バッチで選ぶ合計の上限（max_per_run との小さい方が効く）
     RSS_MAX_TOTAL_PAPERS_PER_RUN: int = int(os.getenv("RSS_MAX_TOTAL_PAPERS_PER_RUN", "32"))
+    # 1バッチあたり「一般ニュース」に最低確保する枠（論文だけで max_per_run を埋めない）
+    RSS_MIN_NEWS_SLOTS_PER_RUN: int = int(os.getenv("RSS_MIN_NEWS_SLOTS_PER_RUN", "5"))
     # 一般ニュースRSS: この時間より古い published のエントリは候補から除外（フィードの日付表記に依存）
     RSS_NEWS_MAX_AGE_HOURS: int = int(os.getenv("RSS_NEWS_MAX_AGE_HOURS", "48"))
     # RSS 各フィードから読むエントリ上限・マージ後の候補プール上限
@@ -89,6 +96,10 @@ class Settings:
     AI_CURATION_ENABLED: str = os.getenv("AI_CURATION_ENABLED", "false")
     # 選定に使うモデル（未設定なら OPENAI_MODEL と同じ gpt-4o-mini）
     OPENAI_CURATION_MODEL: str = os.getenv("OPENAI_CURATION_MODEL", "")
+    # curated_history の保持件数（Claude選定の重複判定に使用）
+    CURATED_HISTORY_MAX: int = int(os.getenv("CURATED_HISTORY_MAX", "300"))
+    # curated_history の重複判定対象期間（日）。短くすると再採用されやすい
+    CURATED_HISTORY_LOOKBACK_DAYS: int = int(os.getenv("CURATED_HISTORY_LOOKBACK_DAYS", "14"))
 
 settings = Settings()
 

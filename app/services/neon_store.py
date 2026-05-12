@@ -4,6 +4,7 @@ import json
 import logging
 import os
 import threading
+import time
 from datetime import datetime
 from typing import Optional
 
@@ -54,23 +55,85 @@ def _get_pool():
         return _pool
 
 
+def _reset_pool() -> None:
+    """壊れた/古いプールを捨てて再作成可能な状態にする。"""
+    global _pool
+    with _pool_lock:
+        try:
+            if _pool is not None:
+                _pool.closeall()
+        except Exception:
+            pass
+        _pool = None
+
+
+def _is_transient_neon_error(exc: BaseException) -> bool:
+    """Neon 側のアイドル切断・ネットワーク瞬断など、再試行に値するエラーか。"""
+    msg = str(exc).lower()
+    needles = (
+        "server closed the connection",
+        "connection already closed",
+        "ssl connection has been closed unexpectedly",
+        "connection reset by peer",
+        "broken pipe",
+        "could not receive data from server",
+    )
+    if any(n in msg for n in needles):
+        return True
+    tname = type(exc).__name__
+    return tname in ("OperationalError", "InterfaceError")
+
+
 def _conn():
     """コネクションプールからコネクションを取得するコンテキストマネージャ。"""
     from contextlib import contextmanager
 
     @contextmanager
     def _ctx():
-        pool = _get_pool()
-        conn = pool.getconn()
+        conn = None
+        pool = None
+        # Neon 側のアイドル切断後に closed connection が返るケースがあるため、1回だけ再取得を試す
+        for attempt in (0, 1):
+            try:
+                pool = _get_pool()
+                conn = pool.getconn()
+                if getattr(conn, "closed", 1):
+                    try:
+                        pool.putconn(conn, close=True)
+                    except Exception:
+                        pass
+                    conn = None
+                    _reset_pool()
+                    continue
+                break
+            except Exception:
+                if conn is not None and pool is not None:
+                    try:
+                        pool.putconn(conn, close=True)
+                    except Exception:
+                        pass
+                conn = None
+                _reset_pool()
+                if attempt == 1:
+                    raise
+        if conn is None:
+            raise RuntimeError("Neon connection could not be established")
         try:
             conn.rollback()  # プール返却時の残留トランザクションをクリア
             yield conn
             conn.commit()
         except Exception:
-            conn.rollback()
+            try:
+                conn.rollback()
+            except Exception:
+                pass
             raise
         finally:
-            pool.putconn(conn)
+            try:
+                if pool is not None:
+                    pool.putconn(conn)
+            except Exception:
+                pass
 
     return _ctx()
 
@@ -176,15 +239,27 @@ def neon_load_by_id(article_id: str):
 
 
 def neon_load_all() -> list:
-    with _conn() as conn:
-        with conn.cursor() as cur:
-            cur.execute(
-                "SELECT id, title, link, summary, published, source, category, image_url, added_at "
-                "FROM articles ORDER BY added_at DESC NULLS LAST, published DESC NULLS LAST"
-            )
-            rows = cur.fetchall()
+    """全件読み込み。Neon の一時切断に備え数回まで再試行する。"""
     cols = ["id", "title", "link", "summary", "published", "source", "category", "image_url", "added_at"]
-    return [_row_to_news_item(dict(zip(cols, r))) for r in rows]
+    last_exc: BaseException | None = None
+    for attempt in range(3):
+        try:
+            with _conn() as conn:
+                with conn.cursor() as cur:
+                    cur.execute(
+                        "SELECT id, title, link, summary, published, source, category, image_url, added_at "
+                        "FROM articles ORDER BY added_at DESC NULLS LAST, published DESC NULLS LAST"
+                    )
+                    rows = cur.fetchall()
+            return [_row_to_news_item(dict(zip(cols, r))) for r in rows]
+        except Exception as e:
+            last_exc = e
+            if attempt < 2 and _is_transient_neon_error(e):
+                logger.warning("neon_load_all 再試行 (%d/3): %s", attempt + 1, e)
+                _reset_pool()
+                time.sleep(0.35 * (attempt + 1))
+                continue
+            raise
 
 
 def _papers_category_sql_predicate() -> str:

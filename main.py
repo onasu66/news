@@ -53,11 +53,31 @@ def _scheduled_claude_research_and_seed():
     """Claude Code CLI でウェブリサーチ → curated_articles.json 更新 → 記事化パイプラインに投入。
     claude CLI がない環境（Render 本番など）では自動スキップする。"""
     try:
+        # アイドル後の closed connection 対策:
+        # 先にDBへ1回触れてプール/接続を起こしてから Claude 処理へ進む。
+        warm_ok = False
+        for i in range(2):
+            try:
+                NewsAggregator.sync_list_cache_from_db(force=True)
+                warm_ok = True
+                break
+            except Exception as e:
+                logger.warning("Claude 事前DBウォームアップ失敗(%d/2): %s", i + 1, e)
+                try:
+                    import time as _time
+                    _time.sleep(1.0)
+                except Exception:
+                    pass
+        if not warm_ok:
+            logger.warning("Claude タスク中止: DBウォームアップに失敗したためスキップ")
+            return
+
         from app.services.claude_researcher import is_claude_available, run_claude_research
         if not is_claude_available():
             logger.debug("claude CLI が未インストールのためリサーチをスキップ")
             return
-        ok = run_claude_research(n=15, n_news=8, n_papers=7, timeout=900)
+        # 重複除外後の残件を増やすため、取得母数を増やす
+        ok = run_claude_research(n=30, n_news=16, n_papers=14, timeout=900)
         if not ok:
             return
         from app.services.article_seed_from_curated import process_curated_articles
@@ -165,6 +185,16 @@ async def lifespan(app: FastAPI):
     def _init():
         # 起動直後は軽い処理だけ先に実行して、API応答を阻害しない
         NewsAggregator.get_trends(force_refresh=True)
+        try:
+            from app.services.sitemap_service import sitemap_snapshot_path
+
+            if not sitemap_snapshot_path().exists():
+                if (getattr(settings, "SITE_URL", "") or "").strip():
+                    NewsAggregator.sync_list_cache_from_db(force=True)
+                else:
+                    logger.info("SITE_URL 未設定のため起動時 sitemap 生成をスキップします")
+        except Exception as e:
+            logger.warning("起動時 sitemap 生成に失敗: %s", e)
 
     t = threading.Thread(target=_init, daemon=True)
     t.start()

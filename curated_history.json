@@ -1,136 +1,678 @@
 [
-  "https://blog.google/innovation-and-ai/technology/developers-tools/gemma-4/",
-  "https://news.web.nhk/newsweb/na/na-k10015116501000",
-  "https://www.gaitame.com/media/entry/2026/05/01/074755",
-  "https://www.npr.org/2026/04/28/g-s1-118986/pompeii-archaeologists-use-ai-to-reconstruct-man-killed-in-volcanos-eruption",
-  "https://www.sciencedaily.com/releases/2026/04/260422044633.htm",
-  "https://www.newsonjapan.com/article/149048.php",
-  "https://www.nature.com/articles/s44184-025-00119-9",
-  "https://www.nature.com/articles/s41591-026-04312-x",
-  "https://www.japantimes.co.jp/news/2026/04/03/japan/golden-week-travel-abroad-increase/",
-  "https://shiruto.jp/technology/6234/",
-  "https://www.japantimes.co.jp/news/2026/04/27/japan/japan-hokkaido-quake/",
-  "https://pubmed.ncbi.nlm.nih.gov/40107357/",
-  "https://arxiv.org/abs/2505.10012",
-  "https://arxiv.org/abs/2602.22818",
-  "https://techcrunch.com/2026/04/20/tim-cook-stepping-down-as-apple-ceo-john-ternus-taking-over/",
-  "https://www.cnn.com/2026/04/20/world/earthquake-tsunami-warning-japan-intl",
-  "https://news.web.nhk/newsweb/na/na-k10015063691000",
-  "https://www.japantimes.co.jp/news/2026/05/05/japan/politics/takaichi-popularity-ldp-local-struggles/",
-  "https://www.anthropic.com/news/anthropic-nec",
-  "https://www.as-web.jp/f1/1312697",
-  "https://www.japantimes.co.jp/business/2026/04/28/companies/jal-humanoid-robot-use-airport/",
-  "https://www.japantimes.co.jp/news/2026/04/27/japan/advisory-lift-week-after/",
-  "https://pubmed.ncbi.nlm.nih.gov/40072785/",
-  "https://techcrunch.com/2026/04/22/ai-is-spitting-out-more-potential-drugs-than-ever-this-start-up-wants-to-figure-out-which-ones-matter/",
-  "https://pubmed.ncbi.nlm.nih.gov/37738616/",
-  "https://pubmed.ncbi.nlm.nih.gov/40832429/",
-  "https://www.jnto.go.jp/news/press/20260415_monthly.html",
-  "https://www.japantimes.co.jp/news/2026/05/04/japan/science-health/ai-medicine/",
-  "https://www.euronews.com/business/2026/04/28/iran-war-will-trigger-largest-energy-price-surge-since-2022-world-bank-warns",
-  "https://arxiv.org/abs/2601.13834",
-  "https://arxiv.org/abs/2510.24797",
-  "https://www.nature.com/articles/s41514-025-00318-w",
-  "https://kahoku.news/articles/knp2026050701000308.html",
-  "https://news.lockheedmartin.com/2026-04-10-Splashdown-Lockheed-Martin-Built-Orion-Spacecraft-Safely-Returns-Astronauts-to-Earth,-Completing-NASAs-Artemis-II-Mission",
-  "https://www.japantimes.co.jp/news/2026/05/01/japan/npt-meeting-joint-statement/",
-  "https://news.microsoft.com/source/asia/2026/04/03/microsoft-deepens-its-commitment-to-japan-with-10-billion-investment-in-ai-infrastructure-cybersecurity-workforce/",
-  "https://arxiv.org/abs/2504.18932",
-  "https://www.japantimes.co.jp/business/2026/04/27/tech/sushi-tech-tokyo-2026/",
-  "https://www.nasa.gov/news-release/nasa-welcomes-record-setting-artemis-ii-moonfarers-back-to-earth/",
-  "https://www.nature.com/articles/s41564-025-02197-z",
-  "https://fortune.com/2026/05/05/google-deepmind-unionize-vote-military-ai-contracts-internal-backlash-pentagon-deal-israeli-defense-forces/",
-  "https://www.cnn.com/2026/04/29/world/iran-war-gulf-hormuz-shipping-maps-intl-vis",
-  "https://arxiv.org/abs/2605.02335",
-  "https://www.nikkei.com/article/DGXZQOUB2743G0X20C26A4000000/",
-  "https://www.nikkei.com/article/DGXZQOUB30BGC0Q6A430C2000000/",
-  "https://news.web.nhk/newsweb/na/na-k10015115431000",
-  "https://pubmed.ncbi.nlm.nih.gov/41843416/",
-  "https://pubmed.ncbi.nlm.nih.gov/40910958/",
-  "https://www.japantimes.co.jp/business/2026/04/03/companies/microsoft-ai-japan-investment/",
-  "https://techcrunch.com/2026/04/22/exclusive-google-deepens-thinking-machines-lab-ties-with-new-multi-billion-dollar-deal/",
-  "https://arxiv.org/abs/2502.12252",
-  "https://www.nature.com/articles/s41467-025-59275-3",
-  "https://www.cnbc.com/2026/05/01/japan-airlines-humanoid-robots-haneda-labor-shortage.html",
-  "https://www.nature.com/articles/s41558-026-02620-1",
-  "https://www.jetro.go.jp/biznews/2026/04/fe897643ebf4c971.html",
-  "https://www.nature.com/articles/s41591-025-03570-5",
-  "https://arxiv.org/abs/2602.14773",
-  "https://arxiv.org/abs/2512.15567",
-  "https://mantan-web.jp/article/20260507dog00m200024000a.html",
-  "https://www.shimotsuke.co.jp/articles/-/1332200",
-  "https://news.yahoo.co.jp/articles/be4e0a50fbfead239a96cc3aad6176a4647e9de2",
-  "https://www.nippon.com/en/news/yjj2026050100191/",
-  "https://pubmed.ncbi.nlm.nih.gov/41686437/",
-  "https://www.cnbc.com/2026/04/28/bank-of-japan-keeps-policy-rate-steady-cpi-iran-war-gdp.html",
-  "https://www.japantimes.co.jp/news/2026/04/20/japan/earthquake-tsunami-warning/",
-  "https://press.jal.co.jp/en/release/202604/009502.html",
-  "https://pubmed.ncbi.nlm.nih.gov/41792328/",
-  "https://arxiv.org/abs/2504.02181",
-  "https://www.nature.com/articles/s41591-025-04133-4",
-  "https://www.npr.org/2026/05/01/nx-s1-5805805/may-day-protests-boycott-schools-trump",
-  "https://techcrunch.com/2026/04/05/japan-is-proving-experimental-physical-ai-is-ready-for-the-real-world/",
-  "https://news.web.nhk/newsweb/na/na-k10015112081000",
-  "https://arxiv.org/abs/2604.10034",
-  "https://www.japantimes.co.jp/business/2026/05/03/nvidia-ai-asia-rally/",
-  "https://www.biorxiv.org/content/10.64898/2026.03.05.702363v2",
-  "https://www3.nhk.or.jp/news/html/20260428/k10015109801000.html",
-  "https://www.jpl.nasa.gov/news/nasas-curiosity-finds-organic-molecules-never-seen-before-on-mars/",
-  "https://www.nikkei.com/article/DGXZQOFL071CYTX00C26A5000000/",
-  "https://pubmed.ncbi.nlm.nih.gov/41558361/",
-  "https://www.nature.com/articles/s41467-025-60049-0",
-  "https://www.nature.com/articles/s41558-025-02554-0",
-  "https://www.nature.com/articles/s43587-026-01075-5",
-  "https://www.nature.com/articles/s41586-025-09854-7",
-  "https://9to5google.com/2026/04/29/alphabet-q1-2026-earnings/",
-  "https://arxiv.org/abs/2503.00125",
-  "https://www.watch.impress.co.jp/docs/news/2102917.html",
-  "https://press.jal.co.jp/ja/release/202604/009501.html",
-  "https://pubmed.ncbi.nlm.nih.gov/41495409/",
-  "https://pubmed.ncbi.nlm.nih.gov/41445723/",
-  "https://www.nec.com/en/press/202604/global_20260423_01.html",
-  "https://www.nikkei.com/article/DGXZQOGR061U80W6A500C2000000/",
-  "https://news.web.nhk/newsweb/na/na-k10015112371000",
-  "https://www.bloomberg.com/news/articles/2026-04-11/japan-bets-16-billion-to-propel-startup-rapidus-into-ai-chips",
-  "https://www.nature.com/articles/s43017-026-00777-z",
-  "https://news.web.nhk/newsweb/na/na-k10015115901000",
-  "https://pubmed.ncbi.nlm.nih.gov/41721741/",
-  "https://news.web.nhk/newsweb/na/na-k10015115641000",
-  "https://news.web.nhk/newsweb/na/na-k10015112361000",
-  "https://www.nikkei.com/article/DGXZQOUC013V50R00C26A5000000/",
-  "https://www.sci.news/astronomy/interstellar-comet-3i-atlas-ultra-cold-planetary-system-14727.html",
-  "https://arxiv.org/abs/2604.13430",
-  "https://news.yahoo.co.jp/articles/c78d106cfb063057c968db175051e04a33d191ed",
-  "https://arxiv.org/abs/2604.10694",
-  "https://pubmed.ncbi.nlm.nih.gov/40018491/",
-  "https://news.yahoo.co.jp/articles/10f087d4f5800f9178058a139eb6db080f27d54a",
-  "https://www.jiji.com/jc/article?k=2026042900461&g=int",
-  "https://techcrunch.com/2026/05/01/meta-buys-robotics-startup-to-bolster-its-humanoid-ai-ambitions/",
-  "https://www.nature.com/articles/s41586-026-10407-9",
-  "https://www.nature.com/articles/s41558-025-02513-9",
-  "https://www.nikkei.com/article/DGXZQOKC010VY0R00C26A5000000/",
-  "https://www.cnn.com/2026/05/07/world/live-news/trump-iran-war-news",
-  "https://arxiv.org/abs/2505.11218",
-  "https://pubmed.ncbi.nlm.nih.gov/40875536/",
-  "https://internet.watch.impress.co.jp/docs/news/2104549.html",
-  "https://www.theregister.com/2026/04/08/japan_privacy_law_changes_ai/",
-  "https://www.japantimes.co.jp/business/2026/05/01/green-tea-exports-matcha/",
-  "https://pubmed.ncbi.nlm.nih.gov/40533200/",
-  "https://arxiv.org/abs/2604.22071",
-  "https://arxiv.org/abs/2504.04143",
-  "https://www.jetro.go.jp/biznews/2026/05/ab0d6e940079ff4f.html",
-  "https://www.biorxiv.org/content/10.64898/2026.03.04.705181v1",
-  "https://arxiv.org/abs/2601.12538",
-  "https://arxiv.org/abs/2405.09723",
-  "https://arxiv.org/abs/2604.19481",
-  "https://pubmed.ncbi.nlm.nih.gov/41299092/",
-  "https://www.japantimes.co.jp/business/2026/04/12/companies/softbank-ai-new-firm/",
-  "https://www.cnn.com/2026/04/20/asia/japan-defense-export-arms-sales-intl-hnk",
-  "https://www.afpbb.com/articles/-/3634140",
-  "https://news.web.nhk/newsweb/na/na-k10015110861000",
-  "https://www.aljazeera.com/news/2026/5/4/japan-pm-says-iran-war-oil-crisis-having-enormous-impact-in-asia-pacific",
-  "https://techcrunch.com/2026/04/22/google-cloud-next-new-tpu-ai-chips-compete-with-nvidia/",
-  "https://news.yahoo.co.jp/articles/cf21b6219e396abb0aa41f6bea771467af4e8012",
-  "https://www.japantimes.co.jp/business/2026/05/07/markets/yen-spikes-intervention-speculation/",
-  "https://www.usnews.com/news/top-news/articles/2026-04-21/japan-mexico-agree-on-energy-cooperation-as-iran-war-disrupts-supplies"
+  {
+    "url": "https://arxiv.org/abs/2509.23328",
+    "at": "2026-05-09T22:26:00.270697"
+  },
+  {
+    "url": "https://pubmed.ncbi.nlm.nih.gov/41262688/",
+    "at": "2026-05-09T22:26:00.270697"
+  },
+  {
+    "url": "https://pubmed.ncbi.nlm.nih.gov/40512179/",
+    "at": "2026-05-09T22:26:00.270697"
+  },
+  {
+    "url": "https://www.nature.com/articles/s41586-024-08165-7",
+    "at": "2026-05-09T22:26:00.270697"
+  },
+  {
+    "url": "https://www.nature.com/articles/s41598-025-32036-4",
+    "at": "2026-05-09T22:26:00.270697"
+  },
+  {
+    "url": "https://pubmed.ncbi.nlm.nih.gov/40096467/",
+    "at": "2026-05-09T22:26:00.270697"
+  },
+  {
+    "url": "https://pubmed.ncbi.nlm.nih.gov/40188830/",
+    "at": "2026-05-09T22:26:00.270697"
+  },
+  {
+    "url": "https://www.nature.com/articles/s41591-025-04102-x",
+    "at": "2026-05-09T22:26:00.270697"
+  },
+  {
+    "url": "https://www.cnn.com/2026/05/08/politics/ufo-files-pentagon-release-aliens",
+    "at": "2026-05-09T18:24:52.815971"
+  },
+  {
+    "url": "https://www.japantimes.co.jp/business/2026/05/08/companies/toyota-profit-drop-forecast/",
+    "at": "2026-05-09T18:24:52.815971"
+  },
+  {
+    "url": "https://www.nature.com/articles/s41587-025-02932-1",
+    "at": "2026-05-09T18:24:52.815971"
+  },
+  {
+    "url": "https://www.nature.com/articles/s43587-025-01038-2",
+    "at": "2026-05-09T18:24:52.815971"
+  },
+  {
+    "url": "https://www.japantimes.co.jp/business/2026/04/30/foreign-business-managers-visa-survey/",
+    "at": "2026-05-09T18:24:52.815971"
+  },
+  {
+    "url": "https://www.japantimes.co.jp/news/2026/05/08/japan/bear-first-attack-death/",
+    "at": "2026-05-09T18:24:52.815971"
+  },
+  {
+    "url": "https://www.nature.com/articles/s41591-025-03842-0",
+    "at": "2026-05-09T18:24:52.815971"
+  },
+  {
+    "url": "https://www.aljazeera.com/news/2026/5/8/trump-announces-three-day-ceasefire-in-russia-ukraine-war",
+    "at": "2026-05-09T18:24:52.815971"
+  },
+  {
+    "url": "https://pubmed.ncbi.nlm.nih.gov/40885141/",
+    "at": "2026-05-09T18:24:52.815971"
+  },
+  {
+    "url": "https://www.nature.com/articles/s41591-025-03798-1",
+    "at": "2026-05-09T18:24:52.815971"
+  },
+  {
+    "url": "https://pubmed.ncbi.nlm.nih.gov/40468006/",
+    "at": "2026-05-09T18:24:52.815971"
+  },
+  {
+    "url": "https://arxiv.org/abs/2505.20520",
+    "at": "2026-05-09T18:24:52.815971"
+  },
+  {
+    "url": "https://arxiv.org/abs/2503.20020",
+    "at": "2026-05-09T18:24:52.815971"
+  },
+  {
+    "url": "https://www.japantimes.co.jp/environment/2026/05/03/energy/iran-war-japan-solar-power/",
+    "at": "2026-05-09T18:24:52.815971"
+  },
+  {
+    "url": "https://news.web.nhk/newsweb/na/na-k10015117411000",
+    "at": "2026-05-09T18:24:52.815971"
+  },
+  {
+    "url": "https://www.japantimes.co.jp/business/2026/05/05/markets/imf-yen-interventions/",
+    "at": "2026-05-09T18:24:52.815971"
+  },
+  {
+    "url": "https://www.japantimes.co.jp/sports/2026/05/08/sumo/summer-basho-preview-hoshoryu/",
+    "at": "2026-05-09T18:24:52.815971"
+  },
+  {
+    "url": "https://www.japantimes.co.jp/business/2026/05/08/companies/sony-buyback-profit-forecast/",
+    "at": "2026-05-09T18:24:52.815971"
+  },
+  {
+    "url": "https://www.japantimes.co.jp/news/2026/05/02/japan/politics/japan-vietnam-foip-takaichi/",
+    "at": "2026-05-09T18:24:52.815971"
+  },
+  {
+    "url": "https://www.japantimes.co.jp/news/2026/05/04/japan/politics/takaichi-visits-australia/",
+    "at": "2026-05-09T18:24:52.815971"
+  },
+  {
+    "url": "https://www.nature.com/articles/s41586-025-09854-7",
+    "at": "2026-05-09T08:34:57.861927"
+  },
+  {
+    "url": "https://arxiv.org/abs/2505.11218",
+    "at": "2026-05-09T08:34:57.861927"
+  },
+  {
+    "url": "https://techcrunch.com/2026/04/22/ai-is-spitting-out-more-potential-drugs-than-ever-this-start-up-wants-to-figure-out-which-ones-matter/",
+    "at": "2026-05-09T08:34:57.861927"
+  },
+  {
+    "url": "https://www.shimotsuke.co.jp/articles/-/1332200",
+    "at": "2026-05-09T08:34:57.861927"
+  },
+  {
+    "url": "https://pubmed.ncbi.nlm.nih.gov/40018491/",
+    "at": "2026-05-09T08:34:57.861927"
+  },
+  {
+    "url": "https://www.japantimes.co.jp/business/2026/04/12/companies/softbank-ai-new-firm/",
+    "at": "2026-05-09T08:34:57.861927"
+  },
+  {
+    "url": "https://www.bloomberg.com/news/articles/2026-04-11/japan-bets-16-billion-to-propel-startup-rapidus-into-ai-chips",
+    "at": "2026-05-09T08:34:57.861927"
+  },
+  {
+    "url": "https://techcrunch.com/2026/04/22/google-cloud-next-new-tpu-ai-chips-compete-with-nvidia/",
+    "at": "2026-05-09T08:34:57.861927"
+  },
+  {
+    "url": "https://www.nature.com/articles/s43017-026-00780-4",
+    "at": "2026-05-09T08:34:57.861927"
+  },
+  {
+    "url": "https://www.nature.com/articles/s41467-025-60049-0",
+    "at": "2026-05-09T08:34:57.861927"
+  },
+  {
+    "url": "https://news.web.nhk/newsweb/na/na-k10015116501000",
+    "at": "2026-05-09T08:34:57.861927"
+  },
+  {
+    "url": "https://www.nature.com/articles/s41591-025-03570-5",
+    "at": "2026-05-09T08:34:57.861927"
+  },
+  {
+    "url": "https://www.anthropic.com/news/anthropic-nec",
+    "at": "2026-05-09T08:34:57.861927"
+  },
+  {
+    "url": "https://www.nature.com/articles/s41586-026-10407-9",
+    "at": "2026-05-09T08:34:57.861927"
+  },
+  {
+    "url": "https://blog.google/innovation-and-ai/technology/developers-tools/gemma-4/",
+    "at": "2026-05-09T08:34:57.861927"
+  },
+  {
+    "url": "https://www.biorxiv.org/content/10.64898/2026.03.04.705181v1",
+    "at": "2026-05-09T08:34:57.861927"
+  },
+  {
+    "url": "https://www.watch.impress.co.jp/docs/news/2102917.html",
+    "at": "2026-05-09T08:34:57.861927"
+  },
+  {
+    "url": "https://www.nikkei.com/article/DGXZQOUB2743G0X20C26A4000000/",
+    "at": "2026-05-09T08:34:57.861927"
+  },
+  {
+    "url": "https://pubmed.ncbi.nlm.nih.gov/41686437/",
+    "at": "2026-05-09T08:34:57.861927"
+  },
+  {
+    "url": "https://kahoku.news/articles/knp2026050701000308.html",
+    "at": "2026-05-09T08:34:57.861927"
+  },
+  {
+    "url": "https://news.yahoo.co.jp/articles/10f087d4f5800f9178058a139eb6db080f27d54a",
+    "at": "2026-05-09T08:34:57.861927"
+  },
+  {
+    "url": "https://news.web.nhk/newsweb/na/na-k10015112081000",
+    "at": "2026-05-09T08:34:57.861927"
+  },
+  {
+    "url": "https://news.web.nhk/newsweb/na/na-k10015063691000",
+    "at": "2026-05-09T08:34:57.861927"
+  },
+  {
+    "url": "https://www.japantimes.co.jp/news/2026/05/04/japan/science-health/ai-medicine/",
+    "at": "2026-05-09T08:34:57.861927"
+  },
+  {
+    "url": "https://news.web.nhk/newsweb/na/na-k10015112361000",
+    "at": "2026-05-09T08:34:57.861927"
+  },
+  {
+    "url": "https://www.nikkei.com/article/DGXZQOUC013V50R00C26A5000000/",
+    "at": "2026-05-09T08:34:57.861927"
+  },
+  {
+    "url": "https://www.jiji.com/jc/article?k=2026042900461&g=int",
+    "at": "2026-05-09T08:34:57.861927"
+  },
+  {
+    "url": "https://arxiv.org/abs/2604.10034",
+    "at": "2026-05-09T08:34:57.861927"
+  },
+  {
+    "url": "https://www.nature.com/articles/s41558-025-02513-9",
+    "at": "2026-05-09T08:34:57.861927"
+  },
+  {
+    "url": "https://news.web.nhk/newsweb/na/na-k10015110861000",
+    "at": "2026-05-09T08:34:57.861927"
+  },
+  {
+    "url": "https://arxiv.org/abs/2512.15567",
+    "at": "2026-05-09T08:34:57.861927"
+  },
+  {
+    "url": "https://arxiv.org/abs/2510.24797",
+    "at": "2026-05-09T08:34:57.861927"
+  },
+  {
+    "url": "https://www.japantimes.co.jp/news/2026/05/01/japan/npt-meeting-joint-statement/",
+    "at": "2026-05-09T08:34:57.861927"
+  },
+  {
+    "url": "https://news.microsoft.com/source/asia/2026/04/03/microsoft-deepens-its-commitment-to-japan-with-10-billion-investment-in-ai-infrastructure-cybersecurity-workforce/",
+    "at": "2026-05-09T08:34:57.861927"
+  },
+  {
+    "url": "https://arxiv.org/abs/2503.00125",
+    "at": "2026-05-09T08:34:57.861927"
+  },
+  {
+    "url": "https://www.cinematoday.jp/news/N0154693",
+    "at": "2026-05-09T08:34:57.861927"
+  },
+  {
+    "url": "https://www.npr.org/2026/05/01/nx-s1-5805805/may-day-protests-boycott-schools-trump",
+    "at": "2026-05-09T08:34:57.861927"
+  },
+  {
+    "url": "https://www.nature.com/articles/s44184-025-00119-9",
+    "at": "2026-05-09T08:34:57.861927"
+  },
+  {
+    "url": "https://press.jal.co.jp/ja/release/202604/009501.html",
+    "at": "2026-05-09T08:34:57.861927"
+  },
+  {
+    "url": "https://news.yahoo.co.jp/articles/cf21b6219e396abb0aa41f6bea771467af4e8012",
+    "at": "2026-05-09T08:34:57.861927"
+  },
+  {
+    "url": "https://arxiv.org/abs/2604.22071",
+    "at": "2026-05-09T08:34:57.861927"
+  },
+  {
+    "url": "https://www.japantimes.co.jp/news/2026/04/27/japan/advisory-lift-week-after/",
+    "at": "2026-05-09T08:34:57.861927"
+  },
+  {
+    "url": "https://arxiv.org/abs/2504.04143",
+    "at": "2026-05-09T08:34:57.861927"
+  },
+  {
+    "url": "https://pubmed.ncbi.nlm.nih.gov/41558361/",
+    "at": "2026-05-09T08:34:57.861927"
+  },
+  {
+    "url": "https://www.nikkei.com/article/DGXZQOFL071CYTX00C26A5000000/",
+    "at": "2026-05-09T08:34:57.861927"
+  },
+  {
+    "url": "https://news.yahoo.co.jp/articles/c78d106cfb063057c968db175051e04a33d191ed",
+    "at": "2026-05-09T08:34:57.861927"
+  },
+  {
+    "url": "https://mantan-web.jp/article/20260507dog00m200024000a.html",
+    "at": "2026-05-09T08:34:57.861927"
+  },
+  {
+    "url": "https://www.japantimes.co.jp/business/2026/05/03/nvidia-ai-asia-rally/",
+    "at": "2026-05-09T08:34:57.861927"
+  },
+  {
+    "url": "https://pubmed.ncbi.nlm.nih.gov/40832429/",
+    "at": "2026-05-09T08:34:57.861927"
+  },
+  {
+    "url": "https://arxiv.org/abs/2604.19481",
+    "at": "2026-05-09T08:34:57.861927"
+  },
+  {
+    "url": "https://news.yahoo.co.jp/articles/be4e0a50fbfead239a96cc3aad6176a4647e9de2",
+    "at": "2026-05-09T08:34:57.861927"
+  },
+  {
+    "url": "https://www.as-web.jp/f1/1312697",
+    "at": "2026-05-09T08:34:57.861927"
+  },
+  {
+    "url": "https://pubmed.ncbi.nlm.nih.gov/40304660/",
+    "at": "2026-05-09T08:34:57.861927"
+  },
+  {
+    "url": "https://arxiv.org/abs/2604.10694",
+    "at": "2026-05-09T08:34:57.861927"
+  },
+  {
+    "url": "https://www.nikkei.com/article/DGXZQOGR061U80W6A500C2000000/",
+    "at": "2026-05-09T08:34:57.861927"
+  },
+  {
+    "url": "https://www.japantimes.co.jp/news/2026/04/20/japan/earthquake-tsunami-warning/",
+    "at": "2026-05-09T08:34:57.861927"
+  },
+  {
+    "url": "https://www.japantimes.co.jp/business/2026/04/28/companies/jal-humanoid-robot-use-airport/",
+    "at": "2026-05-09T08:34:57.861927"
+  },
+  {
+    "url": "https://www.sciencedaily.com/releases/2026/04/260422044633.htm",
+    "at": "2026-05-09T08:34:57.861927"
+  },
+  {
+    "url": "https://shiruto.jp/technology/6234/",
+    "at": "2026-05-09T08:34:57.861927"
+  },
+  {
+    "url": "https://news.web.nhk/newsweb/na/na-k10015112371000",
+    "at": "2026-05-09T08:34:57.861927"
+  },
+  {
+    "url": "https://pubmed.ncbi.nlm.nih.gov/41843416/",
+    "at": "2026-05-09T08:34:57.861927"
+  },
+  {
+    "url": "https://arxiv.org/abs/2601.12538",
+    "at": "2026-05-09T08:34:57.861927"
+  },
+  {
+    "url": "https://techcrunch.com/2026/05/01/meta-buys-robotics-startup-to-bolster-its-humanoid-ai-ambitions/",
+    "at": "2026-05-09T08:34:57.861927"
+  },
+  {
+    "url": "https://www.newsonjapan.com/article/149048.php",
+    "at": "2026-05-09T08:34:57.861927"
+  },
+  {
+    "url": "https://pubmed.ncbi.nlm.nih.gov/40910958/",
+    "at": "2026-05-09T08:34:57.861927"
+  },
+  {
+    "url": "https://press.jal.co.jp/en/release/202604/009502.html",
+    "at": "2026-05-09T08:34:57.861927"
+  },
+  {
+    "url": "https://www.japantimes.co.jp/news/2026/04/27/japan/japan-hokkaido-quake/",
+    "at": "2026-05-09T08:34:57.861927"
+  },
+  {
+    "url": "https://pubmed.ncbi.nlm.nih.gov/41495409/",
+    "at": "2026-05-09T08:34:57.861927"
+  },
+  {
+    "url": "https://arxiv.org/abs/2502.12252",
+    "at": "2026-05-09T08:34:57.861927"
+  },
+  {
+    "url": "https://www.nature.com/articles/s41558-025-02554-0",
+    "at": "2026-05-09T08:34:57.861927"
+  },
+  {
+    "url": "https://www.cnbc.com/2026/04/28/bank-of-japan-keeps-policy-rate-steady-cpi-iran-war-gdp.html",
+    "at": "2026-05-09T08:34:57.861927"
+  },
+  {
+    "url": "https://pubmed.ncbi.nlm.nih.gov/41299092/",
+    "at": "2026-05-09T08:34:57.861927"
+  },
+  {
+    "url": "https://news.lockheedmartin.com/2026-04-10-Splashdown-Lockheed-Martin-Built-Orion-Spacecraft-Safely-Returns-Astronauts-to-Earth,-Completing-NASAs-Artemis-II-Mission",
+    "at": "2026-05-09T08:34:57.861927"
+  },
+  {
+    "url": "https://www.nature.com/articles/s43587-026-01075-5",
+    "at": "2026-05-09T08:34:57.861927"
+  },
+  {
+    "url": "https://www.nikkei.com/article/DGXZQOKC010VY0R00C26A5000000/",
+    "at": "2026-05-09T08:34:57.861927"
+  },
+  {
+    "url": "https://techcrunch.com/2026/04/20/tim-cook-stepping-down-as-apple-ceo-john-ternus-taking-over/",
+    "at": "2026-05-09T08:34:57.861927"
+  },
+  {
+    "url": "https://www.cnn.com/2026/05/07/world/live-news/trump-iran-war-news",
+    "at": "2026-05-09T08:34:57.861927"
+  },
+  {
+    "url": "https://www.japantimes.co.jp/business/2026/04/03/companies/microsoft-ai-japan-investment/",
+    "at": "2026-05-09T08:34:57.861927"
+  },
+  {
+    "url": "https://www.cnn.com/2026/04/20/world/earthquake-tsunami-warning-japan-intl",
+    "at": "2026-05-09T08:34:57.861927"
+  },
+  {
+    "url": "https://arxiv.org/abs/2604.13430",
+    "at": "2026-05-09T08:34:57.861927"
+  },
+  {
+    "url": "https://www.gaitame.com/media/entry/2026/05/01/074755",
+    "at": "2026-05-09T08:34:57.861927"
+  },
+  {
+    "url": "https://arxiv.org/abs/2405.09723",
+    "at": "2026-05-09T08:34:57.861927"
+  },
+  {
+    "url": "https://www.nasa.gov/news-release/nasa-welcomes-record-setting-artemis-ii-moonfarers-back-to-earth/",
+    "at": "2026-05-09T08:34:57.861927"
+  },
+  {
+    "url": "https://www.jetro.go.jp/biznews/2026/04/fe897643ebf4c971.html",
+    "at": "2026-05-09T08:34:57.861927"
+  },
+  {
+    "url": "https://www.sci.news/astronomy/interstellar-comet-3i-atlas-ultra-cold-planetary-system-14727.html",
+    "at": "2026-05-09T08:34:57.861927"
+  },
+  {
+    "url": "https://pubmed.ncbi.nlm.nih.gov/41445723/",
+    "at": "2026-05-09T08:34:57.861927"
+  },
+  {
+    "url": "https://news.web.nhk/newsweb/na/na-k10015115901000",
+    "at": "2026-05-09T08:34:57.861927"
+  },
+  {
+    "url": "https://www.afpbb.com/articles/-/3634140",
+    "at": "2026-05-09T08:34:57.861927"
+  },
+  {
+    "url": "https://www.aljazeera.com/news/2026/5/4/japan-pm-says-iran-war-oil-crisis-having-enormous-impact-in-asia-pacific",
+    "at": "2026-05-09T08:34:57.861927"
+  },
+  {
+    "url": "https://fortune.com/2026/05/05/google-deepmind-unionize-vote-military-ai-contracts-internal-backlash-pentagon-deal-israeli-defense-forces/",
+    "at": "2026-05-09T08:34:57.861927"
+  },
+  {
+    "url": "https://www.japantimes.co.jp/business/2026/04/27/tech/sushi-tech-tokyo-2026/",
+    "at": "2026-05-09T08:34:57.861927"
+  },
+  {
+    "url": "https://www.cnbc.com/2026/05/01/japan-airlines-humanoid-robots-haneda-labor-shortage.html",
+    "at": "2026-05-09T08:34:57.861927"
+  },
+  {
+    "url": "https://www.biorxiv.org/content/10.64898/2026.03.05.702363v2",
+    "at": "2026-05-09T08:34:57.861927"
+  },
+  {
+    "url": "https://www.nature.com/articles/s41591-026-04312-x",
+    "at": "2026-05-09T08:34:57.861927"
+  },
+  {
+    "url": "https://www.theregister.com/2026/04/08/japan_privacy_law_changes_ai/",
+    "at": "2026-05-09T08:34:57.861927"
+  },
+  {
+    "url": "https://www.nature.com/articles/s41564-025-02197-z",
+    "at": "2026-05-09T08:34:57.861927"
+  },
+  {
+    "url": "https://pubmed.ncbi.nlm.nih.gov/40107357/",
+    "at": "2026-05-09T08:34:57.861927"
+  },
+  {
+    "url": "https://arxiv.org/abs/2504.02181",
+    "at": "2026-05-09T08:34:57.861927"
+  },
+  {
+    "url": "https://pubmed.ncbi.nlm.nih.gov/40533200/",
+    "at": "2026-05-09T08:34:57.861927"
+  },
+  {
+    "url": "https://www.nature.com/articles/s41591-025-04133-4",
+    "at": "2026-05-09T08:34:57.861927"
+  },
+  {
+    "url": "https://www.nature.com/articles/s41558-026-02620-1",
+    "at": "2026-05-09T08:34:57.861927"
+  },
+  {
+    "url": "https://techcrunch.com/2026/04/22/exclusive-google-deepens-thinking-machines-lab-ties-with-new-multi-billion-dollar-deal/",
+    "at": "2026-05-09T08:34:57.861927"
+  },
+  {
+    "url": "https://www.japantimes.co.jp/news/2026/05/06/japan/japan-government-agencies-ai/",
+    "at": "2026-05-09T08:34:57.861927"
+  },
+  {
+    "url": "https://www.euronews.com/business/2026/04/28/iran-war-will-trigger-largest-energy-price-surge-since-2022-world-bank-warns",
+    "at": "2026-05-09T08:34:57.861927"
+  },
+  {
+    "url": "https://www.nature.com/articles/s41467-025-59275-3",
+    "at": "2026-05-09T08:34:57.861927"
+  },
+  {
+    "url": "https://www.jnto.go.jp/news/press/20260415_monthly.html",
+    "at": "2026-05-09T08:34:57.861927"
+  },
+  {
+    "url": "https://www3.nhk.or.jp/news/html/20260428/k10015109801000.html",
+    "at": "2026-05-09T08:34:57.861927"
+  },
+  {
+    "url": "https://www.cnn.com/2026/04/20/asia/japan-defense-export-arms-sales-intl-hnk",
+    "at": "2026-05-09T08:34:57.861927"
+  },
+  {
+    "url": "https://www.npr.org/2026/04/28/g-s1-118986/pompeii-archaeologists-use-ai-to-reconstruct-man-killed-in-volcanos-eruption",
+    "at": "2026-05-09T08:34:57.861927"
+  },
+  {
+    "url": "https://pubmed.ncbi.nlm.nih.gov/40072785/",
+    "at": "2026-05-09T08:34:57.861927"
+  },
+  {
+    "url": "https://arxiv.org/abs/2505.10012",
+    "at": "2026-05-09T08:34:57.861927"
+  },
+  {
+    "url": "https://www.nikkei.com/article/DGXZQOUB30BGC0Q6A430C2000000/",
+    "at": "2026-05-09T08:34:57.861927"
+  },
+  {
+    "url": "https://www.japantimes.co.jp/business/2026/05/07/markets/yen-spikes-intervention-speculation/",
+    "at": "2026-05-09T08:34:57.861927"
+  },
+  {
+    "url": "https://arxiv.org/abs/2602.22818",
+    "at": "2026-05-09T08:34:57.861927"
+  },
+  {
+    "url": "https://pubmed.ncbi.nlm.nih.gov/37738616/",
+    "at": "2026-05-09T08:34:57.861927"
+  },
+  {
+    "url": "https://www.jpl.nasa.gov/news/nasas-curiosity-finds-organic-molecules-never-seen-before-on-mars/",
+    "at": "2026-05-09T08:34:57.861927"
+  },
+  {
+    "url": "https://pubmed.ncbi.nlm.nih.gov/40875536/",
+    "at": "2026-05-09T08:34:57.861927"
+  },
+  {
+    "url": "https://news.web.nhk/newsweb/na/na-k10015115431000",
+    "at": "2026-05-09T08:34:57.861927"
+  },
+  {
+    "url": "https://www.nature.com/articles/s41514-025-00318-w",
+    "at": "2026-05-09T08:34:57.861927"
+  },
+  {
+    "url": "https://www.nec.com/en/press/202604/global_20260423_01.html",
+    "at": "2026-05-09T08:34:57.861927"
+  },
+  {
+    "url": "https://9to5google.com/2026/04/29/alphabet-q1-2026-earnings/",
+    "at": "2026-05-09T08:34:57.861927"
+  },
+  {
+    "url": "https://arxiv.org/abs/2601.13834",
+    "at": "2026-05-09T08:34:57.861927"
+  },
+  {
+    "url": "https://asia.nikkei.com/business/technology/artificial-intelligence/softbank-in-talks-with-nvidia-to-build-made-in-japan-ai-servers",
+    "at": "2026-05-09T08:34:57.861927"
+  },
+  {
+    "url": "https://www.usnews.com/news/top-news/articles/2026-04-21/japan-mexico-agree-on-energy-cooperation-as-iran-war-disrupts-supplies",
+    "at": "2026-05-09T08:34:57.861927"
+  },
+  {
+    "url": "https://pubmed.ncbi.nlm.nih.gov/41721741/",
+    "at": "2026-05-09T08:34:57.861927"
+  },
+  {
+    "url": "https://arxiv.org/abs/2605.02335",
+    "at": "2026-05-09T08:34:57.861927"
+  },
+  {
+    "url": "https://internet.watch.impress.co.jp/docs/news/2104549.html",
+    "at": "2026-05-09T08:34:57.861927"
+  },
+  {
+    "url": "https://www.jetro.go.jp/biznews/2026/05/ab0d6e940079ff4f.html",
+    "at": "2026-05-09T08:34:57.861927"
+  },
+  {
+    "url": "https://www.japantimes.co.jp/news/2026/05/05/japan/politics/takaichi-popularity-ldp-local-struggles/",
+    "at": "2026-05-09T08:34:57.861927"
+  },
+  {
+    "url": "https://techcrunch.com/2026/04/05/japan-is-proving-experimental-physical-ai-is-ready-for-the-real-world/",
+    "at": "2026-05-09T08:34:57.861927"
+  },
+  {
+    "url": "https://arxiv.org/abs/2602.14773",
+    "at": "2026-05-09T08:34:57.861927"
+  },
+  {
+    "url": "https://www.cnn.com/2026/04/29/world/iran-war-gulf-hormuz-shipping-maps-intl-vis",
+    "at": "2026-05-09T08:34:57.861927"
+  },
+  {
+    "url": "https://www.nippon.com/en/news/yjj2026050100191/",
+    "at": "2026-05-09T08:34:57.861927"
+  },
+  {
+    "url": "https://www.nature.com/articles/s43017-026-00777-z",
+    "at": "2026-05-09T08:34:57.861927"
+  },
+  {
+    "url": "https://www.japantimes.co.jp/news/2026/04/03/japan/golden-week-travel-abroad-increase/",
+    "at": "2026-05-09T08:34:57.861927"
+  },
+  {
+    "url": "https://www.japantimes.co.jp/business/2026/05/01/green-tea-exports-matcha/",
+    "at": "2026-05-09T08:34:57.861927"
+  },
+  {
+    "url": "https://arxiv.org/abs/2504.18932",
+    "at": "2026-05-09T08:34:57.861927"
+  },
+  {
+    "url": "https://pubmed.ncbi.nlm.nih.gov/41792328/",
+    "at": "2026-05-09T08:34:57.861927"
+  },
+  {
+    "url": "https://news.web.nhk/newsweb/na/na-k10015115641000",
+    "at": "2026-05-09T08:34:57.861927"
+  },
+  {
+    "url": "https://www.nature.com/articles/s41598-025-17886-2",
+    "at": "2026-05-09T08:34:57.861927"
+  },
+  {
+    "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC12965823/",
+    "at": "2026-05-09T08:34:57.861927"
+  }
 ]
