@@ -91,6 +91,8 @@ class Settings:
     SESSION_SECRET: str = os.getenv("SESSION_SECRET", "").strip()
     # サイトの絶対URL（sitemap・OG・canonical用）。未設定時はリクエストの base_url を使用
     SITE_URL: str = os.getenv("SITE_URL", "").rstrip("/")
+    # 公開HTML（/topic, /, /news）の Cache-Control max-age（秒）。0 でヘッダなし。CDN/ブラウザの再訪削減用。
+    PUBLIC_HTML_CACHE_MAX_AGE_SEC: int = int(os.getenv("PUBLIC_HTML_CACHE_MAX_AGE_SEC", "120"))
     # RapidAPI（Super Duper Trends 等）。未設定ならGoogleトレンドRSSのみ使用
     RAPIDAPI_KEY: str = os.getenv("RAPIDAPI_KEY", "").strip()
     RAPIDAPI_SUPER_DUPER_HOST: str = os.getenv("RAPIDAPI_SUPER_DUPER_HOST", "super-duper-trends.p.rapidapi.com").strip()

@@ -32,6 +32,17 @@ router = APIRouter()
 templates = Jinja2Templates(directory=str(Path(__file__).resolve().parent.parent / "templates"))
 logger = logging.getLogger(__name__)
 
+
+def _public_html_cache_headers() -> dict[str, str]:
+    """CDN・ブラウザ向け Cache-Control。PUBLIC_HTML_CACHE_MAX_AGE_SEC<=0 なら空（ヘッダ付与しない）。"""
+    try:
+        sec = int(getattr(settings, "PUBLIC_HTML_CACHE_MAX_AGE_SEC", 0) or 0)
+    except Exception:
+        sec = 0
+    if sec <= 0:
+        return {}
+    return {"Cache-Control": f"public, max-age={sec}"}
+
 # 一覧ジャンルタブの data-cat と一致させる（DB/RSS の category がタブ6種以外だと「すべて」以外で消える）
 _NEWS_TAB_CATEGORY_SET = frozenset({"国内", "国際", "テクノロジー", "政治・社会", "スポーツ", "エンタメ"})
 _NEWS_TAB_OTHER = "その他"
@@ -69,6 +80,15 @@ _BOT_UA_KEYWORDS = (
     "nmap",
 )
 
+_BOT_UA_ALLOWLIST = (
+    # 検索エンジン（SEO上ブロックしたくない）
+    "googlebot",
+    "bingbot",
+    "duckduckbot",
+    "yandexbot",
+    "baiduspider",
+)
+
 
 def _is_probably_bot_request(request: Request) -> bool:
     """User-Agent などから「人間の閲覧ではなさそう」なリクエストを雑に判定する。
@@ -81,6 +101,8 @@ def _is_probably_bot_request(request: Request) -> bool:
         ua = ""
     if not ua:
         return True
+    if any(k in ua for k in _BOT_UA_ALLOWLIST):
+        return False
     return any(k in ua for k in _BOT_UA_KEYWORDS)
 
 
@@ -426,6 +448,7 @@ async def root_home(request: Request, page: int = 1, keyword: str = ""):
             return _render_papers_page(request, page)
         except Exception as e:
             logger.warning("papers page fallback: %s", e)
+            _ph = _public_html_cache_headers()
             return templates.TemplateResponse(
                 "papers.html",
                 {
@@ -439,6 +462,7 @@ async def root_home(request: Request, page: int = 1, keyword: str = ""):
                     "papers_breadcrumb_jsonld": None,
                     "papers_itemlist_jsonld": None,
                 },
+                headers=_ph or None,
             )
     return Response(status_code=405)
 
@@ -500,6 +524,7 @@ async def news_index(request: Request, page: int = 1, keyword: str = ""):
         site_url=site_url,
         items=flat_news,
     )
+    _ph = _public_html_cache_headers()
     return templates.TemplateResponse(
         "index.html",
         {
@@ -517,6 +542,7 @@ async def news_index(request: Request, page: int = 1, keyword: str = ""):
             "news_breadcrumb_jsonld": news_breadcrumb_jsonld,
             "news_itemlist_jsonld": news_itemlist_jsonld,
         },
+        headers=_ph or None,
     )
 
 
@@ -1156,6 +1182,7 @@ def _render_papers_page(request: Request, page: int = 1):
     except Exception:
         top_recommendations = []
 
+    _ph = _public_html_cache_headers()
     return templates.TemplateResponse(
         "papers.html",
         {
@@ -1171,6 +1198,7 @@ def _render_papers_page(request: Request, page: int = 1):
             "papers_breadcrumb_jsonld": papers_breadcrumb_jsonld,
             "papers_itemlist_jsonld": papers_itemlist_jsonld,
         },
+        headers=_ph or None,
     )
 
 
@@ -1371,6 +1399,7 @@ async def topic_detail(request: Request, topic_id: str):
     mobile_nav_news_highlight = not mobile_nav_papers_highlight
     all_personas_enriched = [{**p, "image_url": _persona_image_url(p.get("name"))} for p in PERSONAS]
 
+    _ph = _public_html_cache_headers()
     return templates.TemplateResponse(
         "article.html",
         {
@@ -1408,7 +1437,8 @@ async def topic_detail(request: Request, topic_id: str):
             "mobile_nav_papers_highlight": mobile_nav_papers_highlight,
             "mobile_nav_news_highlight": mobile_nav_news_highlight,
             "midorman_image_url": _persona_image_url("ミドルマン"),
-        }
+        },
+        headers=_ph or None,
     )
 
 
