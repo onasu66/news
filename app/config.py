@@ -87,6 +87,8 @@ class Settings:
     DATABASE_URL: str = os.getenv("DATABASE_URL", "").strip()
     # 管理者用シークレット（手動記事追加・管理画面）。未設定なら管理機能は利用不可
     ADMIN_SECRET: str = os.getenv("ADMIN_SECRET", "").strip()
+    # セッション Cookie 署名専用（未設定時は main.py で ADMIN_SECRET 派生鍵を使用）
+    SESSION_SECRET: str = os.getenv("SESSION_SECRET", "").strip()
     # サイトの絶対URL（sitemap・OG・canonical用）。未設定時はリクエストの base_url を使用
     SITE_URL: str = os.getenv("SITE_URL", "").rstrip("/")
     # RapidAPI（Super Duper Trends 等）。未設定ならGoogleトレンドRSSのみ使用

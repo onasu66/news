@@ -267,8 +267,12 @@ app = FastAPI(
 try:
     from app.config import settings
     from starlette.middleware.sessions import SessionMiddleware
-    _secret = getattr(settings, "ADMIN_SECRET", "") or "dev-secret-change-me"
-    app.add_middleware(SessionMiddleware, secret_key=_secret, session_cookie="newsite_admin")
+
+    # セッション Cookie 署名鍵。未設定なら ADMIN_SECRET（前後空白除去）を使用。鍵を固定したい場合は SESSION_SECRET を Render に設定。
+    _session_key = (getattr(settings, "SESSION_SECRET", "") or "").strip()
+    if not _session_key:
+        _session_key = (getattr(settings, "ADMIN_SECRET", "") or "").strip() or "dev-secret-change-me"
+    app.add_middleware(SessionMiddleware, secret_key=_session_key, session_cookie="newsite_admin")
 except Exception:
     pass
 

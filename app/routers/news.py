@@ -36,6 +36,53 @@ logger = logging.getLogger(__name__)
 _NEWS_TAB_CATEGORY_SET = frozenset({"国内", "国際", "テクノロジー", "政治・社会", "スポーツ", "エンタメ"})
 _NEWS_TAB_OTHER = "その他"
 
+# RSS の MD5 16hex / 手動 manual- / curated cc-。これに合わない id は DB に触れず 404（クローラーのゴミURL対策）。
+_TOPIC_ID_PLAUSIBLE = re.compile(
+    r"^(?:[0-9a-f]{16}|manual-[0-9a-f]{8,40}|cc-[0-9a-f]{12,20})$"
+)
+
+
+def _topic_id_plausible(topic_id: str) -> bool:
+    t = (topic_id or "").strip()
+    if not t or len(t) > 72:
+        return False
+    return bool(_TOPIC_ID_PLAUSIBLE.fullmatch(t))
+
+
+_BOT_UA_KEYWORDS = (
+    "bot",
+    "spider",
+    "crawler",
+    "scrapy",
+    "facebookexternalhit",
+    "slackbot",
+    "discordbot",
+    "telegrambot",
+    "curl",
+    "wget",
+    "python-requests",
+    "go-http-client",
+    "httpclient",
+    "okhttp",
+    "zgrab",
+    "masscan",
+    "nmap",
+)
+
+
+def _is_probably_bot_request(request: Request) -> bool:
+    """User-Agent などから「人間の閲覧ではなさそう」なリクエストを雑に判定する。
+
+    目的: /topic/{id} を総当たりするクローラーが DB を起こすのを抑える（メモリに無いIDはDBを見ない）。
+    """
+    try:
+        ua = (request.headers.get("user-agent") or "").strip().lower()
+    except Exception:
+        ua = ""
+    if not ua:
+        return True
+    return any(k in ua for k in _BOT_UA_KEYWORDS)
+
 
 def _news_tab_filter_category(item: NewsItem) -> str:
     """タブ用ジャンル。未登録・空は「その他」（item.category 本体は変更しない）。"""
@@ -1178,6 +1225,20 @@ async def topic_detail(request: Request, topic_id: str):
     """トピック詳細（URL: /topic/○○）・AI解説・SEO向け本文"""
     from app.services.explanation_cache import get_cached
 
+    if not _topic_id_plausible(topic_id):
+        raise HTTPException(status_code=404, detail="記事が見つかりません")
+    # Bot が /topic/<16hex> を総当たりすると、毎回 DB を起こしてしまう。
+    # 人間アクセスは「トップ/一覧から来る」ケースが大半なので、メモリに無いIDを bot には即404。
+    if _is_probably_bot_request(request):
+        try:
+            cached_list = getattr(NewsAggregator, "_news_cache", []) or []
+            if not any(getattr(x, "id", None) == topic_id for x in cached_list):
+                raise HTTPException(status_code=404, detail="記事が見つかりません")
+        except HTTPException:
+            raise
+        except Exception:
+            # 判定に失敗した場合は既存挙動（DB照会）にフォールバック
+            pass
     item = NewsAggregator.get_article(topic_id)
     if not item:
         raise HTTPException(status_code=404, detail="記事が見つかりません")
@@ -1354,6 +1415,8 @@ async def topic_detail(request: Request, topic_id: str):
 @router.get("/article/{article_id}", response_class=HTMLResponse)
 async def article_detail(request: Request, article_id: str):
     """旧URL: /topic/ へリダイレクト"""
+    if not _topic_id_plausible(article_id):
+        raise HTTPException(status_code=404, detail="記事が見つかりません")
     item = NewsAggregator.get_article(article_id)
     if not item:
         raise HTTPException(status_code=404, detail="記事が見つかりません")
@@ -1376,6 +1439,8 @@ def _sanitize_blocks(blocks: list) -> list:
 @router.get("/api/article/{article_id}/explain")
 async def api_explain_article(article_id: str):
     """記事のAI解説を取得（従来形式・サイドパネル用）"""
+    if not _topic_id_plausible(article_id):
+        raise HTTPException(status_code=404, detail="記事が見つかりません")
     item = NewsAggregator.get_article(article_id)
     if not item:
         raise HTTPException(status_code=404, detail="記事が見つかりません")
@@ -1387,6 +1452,8 @@ async def api_explain_article(article_id: str):
 @router.get("/api/article/{article_id}/explain-inline")
 async def api_explain_inline(article_id: str):
     """記事本文と解説が交互に入った構造で取得（従来API・互換用）"""
+    if not _topic_id_plausible(article_id):
+        raise HTTPException(status_code=404, detail="記事が見つかりません")
     item = NewsAggregator.get_article(article_id)
     if not item:
         raise HTTPException(status_code=404, detail="記事が見つかりません")
@@ -1397,6 +1464,8 @@ async def api_explain_inline(article_id: str):
 @router.get("/api/article/{article_id}/explanations")
 async def api_all_explanations(article_id: str):
     """ミドルマン解説＋人格の意見を一括取得（キャッシュ優先・表示用3人分のみ生成）"""
+    if not _topic_id_plausible(article_id):
+        raise HTTPException(status_code=404, detail="記事が見つかりません")
     item = NewsAggregator.get_article(article_id)
     if not item:
         raise HTTPException(status_code=404, detail="記事が見つかりません")
@@ -1417,6 +1486,8 @@ async def api_persona_opinion(article_id: str, persona_id: int):
     """表示用3人のうち1人の意見を取得（キャッシュ経由。当該記事で選ばれていない人格は空）"""
     if persona_id < 0 or persona_id >= len(PERSONAS):
         raise HTTPException(status_code=404, detail="人格が見つかりません")
+    if not _topic_id_plausible(article_id):
+        raise HTTPException(status_code=404, detail="記事が見つかりません")
     item = NewsAggregator.get_article(article_id)
     if not item:
         raise HTTPException(status_code=404, detail="記事が見つかりません")
@@ -1465,11 +1536,16 @@ async def api_refresh_news():
 
 def _is_admin(request: Request, x_admin_secret: str | None = Header(None, alias="X-Admin-Secret")) -> bool:
     """セッションまたは X-Admin-Secret ヘッダで管理者か判定"""
-    if not getattr(settings, "ADMIN_SECRET", ""):
+    admin = (getattr(settings, "ADMIN_SECRET", "") or "").strip()
+    if not admin:
         return False
-    if x_admin_secret and x_admin_secret.strip() == settings.ADMIN_SECRET:
+    if x_admin_secret and x_admin_secret.strip() == admin:
         return True
-    return request.session.get("admin") is True
+    try:
+        return request.session.get("admin") is True
+    except Exception as e:
+        logger.warning("管理判定: セッション読み取り失敗（Cookie 破損や鍵不一致の可能性）: %s", e)
+        return False
 
 
 @router.get("/admin/login", response_class=HTMLResponse)
@@ -1682,20 +1758,22 @@ async def api_admin_cache_refresh(
     """（案A）外部（ローカル記事化）からの通知で、Render 側のメモリキャッシュを更新する。"""
     if not _is_admin(request, x_admin_secret):
         raise HTTPException(status_code=403, detail="管理者のみ利用できます")
+    import asyncio
+
     try:
         from app.services.explanation_cache import invalidate_ids_cache
 
-        invalidate_ids_cache()
-    except Exception:
-        pass
+        await asyncio.to_thread(invalidate_ids_cache)
+    except Exception as e:
+        logger.warning("cache/refresh: invalidate_ids_cache: %s", e)
     try:
-        NewsAggregator.sync_list_cache_from_db(force=True)
-    except Exception:
-        pass
+        await asyncio.to_thread(lambda: NewsAggregator.sync_list_cache_from_db(force=True))
+    except Exception as e:
+        logger.warning("cache/refresh: sync_list_cache_from_db: %s", e)
     try:
-        NewsAggregator._invalidate_papers_cache()
-    except Exception:
-        pass
+        await asyncio.to_thread(lambda: NewsAggregator._invalidate_papers_cache())
+    except Exception as e:
+        logger.warning("cache/refresh: _invalidate_papers_cache: %s", e)
     return {"status": "ok"}
 
 

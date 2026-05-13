@@ -77,6 +77,7 @@ def _is_transient_neon_error(exc: BaseException) -> bool:
         "connection reset by peer",
         "broken pipe",
         "could not receive data from server",
+        "software caused connection abort",
     )
     if any(n in msg for n in needles):
         return True
@@ -84,7 +85,27 @@ def _is_transient_neon_error(exc: BaseException) -> bool:
     return tname in ("OperationalError", "InterfaceError")
 
 
-def _conn():
+def reset_neon_connection_pool() -> None:
+    """壊れた／アイドル切断済みの接続が残ったプールを捨て、次回から作り直す。"""
+    _reset_pool()
+
+
+def is_neon_transient_connection_error(exc: BaseException) -> bool:
+    """外部（記事取得など）から接続切れを判定する。"""
+    return _is_transient_neon_error(exc)
+
+
+def _log_neon_db_op(op: str) -> None:
+    """環境変数 LOG_NEON_DB=true で、プール取得直後に操作名を1行ログする（トラフィック調査用）。"""
+    v = os.getenv("LOG_NEON_DB", "").strip().lower()
+    if v not in ("1", "true", "yes"):
+        return
+    import threading
+
+    logger.info("NEON_DB op=%s thread=%s", op, threading.current_thread().name)
+
+
+def _conn(op: str = "unknown"):
     """コネクションプールからコネクションを取得するコンテキストマネージャ。"""
     from contextlib import contextmanager
 
@@ -118,6 +139,7 @@ def _conn():
                     raise
         if conn is None:
             raise RuntimeError("Neon connection could not be established")
+        _log_neon_db_op(op)
         try:
             conn.rollback()  # プール返却時の残留トランザクションをクリア
             yield conn
@@ -140,7 +162,7 @@ def _conn():
 
 def neon_init_schema():
     """テーブル・インデックスを作成（冪等）。起動時に呼ぶ。"""
-    with _conn() as conn:
+    with _conn("init_schema") as conn:
         with conn.cursor() as cur:
             cur.execute("""
                 CREATE TABLE IF NOT EXISTS articles (
@@ -224,7 +246,7 @@ def _published_dt(item) -> Optional[datetime]:
 # --- articles ---
 
 def neon_load_by_id(article_id: str):
-    with _conn() as conn:
+    with _conn("load_by_id") as conn:
         with conn.cursor() as cur:
             cur.execute(
                 "SELECT id, title, link, summary, published, source, category, image_url, added_at "
@@ -244,7 +266,7 @@ def neon_load_all() -> list:
     last_exc: BaseException | None = None
     for attempt in range(3):
         try:
-            with _conn() as conn:
+            with _conn("load_all") as conn:
                 with conn.cursor() as cur:
                     cur.execute(
                         "SELECT id, title, link, summary, published, source, category, image_url, added_at "
@@ -273,7 +295,7 @@ def neon_load_all_papers_for_site_list(limit: int = 20000) -> list:
     """論文トップ用: 研究・論文を added_at 降順で取得。"""
     cap = max(1, min(int(limit), 50000))
     pc = _papers_category_sql_predicate()
-    with _conn() as conn:
+    with _conn("load_all_papers_site_list") as conn:
         with conn.cursor() as cur:
             cur.execute(
                 "SELECT id, title, link, summary, published, source, category, image_url, added_at "
@@ -290,7 +312,7 @@ def neon_load_all_papers_for_site_list(limit: int = 20000) -> list:
 
 def neon_save_articles_batch(items) -> int:
     count = 0
-    with _conn() as conn:
+    with _conn("save_articles_batch") as conn:
         with conn.cursor() as cur:
             for item in items:
                 try:
@@ -327,7 +349,7 @@ def neon_save_articles_batch(items) -> int:
 
 def neon_save_article(item) -> bool:
     try:
-        with _conn() as conn:
+        with _conn("save_article") as conn:
             with conn.cursor() as cur:
                 cur.execute(
                     """
@@ -362,7 +384,7 @@ def neon_save_article(item) -> bool:
 
 def neon_delete_article(article_id: str) -> bool:
     try:
-        with _conn() as conn:
+        with _conn("delete_article") as conn:
             with conn.cursor() as cur:
                 cur.execute("DELETE FROM articles WHERE id = %s", (article_id,))
                 return cur.rowcount > 0
@@ -386,7 +408,7 @@ def _is_bad_fallback_cache(blocks: list) -> bool:
 
 
 def neon_get_cached(article_id: str) -> Optional[dict]:
-    with _conn() as conn:
+    with _conn("get_cached") as conn:
         with conn.cursor() as cur:
             cur.execute(
                 "SELECT inline_blocks, personas, display_persona_ids, "
@@ -464,7 +486,7 @@ def neon_save_cache(
     def _j(v):
         return json.dumps(v, ensure_ascii=False) if v else None
 
-    with _conn() as conn:
+    with _conn("save_cache") as conn:
         with conn.cursor() as cur:
             cur.execute(
                 """
@@ -503,7 +525,7 @@ def neon_save_cache(
 
 def neon_delete_cache(article_id: str) -> bool:
     try:
-        with _conn() as conn:
+        with _conn("delete_cache") as conn:
             with conn.cursor() as cur:
                 cur.execute("DELETE FROM explanations WHERE article_id = %s", (article_id,))
                 deleted = cur.rowcount > 0
@@ -519,7 +541,7 @@ def neon_delete_cache(article_id: str) -> bool:
 
 
 def neon_get_cached_article_ids() -> set:
-    with _conn() as conn:
+    with _conn("get_cached_article_ids") as conn:
         with conn.cursor() as cur:
             cur.execute("SELECT id FROM articles WHERE has_explanation = TRUE")
             rows = cur.fetchall()
@@ -527,7 +549,7 @@ def neon_get_cached_article_ids() -> set:
 
 
 def neon_get_cached_article_ids_ordered() -> list:
-    with _conn() as conn:
+    with _conn("get_cached_article_ids_ordered") as conn:
         with conn.cursor() as cur:
             cur.execute(
                 "SELECT id FROM articles WHERE has_explanation = TRUE "
@@ -540,7 +562,7 @@ def neon_get_cached_article_ids_ordered() -> list:
 def neon_get_related_tags_bulk(article_ids: list, *, max_tags_per_article: int = 3) -> dict:
     if not article_ids:
         return {}
-    with _conn() as conn:
+    with _conn("get_related_tags_bulk") as conn:
         with conn.cursor() as cur:
             cur.execute(
                 "SELECT article_id, paper_graph FROM explanations WHERE article_id = ANY(%s)",
@@ -567,7 +589,7 @@ def neon_query_papers_page(page: int, per_page: int) -> tuple:
     page = max(1, int(page or 1))
     per_page = max(1, int(per_page or 1))
     offset = (page - 1) * per_page
-    with _conn() as conn:
+    with _conn("query_papers_page") as conn:
         with conn.cursor() as cur:
             pc = _papers_category_sql_predicate()
             cur.execute(
@@ -592,7 +614,7 @@ def neon_query_news_page(page: int, per_page: int) -> tuple:
     page = max(1, int(page or 1))
     per_page = max(1, int(per_page or 1))
     offset = (page - 1) * per_page
-    with _conn() as conn:
+    with _conn("query_news_page") as conn:
         with conn.cursor() as cur:
             pc = _papers_category_sql_predicate()
             cur.execute(
@@ -616,7 +638,7 @@ def neon_query_news_page(page: int, per_page: int) -> tuple:
 # --- 日次AIコンテンツ ---
 
 def neon_ai_daily_get() -> Optional[dict]:
-    with _conn() as conn:
+    with _conn("ai_daily_get") as conn:
         with conn.cursor() as cur:
             cur.execute("SELECT payload FROM ai_daily WHERE id = 'latest'")
             row = cur.fetchone()
@@ -630,7 +652,7 @@ def neon_ai_daily_get() -> Optional[dict]:
 
 def neon_ai_daily_save(data: dict) -> None:
     blob = json.dumps(data, ensure_ascii=False)
-    with _conn() as conn:
+    with _conn("ai_daily_save") as conn:
         with conn.cursor() as cur:
             cur.execute(
                 """

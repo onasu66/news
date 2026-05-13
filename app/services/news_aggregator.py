@@ -763,5 +763,15 @@ class NewsAggregator:
             cls._db_backoff_until = None
             return item
         except Exception as e:
+            try:
+                from .neon_store import is_neon_transient_connection_error, reset_neon_connection_pool, use_neon
+
+                if use_neon() and is_neon_transient_connection_error(e):
+                    reset_neon_connection_pool()
+                    item = load_by_id(article_id)
+                    cls._db_backoff_until = None
+                    return item
+            except Exception:
+                pass
             cls._set_db_backoff("get_article", e)
             return None

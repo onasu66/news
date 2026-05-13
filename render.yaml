@@ -23,6 +23,9 @@ services:
       #   value: "false"  # true にすると定時の記事更新を停止
       # - key: ADMIN_SECRET
       #   sync: false
+      # 管理画面セッション署名を ADMIN と分離する場合（任意）
+      # - key: SESSION_SECRET
+      #   sync: false
       - key: SITE_URL
         value: "https://tiripo-ai.site"
       # - key: NEWS_REFRESH_INTERVAL
