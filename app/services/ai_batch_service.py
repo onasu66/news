@@ -1,7 +1,8 @@
-"""AI解説・秒速理解・投票を一括生成しキャッシュする。
-理解は1回（理解ナビゲーター）だけ行い、その結果を記事・秒速理解・投票に流用。
-人格は「論理2＋エンタメ1」のランダム3人を選んでから、その3人分だけAPI呼び出し。
-ミドルマン記事本文・ペルソナコメントは Claude CLI（サブスク使用量） → OpenAI の順で生成する。"""
+"""AI解説・秒速理解・深掘りを一括生成しキャッシュする。
+理解は1回（理解ナビゲーター）だけ行い、その結果を記事・秒速理解に流用。
+人格は「論理2＋エンタメ1」のランダム3人を選んでから、その3人分だけ OpenAI で生成する。
+ミドルマン記事本文は MIDDLEMAN_PROVIDER に従い Claude CLI → OpenAI の順で生成する。
+（投票クイズ・論文ナレッジグラフ・論文クイズは当面生成しない。）"""
 import json
 import logging
 import random
@@ -13,33 +14,20 @@ logger = logging.getLogger(__name__)
 from app.config import settings
 
 
-def persona_claude_after_article_save_enabled() -> bool:
-    v = str(getattr(settings, "PERSONA_CLAUDE_AFTER_SAVE", "true")).strip().lower()
-    return v in ("1", "true", "yes", "")
-
-
 def upgrade_personas_with_claude_if_configured(
     title: str,
     navigator_summary: str,
     display_persona_ids: list[int],
     current_personas: list[str],
 ) -> list[str]:
-    """PERSONA_PROVIDER=claude_first かつ PERSONA_CLAUDE_AFTER_SAVE のときだけ Claude で上書き。失敗時は current のまま。"""
-    prov = (getattr(settings, "PERSONA_PROVIDER", "openai") or "openai").strip().lower()
-    if prov != "claude_first" or not persona_claude_after_article_save_enabled():
-        return current_personas
-    cl = _generate_personas_via_claude(title, navigator_summary or "", display_persona_ids)
-    if cl and len(cl) == 3:
-        return cl
+    """ペルソナの Claude 上書きは行わない。常に current_personas を返す。"""
+    _ = (title, navigator_summary, display_persona_ids)
     return current_personas
 
 from app.services.ai_service import (
     explain_article_as_navigator,
     expand_navigator_to_article,
     get_persona_opinion,
-    generate_vote_question,
-    generate_paper_knowledge_graph,
-    generate_paper_quiz,
     generate_deep_insights,
     PERSONA_LOGIC_IDS,
     PERSONA_ENT_IDS,
@@ -131,7 +119,8 @@ def _build_middleman_claude_prompt(title: str, content: str) -> str:
 {focus_text if focus_text else "- 記事理解を最優先し、難所を補足する"}"""
 
 
-# ── Claude CLI を使ったミドルマン・ペルソナ生成 ──────────────────────────────
+# ── Claude CLI を使ったミドルマン生成 ─────────────────────────────────────────
+
 
 def _generate_blocks_via_claude(navigator_blocks: list, title: str) -> list[dict]:
     """Claude CLI でミドルマン記事本文（blocks 配列）を生成。失敗時は空リスト → OpenAI フォールバック。"""
@@ -164,95 +153,6 @@ def _generate_blocks_via_claude(navigator_blocks: list, title: str) -> list[dict
                     return valid
     except Exception as e:
         logger.warning("Claude ミドルマン JSON パースエラー: %s / raw: %s", e, raw[:200])
-    return []
-
-
-def _generate_personas_via_claude(title: str, summary_text: str, display_persona_ids: list[int]) -> list[str]:
-    """Claude CLI で3人の偉人コメントを一括生成。失敗時は空リスト → OpenAI フォールバック。"""
-    try:
-        from app.services.claude_researcher import run_claude_text_gen, is_claude_available
-        if not is_claude_available():
-            return []
-    except Exception:
-        return []
-
-    from app.services.ai_service import (
-        PERSONAS,
-        PERSONA_COMMENT_MAX_LEN,
-        get_persona_signature_elements,
-        get_persona_focus_topic,
-        get_persona_banned_phrases,
-        remember_persona_comment,
-    )
-
-    selected = [PERSONAS[pid] for pid in display_persona_ids if 0 <= pid < len(PERSONAS)]
-    if not selected:
-        return []
-
-    personas_desc_parts = []
-    for i, p in enumerate(selected):
-        elems = get_persona_signature_elements(p["name"])
-        elems_text = " / ".join(elems) if elems else "（指定なし）"
-        focus_topic = get_persona_focus_topic(p["name"]) or "（自由）"
-        banned = get_persona_banned_phrases(p["name"])
-        banned_text = " / ".join(banned) if banned else "（なし）"
-        personas_desc_parts.append(
-            f"{i + 1}. {p['name']}（{p['emoji']}）\n"
-            f"   人物設定: {p['role']}\n"
-            f"   固有要素（この中から最低1つ必須・複数歓迎）: {elems_text}\n"
-            f"   今回の優先論点: {focus_topic}\n"
-            f"   禁止語・禁止フレーズ（直近2件との重複防止）: {banned_text}"
-        )
-    personas_desc = "\n".join(personas_desc_parts)
-
-    prompt = f"""以下の3人の歴史上の偉人が、それぞれの思想・価値観でニュース記事にコメントします。
-
-【記事タイトル】
-{title}
-
-【記事内容】
-{summary_text[:1500]}
-
-【3人の設定】
-{personas_desc}
-
-【コメントルール】
-- 各人物が{PERSONA_COMMENT_MAX_LEN}文字以内でコメントする
-- 丁寧語不要。その人物の哲学・価値観で主観100%で語る
-- ニュース内容の要約・説明から入らない（最初の一文から意見・感想・哲学を述べる）
-- その人物が実際に生きた時代背景・経験・歴史的立場を最低1要素は必ず織り込む
-- 句点「。」で終わる
-- 3人それぞれが全く違う切り口で語る
-- 他の人物と同じ表現・結論は使わない
-
-JSON配列形式で出力してください:
-[
-  {{"name": "{selected[0]['name']}", "comment": "..."}},
-  {{"name": "{selected[1]['name']}", "comment": "..."}},
-  {{"name": "{selected[2]['name']}", "comment": "..."}}
-]"""
-
-    raw = run_claude_text_gen(prompt, timeout=120, usage_kind="persona_comments")
-    if not raw:
-        return []
-    try:
-        if raw.startswith("```"):
-            raw = "\n".join(ln for ln in raw.splitlines() if not ln.startswith("```")).strip()
-        m = re.search(r'\[[\s\S]*\]', raw)
-        if m:
-            data = json.loads(m.group(0))
-            if isinstance(data, list) and len(data) >= len(selected):
-                comments = [str(item.get("comment", ""))[:PERSONA_COMMENT_MAX_LEN] for item in data[:len(selected)]]
-                if all(c.strip() for c in comments):
-                    for idx, c in enumerate(comments):
-                        try:
-                            remember_persona_comment(selected[idx]["name"], c)
-                        except Exception:
-                            pass
-                    logger.info("Claude ペルソナ生成成功: %d 人", len(comments))
-                    return comments
-    except Exception as e:
-        logger.warning("Claude ペルソナ JSON パースエラー: %s / raw: %s", e, raw[:200])
     return []
 
 
@@ -294,8 +194,7 @@ def generate_all_explanations(
     人格は先にランダムで3人（論理2＋エンタメ1）を選び、その3人分だけAPI呼び出し。
 
     persist_cache=False（RSS/手動記事パイプライン向け）:
-      解説をDBに書かず返すのみ。PERSONA_CLAUDE_AFTER_SAVE=true かつ claude_first のときは
-      ペルソナはこの中では OpenAI のみ生成し、記事保存後に upgrade_personas_with_claude_if_configured を呼ぶ想定。
+      解説をDBに書かず返すのみ。
     """
     cached = get_cached(article_id)
     if cached:
@@ -317,8 +216,8 @@ def generate_all_explanations(
         from app.services.ai_service import PERSONAS
         display_persona_ids = list(range(min(3, len(PERSONAS))))
 
-    # 3) 記事展開・投票・深掘り（論文時は知識グラフ/クイズ）を並列生成
-    #    ミドルマンとペルソナは Claude CLI（サブスク） → OpenAI フォールバック
+    # 3) 記事展開・深掘りを並列生成（投票・論文グラフ/クイズは当面オフ）
+    #    ミドルマンは MIDDLEMAN_PROVIDER に従い Claude → OpenAI。ペルソナは OpenAI のみ。
 
     def do_blocks():
         provider = (getattr(settings, "MIDDLEMAN_PROVIDER", "claude_first") or "claude_first").strip().lower()
@@ -331,85 +230,45 @@ def generate_all_explanations(
         logger.info("ミドルマン記事生成: provider=%s model=%s", provider, model)
         return expand_navigator_to_article(navigator_blocks, title, model=model)
 
-    def do_vote():
-        return generate_vote_question(title, summary_text)
-
     def do_deep():
         return generate_deep_insights(title, summary_text)
 
-    def do_paper_graph():
-        return generate_paper_knowledge_graph(title, summary_text)
-
-    def do_paper_quiz():
-        return generate_paper_quiz(title, summary_text)
-
     blocks = []
     personas_3 = [""] * 3
-    vote_data = {}
-    paper_graph = {}
-    paper_quiz = {}
+    vote_data: dict = {}
+    paper_graph: dict = {}
+    paper_quiz: dict = {}
     deep_insights = {}
 
     with ThreadPoolExecutor(max_workers=16) as ex:
         fut_blocks = ex.submit(do_blocks)
-        fut_vote = ex.submit(do_vote)
         fut_deep = ex.submit(do_deep)
-        fut_paper_graph = ex.submit(do_paper_graph) if is_paper else None
-        fut_paper_quiz = ex.submit(do_paper_quiz) if is_paper else None
 
         blocks = fut_blocks.result()
 
-        # ペルソナ: claude_first でも persist_cache=False かつ「保存後Claude」ならここでは OpenAI のみ（記事化成功後にClaude）
-        persona_provider = (getattr(settings, "PERSONA_PROVIDER", "openai") or "openai").strip().lower()
-        skip_claude_in_batch = (
-            not persist_cache
-            and persona_provider == "claude_first"
-            and persona_claude_after_article_save_enabled()
-        )
-        claude_comments: list[str] = []
-        if persona_provider == "claude_first" and not skip_claude_in_batch:
-            claude_comments = _generate_personas_via_claude(title, summary_text, display_persona_ids)
-            if claude_comments and len(claude_comments) == 3:
-                personas_3 = claude_comments
-
-        if not (claude_comments and len(claude_comments) == 3):
-            # OpenAI（既定）: 順に生成し先のコメントを渡して重複を避ける
-            generated_comments: list[str] = []
-            for slot_idx, pid in enumerate(display_persona_ids):
-                try:
-                    comment = (
-                        get_persona_opinion(
-                            title,
-                            summary_text,
-                            pid,
-                            other_comments=generated_comments if generated_comments else None,
-                        )
-                        or ""
+        # ペルソナ: OpenAI のみ（順に生成し先のコメントを渡して重複を避ける）
+        generated_comments: list[str] = []
+        for slot_idx, pid in enumerate(display_persona_ids):
+            try:
+                comment = (
+                    get_persona_opinion(
+                        title,
+                        summary_text,
+                        pid,
+                        other_comments=generated_comments if generated_comments else None,
                     )
-                except Exception:
-                    comment = ""
-                personas_3[slot_idx] = comment
-                if comment and "取得失敗" not in comment:
-                    generated_comments.append(comment)
+                    or ""
+                )
+            except Exception:
+                comment = ""
+            personas_3[slot_idx] = comment
+            if comment and "取得失敗" not in comment:
+                generated_comments.append(comment)
 
-        try:
-            vote_data = fut_vote.result() or {}
-        except Exception:
-            pass
         try:
             deep_insights = fut_deep.result() or {}
         except Exception:
             pass
-        if fut_paper_graph is not None:
-            try:
-                paper_graph = fut_paper_graph.result() or {}
-            except Exception:
-                pass
-        if fut_paper_quiz is not None:
-            try:
-                paper_quiz = fut_paper_quiz.result() or {}
-            except Exception:
-                pass
 
     result = {
         "blocks": blocks,

@@ -24,14 +24,15 @@ if _env_path.exists():
 class Settings:
     OPENAI_API_KEY: str = os.getenv("OPENAI_API_KEY", "")
     OPENAI_MODEL: str = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
+    # 偉人ペルソナコメント（常に OpenAI のみ使用）
+    OPENAI_PERSONA_COMMENT_MODEL: str = os.getenv("OPENAI_PERSONA_COMMENT_MODEL", "gpt-4.1").strip()
     # ミドルマン記事本文の生成プロバイダ: "claude_first"（既定） or "openai"
     MIDDLEMAN_PROVIDER: str = os.getenv("MIDDLEMAN_PROVIDER", "claude_first").strip().lower()
     # MIDDLEMAN_PROVIDER=openai のときに使うモデル（未設定なら gpt-4o）
     MIDDLEMAN_OPENAI_MODEL: str = os.getenv("MIDDLEMAN_OPENAI_MODEL", "gpt-4o").strip()
-    # ペルソナコメント生成プロバイダ: "openai"(既定) or "claude_first"
-    # Neon/Claude利用枠を節約したい場合は openai を推奨
+    # ペルソナコメントは常に OpenAI（OPENAI_PERSONA_COMMENT_MODEL）。Claude は使わない。
     PERSONA_PROVIDER: str = os.getenv("PERSONA_PROVIDER", "openai").strip().lower()
-    # claude_first 時: true なら Claude は「記事DB保存成功後」のみ（失敗記事にClaudeを使わない）
+    # 互換のため残す（ペルソナの保存後 Claude は行わない）
     PERSONA_CLAUDE_AFTER_SAVE: str = os.getenv("PERSONA_CLAUDE_AFTER_SAVE", "true").strip().lower()
     # 記事化時のタイトル生成を有効化するか
     TITLE_GENERATION_ENABLED: str = os.getenv("TITLE_GENERATION_ENABLED", "true").strip().lower()

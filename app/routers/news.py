@@ -508,11 +508,6 @@ async def news_index(request: Request, page: int = 1, keyword: str = ""):
             elif item.image_url and not item.image_url.startswith("http"):
                 item.image_url = get_image_url(item.image_url, 400, 225)
     top_recommendations: list = []
-    if not keyword:
-        try:
-            top_recommendations = list(all_news[:3])
-        except Exception:
-            top_recommendations = []
     site_url = _get_site_url(request)
     og_image = "https://picsum.photos/1200/630"
     flat_news = [it for _, items in news_by_category for it in items]
@@ -1177,10 +1172,6 @@ def _render_papers_page(request: Request, page: int = 1):
 
     # おすすめは一覧と同じ all_papers の先頭3件（別取得ロジックなし）
     top_recommendations: list = []
-    try:
-        top_recommendations = all_papers[:3]
-    except Exception:
-        top_recommendations = []
 
     _ph = _public_html_cache_headers()
     return templates.TemplateResponse(
@@ -1325,15 +1316,10 @@ async def topic_detail(request: Request, topic_id: str):
     if isinstance(ps_wrapped, list):
         personas_data = [str(x) if x is not None else "" for x in ps_wrapped]
     quick_understand = _sanitize_quick_understand_for_page(cached.get("quick_understand") if cached else None)
-    vote_data = _sanitize_vote_data_for_page(cached.get("vote_data") if cached else None)
-    paper_graph = _sanitize_paper_graph_for_page(cached.get("paper_graph") if cached else None)
-    paper_quiz = _sanitize_paper_quiz_for_page(cached.get("paper_quiz") if cached else None)
-    # Firestore/過去データ互換:
-    # 片方にしか入っていない場合でも、クイズ/投票のどちらにも表示できるようにする
-    if (not vote_data) and paper_quiz and paper_quiz.get("options"):
-        vote_data = dict(paper_quiz)
-    if (not paper_quiz or not paper_quiz.get("options")) and vote_data and vote_data.get("options"):
-        paper_quiz = dict(vote_data)
+    # 投票クイズ・論文ナレッジグラフ/クイズは当面非表示（キャッシュにあっても出さない）
+    vote_data = None
+    paper_graph = None
+    paper_quiz = None
     deep_insights = _sanitize_deep_insights_for_page(cached.get("deep_insights") if cached else None)
     body_html = _blocks_to_html(blocks) if blocks else ""
     short_summary = _build_short_summary(quick_understand, item.summary)
@@ -1370,11 +1356,8 @@ async def topic_detail(request: Request, topic_id: str):
             break
 
     related = [a for a in all_news if a.category == item.category and a.id != topic_id][:4]
-    import random as _rnd
-    other_cat = [a for a in all_news if a.category != item.category and a.id != topic_id]
-    # 論文のみ・単一ジャンルだけ等で「別カテゴリ」が空だと欄が消えるため、同カテゴリ以外が無ければ全件から補完
-    pool = other_cat if other_cat else [a for a in all_news if a.id != topic_id]
-    ai_recommended = _rnd.sample(pool, min(3, len(pool))) if pool else []
+    same_category_articles: list = []
+    ai_recommended: list = []
 
     published_text = ""
     try:

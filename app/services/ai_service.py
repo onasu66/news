@@ -1112,7 +1112,7 @@ def get_persona_opinion(
         return ""
 
     from openai import OpenAI
-    model = model or settings.OPENAI_MODEL
+    model = model or settings.OPENAI_PERSONA_COMMENT_MODEL
     p = PERSONAS[persona_id]
     client = OpenAI(api_key=settings.OPENAI_API_KEY)
 

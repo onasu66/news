@@ -77,9 +77,18 @@ def _scheduled_claude_research_and_seed():
             logger.debug("claude CLI が未インストールのためリサーチをスキップ")
             return
         # 重複除外後の残件を増やすため、取得母数を増やす
-        ok = run_claude_research(n=30, n_news=16, n_papers=14, timeout=900)
+        ok = run_claude_research(n=30, n_news=16, n_papers=14, timeout=1200)
         if not ok:
             return
+        # Claude が数分〜十数分ブロックするあいだ DB 接続はアイドルになり、Neon 側で切断されがち。
+        # 古い接続がプールに残ったまま get_cached_article_ids へ進むと SSL 切断エラーになるため、ここでプールを捨てる。
+        try:
+            from app.services.neon_store import reset_neon_connection_pool, use_neon
+
+            if use_neon():
+                reset_neon_connection_pool()
+        except Exception:
+            pass
         from app.services.article_seed_from_curated import process_curated_articles
         count = process_curated_articles(max_per_run=30)
         if count > 0:

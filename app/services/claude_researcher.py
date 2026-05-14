@@ -1,6 +1,6 @@
 """Claude Code CLI を subprocess で呼び出してウェブリサーチを実行するサービス
 
-ニュースと論文を並列で 2 プロセス同時実行することで、タイムアウトを防ぐ。
+ニュースと論文を 1 回の Claude セッションでまとめてリサーチし、重複 Web 検索を避ける。
 
 動作要件:
   - Claude Code CLI (npm i -g @anthropic-ai/claude-code) がインストール済み
@@ -87,85 +87,69 @@ def repair_claude_user_config_if_corrupted() -> bool:
         return False
 
 
-_NEWS_PROMPT = """\
+_COMBINED_PROMPT = """\
 今日は {today}（日本時間）です。
-以下の手順でリサーチし、「知リポAI」ニュースサイト（20〜40代の知的好奇心が高い日本語読者向け）に
-ふさわしい【ニュース記事のみ】を {n} 件選定して、
-{output_file} に以下の JSON 形式で書き込んでください（配列のみ、説明文不要）。
+Web 検索はこの依頼の中で効率よくまとめて行い、同じトレンド調査を何度も繰り返さないでください。
 
-[
-  {{
-    "title": "タイトル（日本語）",
-    "url": "実在する記事の URL",
-    "summary": "100〜150 字の日本語要約",
-    "source": "媒体名",
-    "category": "テクノロジー|国際|国内|政治・社会|エンタメ|スポーツ のいずれか",
-    "published": "YYYY-MM-DDTHH:MM:SS",
-    "image_url": null
-  }}
-]
+「知リポAI」ニュースサイト（20〜40代の知的好奇心が高い日本語読者向け）向けに、
+ニュース {n_news} 件と学術論文 {n_papers} 件を選定し、
+{output_file} に次の JSON オブジェクトだけを書き込んでください（説明文・Markdown のコードフェンス禁止）。
+キー名は必ず半角の "news" と "papers" を使ってください。
 
-【Step 1: トレンド収集（必須）】
-まず以下を検索してトレンドキーワードを把握する:
+{{
+  "news": [
+    {{
+      "title": "タイトル（日本語）",
+      "url": "実在する記事の URL",
+      "summary": "100〜150 字の日本語要約",
+      "source": "媒体名",
+      "category": "テクノロジー|国際|国内|政治・社会|エンタメ|スポーツ のいずれか",
+      "published": "YYYY-MM-DDTHH:MM:SS",
+      "image_url": null
+    }}
+  ],
+  "papers": [
+    {{
+      "title": "タイトルは必ず日本語で書いてください（英語論文も日本語訳する）",
+      "url": "実在する論文の URL",
+      "summary": "100〜150 字の日本語要約",
+      "source": "媒体名（arXiv / Nature / PubMed など）",
+      "category": "研究・論文",
+      "published": "YYYY-MM-DDTHH:MM:SS",
+      "image_url": null
+    }}
+  ]
+}}
+
+【Step 1: トレンド収集（この依頼で1回だけ）】
+以下を検索し、急上昇キーワードを10個以上リストアップする（Step 2 のニュース選定にのみ使う）:
 - 「Google トレンド 急上昇 日本 {today}」
 - 「X（Twitter）トレンド 日本 {today}」
 - 「急上昇ワード {today}」
-→ 急上昇中のキーワードを10個以上リストアップする
 
-【Step 2: トレンドに沿ったニュース検索】
-Step 1 で集めたキーワードをもとにニュースを検索し、
-「なぜ今話題なのか」が分かる記事を優先的に探す
-
-【Step 3: 選定基準で絞り込む】
+【Step 2: ニュース】news にちょうど {n_news} 件
+Step 1 のキーワードをもとにニュースを検索し、「なぜ今話題なのか」が分かる記事を優先する。
 - 日本のニュース約 70% / 海外ニュース約 30%
-- 今まさに急上昇・バズっている話題性の高いニュースを最優先
-- 速報・Breaking News を積極的に選ぶ（鮮度重視）
-- 「今これが話題になっているんだ」と感じさせる旬の記事を選ぶ
-- 訃報・芸能ゴシップ・選挙速報は除外
-- URL は必ず実在するニュース記事の URL（架空 URL 禁止）
-- カテゴリは テクノロジー / 国内 / 国際 / 政治・社会 / エンタメ / スポーツ から選ぶ
+- 急上昇・バズ・鮮度を最優先。訃報・芸能ゴシップ・選挙速報は除外
+- URL は必ず実在するニュース記事（架空禁止）
+- カテゴリは テクノロジー / 国内 / 国際 / 政治・社会 / エンタメ / スポーツ
 
-【使用禁止メディア（ペイウォール）】
+【Step 3: 論文】papers にちょうど {n_papers} 件
+- 海外の英語論文を重視（papers の過半数を英語論文にする）
+- テーマ例: 健康・長寿・睡眠・メンタル / AI・宇宙・量子 / スポーツ科学・栄養 / 行動経済学 / 気候・環境
+- arXiv / PubMed / Nature / Science / bioRxiv / medRxiv など。カテゴリは必ず「研究・論文」
+- URL は必ず実在する論文（架空禁止）
+
+【ニュースの使用禁止メディア（ペイウォール）】
 - bloomberg.com / wsj.com / ft.com / nytimes.com / economist.com
 
-【優先メディア】
+【ニュースの優先メディア】
 - nhk.or.jp / reuters.com / apnews.com / afpbb.com / techcrunch.com / theverge.com / bbc.com / cnn.com / japantimes.co.jp
 
-{n} 件の JSON を {output_file} に書き込んで作業を完了してください。
-"""
-
-_PAPERS_PROMPT = """\
-今日は {today}（日本時間）です。
-「知リポAI」ニュースサイト（20〜40代の知的好奇心が高い日本語読者向け）向けに
-【学術論文のみ】を {n} 件リサーチして選定し、
-{output_file} に以下の JSON 形式で書き込んでください（配列のみ、説明文不要）。
-
-[
-  {{
-    "title": "タイトルは必ず日本語で書いてください（英語論文も日本語訳する）",
-    "url": "実在する論文の URL",
-    "summary": "100〜150 字の日本語要約",
-    "source": "媒体名（arXiv / Nature / PubMed など）",
-    "category": "研究・論文",
-    "published": "YYYY-MM-DDTHH:MM:SS",
-    "image_url": null
-  }}
-]
-
-【選定基準】
-- 海外の英語論文を重視（{n} 件中 8 件以上）
-- 「皆が気になる・検索されやすい」テーマを優先:
-    健康・長寿・ダイエット・睡眠・メンタルヘルス
-    AI・テクノロジー・ロボット / 宇宙・物理・量子
-    筋トレ・スポーツ科学・栄養 / 経済・行動経済学 / 気候変動・環境
-- arXiv / PubMed / Nature / Science / bioRxiv / medRxiv などの論文
-- カテゴリは必ず「研究・論文」
-- URL は必ず実在する論文の URL（架空 URL 禁止）
-
-【優先ソース】
+【論文の優先ソース】
 - arxiv.org / pubmed.ncbi.nlm.nih.gov / nature.com / science.org / biorxiv.org / medrxiv.org / sciencedaily.com
 
-{n} 件の JSON を {output_file} に書き込んで作業を完了してください。
+上記オブジェクトを {output_file} に書き込んで完了してください。
 """
 
 
@@ -396,13 +380,15 @@ def _build_cmd_text_only(cmd_path: str) -> list[str]:
     return [cmd_path] + base
 
 
-def _run_one(label: str, prompt: str, output_file: Path, timeout: int, result: dict) -> None:
-    """単一の Claude サブプロセスを実行し、result[label] にパース済みリストを格納する。"""
+def _invoke_claude_research_session(
+    label: str, prompt: str, output_file: Path, timeout: int
+) -> str | None:
+    """Claude を1回起動し、output_file または stdout から JSON テキストを返す。失敗時は None。"""
     repair_claude_user_config_if_corrupted()
     cmd_path = _find_claude_cmd()
     if not cmd_path:
         logger.error("[%s] claude コマンドが見つかりません", label)
-        return
+        return None
 
     cmd = _build_cmd(cmd_path)
     logger.info("[%s] Claude 起動 (タイムアウト=%d 秒)", label, timeout)
@@ -428,98 +414,97 @@ def _run_one(label: str, prompt: str, output_file: Path, timeout: int, result: d
                 (proc.stdout or "")[:500],
                 (proc.stderr or "")[:500],
             )
-            return
+            return None
 
         raw = ""
         if output_file.exists():
             raw = output_file.read_text(encoding="utf-8").strip()
         else:
-            # 終了0でも Write 先を誤る・ツールを使わず stdout のみ、などでファイルが無いことがある
             stdout = (proc.stdout or "").strip()
             stderr_tail = (proc.stderr or "")[-800:]
             logger.warning(
-                "[%s] 指定パスに出力なし。stdout から JSON 配列を救済します (stderr末尾=%r)",
+                "[%s] 指定パスに出力なし。stdout から JSON を救済します (stderr末尾=%r)",
                 label,
                 stderr_tail,
             )
             raw = stdout
             if "```" in raw:
                 raw = "\n".join(l for l in raw.splitlines() if not l.strip().startswith("```")).strip()
-            if raw and not raw.lstrip().startswith("["):
-                i, j = raw.find("["), raw.rfind("]")
-                if i != -1 and j != -1 and j > i:
-                    raw = raw[i : j + 1].strip()
+            if raw:
+                s = raw.lstrip()
+                if not s.startswith("{") and not s.startswith("["):
+                    i, j = raw.find("{"), raw.rfind("}")
+                    if i != -1 and j != -1 and j > i:
+                        raw = raw[i : j + 1].strip()
+                    else:
+                        i, j = raw.find("["), raw.rfind("]")
+                        if i != -1 and j != -1 and j > i:
+                            raw = raw[i : j + 1].strip()
 
         if not raw:
             logger.error("[%s] 指定ファイルにも stdout にも有効な JSON がありませんでした", label)
-            return
+            return None
 
         if raw.startswith("```"):
             raw = "\n".join(l for l in raw.splitlines() if not l.startswith("```")).strip()
 
-        data = json.loads(raw)
-        if not isinstance(data, list) or not data:
-            raise ValueError("空またはリストでない")
-
-        result[label] = data
-        logger.info("[%s] 完了: %d 件", label, len(data))
+        return raw if raw else None
 
     except subprocess.TimeoutExpired:
         logger.error("[%s] タイムアウト (%d 秒)", label, timeout)
-    except json.JSONDecodeError as e:
-        logger.error("[%s] JSON パースエラー: %s", label, e)
+        return None
     except Exception as e:
         logger.error("[%s] 予期しないエラー: %s", label, e)
+        return None
+
+
+def _parse_curated_research_json(raw: str) -> tuple[list, int, int]:
+    """JSON をパースし、(マージ済みリスト, ニュース件数, 論文件数) を返す。"""
+    data = json.loads(raw)
+    if isinstance(data, list):
+        if not data:
+            raise ValueError("空のリスト")
+        return data, len(data), 0
+    if isinstance(data, dict):
+        news = data.get("news") or data.get("ニュース") or []
+        papers = data.get("papers") or data.get("論文") or []
+        if not isinstance(news, list):
+            news = []
+        if not isinstance(papers, list):
+            papers = []
+        merged = news + papers
+        if not merged:
+            raise ValueError("news/papers がともに空")
+        return merged, len(news), len(papers)
+    raise ValueError("JSON はオブジェクトまたは配列である必要があります")
 
 
 def run_claude_research(n: int = 15, n_news: int = 8, n_papers: int = 7, timeout: int = 900) -> bool:
     """
-    ニュースと論文を並列 2 プロセスでリサーチし curated_articles.json を更新する。
+    Claude を1回だけ起動し、ニュースと論文をまとめてリサーチして curated_articles.json を更新する。
 
-    並列実行により合計時間を約 1/2 に短縮できる。
-    戻り値: ニュース・論文のどちらか一方でも取得できれば True
+    n は呼び出し互換のため残す（n_news + n_papers と揃える想定）。戻り値: 1件以上取得できれば True。
     """
-    cmd_path = _find_claude_cmd()
-    if not cmd_path:
-        logger.warning("claude コマンドが見つかりません。Claude Code CLI をインストールしてください。")
-        return False
+    _ = n
 
     today = datetime.now(JST).strftime("%Y-%m-%d")
-    result: dict[str, list] = {}
 
     with tempfile.TemporaryDirectory() as tmpdir:
-        news_file = Path(tmpdir) / "news.json"
-        papers_file = Path(tmpdir) / "papers.json"
-
-        news_prompt = _NEWS_PROMPT.format(
-            today=today, n=n_news,
-            output_file=str(news_file).replace("\\", "/"),
+        out_file = Path(tmpdir) / "curated_batch.json"
+        prompt = _COMBINED_PROMPT.format(
+            today=today,
+            n_news=n_news,
+            n_papers=n_papers,
+            output_file=str(out_file).replace("\\", "/"),
         )
-        papers_prompt = _PAPERS_PROMPT.format(
-            today=today, n=n_papers,
-            output_file=str(papers_file).replace("\\", "/"),
-        )
-
-        threads = [
-            threading.Thread(
-                target=_run_one,
-                args=("ニュース", news_prompt, news_file, timeout, result),
-                daemon=True,
-            ),
-            threading.Thread(
-                target=_run_one,
-                args=("論文", papers_prompt, papers_file, timeout, result),
-                daemon=True,
-            ),
-        ]
-
-        logger.info("ニュース・論文を並列リサーチ開始 (各タイムアウト=%d 秒)", timeout)
-        for t in threads:
-            t.start()
-        for t in threads:
-            t.join(timeout + 60)
-
-        all_articles = result.get("ニュース", []) + result.get("論文", [])
+        raw = _invoke_claude_research_session("ニュース+論文", prompt, out_file, timeout)
+        if not raw:
+            return False
+        try:
+            all_articles, n_news_ok, n_papers_ok = _parse_curated_research_json(raw)
+        except (json.JSONDecodeError, ValueError) as e:
+            logger.error("Claude リサーチ JSON の解釈に失敗: %s", e)
+            return False
 
     if not all_articles:
         logger.error("ニュース・論文ともに取得できませんでした")
@@ -529,8 +514,10 @@ def run_claude_research(n: int = 15, n_news: int = 8, n_papers: int = 7, timeout
         json.dumps(all_articles, ensure_ascii=False, indent=2),
         encoding="utf-8",
     )
-    logger.info("Claude リサーチ完了: 合計 %d 件 (ニュース %d / 論文 %d) を保存",
-                len(all_articles),
-                len(result.get("ニュース", [])),
-                len(result.get("論文", [])))
+    logger.info(
+        "Claude リサーチ完了: 合計 %d 件 (ニュース %d / 論文 %d) を保存",
+        len(all_articles),
+        n_news_ok,
+        n_papers_ok,
+    )
     return True

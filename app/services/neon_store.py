@@ -541,22 +541,49 @@ def neon_delete_cache(article_id: str) -> bool:
 
 
 def neon_get_cached_article_ids() -> set:
-    with _conn("get_cached_article_ids") as conn:
-        with conn.cursor() as cur:
-            cur.execute("SELECT id FROM articles WHERE has_explanation = TRUE")
-            rows = cur.fetchall()
-    return {r[0] for r in rows}
+    """長時間アイドル後にプールの接続が Neon 側で切れていると SSL エラーになるため、1回だけリセットして再試行する。"""
+    for attempt in (0, 1):
+        try:
+            with _conn("get_cached_article_ids") as conn:
+                with conn.cursor() as cur:
+                    cur.execute("SELECT id FROM articles WHERE has_explanation = TRUE")
+                    rows = cur.fetchall()
+            return {r[0] for r in rows}
+        except Exception as e:
+            if attempt == 0 and _is_transient_neon_error(e):
+                logger.warning(
+                    "neon_get_cached_article_ids: 接続切れのためプールを捨てて再試行します (%s)",
+                    e,
+                )
+                _reset_pool()
+                time.sleep(0.25)
+                continue
+            raise
+    raise RuntimeError("neon_get_cached_article_ids: unreachable")
 
 
 def neon_get_cached_article_ids_ordered() -> list:
-    with _conn("get_cached_article_ids_ordered") as conn:
-        with conn.cursor() as cur:
-            cur.execute(
-                "SELECT id FROM articles WHERE has_explanation = TRUE "
-                "ORDER BY added_at DESC NULLS LAST"
-            )
-            rows = cur.fetchall()
-    return [r[0] for r in rows]
+    for attempt in (0, 1):
+        try:
+            with _conn("get_cached_article_ids_ordered") as conn:
+                with conn.cursor() as cur:
+                    cur.execute(
+                        "SELECT id FROM articles WHERE has_explanation = TRUE "
+                        "ORDER BY added_at DESC NULLS LAST"
+                    )
+                    rows = cur.fetchall()
+            return [r[0] for r in rows]
+        except Exception as e:
+            if attempt == 0 and _is_transient_neon_error(e):
+                logger.warning(
+                    "neon_get_cached_article_ids_ordered: 接続切れのためプールを捨てて再試行します (%s)",
+                    e,
+                )
+                _reset_pool()
+                time.sleep(0.25)
+                continue
+            raise
+    raise RuntimeError("neon_get_cached_article_ids_ordered: unreachable")
 
 
 def neon_get_related_tags_bulk(article_ids: list, *, max_tags_per_article: int = 3) -> dict:
