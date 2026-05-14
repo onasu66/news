@@ -88,6 +88,9 @@ class Settings:
     DATABASE_URL: str = os.getenv("DATABASE_URL", "").strip()
     # 管理者用シークレット（手動記事追加・管理画面）。未設定なら管理機能は利用不可
     ADMIN_SECRET: str = os.getenv("ADMIN_SECRET", "").strip()
+    # 本番キャッシュ更新通知専用（ローカル Cron 等 → SITE_URL の /api/admin/cache/refresh）。
+    # 未設定時は従来どおり ADMIN_SECRET のみ。設定時は本番とローカルに同一文字列を置けば ADMIN_SECRET は別でも可。
+    CACHE_REFRESH_SECRET: str = os.getenv("CACHE_REFRESH_SECRET", "").strip()
     # セッション Cookie 署名専用（未設定時は main.py で ADMIN_SECRET 派生鍵を使用）
     SESSION_SECRET: str = os.getenv("SESSION_SECRET", "").strip()
     # サイトの絶対URL（sitemap・OG・canonical用）。未設定時はリクエストの base_url を使用

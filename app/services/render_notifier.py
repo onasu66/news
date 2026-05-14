@@ -1,4 +1,8 @@
-"""Render 本番へ「新着反映」通知を送る（案A: ポーリングを減らす）。"""
+"""Render 本番へ「新着反映」通知を送る（案A: ポーリングを減らす）。
+
+ローカルから叩くときは `CACHE_REFRESH_SECRET` を本番と同一にすると、
+`ADMIN_SECRET` を本番と揃えなくても /api/admin/cache/refresh が通る。
+"""
 from __future__ import annotations
 
 import logging
@@ -15,7 +19,10 @@ def notify_render_cache_refresh(*, reason: str = "articles_added", timeout_sec: 
     メモリキャッシュを更新する。失敗しても記事自体は DB に保存済みなので致命的ではない。
     """
     site_url = (getattr(settings, "SITE_URL", "") or "").strip().rstrip("/")
-    secret = (getattr(settings, "ADMIN_SECRET", "") or "").strip()
+    # 専用鍵があればそれを送る（本番 ADMIN_SECRET とローカルを一致させなくてよい）
+    secret = (getattr(settings, "CACHE_REFRESH_SECRET", "") or "").strip() or (
+        getattr(settings, "ADMIN_SECRET", "") or ""
+    ).strip()
     if not site_url or not secret:
         return False
     url = site_url + "/api/admin/cache/refresh"

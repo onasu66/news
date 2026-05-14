@@ -1561,6 +1561,16 @@ def _is_admin(request: Request, x_admin_secret: str | None = Header(None, alias=
         return False
 
 
+def _is_cache_refresh_notify_authorized(request: Request, x_admin_secret: str | None) -> bool:
+    """キャッシュ更新 API: 管理者に加え、CACHE_REFRESH_SECRET が一致すれば許可（本番とローカルで ADMIN_SECRET を揃えなくてよい）。"""
+    if _is_admin(request, x_admin_secret):
+        return True
+    cr = (getattr(settings, "CACHE_REFRESH_SECRET", "") or "").strip()
+    if cr and x_admin_secret and x_admin_secret.strip() == cr:
+        return True
+    return False
+
+
 @router.get("/admin/login", response_class=HTMLResponse)
 async def admin_login_page(request: Request):
     """管理者ログインフォーム表示"""
@@ -1769,7 +1779,7 @@ async def api_admin_cache_refresh(
     x_admin_secret: str | None = Header(None, alias="X-Admin-Secret"),
 ):
     """（案A）外部（ローカル記事化）からの通知で、Render 側のメモリキャッシュを更新する。"""
-    if not _is_admin(request, x_admin_secret):
+    if not _is_cache_refresh_notify_authorized(request, x_admin_secret):
         raise HTTPException(status_code=403, detail="管理者のみ利用できます")
     import asyncio
 
