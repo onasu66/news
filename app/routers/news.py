@@ -10,7 +10,7 @@ import unicodedata
 from urllib.parse import urlencode
 
 from fastapi import APIRouter, Request, HTTPException, Form, Header
-from fastapi.responses import HTMLResponse, RedirectResponse, Response
+from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, Response
 from fastapi.templating import Jinja2Templates
 from pathlib import Path
 
@@ -24,8 +24,6 @@ from app.services.ai_service import (
     explain_article_with_ai,
     get_image_url,
     PERSONAS,
-    PERSONA_LOGIC_IDS,
-    PERSONA_ENT_IDS,
 )
 
 router = APIRouter()
@@ -591,26 +589,36 @@ async def api_news_page(page: int = 1, keyword: str = ""):
 @router.get("/api/papers/page")
 async def api_papers_page(page: int = 1):
     """論文ページ用・無限スクロール：指定ページの論文カードHTMLを返す"""
+    from app.services.news_aggregator import (
+        NewsAggregator,
+        SOURCE_TO_PAPER_DOMAIN,
+        sort_papers_newest_first_inplace,
+    )
+
     papers_by_category, pagination = NewsAggregator.get_papers_by_category(page=page)
+    page_items: list = []
+    for _, items in papers_by_category:
+        page_items.extend(items)
+    sort_papers_newest_first_inplace(page_items)
+    _attach_paper_related_tags(page_items)
     import html as html_mod
     cards_html = ""
-    for domain, items in papers_by_category:
-        _attach_paper_related_tags(items)
-        for item in items:
-            _ensure_japanese(item)
-            if not item.image_url:
-                item.image_url = get_image_url(item.id, 400, 225)
-            elif not item.image_url.startswith("http"):
-                item.image_url = get_image_url(item.image_url, 400, 225)
-            pub = item.published.strftime('%m/%d %H:%M') if item.published else ''
-            title_safe = html_mod.escape(item.title or "")
-            raw_summary = item.summary or ""
-            summary_safe = html_mod.escape(raw_summary[:80])
-            domain_safe = html_mod.escape(domain or "")
-            source_safe = html_mod.escape(item.source or "")
-            ellipsis = "..." if len(raw_summary) > 80 else ""
-            img_src = item.image_url or "https://picsum.photos/400/225"
-            cards_html += f'''<article class="news-card animate-fade-in" data-category="{domain_safe}">
+    for item in page_items:
+        item.paper_domain = SOURCE_TO_PAPER_DOMAIN.get(item.source, "総合科学")
+        _ensure_japanese(item)
+        if not item.image_url:
+            item.image_url = get_image_url(item.id, 400, 225)
+        elif not item.image_url.startswith("http"):
+            item.image_url = get_image_url(item.image_url, 400, 225)
+        pub = item.published.strftime('%m/%d %H:%M') if item.published else ''
+        title_safe = html_mod.escape(item.title or "")
+        raw_summary = item.summary or ""
+        summary_safe = html_mod.escape(raw_summary[:80])
+        domain_safe = html_mod.escape(getattr(item, "paper_domain", None) or "総合科学")
+        source_safe = html_mod.escape(item.source or "")
+        ellipsis = "..." if len(raw_summary) > 80 else ""
+        img_src = item.image_url or "https://picsum.photos/400/225"
+        cards_html += f'''<article class="news-card animate-fade-in" data-category="{domain_safe}">
 <a href="/topic/{item.id}" class="news-card-link">
 <div class="news-card-body">
 <div class="news-card-meta"><span class="news-card-time">🕒 {pub}</span><span class="news-card-source">{source_safe}</span></div>
@@ -1134,29 +1142,30 @@ def _render_papers_page(request: Request, page: int = 1):
     論文は研究・論文カテゴリの専用クエリ（Neon）または SQLite から取得する。
     初回は1ページ分のみ描画し、以降は無限スクロールで追加する。
     """
-    from app.services.news_aggregator import NewsAggregator as _NA
+    from app.services.news_aggregator import (
+        NewsAggregator as _NA,
+        SOURCE_TO_PAPER_DOMAIN,
+        paper_domains_ordered_for_page,
+        sort_papers_newest_first_inplace,
+    )
 
     papers_by_category, pagination = _NA.get_papers_by_category(page=page)
     all_papers: list = []
-    paper_domains: list[str] = []
-    seen_domains: set[str] = set()
-    for domain, items in papers_by_category:
-        if domain not in seen_domains:
-            paper_domains.append(domain)
-            seen_domains.add(domain)
-        for item in items:
-            item.paper_domain = domain
-            all_papers.append(item)
+    for _, items in papers_by_category:
+        all_papers.extend(items)
+    sort_papers_newest_first_inplace(all_papers)
+    paper_domains = paper_domains_ordered_for_page(all_papers)
+    for item in all_papers:
+        item.paper_domain = SOURCE_TO_PAPER_DOMAIN.get(item.source, "総合科学")
 
     # ── 画像 / 関連タグ補完 ───────────────────────────────────────────────────
-    for _, items in papers_by_category:
-        _attach_paper_related_tags(items)
-        for item in items:
-            _ensure_japanese(item)
-            if not item.image_url:
-                item.image_url = get_image_url(item.id, 400, 225)
-            elif item.image_url and not item.image_url.startswith("http"):
-                item.image_url = get_image_url(item.image_url, 400, 225)
+    _attach_paper_related_tags(all_papers)
+    for item in all_papers:
+        _ensure_japanese(item)
+        if not item.image_url:
+            item.image_url = get_image_url(item.id, 400, 225)
+        elif item.image_url and not item.image_url.startswith("http"):
+            item.image_url = get_image_url(item.image_url, 400, 225)
 
     site_url = _get_site_url(request)
     flat_papers = all_papers
@@ -1296,15 +1305,9 @@ async def topic_detail(request: Request, topic_id: str):
         raw_personas = cached.get("personas", []) if cached else []
         all_personas_data = raw_personas if isinstance(raw_personas, list) else []
         import random as _rnd
-        logic_ids = list(PERSONA_LOGIC_IDS)
-        ent_ids = list(PERSONA_ENT_IDS)
-        if len(logic_ids) >= 2 and len(ent_ids) >= 1:
-            pick_logic = _rnd.sample(logic_ids, 2)
-            pick_ent = _rnd.sample(ent_ids, 1)
-            display_indices = pick_logic + pick_ent
-            _rnd.shuffle(display_indices)
-        else:
-            display_indices = list(range(min(3, len(PERSONAS))))
+
+        n_p = len(PERSONAS)
+        display_indices = _rnd.sample(range(n_p), min(3, n_p)) if n_p else []
         display_personas = [{**PERSONAS[i], "image_url": _persona_image_url(PERSONAS[i].get("name"))} for i in display_indices]
         personas_data = [
             str(all_personas_data[i]) if i < len(all_personas_data) and all_personas_data[i] is not None else ""
@@ -1320,7 +1323,7 @@ async def topic_detail(request: Request, topic_id: str):
     vote_data = None
     paper_graph = None
     paper_quiz = None
-    deep_insights = _sanitize_deep_insights_for_page(cached.get("deep_insights") if cached else None)
+    deep_insights = None
     body_html = _blocks_to_html(blocks) if blocks else ""
     short_summary = _build_short_summary(quick_understand, item.summary)
     show_quick_points = _quick_points_non_empty(quick_understand)
@@ -1771,6 +1774,22 @@ async def api_seed_curated(
     NewsAggregator.get_news(force_refresh=True)
     total = len(get_cached_article_ids())
     return {"status": "ok", "added": added, "total": total}
+
+
+@router.get("/api/admin/cache/refresh")
+async def api_admin_cache_refresh_get():
+    """ブラウザで開いたとき用。実処理は POST のみ。"""
+    return JSONResponse(
+        status_code=200,
+        content={
+            "ok": False,
+            "reason": "Method Not Allowed for cache refresh",
+            "hint": "アドレスバーでの表示は GET のためキャッシュは更新されません。HTTP POST とヘッダ X-Admin-Secret が必要です。",
+            "use_method": "POST",
+            "header": "X-Admin-Secret: （ADMIN_SECRET または CACHE_REFRESH_SECRET と同一）",
+            "curl_example": 'curl -X POST -H "X-Admin-Secret: YOUR_SECRET" https://tiripo-ai.site/api/admin/cache/refresh',
+        },
+    )
 
 
 @router.post("/api/admin/cache/refresh")

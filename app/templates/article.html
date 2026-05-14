@@ -147,29 +147,6 @@
     </section>
     {% endif %}
 
-    {% if deep_insights %}
-    <section class="vote-section">
-        <h2 class="vote-question">🤖 AIに聞く（事前生成）</h2>
-        <button type="button" class="btn-one-take" id="btn-ai-comment" aria-expanded="false" aria-controls="ai-comment-box">AIに聞く</button>
-        <div id="ai-comment-box" style="display:none;margin-top:0.75rem;">
-            <h4>3行メリット</h4>
-            <ul class="insight-list">
-                {% for m in (deep_insights.merits|default([]))[:3] %}
-                <li>{{ m|e }}</li>
-                {% endfor %}
-            </ul>
-            <h4>リスク</h4>
-            <ul class="insight-list">
-                {% for r in (deep_insights.risks|default([]))[:3] %}
-                <li>{{ r|e }}</li>
-                {% endfor %}
-            </ul>
-            <h4>将来予測</h4>
-            <p class="article-text">{{ deep_insights.future_prediction|default('')|e }}</p>
-        </div>
-    </section>
-    {% endif %}
-
     <section class="personas-section">
         <h2 class="personas-title">AIの多角的な視点 <span class="personas-hint">（この記事は3人分・クリックで表示）</span></h2>
         <div class="personas-grid">
@@ -191,7 +168,7 @@
             <summary>全{{ all_personas|length }}人格一覧</summary>
             <ul class="personas-all-ul" style="list-style:none;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:0.25rem;margin:0.5rem 0 0;">
                 {% for p in all_personas %}
-                <li class="personas-all-item"><img src="{{ p.image_url }}" alt="" class="personas-all-avatar" loading="lazy"> {{ p.name }} <span style="font-size:0.75em;color:#666;">{{ '論理型' if p.type == 'logic' else 'エンタメ' }}</span></li>
+                <li class="personas-all-item"><img src="{{ p.image_url }}" alt="" class="personas-all-avatar" loading="lazy"> {{ p.name }}</li>
                 {% endfor %}
             </ul>
         </details>
@@ -350,16 +327,6 @@ document.addEventListener('DOMContentLoaded', function() {
             } else {
                 fail();
             }
-        });
-    }
-
-    var aiCommentBtn = document.getElementById('btn-ai-comment');
-    var aiCommentBox = document.getElementById('ai-comment-box');
-    if (aiCommentBtn && aiCommentBox) {
-        aiCommentBtn.addEventListener('click', function() {
-            var hidden = aiCommentBox.style.display === 'none';
-            aiCommentBox.style.display = hidden ? '' : 'none';
-            aiCommentBtn.setAttribute('aria-expanded', hidden ? 'true' : 'false');
         });
     }
 

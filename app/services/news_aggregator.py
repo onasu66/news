@@ -225,6 +225,26 @@ PAPER_FILTER_KEYWORDS: dict[str, dict[str, list[str]]] = {
 }
 
 
+def paper_recency_for_sort(item: NewsItem) -> datetime:
+    """一覧の新しい順: サイトに取り込んだ日時を優先、なければ元記事の published。"""
+    at = getattr(item, "added_at", None)
+    if at is not None:
+        return at
+    return item.published or datetime.min
+
+
+def sort_papers_newest_first_inplace(items: list[NewsItem]) -> None:
+    items.sort(key=paper_recency_for_sort, reverse=True)
+
+
+def paper_domains_ordered_for_page(items: list[NewsItem]) -> list[str]:
+    """当該ページに存在するソース所属ドメインを、PAPER_DOMAIN_ORDER に沿って並べる。"""
+    doms = {SOURCE_TO_PAPER_DOMAIN.get(i.source, "総合科学") for i in items}
+    out = [d for d in PAPER_DOMAIN_ORDER if d in doms]
+    out.extend(sorted(d for d in doms if d not in PAPER_DOMAIN_ORDER))
+    return out
+
+
 def _detect_paper_filter(domain: str, title: str, summary: str) -> str:
     """論文1件に対して A〜I などのフィルターコードを1つ付与（最初にマッチしたもの）"""
     conf = PAPER_FILTER_KEYWORDS.get(domain)
@@ -619,11 +639,7 @@ class NewsAggregator:
         papers: list[NewsItem],
         page: int,
     ) -> tuple[list[tuple[str, list[NewsItem]]], dict]:
-        papers = sorted(
-            list(papers),
-            key=lambda x: x.added_at or x.published or datetime.min,
-            reverse=True,
-        )
+        papers = sorted(list(papers), key=paper_recency_for_sort, reverse=True)
         total = len(papers)
         per_page = ITEMS_PER_PAGE
         total_pages = max(1, (total + per_page - 1) // per_page)

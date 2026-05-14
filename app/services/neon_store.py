@@ -623,7 +623,7 @@ def neon_query_papers_page(page: int, per_page: int) -> tuple:
                 "SELECT id, title, link, summary, published, source, category, image_url, added_at "
                 "FROM articles "
                 f"WHERE {pc} "
-                "ORDER BY published DESC NULLS LAST "
+                "ORDER BY added_at DESC NULLS LAST, published DESC NULLS LAST "
                 "LIMIT %s OFFSET %s",
                 (per_page, offset),
             )

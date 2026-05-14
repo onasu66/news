@@ -942,9 +942,10 @@ blocks配列のJSONのみ返す。"""
 
 
 # 人格コメントはこの文字数以下に収める（プロンプトで厳守させ、APIトークンも十分に確保して途中打ち切りを防ぐ）
-PERSONA_COMMENT_MAX_LEN = 180
-# 出力が180文字程度でも日本語で完結するまで生成できるよう余裕を持たせる
-PERSONA_COMMENT_MAX_COMPLETION_TOKENS = 420
+# 180文字は3〜4文しか書けず制約を満たしながら「本人感」を出すのが困難なため 260 に拡大
+PERSONA_COMMENT_MAX_LEN = 260
+# 出力が260文字程度でも日本語で完結するまで生成できるよう余裕を持たせる
+PERSONA_COMMENT_MAX_COMPLETION_TOKENS = 600
 
 # 各偉人コメントで触れる固有要素（プロンプトでハード指定）
 PERSONA_SIGNATURE_ELEMENTS: dict[str, list[str]] = {
@@ -1151,23 +1152,36 @@ def get_persona_opinion(
     if catchphrases:
         chosen = random.choice(catchphrases)
         catchphrase_note = (
-            f"\n【今回の決め台詞（自然な形で使え）】\n「{chosen}」\n"
-            "↑この言葉を文脈に合わせて自然に織り込め。そのまま引用するより地の文に溶け込ませてよい。"
+            f"\n【参考：本人の名言】「{chosen}」"
+            "——この言葉の精神が自然に滲むなら使ってよい。無理に引用はしなくてよい。"
         )
-    system_prompt = f"""あなたは{p['name']}である。以下の人物設定に厳密に従え。
+
+    # 固有要素は「推奨」として渡す（必須にすると制約を消化する文章になる）
+    if signature_elements:
+        signature_note = (
+            "\n【参考：本人ゆかりのキーワード】"
+            + "・".join(signature_elements[:3])
+            + "——文脈に合えば触れてよい。無理に全部入れる必要はない。"
+        )
+
+    system_prompt = f"""あなたは{p['name']}として、いま目の前のニュースに反応している。
+
+【人物設定（必ず守ること）】
 {p['role']}
-必ず日本語のみ。丁寧語不要。主観100%で語れ。
-ニュース内容の要約・説明から入るな。最初の一文から{p['name']}としての意見・感想・哲学を述べよ。
-出力は本文のみ（見出し・前置き不要）。箇条書き禁止。
-その人物が実際に歩んだ時代背景・経験・歴史的立場を具体的に織り込むこと。{signature_note}{focus_note}{catchphrase_note}{banned_note}
-出力全体を必ず{max_len}文字以下に収める。句点「。」で終わること。{avoid_note}"""
-    user_prompt = f"""【タイトル】{title}
 
-【本文抜粋】
-{content[:2000]}
+【絶対ルール】
+- 日本語のみ。出力は地の文のみ（見出し・タイトル・「私は〜思います」的な前置き一切禁止）。
+- 箇条書き禁止。最初の一文からすでに{p['name']}の口調・視点で始める。
+- ニュースの「説明・要約」から入るな。まず{p['name']}の感情・判断・哲学から入れ。
+- {p['name']}が実際に生きた時代・経験・思想を自然に織り込む。
+- {max_len}文字以内で完結させ、必ず句点「。」で終わる。{focus_note}{catchphrase_note}{signature_note}{banned_note}{avoid_note}"""
 
----
-上記について{p['name']}として{max_len}文字以内でコメントせよ。"""
+    user_prompt = f"""次のニュースについて、{p['name']}として語ってほしい。
+
+【ニュースタイトル】{title}
+
+【内容】
+{content[:2000]}"""
     try:
         response = create_with_retry(
             client,
@@ -1177,7 +1191,7 @@ def get_persona_opinion(
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": user_prompt},
             ],
-            temperature=0.7,
+            temperature=0.88,
         )
         text = (response.choices[0].message.content or "").strip()
         if len(text) > max_len:

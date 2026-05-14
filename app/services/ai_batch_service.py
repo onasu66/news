@@ -1,8 +1,8 @@
-"""AI解説・秒速理解・深掘りを一括生成しキャッシュする。
+"""AI解説・秒速理解を一括生成しキャッシュする。
 理解は1回（理解ナビゲーター）だけ行い、その結果を記事・秒速理解に流用。
-人格は「論理2＋エンタメ1」のランダム3人を選んでから、その3人分だけ OpenAI で生成する。
+人格は全ペルソナからランダム3人を選び、その3人分だけ OpenAI で生成する。
 ミドルマン記事本文は MIDDLEMAN_PROVIDER に従い Claude CLI → OpenAI の順で生成する。
-（投票クイズ・論文ナレッジグラフ・論文クイズは当面生成しない。）"""
+（投票クイズ・論文ナレッジグラフ・論文クイズ・深掘り「AIに聞く」は生成しない。）"""
 import json
 import logging
 import random
@@ -25,12 +25,10 @@ def upgrade_personas_with_claude_if_configured(
     return current_personas
 
 from app.services.ai_service import (
+    PERSONAS,
     explain_article_as_navigator,
     expand_navigator_to_article,
     get_persona_opinion,
-    generate_deep_insights,
-    PERSONA_LOGIC_IDS,
-    PERSONA_ENT_IDS,
 )
 from app.services.explanation_cache import get_cached, save_cache
 
@@ -190,8 +188,8 @@ def generate_all_explanations(
     persist_cache: bool = True,
 ) -> dict:
     """
-    理解を1回（理解ナビゲーター）だけ行い、その結果を記事・秒速理解・投票に流用。
-    人格は先にランダムで3人（論理2＋エンタメ1）を選び、その3人分だけAPI呼び出し。
+    理解を1回（理解ナビゲーター）だけ行い、その結果を記事・秒速理解に流用。
+    人格は全員からランダム3人を選び、その3人分だけ API 呼び出し。
 
     persist_cache=False（RSS/手動記事パイプライン向け）:
       解説をDBに書かず返すのみ。
@@ -206,17 +204,11 @@ def generate_all_explanations(
     summary_text = _navigator_summary(navigator_blocks)
     quick_understand = _quick_understand_from_navigator(navigator_blocks)
 
-    # 2) 先に表示する3人を選ぶ（論理2 + エンタメ1）
-    logic_ids = list(PERSONA_LOGIC_IDS)
-    ent_ids = list(PERSONA_ENT_IDS)
-    if len(logic_ids) >= 2 and len(ent_ids) >= 1:
-        display_persona_ids = random.sample(logic_ids, 2) + random.sample(ent_ids, 1)
-        random.shuffle(display_persona_ids)
-    else:
-        from app.services.ai_service import PERSONAS
-        display_persona_ids = list(range(min(3, len(PERSONAS))))
+    # 2) 先に表示する3人を選ぶ（全ペルソナからランダム）
+    n_personas = len(PERSONAS)
+    display_persona_ids = random.sample(range(n_personas), min(3, n_personas)) if n_personas else []
 
-    # 3) 記事展開・深掘りを並列生成（投票・論文グラフ/クイズは当面オフ）
+    # 3) 記事展開（投票・論文グラフ/クイズ・深掘り「AIに聞く」は生成しない）
     #    ミドルマンは MIDDLEMAN_PROVIDER に従い Claude → OpenAI。ペルソナは OpenAI のみ。
 
     def do_blocks():
@@ -230,20 +222,15 @@ def generate_all_explanations(
         logger.info("ミドルマン記事生成: provider=%s model=%s", provider, model)
         return expand_navigator_to_article(navigator_blocks, title, model=model)
 
-    def do_deep():
-        return generate_deep_insights(title, summary_text)
-
     blocks = []
     personas_3 = [""] * 3
     vote_data: dict = {}
     paper_graph: dict = {}
     paper_quiz: dict = {}
-    deep_insights = {}
+    deep_insights: dict = {}
 
-    with ThreadPoolExecutor(max_workers=16) as ex:
+    with ThreadPoolExecutor(max_workers=4) as ex:
         fut_blocks = ex.submit(do_blocks)
-        fut_deep = ex.submit(do_deep)
-
         blocks = fut_blocks.result()
 
         # ペルソナ: OpenAI のみ（順に生成し先のコメントを渡して重複を避ける）
@@ -264,11 +251,6 @@ def generate_all_explanations(
             personas_3[slot_idx] = comment
             if comment and "取得失敗" not in comment:
                 generated_comments.append(comment)
-
-        try:
-            deep_insights = fut_deep.result() or {}
-        except Exception:
-            pass
 
     result = {
         "blocks": blocks,

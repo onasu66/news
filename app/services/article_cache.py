@@ -154,7 +154,7 @@ def _sqlite_load_papers_for_site_list(limit: int) -> list[NewsItem]:
             SELECT id, title, link, summary, published, source, category, image_url, added_at
             FROM articles
             WHERE category = ?
-            ORDER BY published DESC, added_at DESC
+            ORDER BY datetime(COALESCE(added_at, published)) DESC
             LIMIT ?
             """,
             ("研究・論文", fetch_cap),
