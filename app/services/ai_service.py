@@ -1145,12 +1145,21 @@ def get_persona_opinion(
             + "・" + "\n・".join(banned_phrases)
             + "\n上記の語句・言い回しをそのまま繰り返さないこと。"
         )
+    # catchphrase: 本人の決め台詞から1つをランダムに選んでプロンプトへ埋め込む
+    catchphrases: list = p.get("catchphrase") or []
+    catchphrase_note = ""
+    if catchphrases:
+        chosen = random.choice(catchphrases)
+        catchphrase_note = (
+            f"\n【今回の決め台詞（自然な形で使え）】\n「{chosen}」\n"
+            "↑この言葉を文脈に合わせて自然に織り込め。そのまま引用するより地の文に溶け込ませてよい。"
+        )
     system_prompt = f"""あなたは{p['name']}である。以下の人物設定に厳密に従え。
 {p['role']}
 必ず日本語のみ。丁寧語不要。主観100%で語れ。
 ニュース内容の要約・説明から入るな。最初の一文から{p['name']}としての意見・感想・哲学を述べよ。
 出力は本文のみ（見出し・前置き不要）。箇条書き禁止。
-その人物が実際に歩んだ時代背景・経験・歴史的立場を具体的に織り込むこと。{signature_note}{focus_note}{banned_note}
+その人物が実際に歩んだ時代背景・経験・歴史的立場を具体的に織り込むこと。{signature_note}{focus_note}{catchphrase_note}{banned_note}
 出力全体を必ず{max_len}文字以下に収める。句点「。」で終わること。{avoid_note}"""
     user_prompt = f"""【タイトル】{title}
 
