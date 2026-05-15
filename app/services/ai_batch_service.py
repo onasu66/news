@@ -31,6 +31,7 @@ from app.services.ai_service import (
     get_persona_opinion,
 )
 from app.services.explanation_cache import get_cached, save_cache
+from app.services.article_content_quality import is_navigator_sufficient
 
 _MIDDLEMAN_YAML = Path(__file__).resolve().parent.parent / "prompts" / "middleman.yaml"
 
@@ -201,8 +202,21 @@ def generate_all_explanations(
     # 1) 理解は1回だけ：理解ナビゲーター（事実・背景・影響・予測・注意）
     is_paper = category == "研究・論文"
     navigator_blocks = explain_article_as_navigator(title, content, is_paper=is_paper)
+    if not is_navigator_sufficient(navigator_blocks):
+        logger.warning("理解ナビゲーターが薄すぎるため記事化中止: %s", (title or "")[:60])
+        return {
+            "blocks": [],
+            "personas": ["", "", ""],
+            "display_persona_ids": [],
+            "quick_understand": {},
+            "vote_data": {},
+            "paper_graph": {},
+            "paper_quiz": {},
+            "deep_insights": {},
+        }
     summary_text = _navigator_summary(navigator_blocks)
     quick_understand = _quick_understand_from_navigator(navigator_blocks)
+    persona_source = (content or summary_text or "")[:3500]
 
     # 2) 先に表示する3人を選ぶ（全ペルソナからランダム）
     n_personas = len(PERSONAS)
@@ -240,7 +254,7 @@ def generate_all_explanations(
                 comment = (
                     get_persona_opinion(
                         title,
-                        summary_text,
+                        persona_source,
                         pid,
                         other_comments=generated_comments if generated_comments else None,
                     )

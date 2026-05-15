@@ -206,14 +206,25 @@ def load_curated_articles(path: Optional[Path] = None) -> list[NewsItem]:
         raw_cat = (entry.get("category") or "").strip()
         category = _CATEGORY_MAP.get(raw_cat, _CATEGORY_MAP.get(raw_cat.lower(), raw_cat))
         if category not in _VALID_CATEGORIES:
-            logger.warning("未知のカテゴリ '%s' -> 'テクノロジー' に変換", raw_cat)
+            logger.warning("未知のカテゴリ '%s' -> 'テクノジー' に変換", raw_cat)
             category = "テクノロジー"
+
+        summary = (entry.get("summary") or "").strip()
+        try:
+            from app.config import settings as _s
+
+            min_sum = max(80, int(getattr(_s, "CURATED_MIN_SUMMARY_CHARS", 280)))
+        except Exception:
+            min_sum = 280
+        if len(summary) < min_sum:
+            logger.info("要約が短すぎるため除外 (%d字): %s", len(summary), title[:50])
+            continue
 
         items.append(NewsItem(
             id=item_id,
             title=title,
             link=url,
-            summary=entry.get("summary") or "",
+            summary=summary,
             published=published,
             source=entry.get("source") or "Claude Code選定",
             category=category,

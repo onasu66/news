@@ -7,6 +7,10 @@ from .ai_batch_service import generate_all_explanations, upgrade_personas_with_c
 from .explanation_cache import save_cache, get_cached, get_cached_article_ids
 from .article_cache import save_article, load_all
 from .article_fetcher import fetch_article_body
+from .article_content_quality import (
+    is_generated_article_sufficient,
+    is_source_material_sufficient,
+)
 from .save_history import add_entry as _log_save
 
 
@@ -92,12 +96,22 @@ def process_rss_to_site_article(item: NewsItem, force: bool = False) -> bool:
 
     # 記事URLから本文を取得して反映（取れればRSS要約より充実した内容に）
     body = fetch_article_body(item.link)
+    body_clean = ""
     if body:
         body_clean = sanitize_display_text(body)[:40000]
         # 英語本文は日本語に翻訳してから反映（約3分で読める分量になるようAIで調整）
         if is_foreign_article(item.source, item.title, body_clean):
             from app.services.translate_service import translate_article_body
             body_clean = translate_article_body(body_clean)
+
+    is_paper = (item.category or "").strip() == "研究・論文"
+    if not is_source_material_sufficient(
+        item.title, item.summary, body_clean or None, is_paper=is_paper
+    ):
+        logger.warning("素材不足のため記事化スキップ: %s", (item.title or "")[:60])
+        return False
+
+    if body_clean:
         content = sanitize_display_text(f"{item.title}\n\n{item.summary}\n\n{body_clean}")
     else:
         content = sanitize_display_text(f"{item.title}\n\n{item.summary}")
@@ -111,7 +125,11 @@ def process_rss_to_site_article(item: NewsItem, force: bool = False) -> bool:
     personas = personas[:3]
     display_persona_ids = data.get("display_persona_ids")
 
-    if not blocks:
+    if not blocks or not is_generated_article_sufficient(blocks):
+        logger.warning(
+            "生成記事が短すぎるためスキップ: %s",
+            (item.title or "")[:60],
+        )
         return False
 
     # 記事を先に保存してから解説を保存（Neon で has_explanation を付与するため）

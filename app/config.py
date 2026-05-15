@@ -64,6 +64,18 @@ class Settings:
     RSS_PUBMED_FEED_LIMIT: int = int(os.getenv("RSS_PUBMED_FEED_LIMIT", "120"))
     # 論文記事として採用する最小要約文字数（短すぎる抄録は除外）
     RSS_MIN_PAPER_SUMMARY_CHARS: int = int(os.getenv("RSS_MIN_PAPER_SUMMARY_CHARS", "340"))
+    # 記事化: タイトル+要約+本文の合計最低文字数（これ未満はサイトに載せない）
+    ARTICLE_MIN_SOURCE_CHARS: int = int(os.getenv("ARTICLE_MIN_SOURCE_CHARS", "900"))
+    # 本文取得なし時の最低要約文字数（ニュース / 論文）
+    ARTICLE_MIN_SUMMARY_CHARS: int = int(os.getenv("ARTICLE_MIN_SUMMARY_CHARS", "280"))
+    ARTICLE_MIN_SUMMARY_CHARS_PAPER: int = int(os.getenv("ARTICLE_MIN_SUMMARY_CHARS_PAPER", "400"))
+    ARTICLE_MIN_BODY_CHARS: int = int(os.getenv("ARTICLE_MIN_BODY_CHARS", "450"))
+    # 生成後: ミドルマン text ブロック合計の最低文字数（3分読了の目安）
+    ARTICLE_MIN_GENERATED_TEXT_CHARS: int = int(os.getenv("ARTICLE_MIN_GENERATED_TEXT_CHARS", "1200"))
+    ARTICLE_MIN_EXPLAIN_COUNT: int = int(os.getenv("ARTICLE_MIN_EXPLAIN_COUNT", "3"))
+    ARTICLE_MIN_NAVIGATOR_CHARS: int = int(os.getenv("ARTICLE_MIN_NAVIGATOR_CHARS", "500"))
+    # Claude 選定 JSON の summary がこれ未満なら curated 読み込み時に除外
+    CURATED_MIN_SUMMARY_CHARS: int = int(os.getenv("CURATED_MIN_SUMMARY_CHARS", "280"))
     # 論文トップ「すべて」で読み込む上限（Neon/SQLite いずれも一覧の負荷に直結）
     PAPERS_LIST_MAX: int = int(os.getenv("PAPERS_LIST_MAX", "120"))
     # 論文一覧のメモリキャッシュ秒（アプリ側）

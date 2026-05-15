@@ -31,6 +31,56 @@ MAIN_SELECTORS = [
 ]
 
 
+def _normalize_article_url(url: str) -> str:
+    """論文・PDF直リンクを本文取得しやすいURLに寄せる。"""
+    u = (url or "").strip()
+    if not u:
+        return u
+    # arXiv PDF → abstract ページ
+    m = re.search(r"arxiv\.org/pdf/([^\s?#]+)", u, re.I)
+    if m:
+        return f"https://arxiv.org/abs/{m.group(1)}"
+    if "arxiv.org/abs/" in u.lower():
+        return u.split("?")[0].rstrip("/")
+    return u
+
+
+def _meta_text_from_html(html: str) -> str:
+    """og:description / citation_abstract 等から抄録・リード文を拾う。"""
+    try:
+        from bs4 import BeautifulSoup
+    except ImportError:
+        return ""
+    soup = BeautifulSoup(html, "html.parser")
+    candidates: list[str] = []
+    for sel, attr in (
+        ('meta[name="description"]', "content"),
+        ('meta[property="og:description"]', "content"),
+        ('meta[name="citation_abstract"]', "content"),
+        ('meta[name="dc.Description"]', "content"),
+        ('meta[name="dcterms.abstract"]', "content"),
+        ('meta[property="twitter:description"]', "content"),
+    ):
+        node = soup.select_one(sel)
+        if node and node.get(attr):
+            candidates.append(str(node[attr]).strip())
+    for script in soup.find_all("script", type="application/ld+json"):
+        try:
+            import json
+
+            data = json.loads(script.string or "")
+            if isinstance(data, dict):
+                for key in ("description", "abstract", "articleBody"):
+                    v = data.get(key)
+                    if isinstance(v, str) and len(v.strip()) > 80:
+                        candidates.append(v.strip())
+        except Exception:
+            pass
+    if not candidates:
+        return ""
+    return max(candidates, key=len)
+
+
 def _html_to_text(html: str) -> str:
     """HTMLをプレーンテキストに（タグ除去・空白正規化）"""
     from bs4 import BeautifulSoup
@@ -49,6 +99,7 @@ def fetch_article_body(url: str) -> Optional[str]:
     """
     if not url or not url.startswith("http"):
         return None
+    url = _normalize_article_url(url)
     try:
         import httpx
 
@@ -105,7 +156,12 @@ def fetch_article_body(url: str) -> Optional[str]:
             if fallback_text and (not body_text or len(fallback_text) > len(body_text)):
                 body_text = fallback_text
 
-        if not body_text or len(body_text) < 100:
+        meta_text = _meta_text_from_html(text)
+        if meta_text:
+            if not body_text or len(meta_text) > len(body_text):
+                body_text = meta_text if not body_text else f"{meta_text}\n\n{body_text}"
+
+        if not body_text or len(body_text) < 120:
             return None
         return body_text[:MAX_BODY_LEN]
     except Exception as e:
