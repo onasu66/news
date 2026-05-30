@@ -135,6 +135,12 @@ def _startup_add_one_each():
         added = process_startup_articles(rss_items=None, trend_keywords=None)
         if added > 0:
             NewsAggregator.get_news(force_refresh=True)
+            try:
+                from app.services.render_notifier import notify_render_cache_refresh
+
+                notify_render_cache_refresh(reason=f"startup_added:{added}")
+            except Exception:
+                pass
             logger.info("起動時記事追加: %d 件（日本1＋海外1）", added)
     except Exception as e:
         logger.warning("起動時記事追加でエラー: %s", e)
@@ -194,6 +200,11 @@ async def lifespan(app: FastAPI):
     def _init():
         # 起動直後は軽い処理だけ先に実行して、API応答を阻害しない
         NewsAggregator.get_trends(force_refresh=True)
+        try:
+            NewsAggregator.sync_list_cache_from_db(force=True)
+            logger.info("起動時: 一覧キャッシュを DB から同期しました（%d 件）", len(NewsAggregator._news_cache or []))
+        except Exception as e:
+            logger.warning("起動時一覧キャッシュ同期に失敗: %s", e)
         try:
             from app.services.sitemap_service import sitemap_snapshot_path
 

@@ -149,6 +149,16 @@ def process_rss_to_site_article(item: NewsItem, force: bool = False) -> bool:
         paper_quiz=data.get("paper_quiz"),
         deep_insights=data.get("deep_insights"),
     )
+    # 単体追加時: 本番 Render のメモリキャッシュへ反映通知（一括処理は process_new_rss_articles 側で通知）
+    try:
+        from .news_aggregator import NewsAggregator
+
+        if NewsAggregator._bulk_update_depth == 0:
+            from .render_notifier import notify_render_cache_refresh
+
+            notify_render_cache_refresh(reason=f"article_saved:{item.id[:16]}")
+    except Exception:
+        pass
     return True
 
 

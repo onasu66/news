@@ -40,8 +40,8 @@ class Settings:
     TITLE_OPENAI_MODEL: str = os.getenv("TITLE_OPENAI_MODEL", "gpt-4o").strip()
     CDN_BASE_URL: str = os.getenv("CDN_BASE_URL", "https://picsum.photos")
     NEWS_REFRESH_INTERVAL: int = int(os.getenv("NEWS_REFRESH_INTERVAL", "240"))
-    # 一覧メモリキャッシュを DB と照合する間隔（分）。0 で無効。無料枠向け既定は 180。
-    NEWS_LIST_CACHE_SYNC_MINUTES: int = int(os.getenv("NEWS_LIST_CACHE_SYNC_MINUTES", "0"))
+    # 一覧メモリキャッシュを DB と照合する間隔（分）。0 で無効。本番 Render は別プロセスのため 30 分ごとの同期を推奨。
+    NEWS_LIST_CACHE_SYNC_MINUTES: int = int(os.getenv("NEWS_LIST_CACHE_SYNC_MINUTES", "30"))
     DAILY_ARTICLE_LIMIT: int = int(os.getenv("DAILY_ARTICLE_LIMIT", "6"))
     # 1回の RSS 強制更新で目標とする最小追加本数（無料枠向けに小さめ）
     RSS_MIN_ADDED_PER_REFRESH: int = int(os.getenv("RSS_MIN_ADDED_PER_REFRESH", "5"))

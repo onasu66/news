@@ -42,6 +42,15 @@ def main():
             logger.warning("失敗: %s — %s", item.title[:60], e)
 
     logger.info("=== 完了: %d件追加 ===", added)
+    if added > 0:
+        try:
+            from app.services.news_aggregator import NewsAggregator
+            from app.services.render_notifier import notify_render_cache_refresh
+
+            NewsAggregator.sync_list_cache_from_db(force=True)
+            notify_render_cache_refresh(reason=f"add_news_now:{added}")
+        except Exception as e:
+            logger.warning("本番キャッシュ通知に失敗: %s", e)
 
 if __name__ == "__main__":
     main()

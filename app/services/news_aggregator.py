@@ -343,6 +343,35 @@ class NewsAggregator:
     _bulk_update_depth: int = 0
 
     @classmethod
+    def _list_cache_sync_interval_sec(cls) -> int:
+        try:
+            mins = int(getattr(settings, "NEWS_LIST_CACHE_SYNC_MINUTES", 30))
+        except Exception:
+            mins = 30
+        if mins <= 0:
+            return 0
+        return mins * 60
+
+    @classmethod
+    def _list_cache_is_stale(cls) -> bool:
+        """メモリ一覧が DB 同期から一定時間経過したら True。"""
+        interval = cls._list_cache_sync_interval_sec()
+        if interval <= 0:
+            return False
+        if not cls._news_cache or not cls._last_updated:
+            return True
+        return (datetime.now() - cls._last_updated).total_seconds() >= interval
+
+    @classmethod
+    def _maybe_sync_stale_list_cache(cls) -> None:
+        if not cls._list_cache_is_stale():
+            return
+        try:
+            cls.sync_list_cache_from_db(force=False)
+        except Exception as e:
+            logger.warning("一覧キャッシュの定期同期に失敗: %s", e)
+
+    @classmethod
     def _prime_meta_fingerprint(cls) -> None:
         """後方互換のため残す（現状は no-op）。"""
         return
@@ -450,6 +479,7 @@ class NewsAggregator:
             cls._prime_meta_fingerprint()
             cls._refresh_sitemap_snapshot()
         if not force_refresh and cls._news_cache:
+            cls._maybe_sync_stale_list_cache()
             cls._maybe_resync_news_from_meta_fingerprint()
         return cls._news_cache
 
@@ -679,8 +709,9 @@ class NewsAggregator:
             if cls._papers_cache_at and (datetime.now() - cls._papers_cache_at).total_seconds() < cls._PAPERS_CACHE_TTL_SEC:
                 return cls._papers_cache
 
-        # 一覧メモリキャッシュがあればそこから論文ページを構築し、bot 巡回時の DB 起床を避ける。
-        if not force_refresh and cls._news_cache:
+        # 一覧メモリキャッシュが新しければそこから論文ページを構築（bot 巡回時の DB 負荷軽減）。
+        # 古いキャッシュは使わず DB へフォールバック（ローカル追加→本番未反映の原因になるため）。
+        if not force_refresh and cls._news_cache and not cls._list_cache_is_stale():
             cached_papers = [
                 x for x in cls._news_cache
                 if (getattr(x, "category", "") or "").strip() in ("研究・論文", "研究論文")

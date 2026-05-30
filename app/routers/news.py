@@ -1816,7 +1816,8 @@ async def api_admin_cache_refresh(
         await asyncio.to_thread(lambda: NewsAggregator._invalidate_papers_cache())
     except Exception as e:
         logger.warning("cache/refresh: _invalidate_papers_cache: %s", e)
-    return {"status": "ok"}
+    cached = len(getattr(NewsAggregator, "_news_cache", []) or [])
+    return {"status": "ok", "cached": cached}
 
 
 @router.get("/api/admin/claude-usage")
