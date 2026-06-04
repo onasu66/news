@@ -76,11 +76,12 @@ def translate_title_to_japanese(english_title: str) -> str:
     if text_mainly_japanese(english_title):
         return english_title
     try:
-        from openai import OpenAI
         from app.config import settings
-        if not settings.OPENAI_API_KEY:
+        from app.utils.llm_client import get_chat_client, is_ai_configured
+
+        if not is_ai_configured():
             return english_title
-        client = OpenAI(api_key=settings.OPENAI_API_KEY)
+        client = get_chat_client()
         model = settings.OPENAI_MODEL
         prompt = f"""次のニュースのタイトルを日本語に翻訳してください。
 ルール：出力は日本語のタイトルだけを1行で返す。英語は1文字も含めない。カタカナ・漢字・ひらがなで書く。
@@ -90,6 +91,7 @@ def translate_title_to_japanese(english_title: str) -> str:
         resp = create_with_retry(
             client,
             200,
+            gemini_task="translate",
             model=model,
             messages=[
                 {"role": "system", "content": "あなたはニュースの見出しを日本語に翻訳するアシスタントです。出力は必ず日本語のみ。英語は使わない。"},
@@ -108,13 +110,13 @@ def translate_title_to_japanese(english_title: str) -> str:
 def translate_and_rewrite(title: str, summary: str) -> tuple[str, str]:
     """海外記事を日本語に訳し、独自の表現で言い換える（著作権配慮）"""
     try:
-        from openai import OpenAI
         from app.config import settings
+        from app.utils.llm_client import get_chat_client, is_ai_configured
 
-        if not settings.OPENAI_API_KEY:
+        if not is_ai_configured():
             return title, summary
 
-        client = OpenAI(api_key=settings.OPENAI_API_KEY)
+        client = get_chat_client()
         model = settings.OPENAI_MODEL
         prompt = f"""以下の英語ニュースのタイトルと要約を、必ず日本語だけに訳し、独自の表現で言い直してください。
 重要：タイトルも要約も、日本語以外（英語など）は1文字も含めないこと。全てカタカナ・漢字・ひらがなで書く。
@@ -136,6 +138,7 @@ def translate_and_rewrite(title: str, summary: str) -> tuple[str, str]:
         resp = create_with_retry(
             client,
             500,
+            gemini_task="translate",
             model=model,
             messages=[
                 {"role": "system", "content": "ニュースを日本語で分かりやすく言い換えるアシスタント。出力は必ず日本語のみ。英語は使わない。"},
@@ -165,13 +168,13 @@ def translate_article_body(body: str, max_chars: int = 25000) -> str:
     if not body or len(body) < 50:
         return body
     try:
-        from openai import OpenAI
         from app.config import settings
+        from app.utils.llm_client import get_chat_client, is_ai_configured
 
-        if not settings.OPENAI_API_KEY:
+        if not is_ai_configured():
             return body
 
-        client = OpenAI(api_key=settings.OPENAI_API_KEY)
+        client = get_chat_client()
         model = settings.OPENAI_MODEL
         prompt = f"""以下の英語ニュース記事の本文を、日本語に翻訳してください。
 ・意味を保ちながら自然な日本語に。著作権に配慮し、独自の表現で言い換えてください。
@@ -184,6 +187,7 @@ def translate_article_body(body: str, max_chars: int = 25000) -> str:
         resp = create_with_retry(
             client,
             8000,
+            gemini_task="translate",
             model=model,
             messages=[
                 {"role": "system", "content": "ニュース記事を日本語に翻訳するアシスタント。自然な日本語で、余計な説明は出力しない。"},

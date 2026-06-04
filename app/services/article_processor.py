@@ -1,4 +1,5 @@
 """RSS記事をAI解説付きのサイト記事に変換するパイプライン"""
+import logging
 import re
 from datetime import datetime
 from .rss_service import NewsItem, sanitize_display_text, JST
@@ -12,6 +13,28 @@ from .article_content_quality import (
     is_source_material_sufficient,
 )
 from .save_history import add_entry as _log_save
+
+logger = logging.getLogger(__name__)
+
+
+def _wait_between_gemini_articles(index: int, total: int) -> None:
+    """Gemini 無料枠の RPM 対策: 記事候補の処理間に待機。"""
+    if index >= total - 1:
+        return
+    try:
+        import time
+        from app.config import settings
+        from app.utils.llm_client import use_gemini
+
+        if not use_gemini():
+            return
+        sec = max(0, int(getattr(settings, "GEMINI_ARTICLE_INTERVAL_SEC", 45) or 0))
+        if sec <= 0:
+            return
+        logger.info("Gemini RPM 対策: 次の記事候補まで %d 秒待機 (%d/%d)", sec, index + 1, total)
+        time.sleep(sec)
+    except Exception:
+        pass
 
 
 def _normalize_title_for_dedup(title: str) -> str:
@@ -149,7 +172,17 @@ def process_rss_to_site_article(item: NewsItem, force: bool = False) -> bool:
         paper_quiz=data.get("paper_quiz"),
         deep_insights=data.get("deep_insights"),
     )
-    # 単体追加時: 本番 Render のメモリキャッシュへ反映通知（一括処理は process_new_rss_articles 側で通知）
+    # IndexNow（Bing 等）・Render キャッシュ通知
+    try:
+        from .news_aggregator import NewsAggregator
+        from .indexnow_service import notify_indexnow_article, queue_indexnow_article
+
+        if NewsAggregator._bulk_update_depth > 0:
+            queue_indexnow_article(item.id)
+        else:
+            notify_indexnow_article(item.id)
+    except Exception:
+        pass
     try:
         from .news_aggregator import NewsAggregator
 
@@ -173,39 +206,40 @@ def _rewrite_news_title(title: str, summary: str = "", category: str = "") -> st
         t = t.split("】", 1)[1].strip()
 
     # 長すぎる場合のみ短縮（まずはルールベースで）
-    def _shorten(s: str, max_len: int = 36) -> str:
+    def _shorten(s: str, max_len: int = 42) -> str:
         s = " ".join(s.split())
         return s if len(s) <= max_len else (s[:max_len] + "…")
 
     # AI が使える場合は「編集者リライト」を1回だけ試す
     try:
         from app.config import settings
+        from app.utils.llm_client import get_chat_client, is_ai_configured
         enabled = str(getattr(settings, "TITLE_GENERATION_ENABLED", "true")).strip().lower() in ("1", "true", "yes")
-        if settings.OPENAI_API_KEY and enabled:
-            from openai import OpenAI
+        if is_ai_configured() and enabled:
             from app.utils.openai_compat import create_with_retry
-            client = OpenAI(api_key=settings.OPENAI_API_KEY)
-            system_prompt = """あなたはニュース編集者です。見出しを整えます。
+            client = get_chat_client()
+            system_prompt = """あなたはニュース編集者兼SEO担当です。Google検索で見つかりやすい見出しに整えます。
 ルール：
-- 元のタイトルをベースにする
-- 事実を変えない
+- 元タイトル・要約の事実は変えない
+- ユーザーが検索しそうな語（固有名詞・企業名・地名・数字・イベント名）を前半に置く
 - 過激な煽りは禁止（衝撃/悲報/暴露/真相/裏側 など）
-- 不安・期待・驚きなどの感情ニュアンスを「ほんの少し」加える
-- 思わず続きが気になる言い回しにする
-- 長いタイトルは短く、スマホで見切れにくい長さにする
+- 28〜42文字程度。長い場合は重要キーワードを残して短く
+- 自然な日本語。キーワードの羅列や【】は使わない
 - 出力はタイトル1行のみ（引用符や説明不要）"""
             if (category or "").strip() == "研究・論文":
-                system_prompt += "\n- 論文は研究対象・結果が分かる実直な見出しにする（コピー調禁止）"
+                system_prompt += "\n- 論文は研究対象・手法・結果が分かる見出し（論文名・分野の検索語を含める）"
             user_prompt = (
                 f"カテゴリ：{category or 'ニュース'}\n"
                 f"元タイトル：{t}\n"
                 f"要約：{(summary or '')[:800]}\n\n"
-                "上のルールで、自然な日本語の見出しに整えてください。"
+                "検索流入を意識し、上のルールで見出し1行だけ出力してください。"
             )
             model = (getattr(settings, "TITLE_OPENAI_MODEL", "") or "").strip() or settings.OPENAI_MODEL
+            # gpt- 指定時は AI_PROVIDER=gemini でも OpenAI 直行（openai_compat）
             resp = create_with_retry(
                 client,
                 120,
+                gemini_task="title",
                 model=model,
                 messages=[
                     {"role": "system", "content": system_prompt},
@@ -564,7 +598,7 @@ def process_new_rss_articles(
 
     NewsAggregator.begin_bulk_update()
     try:
-        for item in to_process:
+        for idx, item in enumerate(to_process):
             try:
                 ok = process_rss_to_site_article(item, force=force)
                 # force=false のままだと「実際には既存キャッシュがある/途中状態」が原因でスキップ扱いになることがある。
@@ -584,10 +618,17 @@ def process_new_rss_articles(
                     )
             except Exception as e:
                 _log_save(item.id, item.title, False, error=str(e), source="rss_seed")
+            _wait_between_gemini_articles(idx, len(to_process))
     finally:
         NewsAggregator.end_bulk_update()
     # （案A）ローカルで記事化したら Render に通知して一覧キャッシュを更新させる
     if count > 0:
+        try:
+            from .indexnow_service import flush_indexnow_queue
+
+            flush_indexnow_queue()
+        except Exception:
+            pass
         try:
             from .render_notifier import notify_render_cache_refresh
 
@@ -629,7 +670,7 @@ def process_random_rss_articles(rss_items: list[NewsItem], count: int = 3) -> in
     to_process = deduped[:count]
 
     n = 0
-    for item in to_process:
+    for idx, item in enumerate(to_process):
         try:
             if process_rss_to_site_article(item, force=False):
                 n += 1
@@ -638,6 +679,7 @@ def process_random_rss_articles(rss_items: list[NewsItem], count: int = 3) -> in
                 _log_save(item.id, item.title, False, error="スキップ（既存または生成失敗）", source="rss_random")
         except Exception as e:
             _log_save(item.id, item.title, False, error=str(e), source="rss_random")
+        _wait_between_gemini_articles(idx, len(to_process))
     return n
 
 

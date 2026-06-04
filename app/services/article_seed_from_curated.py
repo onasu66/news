@@ -293,6 +293,12 @@ def process_curated_articles(path: Optional[Path] = None, max_per_run: int = 30)
     # （案A）ローカルで記事化したら Render に通知して一覧キャッシュを更新させる
     if count > 0:
         try:
+            from .indexnow_service import flush_indexnow_queue
+
+            flush_indexnow_queue()
+        except Exception:
+            pass
+        try:
             from .render_notifier import notify_render_cache_refresh
 
             notify_render_cache_refresh(reason=f"curated_added:{count}")

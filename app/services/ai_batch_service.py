@@ -14,6 +14,24 @@ logger = logging.getLogger(__name__)
 from app.config import settings
 
 
+def _wait_between_gemini_personas(slot_idx: int) -> None:
+    """Gemini ペルソナ連続呼び出しの RPM 対策（2人目以降で待機）。"""
+    if slot_idx <= 0:
+        return
+    try:
+        from app.utils.llm_client import persona_provider, use_gemini
+
+        if not use_gemini(persona_provider()):
+            return
+        sec = max(0, int(getattr(settings, "GEMINI_PERSONA_INTERVAL_SEC", 8) or 0))
+        if sec > 0:
+            import time
+
+            time.sleep(sec)
+    except Exception:
+        pass
+
+
 def upgrade_personas_with_claude_if_configured(
     title: str,
     navigator_summary: str,
@@ -27,11 +45,12 @@ def upgrade_personas_with_claude_if_configured(
 from app.services.ai_service import (
     PERSONAS,
     explain_article_as_navigator,
+    explain_article_long_with_bubbles,
     expand_navigator_to_article,
     get_persona_opinion,
 )
 from app.services.explanation_cache import get_cached, save_cache
-from app.services.article_content_quality import is_navigator_sufficient
+from app.services.article_content_quality import is_generated_article_sufficient, is_navigator_sufficient
 
 _MIDDLEMAN_YAML = Path(__file__).resolve().parent.parent / "prompts" / "middleman.yaml"
 
@@ -232,9 +251,13 @@ def generate_all_explanations(
             claude_blocks = _generate_blocks_via_claude(navigator_blocks, title)
             if claude_blocks:
                 return claude_blocks
-        model = (getattr(settings, "MIDDLEMAN_OPENAI_MODEL", "") or "").strip() or "gpt-4o"
+        model = (getattr(settings, "MIDDLEMAN_OPENAI_MODEL", "") or "").strip() or settings.OPENAI_MODEL
         logger.info("ミドルマン記事生成: provider=%s model=%s", provider, model)
-        return expand_navigator_to_article(navigator_blocks, title, model=model)
+        blocks = expand_navigator_to_article(navigator_blocks, title, model=model, source_content=content)
+        if blocks and is_generated_article_sufficient(blocks):
+            return blocks
+        logger.info("expand_navigator 不十分のため explain_article_long_with_bubbles へフォールバック")
+        return explain_article_long_with_bubbles(title, content, model=model)
 
     blocks = []
     personas_3 = [""] * 3
@@ -247,9 +270,10 @@ def generate_all_explanations(
         fut_blocks = ex.submit(do_blocks)
         blocks = fut_blocks.result()
 
-        # ペルソナ: OpenAI のみ（順に生成し先のコメントを渡して重複を避ける）
+        # ペルソナ: PERSONA_PROVIDER に従う（順に生成し先のコメントを渡して重複を避ける）
         generated_comments: list[str] = []
         for slot_idx, pid in enumerate(display_persona_ids):
+            _wait_between_gemini_personas(slot_idx)
             try:
                 comment = (
                     get_persona_opinion(

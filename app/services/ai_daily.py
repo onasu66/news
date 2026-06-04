@@ -76,16 +76,17 @@ def generate_daily_ai_content():
     global _daily_cache, _daily_date
     from app.config import settings
 
-    if not settings.OPENAI_API_KEY:
-        logger.warning("OPENAI_API_KEY not set, skipping daily AI content generation")
+    from app.utils.llm_client import get_chat_client, is_ai_configured
+
+    if not is_ai_configured():
+        logger.warning("AI API key not set, skipping daily AI content generation")
         return
 
     from app.services.news_aggregator import NewsAggregator
     from app.services.ai_service import PERSONAS
     from app.utils.openai_compat import create_with_retry
-    from openai import OpenAI
 
-    client = OpenAI(api_key=settings.OPENAI_API_KEY)
+    client = get_chat_client()
     model = settings.OPENAI_MODEL
 
     all_news = NewsAggregator.get_news()
@@ -101,6 +102,7 @@ def generate_daily_ai_content():
     try:
         resp = create_with_retry(
             client, 300, model=model,
+            gemini_task="lite",
             messages=[
                 {"role": "system", "content": "あなたはニュースアナリストです。昨日のニュースを踏まえ、今日どうなるかを100字以内の一言メモにしてください。日本語で。"},
                 {"role": "user", "content": f"昨日の主要ニュース:\n{titles}"},
@@ -118,6 +120,7 @@ def generate_daily_ai_content():
         try:
             resp = create_with_retry(
                 client, 300, model=model,
+                gemini_task="lite",
                 messages=[
                     {"role": "system", "content": f"あなたは「{p['name']}」です。{p['role']}\n\n今日のニューストレンドを見て、80字以内で一言コメントしてください。"},
                     {"role": "user", "content": f"最近のニュース:\n{titles}"},

@@ -1,5 +1,7 @@
-"""OpenAI API 互換（max_completion_tokens / temperature）"""
+"""OpenAI / Gemini API 互換（max_completion_tokens / temperature）"""
 import logging
+
+from app.utils.llm_client import use_gemini
 
 logger = logging.getLogger(__name__)
 
@@ -9,14 +11,38 @@ def _clean_kwargs(kwargs: dict) -> dict:
     return {k: v for k, v in kwargs.items() if k != "max_tokens"}
 
 
-def create_with_retry(client, max_tokens_val: int, **create_kwargs):
-    """max_completion_tokens のみ使用。temperature エラー時は 1 で再試行"""
-    kwargs = _clean_kwargs(create_kwargs)
-    try:
+def create_with_retry(client, max_tokens_val: int, *, gemini_task: str | None = None, **create_kwargs):
+    """max_completion_tokens のみ使用。AI_PROVIDER=gemini のとき Gemini へ（gemini_task でモデル tier を指定）。"""
+    gemini_task = create_kwargs.pop("gemini_task", gemini_task)
+    explicit_model = create_kwargs.get("model")
+    if use_gemini() and explicit_model and str(explicit_model).startswith("gpt-"):
+        from app.config import settings
+        from openai import OpenAI
+
+        if not settings.OPENAI_API_KEY:
+            raise RuntimeError("OPENAI_API_KEY が設定されていません")
+        oai = OpenAI(api_key=settings.OPENAI_API_KEY)
+        kwargs = _clean_kwargs(create_kwargs)
+        kwargs["model"] = str(explicit_model)
+        logger.info("OpenAI 直接呼び出し: model=%s task=%s", explicit_model, gemini_task or "-")
+        return _openai_create_with_retry(oai, max_tokens_val, **kwargs)
+
+    if use_gemini():
+        from app.utils.llm_client import GeminiClient, resolve_model
+
+        if not isinstance(client, GeminiClient):
+            client = GeminiClient()
+        create_kwargs["model"] = resolve_model(create_kwargs.get("model"), task=gemini_task)
+        kwargs = _clean_kwargs(create_kwargs)
         return client.chat.completions.create(
             **kwargs,
             max_completion_tokens=max_tokens_val,
+            gemini_task=gemini_task,
         )
+
+    kwargs = _clean_kwargs(create_kwargs)
+    try:
+        return _openai_create_with_retry(client, max_tokens_val, **kwargs)
     except TypeError as e:
         if "max_completion_tokens" in str(e):
             raise RuntimeError(
@@ -40,23 +66,30 @@ def create_with_retry(client, max_tokens_val: int, **create_kwargs):
                     logger.warning("OpenAI response body: <unavailable>")
         # max_tokens 不可のモデル → 確実に max_tokens を外して再試行
         if "max_tokens" in full_err and "max_completion_tokens" in full_err:
-            return client.chat.completions.create(
-                **_clean_kwargs(kwargs),
-                max_completion_tokens=max_tokens_val,
-            )
+            return _openai_create_with_retry(client, max_tokens_val, **_clean_kwargs(kwargs))
         # temperature 非対応モデル（o1 等）→ temperature=1 または省略で再試行
         if "temperature" in full_err:
             kwargs_no_temp = _clean_kwargs({k: v for k, v in kwargs.items() if k != "temperature"})
             try:
-                return client.chat.completions.create(
-                    **kwargs_no_temp,
-                    temperature=1,
-                    max_completion_tokens=max_tokens_val,
+                return _openai_create_with_retry(
+                    client, max_tokens_val, temperature=1, **_clean_kwargs(kwargs_no_temp)
                 )
             except Exception:
                 pass
+            return _openai_create_with_retry(client, max_tokens_val, **_clean_kwargs(kwargs_no_temp))
+        raise
+
+
+def _openai_create_with_retry(client, max_tokens_val: int, **kwargs):
+    try:
+        return client.chat.completions.create(
+            **kwargs,
+            max_completion_tokens=max_tokens_val,
+        )
+    except TypeError as e:
+        if "max_completion_tokens" in str(e):
             return client.chat.completions.create(
-                **kwargs_no_temp,
-                max_completion_tokens=max_tokens_val,
+                **_clean_kwargs(kwargs),
+                max_tokens=max_tokens_val,
             )
         raise

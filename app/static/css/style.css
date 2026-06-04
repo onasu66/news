@@ -3318,6 +3318,23 @@ body::after {
 }
 
 /* ===== 記事：パンくず・読書進捗・先頭へ ===== */
+.article-list-hub {
+    margin: 0 0 0.75rem;
+    font-size: 0.82rem;
+    color: var(--color-text-secondary);
+}
+.article-list-hub a {
+    color: var(--color-accent);
+    font-weight: 600;
+    text-decoration: none;
+}
+.article-list-hub a:hover {
+    text-decoration: underline;
+}
+.article-list-hub-sep {
+    margin: 0 0.4rem;
+    opacity: 0.5;
+}
 .article-breadcrumb {
     margin: 0 0 0.65rem;
     padding: 0;

@@ -24,20 +24,52 @@ if _env_path.exists():
 class Settings:
     OPENAI_API_KEY: str = os.getenv("OPENAI_API_KEY", "")
     OPENAI_MODEL: str = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
-    # 偉人ペルソナコメント（常に OpenAI のみ使用）
-    OPENAI_PERSONA_COMMENT_MODEL: str = os.getenv("OPENAI_PERSONA_COMMENT_MODEL", "gpt-4.1").strip()
-    # ミドルマン記事本文の生成プロバイダ: "claude_first"（既定） or "openai"
+    # 記事化 AI プロバイダ: openai | gemini
+    AI_PROVIDER: str = os.getenv("AI_PROVIDER", "openai").strip().lower()
+    GEMINI_API_KEY: str = os.getenv("GEMINI_API_KEY", "").strip()
+    GEMINI_MODEL: str = os.getenv("GEMINI_MODEL", "gemini-2.5-flash").strip()
+    # 軽量タスク用プール（ナビ・翻訳・タイトル等）。RPM はモデルごとに別枠
+    GEMINI_MODEL_POOL_LITE: str = os.getenv(
+        "GEMINI_MODEL_POOL_LITE",
+        "gemini-2.5-flash-lite",
+    ).strip()
+    # 品質タスク用プール（本文・ミドルマン解説・ペルソナ）。頭の良いモデルを指定
+    GEMINI_MODEL_POOL_QUALITY: str = os.getenv(
+        "GEMINI_MODEL_POOL_QUALITY",
+        "gemini-2.5-flash",
+    ).strip()
+    # 旧設定（未指定時の lite フォールバック）
+    GEMINI_MODEL_POOL: str = os.getenv(
+        "GEMINI_MODEL_POOL",
+        "gemini-2.5-flash-lite,gemini-2.5-flash",
+    ).strip()
+    # 品質モデルが 429 のとき lite プールへフォールバックするか
+    GEMINI_QUALITY_FALLBACK_LITE: str = os.getenv("GEMINI_QUALITY_FALLBACK_LITE", "true").strip().lower()
+    # Gemini 記事化バッチ: 1件処理後に次の候補まで待つ秒数（RPM 対策）。0 で無効
+    GEMINI_ARTICLE_INTERVAL_SEC: int = int(os.getenv("GEMINI_ARTICLE_INTERVAL_SEC", "45"))
+    # Gemini 429 時に OpenAI へフォールバック（AI_PROVIDER=gemini 時。キーがあれば既定 ON）
+    OPENAI_FALLBACK_ENABLED: str = os.getenv("OPENAI_FALLBACK_ENABLED", "").strip().lower()
+    OPENAI_FALLBACK_MODEL: str = os.getenv("OPENAI_FALLBACK_MODEL", "gpt-4o-mini").strip()
+    # 本文・ペルソナ等 quality タスクのフォールバック（未設定時は OPENAI_FALLBACK_MODEL）
+    OPENAI_FALLBACK_QUALITY_MODEL: str = os.getenv("OPENAI_FALLBACK_QUALITY_MODEL", "gpt-4o-mini").strip()
+    # ペルソナを OpenAI で出すときのモデル。空なら OPENAI_MODEL。gpt- 指定時は Gemini 設定でも OpenAI 直行
+    OPENAI_PERSONA_COMMENT_MODEL: str = os.getenv("OPENAI_PERSONA_COMMENT_MODEL", "").strip()
+    # ペルソナを Gemini で出すとき（空なら GEMINI_MODEL_POOL_QUALITY）
+    PERSONA_GEMINI_MODEL: str = os.getenv("PERSONA_GEMINI_MODEL", "").strip()
+    # ペルソナ連続生成の間隔（秒）。Gemini RPM 対策。0 で無効
+    GEMINI_PERSONA_INTERVAL_SEC: int = int(os.getenv("GEMINI_PERSONA_INTERVAL_SEC", "8"))
     MIDDLEMAN_PROVIDER: str = os.getenv("MIDDLEMAN_PROVIDER", "claude_first").strip().lower()
-    # MIDDLEMAN_PROVIDER=openai のときに使うモデル（未設定なら gpt-4o）
-    MIDDLEMAN_OPENAI_MODEL: str = os.getenv("MIDDLEMAN_OPENAI_MODEL", "gpt-4o").strip()
-    # ペルソナコメントは常に OpenAI（OPENAI_PERSONA_COMMENT_MODEL）。Claude は使わない。
-    PERSONA_PROVIDER: str = os.getenv("PERSONA_PROVIDER", "openai").strip().lower()
+    # MIDDLEMAN_PROVIDER=openai のときに使うモデル（未設定なら OPENAI_MODEL）
+    MIDDLEMAN_OPENAI_MODEL: str = os.getenv("MIDDLEMAN_OPENAI_MODEL", "gpt-4o-mini").strip()
+    # ペルソナコメント。未設定時は AI_PROVIDER に従う
+    _persona_provider_env = os.getenv("PERSONA_PROVIDER", "").strip().lower()
+    PERSONA_PROVIDER: str = _persona_provider_env or os.getenv("AI_PROVIDER", "openai").strip().lower()
     # 互換のため残す（ペルソナの保存後 Claude は行わない）
     PERSONA_CLAUDE_AFTER_SAVE: str = os.getenv("PERSONA_CLAUDE_AFTER_SAVE", "true").strip().lower()
     # 記事化時のタイトル生成を有効化するか
     TITLE_GENERATION_ENABLED: str = os.getenv("TITLE_GENERATION_ENABLED", "true").strip().lower()
     # 記事化時タイトル生成に使うモデル
-    TITLE_OPENAI_MODEL: str = os.getenv("TITLE_OPENAI_MODEL", "gpt-4o").strip()
+    TITLE_OPENAI_MODEL: str = os.getenv("TITLE_OPENAI_MODEL", "").strip()
     CDN_BASE_URL: str = os.getenv("CDN_BASE_URL", "https://picsum.photos")
     NEWS_REFRESH_INTERVAL: int = int(os.getenv("NEWS_REFRESH_INTERVAL", "240"))
     # 一覧メモリキャッシュを DB と照合する間隔（分）。0 で無効。本番 Render は別プロセスのため 30 分ごとの同期を推奨。
@@ -105,8 +137,11 @@ class Settings:
     CACHE_REFRESH_SECRET: str = os.getenv("CACHE_REFRESH_SECRET", "").strip()
     # セッション Cookie 署名専用（未設定時は main.py で ADMIN_SECRET 派生鍵を使用）
     SESSION_SECRET: str = os.getenv("SESSION_SECRET", "").strip()
-    # サイトの絶対URL（sitemap・OG・canonical用）。未設定時はリクエストの base_url を使用
+    # サイトの絶対URL（sitemap・OG・canonical・IndexNow用）。未設定時はリクエストの base_url を使用
     SITE_URL: str = os.getenv("SITE_URL", "").rstrip("/")
+    # IndexNow（Bing等）: 8〜128文字の英数字・ハイフン。{SITE_URL}/{KEY}.txt に同一文字列を公開する
+    INDEXNOW_KEY: str = os.getenv("INDEXNOW_KEY", "").strip()
+    INDEXNOW_ENABLED: str = os.getenv("INDEXNOW_ENABLED", "true").strip().lower()
     # 公開HTML（/topic, /, /news）の Cache-Control max-age（秒）。0 でヘッダなし。CDN/ブラウザの再訪削減用。
     PUBLIC_HTML_CACHE_MAX_AGE_SEC: int = int(os.getenv("PUBLIC_HTML_CACHE_MAX_AGE_SEC", "120"))
     # RapidAPI（Super Duper Trends 等）。未設定ならGoogleトレンドRSSのみ使用

@@ -28,7 +28,9 @@ https://render.com でアカウント作成し、GitHub と連携します。
 |--------|------|------|
 | `FIREBASE_SERVICE_ACCOUNT_JSON` | **○** | Firebase サービスアカウントの JSON を**1行にした文字列**で貼り付け。未設定だと SQLite（空）になり記事は表示されません。設定すると **Render でも Firestore を使用**します。 |
 | `OPENAI_API_KEY` | △ | AI解説に使う（Render で RSS/AI 無効なら不要）。未設定だと「APIキーが設定されていません」と表示される場合あり |
-| `SITE_URL` | △ | サイトの絶対URL（例: `https://xxx.onrender.com`）。sitemap・OG・canonical用。未設定時はリクエストから自動取得 |
+| `SITE_URL` | △ | サイトの絶対URL（例: `https://tiripo-ai.site`）。sitemap・OG・canonical・IndexNow用。未設定時はリクエストから自動取得 |
+| `INDEXNOW_KEY` | △ | IndexNow用キー（8〜128文字の英数字・ハイフン）。`https://{SITE_URL}/{KEY}.txt` で検証。記事追加時に Bing 等へ URL 通知。**本番では SITE_URL とセットで設定** |
+| `INDEXNOW_ENABLED` | - | `false` で IndexNow 通知を無効。既定: 有効（キーがある場合のみ送信） |
 | `ADMIN_SECRET` | △ | 管理画面ログイン用。未設定なら管理機能は無効 |
 | `DISABLE_RSS_AND_AI` | - | `1` または `true` で RSS 取得・AI 要約を無効（表示のみ）。**Render では未設定でも無効になる場合あり**（`RENDER` が設定されている場合） |
 | `NEWS_REFRESH_INTERVAL` | - | ニュース更新間隔（分）。既定: 240 |

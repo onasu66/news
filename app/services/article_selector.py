@@ -96,13 +96,13 @@ def select_articles_with_ai(
 
     try:
         from app.config import settings
-        from openai import OpenAI
+        from app.utils.llm_client import get_chat_client, is_ai_configured
         from app.utils.openai_compat import create_with_retry
 
-        if not settings.OPENAI_API_KEY:
+        if not is_ai_configured():
             return candidates[:max_select]
 
-        client = OpenAI(api_key=settings.OPENAI_API_KEY)
+        client = get_chat_client()
         use_model = model or getattr(settings, "OPENAI_CURATION_MODEL", None) or "gpt-4o-mini"
     except Exception:
         return candidates[:max_select]
@@ -159,6 +159,7 @@ def select_articles_with_ai(
         resp = create_with_retry(
             client,
             512,
+            gemini_task="curation",
             model=use_model,
             messages=[
                 {"role": "system", "content": system_prompt},

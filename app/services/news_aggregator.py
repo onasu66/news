@@ -644,9 +644,14 @@ class NewsAggregator:
     def _refresh_sitemap_snapshot(cls) -> None:
         """現在の一覧メモリキャッシュから sitemap.xml スナップショットを更新する。"""
         try:
-            from .sitemap_service import write_sitemap_snapshot
+            from .sitemap_service import _default_site_url, render_sitemap
 
-            write_sitemap_snapshot(cls._news_cache)
+            base = _default_site_url()
+            if not base:
+                return
+            xml = render_sitemap(base, cls._news_cache or [])
+            if xml:
+                logger.info("sitemap スナップショット更新: %d 件", len(cls._news_cache or []))
         except Exception as e:
             logger.warning("sitemap スナップショット更新に失敗: %s", e)
 

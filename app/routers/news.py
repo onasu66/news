@@ -373,6 +373,17 @@ _PAPER_RELATED_TAGS_CACHE: dict[str, list[str]] = {}
 _PAPER_RELATED_TAGS_LOCK = threading.Lock()
 
 
+@router.get("/{key_filename}.txt", include_in_schema=False)
+async def indexnow_key_file(key_filename: str):
+    """IndexNow キー検証用（https://host/{INDEXNOW_KEY}.txt にキー文字列を返す）。"""
+    from app.services.indexnow_service import indexnow_key
+
+    key = indexnow_key()
+    if not key or key_filename != key:
+        raise HTTPException(status_code=404, detail="Not Found")
+    return Response(content=key + "\n", media_type="text/plain; charset=utf-8")
+
+
 @router.get("/robots.txt")
 async def robots_txt(request: Request):
     """検索エンジン向け robots.txt"""
@@ -395,23 +406,31 @@ async def robots_txt(request: Request):
 async def sitemap_xml(request: Request):
     """SEO用 sitemap.xml。
 
-    通常は保存済みスナップショットを返し、bot 巡回だけで DB を起こさないようにする。
+    常にメモリキャッシュ（_news_cache）から生成する。古い data/sitemap.xml をそのまま返さない。
+    キャッシュが空のときだけ DB 同期を試し、それでも無ければスナップショット／静的URLへフォールバック。
     """
-    from app.services.sitemap_service import read_sitemap_snapshot, write_sitemap_snapshot
+    from app.services.sitemap_service import read_sitemap_snapshot, render_sitemap
+
+    site_url = _get_site_url(request)
+    articles = list(getattr(NewsAggregator, "_news_cache", []) or [])
+    if not articles:
+        try:
+            NewsAggregator.sync_list_cache_from_db(force=False)
+        except Exception as e:
+            logger.warning("sitemap.xml: 一覧キャッシュ同期に失敗: %s", e)
+        articles = list(getattr(NewsAggregator, "_news_cache", []) or [])
+
+    if articles and site_url:
+        xml = render_sitemap(site_url, articles)
+        if xml:
+            logger.debug("sitemap.xml: %d 件の /topic/ を返します", len(articles))
+            return Response(content=xml, media_type="application/xml; charset=utf-8")
 
     xml = read_sitemap_snapshot()
     if xml:
+        logger.info("sitemap.xml: キャッシュ空のためスナップショットをフォールバック返却")
         return Response(content=xml, media_type="application/xml; charset=utf-8")
 
-    articles = list(getattr(NewsAggregator, "_news_cache", []) or [])
-    if articles:
-        site_url = _get_site_url(request)
-        xml = write_sitemap_snapshot(articles, site_url=site_url)
-        if xml:
-            return Response(content=xml, media_type="application/xml; charset=utf-8")
-
-    logger.info("sitemap.xml: スナップショット未生成のため静的URLのみ返します（DB 起床回避）")
-    site_url = _get_site_url(request)
     today = datetime.now().date().isoformat()
     lines = [
         '<?xml version="1.0" encoding="UTF-8"?>',
@@ -1358,9 +1377,28 @@ async def topic_detail(request: Request, topic_id: str):
                 prev_article = all_news[i - 1]
             break
 
-    related = [a for a in all_news if a.category == item.category and a.id != topic_id][:4]
-    same_category_articles: list = []
+    from app.services.seo_internal_links import (
+        list_hub_for_article,
+        pick_latest_articles,
+        pick_related_articles,
+        pick_same_category_articles,
+    )
+
+    pool = [a for a in all_news if a.id != topic_id]
+    related = pick_related_articles(item, pool, limit=6)
+    exclude_ids = {topic_id, *(getattr(a, "id", "") for a in related)}
+    same_category_articles = pick_same_category_articles(item, pool, exclude_ids, limit=4)
+    exclude_ids |= {getattr(a, "id", "") for a in same_category_articles}
+    latest_articles = pick_latest_articles(item, pool, exclude_ids, limit=5)
+    list_hub_label, list_hub_path = list_hub_for_article(item)
     ai_recommended: list = []
+    related_itemlist_jsonld = None
+    if related or latest_articles:
+        related_itemlist_jsonld = _build_itemlist_jsonld(
+            page_name=f"{item.title} — 関連・最新",
+            site_url=site_url,
+            items=(related + latest_articles)[:12],
+        )
 
     published_text = ""
     try:
@@ -1409,8 +1447,12 @@ async def topic_detail(request: Request, topic_id: str):
             "next_article": next_article,
             "prev_article": prev_article,
             "related_articles": related,
-            "same_category_articles": related,
+            "same_category_articles": same_category_articles,
+            "latest_articles": latest_articles,
+            "list_hub_label": list_hub_label,
+            "list_hub_path": list_hub_path,
             "ai_recommended": ai_recommended,
+            "related_itemlist_jsonld": related_itemlist_jsonld,
             "quick_understand": quick_understand,
             "vote_data": vote_data,
             "paper_graph": paper_graph,
@@ -1523,7 +1565,9 @@ async def api_status():
     processed_count = int(getattr(NewsAggregator, "_last_processed_count", 0) or 0)
     try:
         from app.config import settings
-        has_key = bool(getattr(settings, "OPENAI_API_KEY", ""))
+        from app.utils.llm_client import ai_provider, is_ai_configured
+
+        has_key = is_ai_configured()
     except Exception:
         has_key = False
 
@@ -1532,6 +1576,8 @@ async def api_status():
         "ai_processed": processed_count,
         "displayable": displayable,
         "openai_key_set": has_key,
+        "ai_provider": ai_provider(),
+        "ai_configured": has_key,
     }
 
 
@@ -1817,7 +1863,13 @@ async def api_admin_cache_refresh(
     except Exception as e:
         logger.warning("cache/refresh: _invalidate_papers_cache: %s", e)
     cached = len(getattr(NewsAggregator, "_news_cache", []) or [])
-    return {"status": "ok", "cached": cached}
+    sitemap_topics = 0
+    try:
+        NewsAggregator._refresh_sitemap_snapshot()
+        sitemap_topics = cached
+    except Exception as e:
+        logger.warning("cache/refresh: sitemap 更新: %s", e)
+    return {"status": "ok", "cached": cached, "sitemap_topics": sitemap_topics}
 
 
 @router.get("/api/admin/claude-usage")
@@ -1924,7 +1976,7 @@ def _do_force_add_one_sync():
         if NewsAggregator.get_article(item.id) is None:
             return {"status": "error", "article_id": None, "message": "記事の保存後に取得できませんでした。data フォルダの権限やDBを確認してください。"}
         return {"status": "ok", "article_id": item.id}
-    return {"status": "error", "article_id": None, "message": "AI解説の生成に失敗しました。.env の OPENAI_API_KEY を確認し、利用可能なモデル（OPENAI_MODEL）を指定してください。"}
+    return {"status": "error", "article_id": None, "message": "AI解説の生成に失敗しました。.env の AI_PROVIDER と API キー（OPENAI_API_KEY / GEMINI_API_KEY）を確認してください。"}
 
 
 @router.get("/api/article/force-add-one")

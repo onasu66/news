@@ -17,6 +17,9 @@
     {% if article_jsonld %}
     <script type="application/ld+json">{{ article_jsonld|tojson }}</script>
     {% endif %}
+    {% if related_itemlist_jsonld %}
+    <script type="application/ld+json">{{ related_itemlist_jsonld|tojson }}</script>
+    {% endif %}
 {% endblock %}
 
 {% block content %}
@@ -42,6 +45,13 @@
             </li>
         </ol>
     </nav>
+    <p class="article-list-hub">
+        <a href="{{ list_hub_path|default('/news') }}">← {{ list_hub_label|default('ニュース一覧') }}</a>
+        {% if latest_articles %}
+        <span class="article-list-hub-sep" aria-hidden="true">·</span>
+        <a href="{{ list_hub_path|default('/news') }}">同じ一覧の最新記事</a>
+        {% endif %}
+    </p>
     <div class="article-sn-toolbar">
         <a href="{% if mobile_nav_papers_highlight|default(false) %}/{% else %}/news{% endif %}" class="back-link">{% if mobile_nav_papers_highlight|default(false) %}← 論文一覧へ{% else %}← ニュース一覧へ{% endif %}</a>
         <div class="article-sn-toolbar-actions">
@@ -197,7 +207,7 @@
         <div class="article-nav-section">
             <h3 class="article-nav-title">📰 関連記事</h3>
             <div class="news-grid nav-grid">
-                {% for rel in related_articles[:3] %}
+                {% for rel in related_articles[:6] %}
                 <article class="news-card news-card-sm">
                     <a href="/topic/{{ rel.id }}" class="news-card-link">
                         <div class="news-card-body">
@@ -217,7 +227,27 @@
         <div class="article-nav-section">
             <h3 class="article-nav-title">🏷 {{ article.category }}の記事</h3>
             <div class="news-grid nav-grid">
-                {% for rel in same_category_articles[:3] %}
+                {% for rel in same_category_articles[:4] %}
+                <article class="news-card news-card-sm">
+                    <a href="/topic/{{ rel.id }}" class="news-card-link">
+                        <div class="news-card-body">
+                            <span class="news-card-category-inline">{{ rel.category }}</span>
+                            <h3 class="news-title">{{ rel.title }}</h3>
+                            <p class="article-nav-teaser">{{ (rel.summary or '')[:72] }}{% if (rel.summary or '')|length > 72 %}...{% endif %}</p>
+                            <span class="article-nav-cta">続きを読む →</span>
+                        </div>
+                    </a>
+                </article>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+
+        {% if latest_articles %}
+        <div class="article-nav-section">
+            <h3 class="article-nav-title">🕒 最新の記事</h3>
+            <div class="news-grid nav-grid">
+                {% for rel in latest_articles[:5] %}
                 <article class="news-card news-card-sm">
                     <a href="/topic/{{ rel.id }}" class="news-card-link">
                         <div class="news-card-body">
