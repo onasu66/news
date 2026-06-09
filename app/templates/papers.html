@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}論文 - 知リポAI{% endblock %}
+{% block title %}知リポAI — 偉人14人が解説するAI論文・ニュースメディア{% endblock %}
 {% block meta_extra %}
     {# トップ（論文）: canonical は `/` 固定。page>1 は noindex #}
     <link rel="canonical" href="{{ site_url }}/">
@@ -8,8 +8,8 @@
     <meta name="robots" content="noindex,follow">
     {% endif %}
     <meta property="og:type" content="website">
-    <meta property="og:title" content="論文 - 知リポAI">
-    <meta property="og:description" content="Nature・Science・arXivなど最新の研究論文をAIが解説。">
+    <meta property="og:title" content="知リポAI — 偉人14人が解説するAI論文・ニュースメディア">
+    <meta property="og:description" content="ブッダ・ニーチェ・織田信長ら14人のAIが、Nature・Science・arXivなど最新研究論文を多角的に解説。難解な論文も1分で理解。">
     <meta property="og:url" content="{{ site_url }}/">
     {% if papers_breadcrumb_jsonld %}
     <script type="application/ld+json">{{ papers_breadcrumb_jsonld|tojson }}</script>
@@ -19,8 +19,17 @@
     {% endif %}
 {% endblock %}
 {% block content %}
-<section class="page-header">
-    <h1 class="page-title">📄 論文</h1>
+<section class="site-hero">
+    <div class="site-hero-inner">
+        <h1 class="site-hero-title">過去の偉人14人が、現代ニュースを解説する</h1>
+        <p class="site-hero-desc">ブッダ・ニーチェ・織田信長など時代と思想を超えた14人のAIキャラクターが、最新の研究論文とニュースを多角的に解説。難解な論文も「1分で理解」できる形に変換します。</p>
+        <div class="site-hero-pills">
+            <a href="/" class="site-hero-pill site-hero-pill--active">📄 研究論文</a>
+            <a href="/news" class="site-hero-pill">📰 ニュース</a>
+            <a href="/personas" class="site-hero-pill">🎭 14人の偉人</a>
+            <a href="/ai" class="site-hero-pill">🤖 AI政策立案</a>
+        </div>
+    </div>
 </section>
 <div class="page-layout page-layout--papers">
     <div class="content-main">

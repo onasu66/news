@@ -21,6 +21,14 @@
 {% endblock %}
 
 {% block content %}
+{% if not search_keyword %}
+<section class="page-intro-bar">
+    <div class="page-intro-bar-inner">
+        <h1 class="page-intro-title">AIニュース解説 — 偉人14人の多角的な視点で読む</h1>
+        <p class="page-intro-desc">国内外の最新ニュースを、ブッダ・織田信長・ニーチェなど思想の異なる14人のAIが解説。同じニュースでも見え方がまったく変わります。</p>
+    </div>
+</section>
+{% endif %}
 <div class="page-layout page-layout--news">
     <div class="content-main">
         <div class="page-switch" role="navigation" aria-label="ページ切替">

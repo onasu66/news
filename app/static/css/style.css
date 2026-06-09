@@ -716,6 +716,159 @@ body::after {
     font-weight: 600;
 }
 .about-link:hover { text-decoration: underline; }
+/* site hero (トップ・論文ページ) */
+.site-hero {
+    background: linear-gradient(135deg, var(--color-primary) 0%, #312e81 100%);
+    color: #fff;
+    padding: 2rem 1.25rem 1.75rem;
+    text-align: center;
+}
+.site-hero-inner {
+    max-width: 680px;
+    margin: 0 auto;
+}
+.site-hero-title {
+    margin: 0 0 0.7rem;
+    font-size: clamp(1.2rem, 3vw, 1.65rem);
+    font-weight: 900;
+    line-height: 1.35;
+    color: #fff;
+}
+.site-hero-desc {
+    margin: 0 0 1rem;
+    font-size: 0.93rem;
+    line-height: 1.75;
+    color: rgba(255,255,255,0.85);
+}
+.site-hero-pills {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.45rem;
+    justify-content: center;
+}
+.site-hero-pill {
+    padding: 0.38rem 0.85rem;
+    border-radius: 999px;
+    background: rgba(255,255,255,0.15);
+    border: 1px solid rgba(255,255,255,0.3);
+    color: #fff;
+    font-size: 0.8rem;
+    font-weight: 700;
+    text-decoration: none;
+    transition: background 0.15s;
+}
+.site-hero-pill:hover,
+.site-hero-pill--active {
+    background: rgba(255,255,255,0.28);
+}
+/* ニュースページ intro bar */
+.page-intro-bar {
+    background: var(--color-bg-elevated);
+    border-bottom: 1px solid var(--color-border-light);
+    padding: 0.9rem 1.25rem;
+}
+.page-intro-bar-inner {
+    max-width: 760px;
+    margin: 0 auto;
+}
+.page-intro-title {
+    margin: 0 0 0.3rem;
+    font-size: 1rem;
+    font-weight: 800;
+    color: var(--color-text);
+}
+.page-intro-desc {
+    margin: 0;
+    font-size: 0.86rem;
+    color: var(--color-text-secondary);
+    line-height: 1.65;
+}
+/* AI投票ページ */
+.ai-vote-subdesc {
+    font-size: 0.85rem;
+    color: var(--color-text-secondary);
+    margin: 0.4rem 0 0;
+    line-height: 1.65;
+}
+/* personas type badges */
+.personas-type-note {
+    margin-top: 0.75rem;
+    font-size: 0.82rem;
+    color: var(--color-text-secondary);
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    align-items: center;
+    justify-content: center;
+}
+.personas-type-badge {
+    display: inline-block;
+    padding: 0.2rem 0.6rem;
+    border-radius: 999px;
+    font-size: 0.75rem;
+    font-weight: 700;
+}
+.personas-type-logic {
+    background: #e0e7ff;
+    color: #3730a3;
+}
+.personas-type-ent {
+    background: #fce7f3;
+    color: #9d174d;
+}
+[data-theme="dark"] .personas-type-logic {
+    background: #312e81;
+    color: #a5b4fc;
+}
+[data-theme="dark"] .personas-type-ent {
+    background: #4a044e;
+    color: #f9a8d4;
+}
+.about-story-card p {
+    margin: 0 0 0.75rem;
+    line-height: 1.85;
+    color: var(--color-text-secondary);
+    font-size: 0.93rem;
+}
+.about-story-card p:last-child { margin-bottom: 0; }
+.about-goals {
+    display: flex;
+    flex-direction: column;
+    gap: 1.1rem;
+    margin-top: 0.2rem;
+}
+.about-goal-item {
+    display: flex;
+    gap: 1rem;
+    align-items: flex-start;
+}
+.about-goal-num {
+    flex-shrink: 0;
+    width: 2.2rem;
+    height: 2.2rem;
+    border-radius: 50%;
+    background: var(--color-accent);
+    color: #fff;
+    font-size: 0.78rem;
+    font-weight: 900;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-top: 0.1rem;
+}
+.about-goal-item strong {
+    display: block;
+    font-size: 0.97rem;
+    margin-bottom: 0.4rem;
+    color: var(--color-text);
+}
+.about-goal-item p {
+    margin: 0 0 0.45rem;
+    font-size: 0.88rem;
+    line-height: 1.75;
+    color: var(--color-text-secondary);
+}
+.about-goal-item p:last-child { margin-bottom: 0; }
 .about-footer-links {
     display: flex;
     gap: 0.6rem;

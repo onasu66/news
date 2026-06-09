@@ -1,47 +1,81 @@
 {% extends "base.html" %}
-{% block title %}運営者情報 - 知リポAI{% endblock %}
-{% block meta_description %}知リポAIの運営方針・目的・連絡先。最新ニュース・研究論文をAIが解説する知的ニュースメディアです。{% endblock %}
+{% block title %}運営者情報・開発ストーリー - 知リポAI{% endblock %}
+{% block meta_description %}なぜ知リポAIを作ったのか。ニュースキャスターをAIに置き換えるという発想、14人の偉人を選んだ理由、そしてAI政策立案という壮大な目標について。{% endblock %}
 
 {% block content %}
 <section class="page-header">
-    <h1 class="page-title">運営者情報</h1>
-    <p class="page-desc">知リポAIの運営方針・目的について</p>
+    <h1 class="page-title">知リポAIについて</h1>
+    <p class="page-desc">なぜ作ったのか、何を目指しているのか</p>
 </section>
 
 <div class="about-page-wrap">
-    <article class="about-section-card">
-        <h2>サイトについて</h2>
-        <p>知リポAI（ちりぽAI）は、最新ニュースと研究論文を14人のAIキャラクターが独自の視点で解説する知的ニュースメディアです。</p>
-        <p>速報性だけでなく、社会への影響・背景・将来の見通しをともに考えられるメディア体験を目指しています。</p>
+
+    <article class="about-section-card about-story-card">
+        <h2>きっかけ：ニュースキャスターをAIに置き換えたら？</h2>
+        <p>テレビや新聞のニュースを見ていて、ずっと気になっていたことがあります。ニュースキャスターやコメンテーターは、視聴者と「出来事」の間に立つ「ミドルマン」です。でも、そのミドルマンのフィルターを通した情報が、本当に自分にとって必要なものかはわからない。</p>
+        <p>「このミドルマンをAIに置き換えたら何が変わるか」——それが、このサイトを作った最初の問いです。AIなら24時間、偏りを意識しながら、世界中のニュースと論文を処理できる。</p>
+        <p>さらにもう一つ思ったことがありました。「<strong>今の出来事を、過去の偉人が見たら何と言うか</strong>」。ブッダがAI規制をどう見るか。織田信長が今の政治家を評したら何と言うか。ニーチェが現代のSNS文化を見たら——。それが知れたら面白いし、見たことのない視点で物事を考えられると思いました。</p>
+    </article>
+
+    <article class="about-section-card about-story-card">
+        <h2>なぜ14人の偉人なのか</h2>
+        <p>14人を選んだ基準はシンプルです。<strong>ジャンルと時代と思想を、できる限り飛び越えること</strong>。</p>
+        <p>東洋と西洋、古代と近代、科学者と哲学者と武将と作家——それぞれがまったく違う価値観と人生経験を持っています。同じニュースを見ても、ブッダとニーチェとエジソンでは見ているものが根本的に違う。その「多角的なコメント」が一覧できることに意味があると思っています。</p>
+        <p>一人の評論家の視点を深く読むより、思想の違う14人の反応を並べて見るほうが、自分なりの考えを持つきっかけになる。そういうメディアが欲しかったのです。</p>
+    </article>
+
+    <article class="about-section-card about-story-card">
+        <h2>開発で一番難しかったこと</h2>
+        <p>技術的な実装よりも、<strong>どのニュースを選定するか</strong>が一番の難問でした。</p>
+        <p>AIは大量の記事を処理できますが、「今日読む価値がある記事」を選ぶ基準は単純ではありません。速報性だけでなく、背景の深さ、社会への影響、読者が知っておくべき重要度——これらをどう評価するか。今も試行錯誤を続けています。</p>
+        <p>キャラクターの個性をプロンプトで表現することも難しい作業でした。「ブッダらしさ」「信長らしさ」をAIに出させるには、その人物の哲学・失敗・価値観を深く理解した上で言語化する必要があります。ただ有名な言葉を並べるのではなく、その人物が2024年の現実を前にしたときの「本音」を引き出す設計をしました。</p>
+    </article>
+
+    <article class="about-section-card about-story-card">
+        <h2>目指していること：3つのゴール</h2>
+        <div class="about-goals">
+            <div class="about-goal-item">
+                <span class="about-goal-num">01</span>
+                <div>
+                    <strong>過去の知恵が現代に通じるか、検証する</strong>
+                    <p>2000年前のブッダの言葉、400年前の信長の判断基準、100年前のニーチェの問いが——今のAI・政治・社会に対してどこまで有効なのか。それを記事を通じて継続的に検証したいと思っています。</p>
+                </div>
+            </div>
+            <div class="about-goal-item">
+                <span class="about-goal-num">02</span>
+                <div>
+                    <strong>難しいニュースと論文を、誰でも考えられる入口にする</strong>
+                    <p>専門家でなくても最新の研究にアクセスできる。そういう入口が増えれば、新しいことを考える人が増えると信じています。知リポAIはその入口の一つになりたい。</p>
+                </div>
+            </div>
+            <div class="about-goal-item">
+                <span class="about-goal-num">03</span>
+                <div>
+                    <strong>AIが政策を立案し、それに投票できる仕組みを作る</strong>
+                    <p>これが一番遠い目標ですが、一番やりたいことです。AIが具体的な政策案を立案し、市民がそれに投票できる——そういうプラットフォームを知リポAIの延長線上に作りたいと考えています。リアリティのある政策をAIが打ち出し、それが実際の議論に影響を与えられるなら、「AI党」という新しい政治参加の形もあり得ると本気で思っています。</p>
+                    <p>当サイトの<a href="/ai" class="about-link">AI投票・政策ページ</a>は、その実験の第一歩です。</p>
+                </div>
+            </div>
+        </div>
     </article>
 
     <article class="about-section-card">
-        <h2>サービス名・運営情報</h2>
+        <h2>サービス情報</h2>
         <dl class="about-dl">
             <dt>サービス名</dt>
             <dd>知リポAI（ちりぽAI）</dd>
             <dt>運営開始</dt>
             <dd>2025年</dd>
             <dt>主なコンテンツ</dt>
-            <dd>国内外のニュース・AI研究・学術論文のAI解説、14人のAIキャラクターによるコメント</dd>
-            <dt>対象読者</dt>
-            <dd>社会・テクノロジー・研究に興味を持つすべての方</dd>
+            <dd>国内外のニュース・AI研究・学術論文のAI解説、14人の偉人AIキャラクターによるコメント、AI政策立案・投票</dd>
+            <dt>技術スタック</dt>
+            <dd>FastAPI / Python・AI生成（Gemini / Claude / GPT-4o）・Neon Postgres・Render</dd>
         </dl>
     </article>
 
     <article class="about-section-card">
-        <h2>コンテンツ方針</h2>
-        <ul class="about-list">
-            <li>信頼性の高いメディア・学術機関のRSSを情報源として活用します。</li>
-            <li>AIが生成したコンテンツであることを明示します。</li>
-            <li>各記事には元記事へのリンクを掲載し、一次情報への参照を促します。</li>
-            <li>誤情報の拡散防止のため、生成コンテンツの品質チェックを継続的に行います。</li>
-        </ul>
-    </article>
-
-    <article class="about-section-card">
         <h2>AIキャラクターについて</h2>
-        <p>当サイトに登場する14人のキャラクターは、歴史上の人物をモデルにしたAIです。実在した人物の哲学・思想・価値観を参考にしていますが、実際の発言・記録を正確に引用するものではありません。</p>
+        <p>登場する14人のキャラクターは、歴史上の人物をモデルにしたAIです。実在した人物の哲学・思想・価値観を参考にしていますが、実際の発言・記録を正確に引用するものではありません。</p>
         <p>キャラクターのコメントはAIによる創作であり、史実として参照しないようお願いします。</p>
         <p><a href="/personas" class="about-link">→ 14キャラクター一覧を見る</a></p>
     </article>
@@ -55,15 +89,12 @@
         </ul>
     </article>
 
-    <article class="about-section-card">
-        <h2>お問い合わせ</h2>
-        <p>当サイトへのご意見・誤情報のご報告は、各記事ページからご連絡いただけます。</p>
-    </article>
-
     <div class="about-footer-links">
         <a href="/privacy" class="about-link">プライバシーポリシー</a>
         <span class="about-sep">·</span>
         <a href="/personas" class="about-link">14キャラクター</a>
+        <span class="about-sep">·</span>
+        <a href="/ai" class="about-link">AI投票・政策</a>
         <span class="about-sep">·</span>
         <a href="/news" class="about-link">ニュース一覧</a>
     </div>
