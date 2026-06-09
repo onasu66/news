@@ -452,6 +452,7 @@ class NewsAggregator:
                                 max_per_run=batch_max,
                                 trend_keywords=trend_keywords,
                                 existing_articles=existing_items_snapshot,
+                                # time_slot は省略 → process_new_rss_articles 内で現在時刻から自動判定
                             )
                             added_run += batch
                             if min_added <= 0 or added_run >= min_added or batch == 0:

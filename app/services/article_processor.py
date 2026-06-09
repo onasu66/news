@@ -122,17 +122,20 @@ def process_rss_to_site_article(item: NewsItem, force: bool = False) -> bool:
     body_clean = ""
     if body:
         body_clean = sanitize_display_text(body)[:40000]
-        # 英語本文は日本語に翻訳してから反映（約3分で読める分量になるようAIで調整）
-        if is_foreign_article(item.source, item.title, body_clean):
-            from app.services.translate_service import translate_article_body
-            body_clean = translate_article_body(body_clean)
 
+    # 翻訳前に素材量チェック（翻訳APIの無駄呼び出しを防ぐ）
     is_paper = (item.category or "").strip() == "研究・論文"
     if not is_source_material_sufficient(
         item.title, item.summary, body_clean or None, is_paper=is_paper
     ):
         logger.warning("素材不足のため記事化スキップ: %s", (item.title or "")[:60])
         return False
+
+    if body_clean:
+        # 英語本文は日本語に翻訳してから反映（約3分で読める分量になるようAIで調整）
+        if is_foreign_article(item.source, item.title, body_clean):
+            from app.services.translate_service import translate_article_body
+            body_clean = translate_article_body(body_clean)
 
     if body_clean:
         content = sanitize_display_text(f"{item.title}\n\n{item.summary}\n\n{body_clean}")
@@ -218,6 +221,13 @@ def _rewrite_news_title(title: str, summary: str = "", category: str = "") -> st
         if is_ai_configured() and enabled:
             from app.utils.openai_compat import create_with_retry
             client = get_chat_client()
+            is_paper = (category or "").strip() == "研究・論文"
+
+            # 検索意図タイプを推定して追加指示を出す
+            _intro_kws = ("とは", "何", "なに", "仕組み", "原因", "理由", "効果", "使い方", "違い", "メリット", "デメリット")
+            _summary_text = (summary or "").lower()
+            _needs_intro_style = any(kw in t or kw in _summary_text[:200] for kw in _intro_kws)
+
             system_prompt = """あなたはニュース編集者兼SEO担当です。Google検索で見つかりやすい見出しに整えます。
 ルール：
 - 元タイトル・要約の事実は変えない
@@ -225,14 +235,19 @@ def _rewrite_news_title(title: str, summary: str = "", category: str = "") -> st
 - 過激な煽りは禁止（衝撃/悲報/暴露/真相/裏側 など）
 - 28〜42文字程度。長い場合は重要キーワードを残して短く
 - 自然な日本語。キーワードの羅列や【】は使わない
-- 出力はタイトル1行のみ（引用符や説明不要）"""
-            if (category or "").strip() == "研究・論文":
-                system_prompt += "\n- 論文は研究対象・手法・結果が分かる見出し（論文名・分野の検索語を含める）"
+- 出力はタイトル1行のみ（引用符や説明不要）
+- 「○○とは」「○○の仕組み」「○○が○○する理由」のように検索クエリに近い形にすると流入しやすい"""
+            if is_paper:
+                system_prompt += "\n- 論文は研究対象・手法・主要な数値が分かる見出し（「○○が○○に効果」「○○でわかった○○」形式が理想）"
+            if _needs_intro_style:
+                system_prompt += "\n- この記事は概念説明・背景解説向き。「○○とは何か」「○○の仕組みと影響」などの解説型タイトルが最適"
+
             user_prompt = (
                 f"カテゴリ：{category or 'ニュース'}\n"
                 f"元タイトル：{t}\n"
                 f"要約：{(summary or '')[:800]}\n\n"
-                "検索流入を意識し、上のルールで見出し1行だけ出力してください。"
+                "Google で「○○ とは」「○○ 何」「○○ 理由」「○○ 仕組み」で検索する読者も意識し、"
+                "上のルールで見出し1行だけ出力してください。"
             )
             model = (getattr(settings, "TITLE_OPENAI_MODEL", "") or "").strip() or settings.OPENAI_MODEL
             # gpt- 指定時は AI_PROVIDER=gemini でも OpenAI 直行（openai_compat）
@@ -369,17 +384,59 @@ def process_startup_articles(rss_items: list[NewsItem] | None = None, trend_keyw
     return count
 
 
+def _detect_rss_time_slot() -> str:
+    """現在時刻（JST）からRSSスロットを判定する。"""
+    from datetime import datetime
+    from zoneinfo import ZoneInfo
+    hour = datetime.now(ZoneInfo("Asia/Tokyo")).hour
+    if 5 <= hour < 14:
+        return "morning"   # 朝～昼: 国内速報・政治社会優先
+    elif 14 <= hour < 21:
+        return "afternoon"  # 午後～夜: テクノロジー・国際バランス
+    else:
+        return "night"     # 深夜: 研究・論文多め
+
+
+# RSS時間帯スロット設定（Claude設定と連動）
+_RSS_SLOT_CONFIGS: dict[str, dict] = {
+    "morning": {
+        "label": "朝（速報・国内重視）",
+        "paper_ratio": 0.25,    # 全体の25%を論文に
+        "domestic_ratio": 0.70, # ニュースの70%を国内に
+        "min_news_slots": 6,
+    },
+    "afternoon": {
+        "label": "午後（テクノロジー・解説）",
+        "paper_ratio": 0.35,
+        "domestic_ratio": 0.50,
+        "min_news_slots": 5,
+    },
+    "night": {
+        "label": "夜（論文・深掘り）",
+        "paper_ratio": 0.50,    # 半分を論文に
+        "domestic_ratio": 0.55,
+        "min_news_slots": 4,
+    },
+}
+
+
 def process_new_rss_articles(
     rss_items: list[NewsItem],
     max_per_run: int = 5,
     trend_keywords: list[str] | None = None,
     existing_articles: list[NewsItem] | None = None,
+    time_slot: str | None = None,
 ) -> int:
     """
     RSS記事を Autocomplete スコアリング → 軽量フィルタ → 同一内容は1本に → 上位N件をAI処理して掲載。
 
+    time_slot: "morning" / "afternoon" / "night"。None の場合は現在時刻から自動判定。
     existing_articles を渡すと load_all() を呼ばずに既存タイトルで重複排除。
     """
+    if time_slot is None:
+        time_slot = _detect_rss_time_slot()
+    slot_cfg = _RSS_SLOT_CONFIGS.get(time_slot) or _RSS_SLOT_CONFIGS["morning"]
+    logger.info("RSS記事化: スロット=%s (%s) max=%d", time_slot, slot_cfg["label"], max_per_run)
     if not rss_items:
         return 0
     cached_ids = get_cached_article_ids()
@@ -497,11 +554,19 @@ def process_new_rss_articles(
 
         papers_per_domain = max(1, int(getattr(_ap_settings, "RSS_PAPERS_PER_DOMAIN", 2)))
         max_total_papers = max(1, int(getattr(_ap_settings, "RSS_MAX_TOTAL_PAPERS_PER_RUN", 18)))
-        min_news_slots = max(0, int(getattr(_ap_settings, "RSS_MIN_NEWS_SLOTS_PER_RUN", 5)))
+        min_news_slots_cfg = max(0, int(getattr(_ap_settings, "RSS_MIN_NEWS_SLOTS_PER_RUN", 5)))
     except Exception:
         papers_per_domain = 2
         max_total_papers = 18
-        min_news_slots = 5
+        min_news_slots_cfg = 5
+
+    # 時間帯スロットによる論文/ニュース比率調整
+    slot_paper_ratio = slot_cfg.get("paper_ratio", 0.35)
+    slot_min_news = slot_cfg.get("min_news_slots", min_news_slots_cfg)
+    # スロット指定の最低ニュース枠とconfig設定の大きい方を採用（安全側）
+    min_news_slots = max(slot_min_news, min_news_slots_cfg)
+    # 時間帯比率と設定値から論文上限を決定
+    slot_paper_budget = max(0, int(max_per_run * slot_paper_ratio))
 
     # 論文が max_per_run 本まで先に埋まると remaining_slots=0 になりニュースが0本になるため、
     # 一般ニュース用に最低枠を差し引いてから論文の上限を決める。
@@ -509,7 +574,7 @@ def process_new_rss_articles(
         min_news_slots = min(min_news_slots, max_per_run - 1)
     else:
         min_news_slots = 0
-    paper_budget = min(max_total_papers, max(0, max_per_run - min_news_slots))
+    paper_budget = min(max_total_papers, slot_paper_budget, max(0, max_per_run - min_news_slots))
 
     deduped_papers = _dedup(paper_candidates)
     paper_picks: list[NewsItem] = []
@@ -552,8 +617,12 @@ def process_new_rss_articles(
                 else:
                     domestics.append(x)
 
-            domestic_pick = _select_diverse_batch(domestics, 4, max_per_source=2, max_per_category=2)
-            foreign_pick = _select_diverse_batch(foreigners, 2, max_per_source=2, max_per_category=2)
+            # 時間帯スロットによる国内/海外比率
+            domestic_ratio = slot_cfg.get("domestic_ratio", 0.65)
+            domestic_target = max(1, round(remaining_slots * domestic_ratio))
+            foreign_target = max(1, remaining_slots - domestic_target)
+            domestic_pick = _select_diverse_batch(domestics, domestic_target, max_per_source=2, max_per_category=2)
+            foreign_pick = _select_diverse_batch(foreigners, foreign_target, max_per_source=2, max_per_category=2)
 
             news_picks = domestic_pick + foreign_pick
 

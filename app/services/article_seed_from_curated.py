@@ -34,6 +34,40 @@ CURATED_FILE = Path(__file__).resolve().parent.parent.parent / "curated_articles
 HISTORY_FILE = Path(__file__).resolve().parent.parent.parent / "curated_history.json"
 
 _VALID_CATEGORIES = {"国内", "国際", "テクノロジー", "政治・社会", "スポーツ", "エンタメ", "研究・論文"}
+# 研究・論文サイト（news に入っても URL から研究・論文へ補正）
+_RESEARCH_URL_MARKERS = (
+    "arxiv.org",
+    "pubmed.ncbi.nlm.nih.gov",
+    "ncbi.nlm.nih.gov/pubmed",
+    "biorxiv.org",
+    "medrxiv.org",
+    "sciencedaily.com",
+    "eurekalert.org",
+    "plos.org",
+    "frontiersin.org",
+    "springer.com/article",
+    "wiley.com/doi",
+    "cell.com/",
+    "science.org/doi",
+    "nature.com/articles/",
+    "nature.com/nature/articles/",
+    "doi.org/",
+)
+
+
+def _resolve_curated_category(url: str, category: str) -> str:
+    """URL が研究系なら category を研究・論文に補正（Claude の誤分類対策）。"""
+    u = (url or "").lower()
+    if category == "研究・論文":
+        return category
+    for marker in _RESEARCH_URL_MARKERS:
+        if marker in u:
+            if category != "研究・論文":
+                logger.info("URL補正: %s → 研究・論文 (%s)", category, url[:80])
+            return "研究・論文"
+    return category
+
+
 _CATEGORY_MAP = {
     "社会": "政治・社会",
     "政策": "政治・社会",
@@ -208,6 +242,7 @@ def load_curated_articles(path: Optional[Path] = None) -> list[NewsItem]:
         if category not in _VALID_CATEGORIES:
             logger.warning("未知のカテゴリ '%s' -> 'テクノジー' に変換", raw_cat)
             category = "テクノロジー"
+        category = _resolve_curated_category(url, category)
 
         summary = (entry.get("summary") or "").strip()
         try:
@@ -264,6 +299,26 @@ def process_curated_articles(path: Optional[Path] = None, max_per_run: int = 30)
     count = 0
 
     from .news_aggregator import NewsAggregator
+
+    # 本文フェッチ前: 要約が極端に短いものだけ弾く。
+    # 400〜600字の curated 要約は本文取得後に400字判定＋途中切れ除外（process_rss_to_site_article 内）。
+    pre_filtered: list = []
+    for item in to_process:
+        is_paper = (item.category or "").strip() == "研究・論文"
+        summary_len = len((item.summary or "").strip())
+        min_pre = 360 if is_paper else 200
+        if summary_len < min_pre:
+            logger.info("[PRE-SKIP] 要約が短すぎる (%d字): %s", summary_len, (item.title or "")[:60])
+            _log_save(item.id, item.title, False, error="要約不足(pre-check)", source="curated")
+        else:
+            pre_filtered.append(item)
+    if len(pre_filtered) < len(to_process):
+        logger.info("事前フィルタ: %d件 → %d件", len(to_process), len(pre_filtered))
+    to_process = pre_filtered
+
+    if not to_process:
+        logger.info("事前チェックで全件スキップ")
+        return 0
 
     NewsAggregator.begin_bulk_update()
     try:

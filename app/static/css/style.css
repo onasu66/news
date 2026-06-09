@@ -603,6 +603,138 @@ body::after {
     font-size: 1.15rem;
     margin: 0 0 0.7rem;
 }
+.persona-detail-right {
+    display: flex;
+    flex-direction: column;
+    gap: 0.8rem;
+}
+.persona-bio-card h2,
+.persona-quotes-card h2 {
+    margin: 0 0 0.7rem;
+    font-size: 1.05rem;
+}
+.persona-bio-text p {
+    margin: 0 0 0.5rem;
+    line-height: 1.75;
+    color: var(--color-text-secondary);
+    font-size: 0.92rem;
+}
+.persona-bio-text p:last-child { margin-bottom: 0; }
+.persona-admire-card h2 {
+    margin: 0 0 0.5rem;
+    font-size: 1rem;
+}
+.persona-admire-text {
+    margin: 0;
+    color: var(--color-text-secondary);
+    font-size: 0.88rem;
+    line-height: 1.7;
+    font-style: italic;
+}
+.persona-quotes-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+}
+.persona-quote-item {
+    background: var(--color-bg);
+    border-left: 3px solid var(--color-accent);
+    padding: 0.55rem 0.85rem;
+    border-radius: 0 8px 8px 0;
+    font-size: 0.9rem;
+    line-height: 1.6;
+    color: var(--color-text);
+}
+.persona-quote-mark {
+    color: var(--color-accent);
+    font-size: 1.1em;
+    font-weight: 700;
+    margin: 0 0.15em;
+}
+/* about / privacy page */
+.about-page-wrap {
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 0 1rem 2rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.9rem;
+}
+.about-section-card {
+    background: var(--color-bg-elevated);
+    border: 1px solid var(--color-border-light);
+    border-radius: 14px;
+    padding: 1.1rem 1.25rem;
+}
+.about-section-card h2 {
+    margin: 0 0 0.65rem;
+    font-size: 1.05rem;
+}
+.about-section-card p {
+    margin: 0 0 0.55rem;
+    line-height: 1.75;
+    color: var(--color-text-secondary);
+    font-size: 0.92rem;
+}
+.about-section-card p:last-child { margin-bottom: 0; }
+.about-dl {
+    display: grid;
+    grid-template-columns: max-content 1fr;
+    gap: 0.35rem 1rem;
+    margin: 0;
+}
+.about-dl dt {
+    font-weight: 700;
+    font-size: 0.86rem;
+    color: var(--color-text);
+}
+.about-dl dd {
+    margin: 0;
+    font-size: 0.88rem;
+    color: var(--color-text-secondary);
+    line-height: 1.6;
+}
+.about-list {
+    margin: 0.3rem 0 0;
+    padding-left: 1.2rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+}
+.about-list li {
+    font-size: 0.9rem;
+    line-height: 1.65;
+    color: var(--color-text-secondary);
+}
+.about-link {
+    color: var(--color-accent);
+    text-decoration: none;
+    font-size: 0.9rem;
+    font-weight: 600;
+}
+.about-link:hover { text-decoration: underline; }
+.about-footer-links {
+    display: flex;
+    gap: 0.6rem;
+    align-items: center;
+    flex-wrap: wrap;
+    padding-top: 0.3rem;
+}
+.about-sep {
+    color: var(--color-text-secondary);
+    font-size: 0.9rem;
+}
+@media (max-width: 680px) {
+    .persona-detail-layout {
+        grid-template-columns: 1fr;
+    }
+    .about-dl {
+        grid-template-columns: 1fr;
+    }
+}
 
 .global-pill-nav {
     display: flex;

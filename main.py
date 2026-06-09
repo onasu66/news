@@ -49,8 +49,9 @@ def _scheduled_2000_rss_and_ai_daily():
         logger.warning("AI日次コンテンツ生成に失敗: %s", e)
 
 
-def _scheduled_claude_research_and_seed():
-    """Claude Code CLI でウェブリサーチ → curated_articles.json 更新 → 記事化パイプラインに投入。
+def _run_claude_research_and_seed(slot: str, n_news: int, n_papers: int):
+    """Claude Code CLI でウェブリサーチ → curated_articles.json 更新 → 記事化パイプライン。
+    slot: "morning" / "afternoon" / "night"
     claude CLI がない環境（Render 本番など）では自動スキップする。"""
     try:
         # アイドル後の closed connection 対策:
@@ -76,8 +77,9 @@ def _scheduled_claude_research_and_seed():
         if not is_claude_available():
             logger.debug("claude CLI が未インストールのためリサーチをスキップ")
             return
-        # 重複除外後の残件を増やすため、取得母数を増やす
-        ok = run_claude_research(n=30, n_news=16, n_papers=14, timeout=1200)
+
+        n_total = n_news + n_papers
+        ok = run_claude_research(n=n_total, n_news=n_news, n_papers=n_papers, timeout=1200, slot=slot)
         if not ok:
             return
         # Claude が数分〜十数分ブロックするあいだ DB 接続はアイドルになり、Neon 側で切断されがち。
@@ -94,11 +96,41 @@ def _scheduled_claude_research_and_seed():
         if count > 0:
             NewsAggregator.sync_list_cache_from_db(force=True)  # DB 書き込み直後ならバックオフ無視
             NewsAggregator._invalidate_papers_cache()
-            logger.info("Claude リサーチ→記事化完了: %d 件追加", count)
+            logger.info("Claude リサーチ[%s]→記事化完了: %d 件追加", slot, count)
         else:
-            logger.info("Claude リサーチ: 新規記事なし（重複または生成失敗）")
+            logger.info("Claude リサーチ[%s]: 新規記事なし（重複または生成失敗）", slot)
     except Exception as e:
-        logger.warning("Claude リサーチタスクでエラー: %s", e)
+        logger.warning("Claude リサーチタスク[%s]でエラー: %s", slot, e)
+
+
+# スロット別ラッパー（APScheduler は引数なしの callable のみ受け付けるため）
+def _scheduled_claude_morning():
+    """8:30 朝: ニュース5 + 論文4（バズ3件必須）"""
+    _run_claude_research_and_seed(slot="morning", n_news=5, n_papers=4)
+
+
+def _scheduled_claude_afternoon():
+    """16:30 夕方: ニュース5 + 論文4（バズ3件必須）"""
+    _run_claude_research_and_seed(slot="afternoon", n_news=5, n_papers=4)
+
+
+def _scheduled_claude_night():
+    """22:00 夜: ニュース5 + 論文4（バズ3件必須）"""
+    _run_claude_research_and_seed(slot="night", n_news=5, n_papers=4)
+
+
+# 後方互換（scripts/ 等から呼ぶ場合）
+def _scheduled_claude_research_and_seed():
+    """旧シグネチャ互換。現在時刻からスロットを自動判定して実行。"""
+    from datetime import datetime
+    from zoneinfo import ZoneInfo
+    hour = datetime.now(ZoneInfo("Asia/Tokyo")).hour
+    if 5 <= hour < 12:
+        _scheduled_claude_morning()
+    elif 12 <= hour < 19:
+        _scheduled_claude_afternoon()
+    else:
+        _scheduled_claude_night()
 
 
 def _scheduled_sync_list_cache_from_db():
@@ -250,19 +282,20 @@ async def lifespan(app: FastAPI):
             id="rss_2000_and_ai_daily",
         )
         logger.info("RSS記事化: 13:00 / 20:00 JST に設定")
-        # Claude ウェブリサーチ: 8:30 / 16:30 / 22:00 の3回
-        # claude CLI がない環境（Render 本番）では _scheduled_claude_research_and_seed 内で自動スキップ
-        for cr_id, cr_hour, cr_minute in [
-            ("claude_research_0830", 8, 30),
-            ("claude_research_1630", 16, 30),
-            ("claude_research_2200", 22, 0),
+        # Claude ウェブリサーチ: 8:30(朝) / 16:30(夕) / 22:00(夜) の3スロット
+        # スロットごとにカテゴリ比率・記事数・SEO指示が異なる
+        # claude CLI がない環境（Render 本番）では各関数内で自動スキップ
+        for cr_id, cr_hour, cr_minute, cr_func in [
+            ("claude_research_0830", 8, 30, _scheduled_claude_morning),
+            ("claude_research_1630", 16, 30, _scheduled_claude_afternoon),
+            ("claude_research_2200", 22, 0, _scheduled_claude_night),
         ]:
             scheduler.add_job(
-                _scheduled_claude_research_and_seed,
+                cr_func,
                 CronTrigger(hour=cr_hour, minute=cr_minute, timezone=JST),
                 id=cr_id,
             )
-        logger.info("Claude ウェブリサーチ: 8:30 / 16:30 / 22:00 JST に設定")
+        logger.info("Claude ウェブリサーチ: 8:30/16:30/22:00 JST（各 ニュース5+論文4・バズ3）")
     scheduler.start()
     # 起動直後のメモリをログ（Render 512MB 制限の確認用）
     try:

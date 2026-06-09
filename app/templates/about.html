@@ -1,16 +1,71 @@
 {% extends "base.html" %}
 {% block title %}運営者情報 - 知リポAI{% endblock %}
+{% block meta_description %}知リポAIの運営方針・目的・連絡先。最新ニュース・研究論文をAIが解説する知的ニュースメディアです。{% endblock %}
+
 {% block content %}
 <section class="page-header">
     <h1 class="page-title">運営者情報</h1>
-    <p class="page-desc">知リポAIの運営方針と目的</p>
+    <p class="page-desc">知リポAIの運営方針・目的について</p>
 </section>
-<div class="ai-page-content" style="max-width:800px; margin:0 auto; padding:0 1rem;">
-    <section class="ai-section">
-        <div class="ai-memo-card">
-            <p>知リポAIは、信頼できるニュースや研究情報をAIで読みやすく整理し、背景理解を助けることを目的に運営しています。</p>
-            <p>速報性だけでなく、社会への影響や将来の見通しを一緒に考えられるメディア体験を目指しています。</p>
-        </div>
-    </section>
+
+<div class="about-page-wrap">
+    <article class="about-section-card">
+        <h2>サイトについて</h2>
+        <p>知リポAI（ちりぽAI）は、最新ニュースと研究論文を14人のAIキャラクターが独自の視点で解説する知的ニュースメディアです。</p>
+        <p>速報性だけでなく、社会への影響・背景・将来の見通しをともに考えられるメディア体験を目指しています。</p>
+    </article>
+
+    <article class="about-section-card">
+        <h2>サービス名・運営情報</h2>
+        <dl class="about-dl">
+            <dt>サービス名</dt>
+            <dd>知リポAI（ちりぽAI）</dd>
+            <dt>運営開始</dt>
+            <dd>2025年</dd>
+            <dt>主なコンテンツ</dt>
+            <dd>国内外のニュース・AI研究・学術論文のAI解説、14人のAIキャラクターによるコメント</dd>
+            <dt>対象読者</dt>
+            <dd>社会・テクノロジー・研究に興味を持つすべての方</dd>
+        </dl>
+    </article>
+
+    <article class="about-section-card">
+        <h2>コンテンツ方針</h2>
+        <ul class="about-list">
+            <li>信頼性の高いメディア・学術機関のRSSを情報源として活用します。</li>
+            <li>AIが生成したコンテンツであることを明示します。</li>
+            <li>各記事には元記事へのリンクを掲載し、一次情報への参照を促します。</li>
+            <li>誤情報の拡散防止のため、生成コンテンツの品質チェックを継続的に行います。</li>
+        </ul>
+    </article>
+
+    <article class="about-section-card">
+        <h2>AIキャラクターについて</h2>
+        <p>当サイトに登場する14人のキャラクターは、歴史上の人物をモデルにしたAIです。実在した人物の哲学・思想・価値観を参考にしていますが、実際の発言・記録を正確に引用するものではありません。</p>
+        <p>キャラクターのコメントはAIによる創作であり、史実として参照しないようお願いします。</p>
+        <p><a href="/personas" class="about-link">→ 14キャラクター一覧を見る</a></p>
+    </article>
+
+    <article class="about-section-card">
+        <h2>免責事項</h2>
+        <ul class="about-list">
+            <li>当サイトのコンテンツはAIが生成したものを含みます。情報の正確性・最新性を保証するものではありません。</li>
+            <li>当サイトの情報を利用したことにより生じた損害について、運営者は一切の責任を負いません。</li>
+            <li>掲載している外部リンク先の内容について、当サイトは責任を持ちません。</li>
+        </ul>
+    </article>
+
+    <article class="about-section-card">
+        <h2>お問い合わせ</h2>
+        <p>当サイトへのご意見・誤情報のご報告は、各記事ページからご連絡いただけます。</p>
+    </article>
+
+    <div class="about-footer-links">
+        <a href="/privacy" class="about-link">プライバシーポリシー</a>
+        <span class="about-sep">·</span>
+        <a href="/personas" class="about-link">14キャラクター</a>
+        <span class="about-sep">·</span>
+        <a href="/news" class="about-link">ニュース一覧</a>
+    </div>
 </div>
 {% endblock %}

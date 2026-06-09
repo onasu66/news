@@ -96,12 +96,13 @@ class Settings:
     RSS_PUBMED_FEED_LIMIT: int = int(os.getenv("RSS_PUBMED_FEED_LIMIT", "120"))
     # 論文記事として採用する最小要約文字数（短すぎる抄録は除外）
     RSS_MIN_PAPER_SUMMARY_CHARS: int = int(os.getenv("RSS_MIN_PAPER_SUMMARY_CHARS", "340"))
-    # 記事化: タイトル+要約+本文の合計最低文字数（これ未満はサイトに載せない）
-    ARTICLE_MIN_SOURCE_CHARS: int = int(os.getenv("ARTICLE_MIN_SOURCE_CHARS", "900"))
+    # 記事化: タイトル+要約+（完全な）本文の合計最低文字数
+    ARTICLE_MIN_SOURCE_CHARS: int = int(os.getenv("ARTICLE_MIN_SOURCE_CHARS", "400"))
     # 本文取得なし時の最低要約文字数（ニュース / 論文）
     ARTICLE_MIN_SUMMARY_CHARS: int = int(os.getenv("ARTICLE_MIN_SUMMARY_CHARS", "280"))
     ARTICLE_MIN_SUMMARY_CHARS_PAPER: int = int(os.getenv("ARTICLE_MIN_SUMMARY_CHARS_PAPER", "400"))
-    ARTICLE_MIN_BODY_CHARS: int = int(os.getenv("ARTICLE_MIN_BODY_CHARS", "450"))
+    # 完全な本文がこれ以上あれば要約が短くても可
+    ARTICLE_MIN_BODY_CHARS: int = int(os.getenv("ARTICLE_MIN_BODY_CHARS", "200"))
     # 生成後: ミドルマン text ブロック合計の最低文字数（3分読了の目安）
     ARTICLE_MIN_GENERATED_TEXT_CHARS: int = int(os.getenv("ARTICLE_MIN_GENERATED_TEXT_CHARS", "1200"))
     ARTICLE_MIN_EXPLAIN_COUNT: int = int(os.getenv("ARTICLE_MIN_EXPLAIN_COUNT", "3"))

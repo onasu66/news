@@ -2,9 +2,34 @@
 from __future__ import annotations
 
 import logging
+import re
 from typing import Any
 
 logger = logging.getLogger(__name__)
+
+# ペイウォール・続き読み等（本文が途中までしか取れていない疑い）
+_INCOMPLETE_BODY_MARKERS: tuple[str, ...] = (
+    "続きを読む",
+    "記事の続きは",
+    "全文を読む",
+    "全文表示",
+    "会員限定",
+    "有料会員",
+    "有料記事",
+    "この記事は有料",
+    "ログインが必要",
+    "ログインして",
+    "無料会員登録",
+    "プレミアム会員",
+    "subscribe to continue",
+    "subscribe to read",
+    "read more",
+    "sign in to read",
+    "この先は有料",
+    "有料エリア",
+)
+
+_INCOMPLETE_BODY_TAIL = re.compile(r"(?:…|\.\.\.|··)\s*$")
 
 
 def _settings_int(name: str, default: int) -> int:
@@ -35,6 +60,49 @@ def source_material_length(title: str, summary: str, body: str | None) -> int:
     return len(build_source_text(title, summary, body))
 
 
+def _body_looks_like_teaser_only(body: str, summary: str) -> bool:
+    """取得本文が要約の冒頭リードだけで、記事本体が欠けている疑い。"""
+    b = (body or "").strip()
+    s = (summary or "").strip()
+    if not b or len(b) > 700:
+        return False
+    if len(b) >= len(s) * 0.9:
+        return False
+    prefix = b[: min(len(b), max(80, len(b) - 20))]
+    if prefix and s.startswith(prefix):
+        return True
+    if len(b) >= 120 and b in s:
+        return True
+    return False
+
+
+def is_incomplete_source_body(body: str | None, summary: str = "") -> bool:
+    """
+    本文がペイウォール・途中切断・リードのみの疑いがあるか。
+    True のとき本文は素材量計算から除外し、要約の十分さで判定する。
+    """
+    b = (body or "").strip()
+    if not b:
+        return False
+
+    lower = b.lower()
+    for marker in _INCOMPLETE_BODY_MARKERS:
+        if marker in b or marker in lower:
+            return True
+
+    tail = b[-100:]
+    if _INCOMPLETE_BODY_TAIL.search(tail):
+        return True
+
+    if len(b) < 500 and re.search(r"続き(?:を)?(?:読|見)", b):
+        return True
+
+    if _body_looks_like_teaser_only(b, summary):
+        return True
+
+    return False
+
+
 def is_source_material_sufficient(
     title: str,
     summary: str,
@@ -44,7 +112,7 @@ def is_source_material_sufficient(
 ) -> bool:
     """
     記事化に進んでよい素材か。
-    本文が取れていれば要約は短くても可。本文が無い場合は要約が十分長い必要がある。
+    合計400字程度から可。ただし途中までしか取れていない本文は使わない。
     """
     t = (title or "").strip()
     s = (summary or "").strip()
@@ -52,28 +120,38 @@ def is_source_material_sufficient(
     if not t:
         return False
 
+    raw_body_len = len(b)
+    if b and is_incomplete_source_body(b, s):
+        logger.info(
+            "素材途中切れの疑い（本文を除外）: body=%d",
+            raw_body_len,
+        )
+        b = ""
+
     body_len = len(b)
     summary_len = len(s)
-    total = source_material_length(title, summary, body)
+    total = source_material_length(title, summary, b or None)
 
-    min_total = _settings_int("ARTICLE_MIN_SOURCE_CHARS", 900)
+    min_total = _settings_int("ARTICLE_MIN_SOURCE_CHARS", 400)
     min_summary = _settings_int(
         "ARTICLE_MIN_SUMMARY_CHARS_PAPER" if is_paper else "ARTICLE_MIN_SUMMARY_CHARS",
         400 if is_paper else 280,
     )
-    min_body = _settings_int("ARTICLE_MIN_BODY_CHARS", 450)
+    min_body = _settings_int("ARTICLE_MIN_BODY_CHARS", 200)
 
     if body_len >= min_body:
-        return total >= min(600, min_total) and summary_len >= 80
+        return total >= min_total and summary_len >= 80
 
     if summary_len >= min_summary and total >= min_total:
         return True
 
     logger.info(
-        "素材不足: total=%d summary=%d body=%d (need total>=%d summary>=%d or body>=%d)",
+        "素材不足: total=%d summary=%d body=%d raw_body=%d "
+        "(need total>=%d summary>=%d or complete body>=%d)",
         total,
         summary_len,
         body_len,
+        raw_body_len,
         min_total,
         min_summary,
         min_body,

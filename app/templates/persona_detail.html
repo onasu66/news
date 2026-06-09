@@ -1,39 +1,91 @@
 {% extends "base.html" %}
-{% block title %}{{ persona.name }} - キャラクター紹介 - 知リポAI{% endblock %}
-{% block meta_description %}{{ persona.name }}（{{ persona.type }}）の視点・文体・思考プロセスを紹介します。{% endblock %}
+{% block title %}{{ persona.name }} — 生涯・名言・価値観 - 知リポAI{% endblock %}
+{% block meta_description %}{{ persona.name }}（{{ persona.type }}）の生涯と功績、名言、価値観を紹介。知リポAIで記事を解説するAIキャラクターです。{% endblock %}
+{% block meta_extra %}
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "Person",
+  "name": "{{ persona.name }}",
+  "description": "{{ persona.bio | replace('\n', ' ') | truncate(160) }}",
+  "url": "{{ request.base_url }}personas/{{ persona.id }}"
+}
+</script>
+{% endblock %}
 
 {% block content %}
 <section class="page-header personas-page">
     <p class="persona-detail-back"><a href="/personas">← 14キャラクター一覧へ戻る</a></p>
-    <h1 class="page-title">{{ persona.name }}</h1>
-    <p class="personas-intro">{{ persona.type }}の視点でニュースを解釈するキャラクターです。</p>
+    <h1 class="page-title">{{ persona.emoji }} {{ persona.name }}</h1>
+    <p class="personas-intro">{{ persona.type }}の視点でニュースを解説するキャラクターです。</p>
 </section>
 
 <section class="personas-page persona-detail-layout">
-    <article class="persona-profile-card">
-        <img src="{{ persona.image_url }}" alt="{{ persona.name }} のイメージ" class="persona-profile-img">
-        <div class="persona-profile-body">
-            <h2 class="persona-profile-title">{{ persona.name }}</h2>
-            <p class="persona-profile-type">{{ persona.type }}</p>
-            <p class="persona-profile-summary">{{ persona.summary }}</p>
-        </div>
-    </article>
+    {# 左カラム: 画像 + 基本情報 #}
+    <div>
+        <article class="persona-profile-card">
+            <img src="{{ persona.image_url }}" alt="{{ persona.name }} のイメージ" class="persona-profile-img">
+            <div class="persona-profile-body">
+                <h2 class="persona-profile-title">{{ persona.name }}</h2>
+                <p class="persona-profile-type">{{ persona.type }}</p>
+                <p class="persona-profile-summary">{{ persona.summary }}</p>
+            </div>
+        </article>
 
-    <article class="persona-spec-card">
-        <h2>キャラクター設定</h2>
-        <dl>
-            <dt>思考プロセス</dt>
-            <dd>{{ persona.thought_process or "記事ごとに定義された観点で解釈" }}</dd>
-            <dt>文体</dt>
-            <dd>{{ persona.style or "自然な短文で解説" }}</dd>
-            <dt>共通ルール</dt>
-            <dd>{{ persona.advice_rule }}</dd>
-        </dl>
-        <details class="persona-prompt-details">
-            <summary>システムプロンプト全文を見る</summary>
-            <p>{{ persona.prompt_text }}</p>
-        </details>
-    </article>
+        {% if persona.admire %}
+        <article class="persona-spec-card persona-admire-card" style="margin-top:0.8rem;">
+            <h2>この人物が大切にするもの</h2>
+            <p class="persona-admire-text">{{ persona.admire }}</p>
+        </article>
+        {% endif %}
+    </div>
+
+    {# 右カラム: 生涯・名言・AI設定 #}
+    <div class="persona-detail-right">
+        {% if persona.bio %}
+        <article class="persona-spec-card persona-bio-card">
+            <h2>📜 生涯と功績</h2>
+            <div class="persona-bio-text">
+                {% for line in persona.bio.split('\n') %}
+                {% if line.strip() %}<p>{{ line.strip() }}</p>{% endif %}
+                {% endfor %}
+            </div>
+        </article>
+        {% endif %}
+
+        {% if persona.catchphrase %}
+        <article class="persona-spec-card persona-quotes-card">
+            <h2>💬 名言・格言</h2>
+            <ul class="persona-quotes-list">
+                {% for quote in persona.catchphrase %}
+                <li class="persona-quote-item">
+                    <span class="persona-quote-mark">"</span>{{ quote }}<span class="persona-quote-mark">"</span>
+                </li>
+                {% endfor %}
+            </ul>
+        </article>
+        {% endif %}
+
+        <article class="persona-spec-card">
+            <h2>AIキャラクター設定</h2>
+            <dl>
+                {% if persona.thought_process %}
+                <dt>思考プロセス</dt>
+                <dd>{{ persona.thought_process }}</dd>
+                {% endif %}
+                {% if persona.style %}
+                <dt>文体</dt>
+                <dd>{{ persona.style }}</dd>
+                {% endif %}
+                <dt>共通ルール</dt>
+                <dd>{{ persona.advice_rule }}</dd>
+            </dl>
+            <details class="persona-prompt-details">
+                <summary>システムプロンプト全文を見る</summary>
+                <p>{{ persona.prompt_text }}</p>
+            </details>
+        </article>
+    </div>
 </section>
 
 {% if other_personas %}

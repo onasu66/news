@@ -166,6 +166,9 @@ def _build_persona_view(p: dict) -> dict:
         "advice_rule": advice,
         "prompt_text": role,
         "image_url": _persona_image_url(p.get("name")),
+        "bio": str(p.get("bio", "") or "").strip(),
+        "catchphrase": list(p.get("catchphrase") or []),
+        "admire": str(p.get("admire", "") or "").strip(),
     }
 
 
@@ -398,6 +401,7 @@ async def robots_txt(request: Request):
         f"Disallow: /?keyword=\n"
         f"Disallow: /news?keyword=\n\n"
         f"Sitemap: {site_url}/sitemap.xml\n"
+        f"Sitemap: {site_url}/sitemap-news.xml\n"
     )
     return Response(content=body, media_type="text/plain; charset=utf-8")
 
@@ -444,6 +448,67 @@ async def sitemap_xml(request: Request):
         f"  <url><loc>{site_url}/personas</loc><lastmod>{today}</lastmod><changefreq>monthly</changefreq><priority>0.5</priority></url>",
         "</urlset>",
     ]
+    return Response(content="\n".join(lines), media_type="application/xml; charset=utf-8")
+
+
+@router.get("/sitemap-news.xml")
+async def sitemap_news_xml(request: Request):
+    """Google ニュース用 sitemap-news.xml。直近48時間の記事のみ収録。"""
+    from datetime import timedelta, timezone
+
+    site_url = _get_site_url(request)
+    articles = list(getattr(NewsAggregator, "_news_cache", []) or [])
+    if not articles:
+        try:
+            NewsAggregator.sync_list_cache_from_db(force=False)
+        except Exception:
+            pass
+        articles = list(getattr(NewsAggregator, "_news_cache", []) or [])
+
+    cutoff = datetime.now(timezone.utc) - timedelta(hours=48)
+
+    def _pub_dt(article):
+        for attr in ("added_at", "published"):
+            dt = getattr(article, attr, None)
+            if not dt:
+                continue
+            if hasattr(dt, "tzinfo") and dt.tzinfo is None:
+                from zoneinfo import ZoneInfo as _ZI
+                dt = dt.replace(tzinfo=_ZI("Asia/Tokyo"))
+            return dt
+        return None
+
+    def _pub_iso(article) -> str:
+        dt = _pub_dt(article)
+        if dt and hasattr(dt, "isoformat"):
+            return dt.isoformat()
+        return datetime.now(timezone.utc).isoformat()
+
+    recent = [a for a in articles if (_pub_dt(a) or cutoff) >= cutoff]
+
+    lines = [
+        '<?xml version="1.0" encoding="UTF-8"?>',
+        '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"',
+        '        xmlns:news="http://www.google.com/schemas/sitemap-news/0.9">',
+    ]
+    for article in recent[:1000]:
+        title = (getattr(article, "title", "") or "").strip().replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+        loc = f"{site_url}/topic/{article.id}"
+        pub_date = _pub_iso(article)
+        lines += [
+            "  <url>",
+            f"    <loc>{loc}</loc>",
+            "    <news:news>",
+            "      <news:publication>",
+            "        <news:name>知リポAI</news:name>",
+            "        <news:language>ja</news:language>",
+            "      </news:publication>",
+            f"      <news:publication_date>{pub_date}</news:publication_date>",
+            f"      <news:title>{title}</news:title>",
+            "    </news:news>",
+            "  </url>",
+        ]
+    lines.append("</urlset>")
     return Response(content="\n".join(lines), media_type="application/xml; charset=utf-8")
 
 
@@ -716,6 +781,12 @@ async def about_page(request: Request):
     return templates.TemplateResponse("about.html", {"request": request})
 
 
+@router.get("/privacy", response_class=HTMLResponse)
+async def privacy_page(request: Request):
+    """プライバシーポリシーページ"""
+    return templates.TemplateResponse("privacy.html", {"request": request})
+
+
 @router.get("/authors", response_class=HTMLResponse)
 async def authors_page(request: Request):
     """著者情報ページ"""
@@ -925,17 +996,25 @@ def _build_article_jsonld(
             contributors.append({"@type": "Person", "name": p.get("name", "")})
         except Exception:
             continue
+    logo_url = f"{site_url.rstrip('/')}/static/site-imgs/ロゴ.png"
     return {
         "@context": "https://schema.org",
         "@type": article_type,
         "mainEntityOfPage": {"@type": "WebPage", "@id": article_url},
+        "url": article_url,
         "headline": (item.title or "").strip(),
         "description": (meta_desc or "").strip(),
+        "inLanguage": "ja",
         "datePublished": _iso_date(getattr(item, "published", None)),
-        "dateModified": _iso_date(getattr(item, "published", None)),
+        "dateModified": _iso_date(getattr(item, "added_at", None) or getattr(item, "published", None)),
         "author": ai_authors,
         "contributor": contributors,
-        "publisher": {"@type": "Organization", "name": "知リポAI", "url": site_url},
+        "publisher": {
+            "@type": "Organization",
+            "name": "知リポAI",
+            "url": site_url,
+            "logo": {"@type": "ImageObject", "url": logo_url},
+        },
         "image": [og_image] if og_image else [],
         "articleSection": item.category or "ニュース",
         "isAccessibleForFree": True,

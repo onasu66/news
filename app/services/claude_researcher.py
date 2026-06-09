@@ -87,6 +87,234 @@ def repair_claude_user_config_if_corrupted() -> bool:
         return False
 
 
+# ─────────────────────────────────────────────────────────────
+# 時間帯スロット定義
+#   slot="morning"   8:30  朝の通勤・情報収集層
+#   slot="afternoon" 16:30 夕方の学習・仕事終わり層
+#   slot="night"     22:00 夜のゆったり読書・深掘り層
+# ─────────────────────────────────────────────────────────────
+
+_SLOT_CONFIGS: dict[str, dict] = {
+    "morning": {
+        "label": "朝（通勤・情報収集）",
+        "reader_context": "通勤中や朝の情報収集タイムに読む層（速報・今日の重要ニュースを求めている）",
+        "min_buzz_news": 3,
+        "category_guide": (
+            "国内 40% / 国際 30% / 政治・社会 20% / テクノロジー 10%\n"
+            "朝に確認したい「今日の動き」優先。経済・政治・社会の速報を重点収集。"
+        ),
+        "seo_hint": (
+            "読者が検索しそうなクエリ例: 「○○ 速報」「○○ 今日」「○○ どうなった」「○○ とは」\n"
+            "Google ニュース急上昇・X トレンドで日本国内の話題を優先的に拾う。"
+        ),
+        "trend_queries": [
+            "Google トレンド 急上昇 日本 {today}",
+            "X Twitter トレンド 日本 朝 {today}",
+            "NHK 主要ニュース {today}",
+        ],
+        "paper_themes": "健康・睡眠・朝の習慣 / AI・医療 / 経済・行動経済学",
+    },
+    "afternoon": {
+        "label": "夕方（学習・テック深掘り）",
+        "reader_context": "仕事の合間や帰宅前に学習・調査する層（「○○ とは」「○○ 使い方」「○○ 何」を検索する）",
+        "min_buzz_news": 3,
+        "category_guide": (
+            "テクノロジー 40% / 国際 30% / 国内 30%\n"
+            "X・Reddit で話題の新サービス・政策・事件の解説記事を優先。"
+        ),
+        "seo_hint": (
+            "読者が検索しそうなクエリ例: 「○○ とは」「○○ 何」「○○ 使い方」「○○ 仕組み」「○○ 違い」\n"
+            "SNSでバズった話題の背景解説・新技術の説明記事を優先する。\n"
+            "summary では『なぜ重要か・どう影響するか』を必ず含める。"
+        ),
+        "trend_queries": [
+            "Google トレンド 急上昇 日本 {today}",
+            "X Twitter トレンド テクノロジー AI {today}",
+            "話題の新技術 新サービス {today}",
+        ],
+        "paper_themes": "AI・機械学習・LLM / 量子コンピュータ / 宇宙・素粒子 / 環境・エネルギー",
+    },
+    "night": {
+        "label": "夜（ゆったり深掘り・雑学）",
+        "reader_context": "夜のリラックスタイムに読む層。バズった話題の深掘りニュース＋研究・論文",
+        "min_buzz_news": 3,
+        "category_guide": (
+            "国内 35% / 国際 35% / 政治・社会 20% / テクノロジー 10%\n"
+            "Step 1 で X・Reddit・Googleトレンドに上がっていた話題を news に必ず反映。\n"
+            "研究結果の解説は papers 配列へ（news に入れない）。"
+        ),
+        "seo_hint": (
+            "ニュース: 「○○ 速報」「○○ なぜ話題」「○○ 最新」\n"
+            "論文: 「○○ 研究」「○○ 効果」「○○ 最新」「○○ 理由」\n"
+            "論文はタイトルに研究キーワードを含め、summary に方法・数値・生活への応用を書く。"
+        ),
+        "trend_queries": [
+            "Google トレンド 急上昇 日本 {today}",
+            "X Twitter トレンド 日本 {today}",
+            "Reddit 話題 日本 {today}",
+        ],
+        "paper_themes": "健康・長寿・睡眠・メンタル / スポーツ科学・栄養 / 神経科学・認知 / 気候・環境 / 社会科学",
+    },
+}
+
+
+def _news_paper_separation_rules() -> str:
+    return """\
+【ニュースと論文の厳密な分離（必須）】
+- **news 配列** = 速報・社会現象・X/Reddit/Googleでバズっている話題の記事。
+  - 媒体例: nhk.or.jp / reuters.com / apnews.com / afpbb.com / techcrunch.com / bbc.com / japantimes.co.jp
+  - category は 国内|国際|政治・社会|テクノロジー|エンタメ|スポーツ のいずれか（研究・論文 禁止）
+- **papers 配列** = 学術論文・査読付き研究。category は必ず「研究・論文」。
+  - ソース例: arxiv.org / pubmed / nature.com/articles / sciencedaily.com / biorxiv / medrxiv
+- **Step 1 で拾ったバズ話題**（Xトレンド・Reddit upvote・Google急上昇）は **必ず news で記事化**する。papers に入れない。
+- 以下の URL は **papers のみ**（news 配列に入れたら不合格）:
+  arxiv.org / pubmed / nature.com/articles / sciencedaily.com / biorxiv / medrxiv / eurekalert.org / doi.org
+"""
+
+
+def _build_slot_prompt(
+    slot: str,
+    today: str,
+    n_news: int,
+    n_papers: int,
+    output_file: str,
+    use_last30days: bool = False,
+) -> str:
+    """時間帯スロットに応じたリサーチプロンプトを生成する。
+    use_last30days=True のとき last30days スキルを Step 1 で使って
+    Reddit/HN のリアルエンゲージメントデータを取得する。
+    """
+    cfg = _SLOT_CONFIGS.get(slot) or _SLOT_CONFIGS["morning"]
+    min_buzz = min(int(cfg.get("min_buzz_news", 5)), n_news)
+    separation = _news_paper_separation_rules()
+
+    if use_last30days:
+        # last30days スキル（無料: Reddit/HN/Polymarket/YouTube、XはCookie設定時）
+        skill_dir = str(Path.home() / ".claude" / "skills" / "last30days" / "scripts").replace("\\", "/")
+        py_cmd = _find_python312_plus() or "python3"
+        # Step 1 はバズ話題収集 → Step 2 news に使う（全スロット共通方針）
+        l30d_topics = {
+            "morning": [
+                "X Twitter トレンド 日本 バズ 今日",
+                "日本 ニュース 速報 政治 社会",
+            ],
+            "afternoon": [
+                "X Twitter トレンド 日本 テクノロジー AI バズ",
+                "話題 新サービス スタートアップ 日本",
+            ],
+            "night": [
+                "X Twitter トレンド 日本 バズ 話題",
+                "Reddit Japan trending news 今日",
+            ],
+        }
+        topics = l30d_topics.get(slot, l30d_topics["morning"])
+        step1 = f"""\
+【Step 1: バズ・トレンド収集（last30days スキル使用・無料）】
+**目的: Step 2 の news 選定用キーワードリストを作る（papers には使わない）**
+以下を Bash で実行し、Reddit upvote・HN points・（X設定時はX）のエンゲージメント上位トピックを取得:
+
+```bash
+export EXCLUDE_SOURCES="tiktok,instagram,threads,pinterest,perplexity"
+{py_cmd} "{skill_dir}/last30days.py" "{topics[0]}" --emit=compact --last=3d
+```
+
+```bash
+export EXCLUDE_SOURCES="tiktok,instagram,threads,pinterest,perplexity"
+{py_cmd} "{skill_dir}/last30days.py" "{topics[1]}" --emit=compact --last=3d
+```
+
+取得結果から「今バズっている話題・固有名詞・事件名・製品名」を10個以上リストアップする。
+**このリストの話題は Step 2 の news で必ず記事化する**（ScienceDaily 等の研究サイトに逃がさない）。
+失敗時は WebSearch で代替:
+- 「X Twitter トレンド 日本 {today}」「Google トレンド 急上昇 日本 {today}」
+- 「site:reddit.com/r/newsokuexp OR site:reddit.com/r/japan top {today}」
+"""
+    else:
+        # フォールバック: WebSearch のみ
+        trend_queries = "\n".join(
+            f'- 「{q.format(today=today)}」' for q in cfg["trend_queries"]
+        )
+        step1 = f"""\
+【Step 1: バズ・トレンド収集（WebSearch）】
+**目的: Step 2 の news 選定用。X・Reddit・Googleで「今話題」のキーワードを10個以上集める**
+以下を WebSearch で検索し、急上昇・バズキーワードをリストアップする:
+{trend_queries}
+- 「X Twitter トレンド 日本 {today}」「Google トレンド 急上昇 日本 {today}」
+- Reddit: 「site:reddit.com/r/japan OR site:reddit.com/r/newsokuexp top posts {today}」
+- HN: 「site:news.ycombinator.com {today} top」
+**このリストの話題は Step 2 news で NHK/Reuters 等のニュース記事として記事化する**
+"""
+
+    return f"""\
+今日は {today}（日本時間）、{cfg["label"]}の配信です。
+Web 検索はこの依頼の中で効率よくまとめて行い、同じトレンド調査を何度も繰り返さないでください。
+
+【対象読者】{cfg["reader_context"]}
+
+「知リポAI」ニュースサイト向けに、ニュース {n_news} 件と学術論文 {n_papers} 件を選定し、
+{output_file} に次の JSON オブジェクトだけを書き込んでください（説明文・Markdown のコードフェンス禁止）。
+キー名は必ず半角の "news" と "papers" を使ってください。
+
+{{{{
+  "news": [
+    {{{{
+      "title": "タイトル（日本語・28〜42文字。読者が検索しそうなキーワードを前半に）",
+      "url": "実在する記事の URL",
+      "summary": "400〜600 字の日本語要約（何が起きたか・なぜ重要か・主要な数字や固有名詞を必ず含める）",
+      "source": "媒体名",
+      "category": "テクノロジー|国際|国内|政治・社会|エンタメ|スポーツ のいずれか",
+      "published": "YYYY-MM-DDTHH:MM:SS",
+      "image_url": null
+    }}}}
+  ],
+  "papers": [
+    {{{{
+      "title": "タイトルは必ず日本語で（英語論文も日本語訳）。研究対象・結果を含む28〜42文字",
+      "url": "実在する論文の URL",
+      "summary": "400〜600 字の日本語要約（研究目的・方法・主要な数値・なぜ重要か・生活への応用）",
+      "source": "媒体名（arXiv / Nature / PubMed など）",
+      "category": "研究・論文",
+      "published": "YYYY-MM-DDTHH:MM:SS",
+      "image_url": null
+    }}}}
+  ]
+}}}}
+
+{step1}
+
+{separation}
+
+【Step 2: ニュース】news にちょうど {n_news} 件
+カテゴリ比率の目安: {cfg["category_guide"]}
+
+- **最低 {min_buzz} 件**は Step 1 の X/Reddit/Google バズ話題に紐づく記事にすること
+- バズ話題の記事 URL は NHK / Reuters / AP / TechCrunch / BBC / 共同 / 読売 等の**ニュース媒体**
+- ScienceDaily・Nature・arXiv 等の研究 URL は news に入れない（Step 3 papers へ）
+- 訃報・芸能ゴシップ・選挙速報（単なる結果発表）は除外
+- summary は 400〜600 字。5W1H・背景・「なぜ今バズっているか」を必ず書く
+- {cfg["seo_hint"]}
+
+【Step 3: 論文】papers にちょうど {n_papers} 件
+- 優先テーマ: {cfg["paper_themes"]}
+- 海外の英語論文を重視（papers の過半数を英語論文にする）
+- arXiv / PubMed / Nature / Science / bioRxiv / medrxiv / ScienceDaily 等。category は必ず「研究・論文」
+- URL は必ず実在する論文（架空禁止）。abstract や本文が読めるページ（PDF直リンクのみは避け abs ページを優先）
+- summary は 400〜600 字。研究目的・方法・主要な結果・なぜ重要か・生活や社会への応用を日本語で具体的に
+
+【ニュースの使用禁止メディア（ペイウォール）】
+- bloomberg.com / wsj.com / ft.com / nytimes.com / economist.com
+
+【ニュースの優先メディア（news 配列のみ）】
+- nhk.or.jp / reuters.com / apnews.com / afpbb.com / techcrunch.com / theverge.com / bbc.com / cnn.com / japantimes.co.jp / kyodonews.net / yomiuri.co.jp
+
+【論文の優先ソース（papers 配列のみ）】
+- arxiv.org / pubmed.ncbi.nlm.nih.gov / nature.com/articles / science.org / biorxiv.org / medrxiv.org / sciencedaily.com
+
+上記オブジェクトを {output_file} に書き込んで完了してください。
+"""
+
+
+# 旧プロンプト（後方互換のため残す。run_claude_research の slot 未指定時に使用）
 _COMBINED_PROMPT = """\
 今日は {today}（日本時間）です。
 Web 検索はこの依頼の中で効率よくまとめて行い、同じトレンド調査を何度も繰り返さないでください。
@@ -250,7 +478,7 @@ def run_claude_text_gen(prompt: str, timeout: int = 120, usage_kind: str = "text
                 encoding="utf-8",
                 timeout=timeout,
                 cwd=str(PROJECT_ROOT),
-                env=os.environ.copy(),
+                env=_subprocess_env(),
                 shell=False,
             )
             if proc.returncode != 0:
@@ -357,10 +585,111 @@ def _find_claude_cmd() -> str | None:
     return None
 
 
-def _build_cmd(cmd_path: str) -> list[str]:
+def _find_python312_plus() -> str | None:
+    """Python 3.12+ 実行ファイルのパスを返す。見つからなければ None。"""
+    import re
+
+    def _ver_ok(cmd: str) -> bool:
+        try:
+            r = subprocess.run([cmd, "--version"], capture_output=True, text=True, timeout=5)
+            m = re.search(r"Python (\d+)\.(\d+)", r.stdout + r.stderr)
+            if m and (int(m.group(1)), int(m.group(2))) >= (3, 12):
+                return True
+        except Exception:
+            pass
+        return False
+
+    # last30days スキルの専用 venv（uv で作成）を最優先で確認
+    skill_venv_py = Path.home() / ".claude" / "skills" / "last30days" / ".venv" / (
+        "Scripts/python.exe" if sys.platform == "win32" else "bin/python"
+    )
+    if skill_venv_py.exists() and _ver_ok(str(skill_venv_py)):
+        return str(skill_venv_py)
+
+    # uv 管理の Python 3.12+
+    uv_py_base = Path.home() / "AppData" / "Roaming" / "uv" / "python"
+    if uv_py_base.exists():
+        for d in sorted(uv_py_base.iterdir(), reverse=True):
+            p = d / "python.exe" if sys.platform == "win32" else d / "bin" / "python3"
+            if p.exists() and _ver_ok(str(p)):
+                return str(p)
+
+    # よくある名前を順にチェック
+    for name in ("python3.14", "python3.13", "python3.12", "python3"):
+        p = shutil.which(name)
+        if p and _ver_ok(p):
+            return p
+
+    # Windows: py ランチャー経由
+    if sys.platform == "win32":
+        for ver in ("3.14", "3.13", "3.12"):
+            try:
+                r = subprocess.run(
+                    ["py", f"-{ver}", "--version"],
+                    capture_output=True, text=True, timeout=5
+                )
+                if r.returncode == 0:
+                    return f"py -{ver}"
+            except Exception:
+                pass
+        # conda/miniconda の既知パスも確認
+        for d in [
+            Path.home() / "miniconda3",
+            Path.home() / "anaconda3",
+            Path("C:/ProgramData/miniconda3"),
+            Path("D:/conda"),
+        ]:
+            p = d / "python.exe"
+            if p.exists() and _ver_ok(str(p)):
+                return str(p)
+    return None
+
+
+def _is_last30days_available() -> bool:
+    """last30days スキルが利用可能かチェック（Python 3.12+ が必要）。"""
+    skill_script = Path.home() / ".claude" / "skills" / "last30days" / "scripts" / "last30days.py"
+    if not skill_script.exists():
+        return False
+    return _find_python312_plus() is not None
+
+
+def _load_env_file_into(env: dict[str, str], path: Path) -> None:
+    if not path.is_file():
+        return
+    try:
+        for line in path.read_text(encoding="utf-8").splitlines():
+            line = line.strip()
+            if not line or line.startswith("#") or "=" not in line:
+                continue
+            k, v = line.split("=", 1)
+            k, v = k.strip(), v.strip().strip("\"'")
+            if k and v and not env.get(k):
+                env[k] = v
+    except Exception:
+        pass
+
+
+def _subprocess_env() -> dict[str, str]:
+    """Claude / last30days subprocess 用。X Cookie と EXCLUDE_SOURCES を確実に渡す。"""
+    env = os.environ.copy()
+    _load_env_file_into(env, PROJECT_ROOT / ".env")
+    _load_env_file_into(env, Path.home() / ".config" / "last30days" / ".env")
+    if not env.get("EXCLUDE_SOURCES"):
+        env["EXCLUDE_SOURCES"] = "tiktok,instagram,threads,pinterest,perplexity"
+    return env
+
+
+def _x_auth_configured() -> bool:
+    env = _subprocess_env()
+    return bool(env.get("AUTH_TOKEN") and env.get("CT0"))
+
+
+def _build_cmd(cmd_path: str, use_last30days: bool = False) -> list[str]:
+    # last30days スキルは Bash ツール（Python スクリプト実行）が必要
+    tools = "WebSearch,Write,Bash" if use_last30days else "WebSearch,Write"
     base = [
         "--dangerously-skip-permissions",
-        "--allowed-tools", "WebSearch,Write",
+        "--allowed-tools", tools,
         "-p",
         "--input-format", "text",
     ]
@@ -383,7 +712,8 @@ def _build_cmd_text_only(cmd_path: str) -> list[str]:
 
 
 def _invoke_claude_research_session(
-    label: str, prompt: str, output_file: Path, timeout: int
+    label: str, prompt: str, output_file: Path, timeout: int,
+    use_last30days: bool = False,
 ) -> str | None:
     """Claude を1回起動し、output_file または stdout から JSON テキストを返す。失敗時は None。"""
     repair_claude_user_config_if_corrupted()
@@ -392,7 +722,7 @@ def _invoke_claude_research_session(
         logger.error("[%s] claude コマンドが見つかりません", label)
         return None
 
-    cmd = _build_cmd(cmd_path)
+    cmd = _build_cmd(cmd_path, use_last30days=use_last30days)
     logger.info("[%s] Claude 起動 (タイムアウト=%d 秒)", label, timeout)
 
     try:
@@ -404,7 +734,7 @@ def _invoke_claude_research_session(
             encoding="utf-8",
             timeout=timeout,
             cwd=str(PROJECT_ROOT),
-            env=os.environ.copy(),
+            env=_subprocess_env(),
             shell=False,
         )
 
@@ -481,25 +811,55 @@ def _parse_curated_research_json(raw: str) -> tuple[list, int, int]:
     raise ValueError("JSON はオブジェクトまたは配列である必要があります")
 
 
-def run_claude_research(n: int = 15, n_news: int = 8, n_papers: int = 7, timeout: int = 900) -> bool:
+def run_claude_research(
+    n: int = 15,
+    n_news: int = 8,
+    n_papers: int = 7,
+    timeout: int = 900,
+    slot: str | None = None,
+) -> bool:
     """
     Claude を1回だけ起動し、ニュースと論文をまとめてリサーチして curated_articles.json を更新する。
 
+    slot: "morning" / "afternoon" / "night" を指定すると時間帯最適化プロンプトを使用。
+          None の場合は現在時刻から自動判定。
     n は呼び出し互換のため残す（n_news + n_papers と揃える想定）。戻り値: 1件以上取得できれば True。
     """
     _ = n
 
+    # slot 未指定なら現在時刻から自動判定
+    if slot is None:
+        hour = datetime.now(JST).hour
+        if 5 <= hour < 12:
+            slot = "morning"
+        elif 12 <= hour < 19:
+            slot = "afternoon"
+        else:
+            slot = "night"
+
     today = datetime.now(JST).strftime("%Y-%m-%d")
+    slot_label = (_SLOT_CONFIGS.get(slot) or {}).get("label", slot)
+
+    # last30days スキルが使えるか確認（Python 3.12+ 必須・無料ソースのみ利用）
+    use_l30d = _is_last30days_available()
+    logger.info(
+        "Claude リサーチ開始: スロット=%s (%s) ニュース=%d 論文=%d last30days=%s X=%s",
+        slot, slot_label, n_news, n_papers,
+        "有効" if use_l30d else "無効(Python3.12未インストール)",
+        "有効" if _x_auth_configured() else "未設定(scripts/setup_x_cookies.py)",
+    )
 
     with tempfile.TemporaryDirectory() as tmpdir:
         out_file = Path(tmpdir) / "curated_batch.json"
-        prompt = _COMBINED_PROMPT.format(
-            today=today,
-            n_news=n_news,
-            n_papers=n_papers,
-            output_file=str(out_file).replace("\\", "/"),
+        prompt = _build_slot_prompt(
+            slot, today, n_news, n_papers,
+            str(out_file).replace("\\", "/"),
+            use_last30days=use_l30d,
         )
-        raw = _invoke_claude_research_session("ニュース+論文", prompt, out_file, timeout)
+        raw = _invoke_claude_research_session(
+            f"ニュース+論文[{slot}]", prompt, out_file, timeout,
+            use_last30days=use_l30d,
+        )
         if not raw:
             return False
         try:
