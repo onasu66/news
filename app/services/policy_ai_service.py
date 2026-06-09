@@ -291,11 +291,25 @@ def _build_synthesis_prompt(
 
 # ---------- メイン生成関数 ----------
 
-def generate_policy_proposals(topic_key: str = "shoushika", timeout_per_call: int = 300) -> Optional[list]:
+def _format_expert_analyses(analyses: dict[str, str]) -> list[dict]:
+    icons = ["📊", "💹", "👥", "⚖️"]
+    result = []
+    for i, (role, text) in enumerate(analyses.items()):
+        short = role.split("（")[0] if "（" in role else role
+        result.append({
+            "role": role,
+            "short_role": short,
+            "icon": icons[i % len(icons)],
+            "text": text.strip(),
+        })
+    return result
+
+
+def generate_policy_proposals(topic_key: str = "shoushika", timeout_per_call: int = 300) -> Optional[dict]:
     """指定トピックの政策提案を Claude CLI で生成して返す。
 
     Returns:
-        list of proposal dicts, or None on failure
+        {"proposals": [...], "expert_analyses": [...]} or None on failure
     """
     topic_config = TOPIC_CONFIGS.get(topic_key)
     if not topic_config:
@@ -370,7 +384,12 @@ def generate_policy_proposals(topic_key: str = "shoushika", timeout_per_call: in
                     "expert_sources": [str(x) for x in (p.get("expert_sources") or [])[:5]],
                 })
             logger.info("[policy] %d 件の施策を生成しました", len(validated))
-            return validated if validated else None
+            if not validated:
+                return None
+            return {
+                "proposals": validated,
+                "expert_analyses": _format_expert_analyses(analyses),
+            }
         except json.JSONDecodeError as e:
             logger.error("[policy] JSON パースエラー: %s\nraw=%s", e, raw[:200])
             return None
@@ -383,16 +402,29 @@ def run_generate_and_save(topic_key: str = "shoushika") -> bool:
         logger.error("未知のトピック: %s", topic_key)
         return False
 
-    proposals = generate_policy_proposals(topic_key)
-    if not proposals:
+    result = generate_policy_proposals(topic_key)
+    if not result:
         logger.error("[policy] 提案生成に失敗しました")
         return False
 
+    proposals = result["proposals"]
+    expert_analyses = result.get("expert_analyses", [])
+
     try:
         from app.services.vote_service import save_policy_topic, save_policy_proposals
-        save_policy_topic(topic_key, topic_config["title"], topic_config.get("description", ""))
+        save_policy_topic(
+            topic_key,
+            topic_config["title"],
+            topic_config.get("description", ""),
+            expert_analyses=expert_analyses,
+        )
         save_policy_proposals(topic_key, proposals)
-        logger.info("[policy] トピック '%s' の提案を DB に保存しました（%d 件）", topic_key, len(proposals))
+        logger.info(
+            "[policy] トピック '%s' の提案を DB に保存しました（施策 %d 件・議論 %d 件）",
+            topic_key,
+            len(proposals),
+            len(expert_analyses),
+        )
         return True
     except Exception as e:
         logger.error("[policy] DB 保存に失敗: %s", e)

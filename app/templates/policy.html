@@ -37,6 +37,27 @@
   </div>
   {% else %}
 
+  <!-- 専門家の議論 -->
+  {% set debates = topic.expert_analyses if topic and topic.expert_analyses else [] %}
+  {% if debates %}
+  <section class="policy-debate-section" aria-label="専門家の議論">
+    <h2 class="ai-section-title">🗣️ 専門家AIの議論</h2>
+    <p class="policy-debate-intro">4人の専門家AIが統計データをもとに順番に分析し、それを統合して施策を立案しました。</p>
+    <div class="policy-debate-list">
+      {% for d in debates %}
+      <details class="policy-debate-card" {% if loop.first %}open{% endif %}>
+        <summary class="policy-debate-summary">
+          <span class="policy-debate-icon">{{ d.icon or '📝' }}</span>
+          <span class="policy-debate-role">{{ d.short_role or d.role }}</span>
+          <span class="policy-debate-preview">{{ d.text[:60] }}{% if d.text|length > 60 %}…{% endif %}</span>
+        </summary>
+        <div class="policy-debate-body">{{ d.text }}</div>
+      </details>
+      {% endfor %}
+    </div>
+  </section>
+  {% endif %}
+
   <!-- 投票状況バナー -->
   <section class="policy-vote-summary" id="policy-vote-summary">
     <h2 class="ai-section-title">📊 現在の投票状況</h2>

@@ -44,8 +44,14 @@ def main():
 
     if args.dry_run:
         print("[dry-run] 生成のみ実行（DB保存なし）")
-        proposals = generate_policy_proposals(topic_key)
-        if proposals:
+        result = generate_policy_proposals(topic_key)
+        if result:
+            proposals = result["proposals"]
+            analyses = result.get("expert_analyses", [])
+            print(f"\n専門家の議論 ({len(analyses)} 件):")
+            for a in analyses:
+                print(f"\n--- {a.get('short_role', a.get('role', ''))} ---")
+                print(f"  {a.get('text', '')[:120]}...")
             print(f"\n生成された施策 ({len(proposals)} 件):")
             for p in proposals:
                 print(f"\n--- 施策 {p['rank']}: {p['title']} ---")

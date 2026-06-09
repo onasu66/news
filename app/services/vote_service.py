@@ -67,9 +67,13 @@ def _sqlite_conn():
             title        TEXT NOT NULL,
             description  TEXT,
             status       TEXT DEFAULT 'active',
+            expert_analyses TEXT,
             generated_at TEXT DEFAULT (datetime('now'))
         )
     """)
+    cols = {r[1] for r in conn.execute("PRAGMA table_info(policy_topics)").fetchall()}
+    if "expert_analyses" not in cols:
+        conn.execute("ALTER TABLE policy_topics ADD COLUMN expert_analyses TEXT")
     conn.commit()
     return conn
 
@@ -183,12 +187,19 @@ def get_policy_vote_counts(topic_id: str | None = None) -> dict[str, int]:
 
 # ---------- 政策 CRUD（SQLite フォールバック用） ----------
 
-def sqlite_policy_topic_upsert(topic_id: str, title: str, description: str = "") -> None:
+def sqlite_policy_topic_upsert(
+    topic_id: str,
+    title: str,
+    description: str = "",
+    expert_analyses: list | None = None,
+) -> None:
     conn = _sqlite_conn()
+    analyses_json = json.dumps(expert_analyses or [], ensure_ascii=False)
     conn.execute(
-        "INSERT INTO policy_topics (id, title, description) VALUES (?, ?, ?) "
-        "ON CONFLICT(id) DO UPDATE SET title=excluded.title, description=excluded.description",
-        (topic_id, title, description),
+        "INSERT INTO policy_topics (id, title, description, expert_analyses) VALUES (?, ?, ?, ?) "
+        "ON CONFLICT(id) DO UPDATE SET title=excluded.title, description=excluded.description, "
+        "expert_analyses=excluded.expert_analyses",
+        (topic_id, title, description, analyses_json),
     )
     conn.commit()
     conn.close()
@@ -248,21 +259,35 @@ def sqlite_policy_proposals_get(topic_id: str) -> list:
 def sqlite_policy_topics_get_active() -> list:
     conn = _sqlite_conn()
     rows = conn.execute(
-        "SELECT id, title, description, status, generated_at FROM policy_topics WHERE status = 'active' ORDER BY generated_at DESC"
+        "SELECT id, title, description, status, generated_at, expert_analyses "
+        "FROM policy_topics WHERE status = 'active' ORDER BY generated_at DESC"
     ).fetchall()
     conn.close()
-    cols = ["id", "title", "description", "status", "generated_at"]
-    return [dict(zip(cols, r)) for r in rows]
+    cols = ["id", "title", "description", "status", "generated_at", "expert_analyses"]
+    result = []
+    for r in rows:
+        d = dict(zip(cols, r))
+        try:
+            d["expert_analyses"] = json.loads(d["expert_analyses"]) if d.get("expert_analyses") else []
+        except Exception:
+            d["expert_analyses"] = []
+        result.append(d)
+    return result
 
 
 # ---------- 統一 API（Neon / SQLite 自動選択） ----------
 
-def save_policy_topic(topic_id: str, title: str, description: str = "") -> None:
+def save_policy_topic(
+    topic_id: str,
+    title: str,
+    description: str = "",
+    expert_analyses: list | None = None,
+) -> None:
     if _use_neon():
         from .neon_store import neon_policy_topic_upsert
-        neon_policy_topic_upsert(topic_id, title, description)
+        neon_policy_topic_upsert(topic_id, title, description, expert_analyses)
     else:
-        sqlite_policy_topic_upsert(topic_id, title, description)
+        sqlite_policy_topic_upsert(topic_id, title, description, expert_analyses)
 
 
 def save_policy_proposals(topic_id: str, proposals: list) -> None:

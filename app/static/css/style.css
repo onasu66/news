@@ -880,6 +880,39 @@ body::after {
     color: var(--color-text-secondary);
     font-size: 0.9rem;
 }
+.footer-line-wrap {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.4rem;
+    margin: 0.75rem 0 0.5rem;
+}
+.footer-line-label {
+    font-size: 0.78rem;
+    color: var(--color-text-secondary);
+    margin: 0;
+}
+.about-line-wrap {
+    margin-top: 0.75rem;
+}
+.article-line-cta {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 1.1rem;
+    margin-top: 1rem;
+    background: var(--color-bg-elevated);
+    border: 1px solid var(--color-border-light);
+    border-radius: 14px;
+    text-align: center;
+}
+.article-line-cta-text {
+    margin: 0;
+    font-size: 0.86rem;
+    color: var(--color-text-secondary);
+    line-height: 1.55;
+}
 @media (max-width: 680px) {
     .persona-detail-layout {
         grid-template-columns: 1fr;
@@ -2399,6 +2432,53 @@ body::after {
 .persona-error {
     font-size: 0.85rem;
     color: var(--color-accent);
+}
+.persona-share-bar {
+    display: flex;
+    gap: 0.5rem;
+    margin-top: 0.75rem;
+    padding-top: 0.65rem;
+    border-top: 1px dashed var(--color-border-light);
+}
+.persona-share-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.32rem 0.75rem;
+    border-radius: 999px;
+    border: 1px solid var(--color-border-light);
+    background: var(--color-bg);
+    color: var(--color-text-secondary);
+    font-size: 0.78rem;
+    font-weight: 700;
+    cursor: pointer;
+    text-decoration: none;
+    transition: background 0.15s, color 0.15s;
+    white-space: nowrap;
+}
+.persona-share-btn:hover {
+    background: var(--color-accent-soft);
+    color: var(--color-accent);
+    border-color: var(--color-accent);
+}
+.persona-share-btn--x {
+    background: #000;
+    color: #fff;
+    border-color: #000;
+}
+.persona-share-btn--x:hover {
+    background: #222;
+    color: #fff;
+    border-color: #222;
+}
+[data-theme="dark"] .persona-share-btn--x {
+    background: #fff;
+    color: #000;
+    border-color: #fff;
+}
+[data-theme="dark"] .persona-share-btn--x:hover {
+    background: #e5e5e5;
+    color: #000;
 }
 .personas-all-item {
     display: inline-flex;
@@ -4716,6 +4796,24 @@ body::after {
 .policy-detail-item { background: var(--color-bg-elevated); border-radius: 10px; padding: 0.6rem 0.7rem; }
 .policy-detail-label { display: block; font-size: 0.72rem; font-weight: 700; color: var(--color-text-muted); margin-bottom: 0.2rem; }
 .policy-detail-value { display: block; font-size: 0.82rem; font-weight: 600; line-height: 1.5; }
+.policy-debate-section { margin-bottom: 1.5rem; }
+.policy-debate-intro { font-size: 0.85rem; color: var(--color-text-muted); margin: 0 0 0.85rem; line-height: 1.6; }
+.policy-debate-list { display: flex; flex-direction: column; gap: 0.55rem; }
+.policy-debate-card { border: 1px solid var(--color-border-light); border-radius: 12px; overflow: hidden; background: var(--color-bg-elevated); }
+.policy-debate-summary {
+    display: flex; align-items: center; gap: 0.55rem;
+    padding: 0.7rem 0.85rem; cursor: pointer; list-style: none;
+    font-size: 0.84rem; font-weight: 700;
+}
+.policy-debate-summary::-webkit-details-marker { display: none; }
+.policy-debate-icon { font-size: 1.1rem; flex-shrink: 0; }
+.policy-debate-role { flex-shrink: 0; color: #6366f1; }
+.policy-debate-preview { flex: 1; font-weight: 400; color: var(--color-text-muted); font-size: 0.78rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.policy-debate-card[open] .policy-debate-summary { border-bottom: 1px solid var(--color-border-light); }
+.policy-debate-body {
+    padding: 0.85rem 1rem; font-size: 0.84rem; line-height: 1.75;
+    white-space: pre-wrap; color: var(--color-text);
+}
 .policy-collapse { border: 1px solid var(--color-border-light); border-radius: 10px; overflow: hidden; }
 .policy-collapse-summary { padding: 0.55rem 0.75rem; font-size: 0.82rem; font-weight: 700; cursor: pointer; list-style: none; background: var(--color-bg-elevated); }
 .policy-collapse-summary::-webkit-details-marker { display: none; }

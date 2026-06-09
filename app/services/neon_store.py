@@ -237,6 +237,9 @@ def neon_init_schema():
                 )
             """)
             cur.execute("CREATE INDEX IF NOT EXISTS idx_policy_proposals_topic ON policy_proposals(topic_id, rank)")
+            cur.execute(
+                "ALTER TABLE policy_topics ADD COLUMN IF NOT EXISTS expert_analyses TEXT"
+            )
             # --- 統計メトリクス ---
             cur.execute("""
                 CREATE TABLE IF NOT EXISTS metrics (
@@ -779,19 +782,26 @@ def neon_persona_vote_get_all() -> dict:
 
 # --- 政策トピック & 提案 ---
 
-def neon_policy_topic_upsert(topic_id: str, title: str, description: str = "") -> None:
+def neon_policy_topic_upsert(
+    topic_id: str,
+    title: str,
+    description: str = "",
+    expert_analyses: list | None = None,
+) -> None:
+    analyses_json = json.dumps(expert_analyses or [], ensure_ascii=False)
     with _conn("policy_topic_upsert") as conn:
         with conn.cursor() as cur:
             cur.execute(
                 """
-                INSERT INTO policy_topics (id, title, description, status, generated_at)
-                VALUES (%s, %s, %s, 'active', NOW())
+                INSERT INTO policy_topics (id, title, description, status, expert_analyses, generated_at)
+                VALUES (%s, %s, %s, 'active', %s, NOW())
                 ON CONFLICT (id) DO UPDATE SET
                     title = EXCLUDED.title,
                     description = EXCLUDED.description,
+                    expert_analyses = EXCLUDED.expert_analyses,
                     generated_at = NOW()
                 """,
-                (topic_id, title, description),
+                (topic_id, title, description, analyses_json),
             )
 
 
@@ -867,12 +877,20 @@ def neon_policy_topics_get_active() -> list:
     with _conn("policy_topics_get_active") as conn:
         with conn.cursor() as cur:
             cur.execute(
-                "SELECT id, title, description, status, generated_at "
+                "SELECT id, title, description, status, generated_at, expert_analyses "
                 "FROM policy_topics WHERE status = 'active' ORDER BY generated_at DESC"
             )
             rows = cur.fetchall()
-    cols = ["id", "title", "description", "status", "generated_at"]
-    return [dict(zip(cols, r)) for r in rows]
+    cols = ["id", "title", "description", "status", "generated_at", "expert_analyses"]
+    result = []
+    for r in rows:
+        d = dict(zip(cols, r))
+        try:
+            d["expert_analyses"] = json.loads(d["expert_analyses"]) if d.get("expert_analyses") else []
+        except Exception:
+            d["expert_analyses"] = []
+        result.append(d)
+    return result
 
 
 def neon_policy_vote_increment(proposal_id: str) -> int:

@@ -158,16 +158,16 @@
     {% endif %}
 
     <section class="personas-section">
-        <h2 class="personas-title">AIの多角的な視点 <span class="personas-hint">（この記事は3人分・クリックで表示）</span></h2>
+        <h2 class="personas-title">AIの多角的な視点 <span class="personas-hint">（3人の偉人が解説・タップで開閉）</span></h2>
         <div class="personas-grid">
             {% for p in personas %}
             <div class="persona-card" data-persona-id="{{ p.id }}" data-article-id="{{ article.id }}">
-                <button type="button" class="persona-trigger" aria-expanded="false">
+                <button type="button" class="persona-trigger" aria-expanded="{{ 'true' if loop.first else 'false' }}">
                     <img src="{{ p.image_url }}" alt="" class="persona-avatar" loading="lazy">
                     <span class="persona-name">{{ p.name }}</span>
-                    <span class="persona-arrow">▶</span>
+                    <span class="persona-arrow">{{ '▼' if loop.first else '▶' }}</span>
                 </button>
-                <div class="persona-content" hidden>
+                <div class="persona-content"{% if not loop.first %} hidden{% endif %}>
                     <p class="persona-loading">読込中...</p>
                 </div>
             </div>
@@ -291,6 +291,11 @@
             <a href="/topic/{{ next_article.id }}" class="next-article-link next-article-next">次の記事へ →</a>
             {% endif %}
         </nav>
+
+        <div class="article-line-cta">
+            <p class="article-line-cta-text">取り上げてほしい記事・追加してほしいキャラなど、LINEでリクエストできます</p>
+            <a href="https://lin.ee/rQgfdIR"><img src="https://scdn.line-apps.com/n/line_add_friends/btn/ja.png" alt="友だち追加" height="36" border="0"></a>
+        </div>
     </section>
 </article>
 
@@ -614,15 +619,61 @@ document.addEventListener('DOMContentLoaded', function() {
     var contentEl = document.getElementById('article-inline-content');
     // 初期表示は short のため、ここでは吹き出し初期化しない
 
+    function setPersonaContent(card, content, opinion) {
+        content.dataset.loaded = 'true';
+        content.innerHTML = opinion
+            ? '<p class="persona-opinion">' + escapeHtml(opinion).replace(/\n/g, '<br>') + '</p>'
+            : '<p class="persona-error">取得できませんでした</p>';
+        if (opinion) addPersonaShareBtn(card, content, opinion);
+    }
+
+    function addPersonaShareBtn(card, content, opinion) {
+        var name = (card.querySelector('.persona-name') || {}).textContent || '';
+        var titleEl = document.querySelector('.article-title');
+        var articleTitle = titleEl ? titleEl.textContent.trim() : document.title;
+        var url = window.location.href;
+        var comment = opinion.length > 140 ? opinion.slice(0, 137) + '…' : opinion;
+        var shareText = '【' + name + 'の一言】\n\n「' + comment + '」\n\n' + articleTitle + '\n' + url + '\n\n#知リポAI';
+        var xUrl = 'https://twitter.com/intent/tweet?text=' + encodeURIComponent(shareText);
+
+        var bar = document.createElement('div');
+        bar.className = 'persona-share-bar';
+
+        var copyBtn = document.createElement('button');
+        copyBtn.type = 'button';
+        copyBtn.className = 'persona-share-btn';
+        copyBtn.innerHTML = '🔗 コピー';
+        copyBtn.title = 'このコメントをクリップボードにコピー';
+        copyBtn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(shareText).then(function() {
+                    copyBtn.innerHTML = '✅ コピー済み';
+                    if (window.showSiteToast) window.showSiteToast(name + 'のコメントをコピーしました');
+                    setTimeout(function() { copyBtn.innerHTML = '🔗 コピー'; }, 1800);
+                });
+            }
+        });
+
+        var xBtn = document.createElement('a');
+        xBtn.href = xUrl;
+        xBtn.target = '_blank';
+        xBtn.rel = 'noopener noreferrer';
+        xBtn.className = 'persona-share-btn persona-share-btn--x';
+        xBtn.innerHTML = '𝕏 ポスト';
+        xBtn.title = 'Xにポストする';
+
+        bar.appendChild(copyBtn);
+        bar.appendChild(xBtn);
+        content.appendChild(bar);
+    }
+
     var hasSsr = contentEl && contentEl.querySelector('.article-text, .article-readflow') && ssrPersonas && ssrPersonas.length > 0;
     if (hasSsr) {
         document.querySelectorAll('.persona-card').forEach(function(card, i) {
             var content = card.querySelector('.persona-content');
             var opinion = ssrPersonas[i] || '';
-            content.dataset.loaded = 'true';
-            content.innerHTML = opinion
-                ? '<p class="persona-opinion">' + escapeHtml(opinion).replace(/\n/g, '<br>') + '</p>'
-                : '<p class="persona-error">取得できませんでした</p>';
+            setPersonaContent(card, content, opinion);
         });
     } else {
         fetch('/api/article/' + articleId + '/explanations')
@@ -678,10 +729,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     var content = card.querySelector('.persona-content');
                     var idx = ids[i] != null ? ids[i] : i;
                     var opinion = personas[idx] || '';
-                    content.dataset.loaded = 'true';
-                    content.innerHTML = opinion
-                        ? '<p class="persona-opinion">' + escapeHtml(opinion).replace(/\n/g, '<br>') + '</p>'
-                        : '<p class="persona-error">取得できませんでした</p>';
+                    setPersonaContent(card, content, opinion);
                 });
             })
             .catch(function() {
