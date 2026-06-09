@@ -34,6 +34,7 @@
             <nav class="global-pill-nav" aria-label="グローバルナビゲーション">
                 <a href="/" class="global-pill{% if request.url.path == '/' %} is-active{% endif %}" {% if request.url.path == '/' %}aria-current="page"{% endif %}>AI論文解説</a>
                 <a href="/news" class="global-pill{% if request.url.path == '/news' %} is-active{% endif %}" {% if request.url.path == '/news' %}aria-current="page"{% endif %}>AIニュースアーカイブ</a>
+                <a href="/ai" class="global-pill{% if request.url.path == '/ai' %} is-active{% endif %}" {% if request.url.path == '/ai' %}aria-current="page"{% endif %}>AI投票・政策</a>
                 <a href="/personas" class="global-pill{% if request.url.path == '/personas' %} is-active{% endif %}" {% if request.url.path == '/personas' %}aria-current="page"{% endif %}>14キャラクター</a>
             </nav>
             <button type="button" id="theme-toggle" class="theme-toggle" aria-label="ダークテーマに切り替え" aria-pressed="false">🌙</button>

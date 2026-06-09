@@ -1,0 +1,191 @@
+{% extends "base.html" %}
+{% block title %}{{ topic.title if topic else '政策提案AI' }} - 知リポAI{% endblock %}
+{% block meta_extra %}
+<meta name="description" content="AIが統計データをもとに政策を議論。あなたが支持する施策に投票しよう。">
+{% endblock %}
+{% block content %}
+<div class="policy-page">
+
+  <!-- ヘッダー -->
+  <section class="policy-header">
+    <div class="policy-header-badge">📊 政策提案AI</div>
+    <h1 class="policy-title">{{ topic.title if topic else '政策提案' }}</h1>
+    {% if topic and topic.description %}
+    <p class="policy-desc">{{ topic.description }}</p>
+    {% endif %}
+    {% if topic %}
+    <p class="policy-meta">
+      生成日: {{ topic.generated_at.strftime('%Y年%m月%d日') if topic.generated_at else '' }} ／
+      利用データ: e-Stat API・財務省・厚生労働省 ほか
+    </p>
+    {% endif %}
+    <div class="policy-nav-links">
+      <a href="/ai" class="policy-back-link">← 推しキャラ投票へ</a>
+      {% if other_topics %}
+      <span class="policy-other-label">他のトピック:</span>
+      {% for ot in other_topics %}
+      <a href="/policy/{{ ot.id }}" class="policy-topic-link">{{ ot.title }}</a>
+      {% endfor %}
+      {% endif %}
+    </div>
+  </section>
+
+  {% if not proposals %}
+  <div class="policy-empty">
+    <p>現在、このトピックの政策提案はまだ生成されていません。</p>
+    <p>月2回のペースで更新されます。</p>
+  </div>
+  {% else %}
+
+  <!-- 投票状況バナー -->
+  <section class="policy-vote-summary" id="policy-vote-summary">
+    <h2 class="ai-section-title">📊 現在の投票状況</h2>
+    <div class="policy-vote-bars" id="policy-vote-bars">
+      {% set total_policy_votes = namespace(val=0) %}
+      {% for p in proposals %}{% set total_policy_votes.val = total_policy_votes.val + p.vote_count %}{% endfor %}
+      {% for p in proposals %}
+      <div class="policy-summary-row">
+        <span class="policy-summary-rank">{{ loop.index }}</span>
+        <span class="policy-summary-title">{{ p.title }}</span>
+        <div class="policy-summary-bar">
+          <div class="policy-summary-bar-fill" id="psb-{{ p.id }}" style="width: {% if total_policy_votes.val > 0 %}{{ ((p.vote_count / total_policy_votes.val) * 100) | round(1) }}%{% else %}0%{% endif %}"></div>
+        </div>
+        <span class="policy-summary-count" id="psc-{{ p.id }}">{{ p.vote_count }} 票</span>
+      </div>
+      {% endfor %}
+    </div>
+  </section>
+
+  <!-- 施策カード -->
+  <section class="policy-proposals-section">
+    <h2 class="ai-section-title">AIが提案する4つの施策</h2>
+    <p class="policy-vote-hint">気に入った施策に投票してください（1施策1票まで）</p>
+    <div class="policy-proposals-grid">
+      {% for p in proposals %}
+      <article class="policy-proposal-card" id="ppc-{{ p.id }}">
+        <div class="policy-proposal-header">
+          <span class="policy-rank-badge rank-{{ p.rank }}">施策 {{ p.rank }}</span>
+          <h3 class="policy-proposal-title">{{ p.title }}</h3>
+        </div>
+
+        <p class="policy-proposal-summary">{{ p.summary }}</p>
+
+        <div class="policy-detail-grid">
+          <div class="policy-detail-item">
+            <span class="policy-detail-label">💰 財政コスト</span>
+            <span class="policy-detail-value">{{ p.cost_estimate or '試算中' }}</span>
+          </div>
+          <div class="policy-detail-item">
+            <span class="policy-detail-label">📈 効果予測</span>
+            <span class="policy-detail-value">{{ p.effect_prediction or '分析中' }}</span>
+          </div>
+        </div>
+
+        {% if p.pros %}
+        <details class="policy-collapse">
+          <summary class="policy-collapse-summary">✅ メリット（{{ p.pros|length }}点）</summary>
+          <ul class="policy-pros-list">
+            {% for item in p.pros %}<li>{{ item }}</li>{% endfor %}
+          </ul>
+        </details>
+        {% endif %}
+
+        {% if p.cons %}
+        <details class="policy-collapse">
+          <summary class="policy-collapse-summary">⚠️ リスク・デメリット（{{ p.cons|length }}点）</summary>
+          <ul class="policy-cons-list">
+            {% for item in p.cons %}<li>{{ item }}</li>{% endfor %}
+          </ul>
+        </details>
+        {% endif %}
+
+        {% if p.expert_sources %}
+        <div class="policy-sources">
+          <span class="policy-sources-label">参照データ:</span>
+          {% for s in p.expert_sources %}
+          <span class="policy-source-tag">{{ s }}</span>
+          {% endfor %}
+        </div>
+        {% endif %}
+
+        <div class="policy-vote-area">
+          <div class="policy-vote-bar-wrap">
+            <div class="policy-vote-bar-sm">
+              <div class="policy-vote-bar-sm-fill" id="pvbsf-{{ p.id }}" style="width: {% if total_policy_votes.val > 0 %}{{ ((p.vote_count / total_policy_votes.val) * 100) | round(1) }}%{% else %}0%{% endif %}"></div>
+            </div>
+            <span class="policy-vote-count-sm" id="pvcs-{{ p.id }}">{{ p.vote_count }} 票</span>
+          </div>
+          <button class="policy-vote-btn" id="pvpbtn-{{ p.id }}"
+            data-proposal-id="{{ p.id }}"
+            onclick="voteForPolicy('{{ p.id }}', this)"
+            aria-label="{{ p.title }}に投票">
+            この施策を支持 👍
+          </button>
+        </div>
+      </article>
+      {% endfor %}
+    </div>
+  </section>
+  {% endif %}
+
+</div>
+
+<script>
+(function() {
+  var LS_KEY = 'voted_policies_v1';
+  function getVoted() {
+    try { return JSON.parse(localStorage.getItem(LS_KEY) || '[]'); } catch(e) { return []; }
+  }
+  function markVoted(id) {
+    var v = getVoted(); if (!v.includes(id)) v.push(id);
+    try { localStorage.setItem(LS_KEY, JSON.stringify(v)); } catch(e) {}
+  }
+
+  var voted = getVoted();
+  var totalVotes = {{ total_policy_votes.val if proposals else 0 }};
+
+  voted.forEach(function(id) {
+    var btn = document.getElementById('pvpbtn-' + id);
+    if (btn) { btn.textContent = '投票済み ✅'; btn.disabled = true; btn.classList.add('voted'); }
+  });
+
+  window.voteForPolicy = function(proposalId, btn) {
+    var voted = getVoted();
+    if (voted.includes(proposalId)) {
+      btn.textContent = '投票済み ✅'; btn.disabled = true; btn.classList.add('voted'); return;
+    }
+    btn.disabled = true; btn.textContent = '投票中...';
+
+    fetch('/api/vote/policy/' + proposalId, { method: 'POST' })
+      .then(function(r) { return r.json(); })
+      .then(function(data) {
+        markVoted(proposalId);
+        btn.textContent = '投票済み ✅'; btn.classList.add('voted');
+        var newCount = data.vote_count || 0;
+        totalVotes += 1;
+        // 各バーを更新
+        updatePolicyBars(proposalId, newCount);
+      })
+      .catch(function() { btn.disabled = false; btn.textContent = 'この施策を支持 👍'; });
+  };
+
+  function updatePolicyBars(votedId, newCount) {
+    document.querySelectorAll('.policy-proposal-card').forEach(function(card) {
+      var id = card.id.replace('ppc-', '');
+      var countSmEl = document.getElementById('pvcs-' + id);
+      if (!countSmEl) return;
+      var c = parseInt(countSmEl.textContent.replace('票','').trim()) || 0;
+      if (id === votedId) c = newCount;
+      var pct = totalVotes > 0 ? Math.round(c / totalVotes * 1000) / 10 : 0;
+      var fillSm = document.getElementById('pvbsf-' + id);
+      if (fillSm) fillSm.style.width = pct + '%';
+      var fillSummary = document.getElementById('psb-' + id);
+      if (fillSummary) fillSummary.style.width = pct + '%';
+      if (id === votedId) countSmEl.textContent = c + ' 票';
+      var summaryCount = document.getElementById('psc-' + id);
+      if (summaryCount && id === votedId) summaryCount.textContent = c + ' 票';
+    });
+  }
+})();
+</script>
+{% endblock %}

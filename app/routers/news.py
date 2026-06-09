@@ -746,7 +746,7 @@ async def trend_page(request: Request):
 
 @router.get("/ai", response_class=HTMLResponse)
 async def ai_page(request: Request):
-    """AIページ：昨日のメモ・人格コメント"""
+    """AIページ：キャラ推し投票 + 昨日のメモ・人格コメント"""
     ai_memo = None
     ai_personas = []
     try:
@@ -765,14 +765,132 @@ async def ai_page(request: Request):
                 ai_personas = patched
     except Exception:
         pass
+
+    # キャラ一覧と投票数
+    personas_with_votes = []
+    try:
+        from app.services.vote_service import get_persona_vote_counts
+        vote_counts = get_persona_vote_counts()
+        for p in PERSONAS:
+            pv = _build_persona_view(p)
+            pv["vote_count"] = vote_counts.get(int(p.get("id", -1)), 0)
+            personas_with_votes.append(pv)
+        personas_with_votes.sort(key=lambda x: x.get("vote_count", 0), reverse=True)
+    except Exception:
+        for p in PERSONAS:
+            pv = _build_persona_view(p)
+            pv["vote_count"] = 0
+            personas_with_votes.append(pv)
+
+    # アクティブな政策トピック（ナビリンク用）
+    active_topic = None
+    try:
+        from app.services.vote_service import get_active_topics
+        topics = get_active_topics()
+        if topics:
+            active_topic = topics[0]
+    except Exception:
+        pass
+
     return templates.TemplateResponse(
         "ai.html",
         {
             "request": request,
             "ai_memo": ai_memo,
             "ai_personas": ai_personas,
+            "personas": personas_with_votes,
+            "active_topic": active_topic,
         },
     )
+
+
+@router.post("/api/vote/persona/{persona_id}")
+async def vote_persona(persona_id: int):
+    """キャラ投票 API - 指定キャラの票数を +1 して返す。"""
+    try:
+        from app.services.vote_service import increment_persona_vote
+        new_count = increment_persona_vote(persona_id)
+        return {"ok": True, "persona_id": persona_id, "vote_count": new_count}
+    except Exception as e:
+        logger.warning("vote_persona error: %s", e)
+        return {"ok": False, "persona_id": persona_id, "vote_count": 0}
+
+
+@router.post("/api/vote/policy/{proposal_id}")
+async def vote_policy(proposal_id: str):
+    """政策提案投票 API - 指定提案の票数を +1 して返す。"""
+    try:
+        from app.services.vote_service import increment_policy_vote
+        new_count = increment_policy_vote(proposal_id)
+        return {"ok": True, "proposal_id": proposal_id, "vote_count": new_count}
+    except Exception as e:
+        logger.warning("vote_policy error: %s", e)
+        return {"ok": False, "proposal_id": proposal_id, "vote_count": 0}
+
+
+@router.get("/policy", response_class=HTMLResponse)
+async def policy_page(request: Request):
+    """政策提案AIページ（最新アクティブトピック）"""
+    return await _policy_page_impl(request, topic_id=None)
+
+
+@router.get("/policy/{topic_id}", response_class=HTMLResponse)
+async def policy_topic_page(request: Request, topic_id: str):
+    """政策提案AIページ（トピック指定）"""
+    return await _policy_page_impl(request, topic_id=topic_id)
+
+
+async def _policy_page_impl(request: Request, topic_id: str | None):
+    try:
+        from app.services.vote_service import get_active_topics, get_policy_proposals, get_policy_vote_counts
+        topics = get_active_topics()
+    except Exception:
+        topics = []
+
+    if not topics:
+        return templates.TemplateResponse(
+            "policy.html",
+            {"request": request, "topic": None, "proposals": [], "other_topics": []},
+        )
+
+    if topic_id:
+        topic = next((t for t in topics if t["id"] == topic_id), topics[0])
+    else:
+        topic = topics[0]
+
+    other_topics = [t for t in topics if t["id"] != topic["id"]]
+
+    try:
+        proposals = get_policy_proposals(topic["id"])
+        vote_counts = get_policy_vote_counts(topic["id"])
+        for p in proposals:
+            p["vote_count"] = vote_counts.get(p["id"], p.get("vote_count", 0))
+    except Exception:
+        proposals = []
+
+    return templates.TemplateResponse(
+        "policy.html",
+        {
+            "request": request,
+            "topic": topic,
+            "proposals": proposals,
+            "other_topics": other_topics,
+        },
+    )
+
+
+@router.post("/api/admin/generate-policy")
+async def admin_generate_policy(request: Request, topic_key: str = "shoushika"):
+    """管理者向け: 政策提案を手動生成する（バックグラウンド実行）。"""
+    import threading
+    def _run():
+        try:
+            from app.services.policy_ai_service import run_generate_and_save
+            run_generate_and_save(topic_key)
+        except Exception as e:
+            logger.warning("admin_generate_policy 失敗: %s", e)
+    threading.Thread(target=_run, daemon=True).start()
+    return {"ok": True, "message": f"トピック '{topic_key}' の生成をバックグラウンドで開始しました"}
 
 
 @router.get("/about", response_class=HTMLResponse)

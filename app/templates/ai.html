@@ -1,34 +1,171 @@
 {% extends "base.html" %}
-{% block title %}AI - 知リポAI{% endblock %}
+{% block title %}AI推しキャラ投票 - 知リポAI{% endblock %}
+{% block meta_extra %}
+<meta name="description" content="14人の偉人AIキャラに推し投票！あなたの推しキャラを選んで投票しよう。">
+{% endblock %}
 {% block content %}
-<section class="page-header ai-page-header">
-    <h1 class="page-title">🤖 AIページ</h1>
-    <p class="page-desc">AIの分析メモと人格コメントを表示します</p>
-</section>
-<div class="ai-page-content" style="max-width:800px; margin:0 auto; padding:0 1rem;">
-    {% if ai_memo %}
-    <section class="ai-section ai-memo-section">
-        <h2 class="ai-section-title">📝 昨日のAIメモ</h2>
-        <div class="ai-memo-card">
-            <p>{{ ai_memo }}</p>
-        </div>
-    </section>
-    {% endif %}
+<div class="ai-vote-page">
 
-    {% if ai_personas %}
-    <section class="ai-section ai-persona-section">
-        <h2 class="ai-section-title">💬 今日のAI人格コメント</h2>
+  <!-- ヘッダー -->
+  <section class="ai-vote-header">
+    <h1 class="ai-vote-title">推しキャラ投票</h1>
+    <p class="ai-vote-desc">14人の偉人AIキャラのうち、あなたの推しは誰？ 1キャラ1票まで投票できます。</p>
+    {% if active_topic %}
+    <a href="/policy" class="ai-policy-link">📊 政策提案AIを見る →</a>
+    {% endif %}
+  </section>
+
+  <!-- リーダーボード（上位3） -->
+  {% set sorted_personas = personas | sort(attribute='vote_count', reverse=true) %}
+  {% set top3 = sorted_personas[:3] %}
+  {% if top3 and (top3[0].vote_count > 0) %}
+  <section class="ai-leaderboard" aria-label="投票ランキング上位3">
+    <h2 class="ai-section-title">🏆 現在のランキング</h2>
+    <div class="leaderboard-row">
+      {% for p in top3 %}
+      <div class="leaderboard-card leaderboard-rank-{{ loop.index }}">
+        <span class="leaderboard-medal">{% if loop.index == 1 %}🥇{% elif loop.index == 2 %}🥈{% else %}🥉{% endif %}</span>
+        <img src="{{ p.image_url }}" alt="{{ p.name }}" class="leaderboard-avatar" loading="lazy">
+        <div class="leaderboard-name">{{ p.emoji }} {{ p.name }}</div>
+        <div class="leaderboard-count">{{ p.vote_count }} 票</div>
+      </div>
+      {% endfor %}
+    </div>
+  </section>
+  {% endif %}
+
+  <!-- キャラグリッド -->
+  <section class="ai-persona-grid-section" aria-label="キャラクター一覧">
+    <h2 class="ai-section-title">全キャラに投票</h2>
+    <div class="ai-persona-vote-grid" id="ai-persona-grid">
+      {% set total_votes = namespace(val=0) %}
+      {% for p in personas %}
+        {% set total_votes.val = total_votes.val + p.vote_count %}
+      {% endfor %}
+      {% for p in personas %}
+      <div class="persona-vote-card" data-persona-id="{{ p.id }}" id="pvc-{{ p.id }}">
+        <a href="/personas/{{ p.id }}" class="persona-vote-avatar-link">
+          <img src="{{ p.image_url }}" alt="{{ p.name }}" class="persona-vote-avatar" loading="lazy">
+        </a>
+        <div class="persona-vote-body">
+          <div class="persona-vote-name">{{ p.emoji }} {{ p.name }}</div>
+          <div class="persona-vote-type">{{ p.type }}</div>
+          <div class="persona-vote-bar-wrap">
+            <div class="persona-vote-bar" id="pvb-{{ p.id }}">
+              <div class="persona-vote-bar-fill" style="width: {% if total_votes.val > 0 %}{{ ((p.vote_count / total_votes.val) * 100) | round(1) }}%{% else %}0%{% endif %}"></div>
+            </div>
+            <span class="persona-vote-count" id="pvc-count-{{ p.id }}">{{ p.vote_count }} 票</span>
+          </div>
+          <button class="persona-vote-btn" id="pvbtn-{{ p.id }}" data-persona-id="{{ p.id }}" onclick="voteForPersona({{ p.id }}, this)" aria-label="{{ p.name }}に投票">
+            推す ✨
+          </button>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </section>
+
+  <!-- AI メモ（折りたたみ） -->
+  {% if ai_memo %}
+  <section class="ai-memo-section">
+    <details class="ai-memo-details">
+      <summary class="ai-memo-summary">📝 昨日のAIメモ</summary>
+      <div class="ai-memo-card">{{ ai_memo }}</div>
+    </details>
+  </section>
+  {% endif %}
+
+  <!-- AI 人格コメント（折りたたみ） -->
+  {% if ai_personas %}
+  <section class="ai-persona-comments-section">
+    <details class="ai-memo-details">
+      <summary class="ai-memo-summary">💬 今日のAIコメント</summary>
+      <div class="ai-persona-comments-list">
         {% for pc in ai_personas %}
         <div class="ai-persona-comment">
-            <img src="{{ pc.image_url|default('/static/site-imgs/ロゴ.png') }}" alt="" class="ai-persona-avatar" loading="lazy">
-            <div>
-                <strong>{{ pc.name }}</strong>
-                <p>{{ pc.comment }}</p>
-            </div>
+          <img src="{{ pc.image_url|default('/static/site-imgs/ロゴ.png') }}" alt="" class="ai-persona-avatar-sm" loading="lazy">
+          <div>
+            <strong>{{ pc.name }}</strong>
+            <p>{{ pc.comment }}</p>
+          </div>
         </div>
         {% endfor %}
-    </section>
-    {% endif %}
+      </div>
+    </details>
+  </section>
+  {% endif %}
 
 </div>
+
+<script>
+(function() {
+  // 投票済みキャラIDを localStorage で管理
+  var LS_KEY = 'voted_personas_v1';
+  function getVoted() {
+    try { return JSON.parse(localStorage.getItem(LS_KEY) || '[]'); } catch(e) { return []; }
+  }
+  function markVoted(id) {
+    var v = getVoted(); if (!v.includes(id)) v.push(id);
+    try { localStorage.setItem(LS_KEY, JSON.stringify(v)); } catch(e) {}
+  }
+
+  // 投票済みキャラのボタンを初期反映
+  var voted = getVoted();
+  var totalVotes = {{ total_votes.val }};
+  voted.forEach(function(id) {
+    var btn = document.getElementById('pvbtn-' + id);
+    if (btn) {
+      btn.textContent = '投票済み ✅';
+      btn.disabled = true;
+      btn.classList.add('voted');
+    }
+  });
+
+  window.voteForPersona = function(personaId, btn) {
+    var voted = getVoted();
+    if (voted.includes(personaId)) {
+      btn.textContent = '投票済み ✅';
+      btn.disabled = true;
+      btn.classList.add('voted');
+      return;
+    }
+    btn.disabled = true;
+    btn.textContent = '投票中...';
+
+    fetch('/api/vote/persona/' + personaId, { method: 'POST' })
+      .then(function(r) { return r.json(); })
+      .then(function(data) {
+        markVoted(personaId);
+        btn.textContent = '投票済み ✅';
+        btn.classList.add('voted');
+        // 票数表示を更新
+        var newCount = data.vote_count || 0;
+        var countEl = document.getElementById('pvc-count-' + personaId);
+        if (countEl) countEl.textContent = newCount + ' 票';
+        // バー幅更新
+        totalVotes += 1;
+        updateAllBars(newCount, personaId);
+      })
+      .catch(function() {
+        btn.disabled = false;
+        btn.textContent = '推す ✨';
+      });
+  };
+
+  function updateAllBars(newCount, votedId) {
+    document.querySelectorAll('.persona-vote-card').forEach(function(card) {
+      var id = parseInt(card.dataset.personaId);
+      var countEl = document.getElementById('pvc-count-' + id);
+      if (!countEl) return;
+      var cText = countEl.textContent.replace('票', '').trim();
+      var c = parseInt(cText) || 0;
+      if (id === votedId) c = newCount;
+      var fill = document.querySelector('#pvb-' + id + ' .persona-vote-bar-fill');
+      if (fill && totalVotes > 0) {
+        fill.style.width = Math.round((c / totalVotes) * 1000) / 10 + '%';
+      }
+    });
+  }
+})();
+</script>
 {% endblock %}

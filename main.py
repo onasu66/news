@@ -15,6 +15,7 @@ from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
 
 from app.routers import news
+from app.routers import metrics as metrics_router
 from app.services.news_aggregator import NewsAggregator
 
 try:
@@ -36,6 +37,7 @@ def _scheduled_rss_fetch_and_article():
     """指定時刻: RSS取得→新しい記事だけ良い記事を記事化（13:00/20:00）"""
     NewsAggregator._db_backoff_until = None  # スケジュール実行は必ず試みる
     NewsAggregator.get_news(force_refresh=True)
+    _scheduled_refresh_vote_cache()
 
 
 def _scheduled_2000_rss_and_ai_daily():
@@ -47,6 +49,7 @@ def _scheduled_2000_rss_and_ai_daily():
         generate_daily_ai_content()
     except Exception as e:
         logger.warning("AI日次コンテンツ生成に失敗: %s", e)
+    _scheduled_refresh_vote_cache()
 
 
 def _run_claude_research_and_seed(slot: str, n_news: int, n_papers: int):
@@ -99,6 +102,7 @@ def _run_claude_research_and_seed(slot: str, n_news: int, n_papers: int):
             logger.info("Claude リサーチ[%s]→記事化完了: %d 件追加", slot, count)
         else:
             logger.info("Claude リサーチ[%s]: 新規記事なし（重複または生成失敗）", slot)
+        _scheduled_refresh_vote_cache()
     except Exception as e:
         logger.warning("Claude リサーチタスク[%s]でエラー: %s", slot, e)
 
@@ -139,6 +143,40 @@ def _scheduled_sync_list_cache_from_db():
         NewsAggregator.sync_list_cache_from_db()
     except Exception as e:
         logger.warning("一覧キャッシュ同期に失敗: %s", e)
+
+
+def _scheduled_refresh_vote_cache():
+    """投票キャッシュを DB から再読み込みする（記事更新スケジューラと同タイミングで呼ぶ）。"""
+    try:
+        from app.services.vote_service import refresh_vote_cache
+        refresh_vote_cache()
+    except Exception as e:
+        logger.warning("投票キャッシュ更新に失敗: %s", e)
+
+
+def _scheduled_generate_policy():
+    """月2回（1日・15日 9:00 JST）: 少子化対策の政策提案を Claude CLI で生成して保存。"""
+    try:
+        from app.services.policy_ai_service import run_generate_and_save
+        logger.info("政策提案生成 開始（少子化対策）")
+        ok = run_generate_and_save("shoushika")
+        if ok:
+            logger.info("政策提案生成 完了")
+        else:
+            logger.warning("政策提案生成 失敗または Claude CLI 未設定")
+    except Exception as e:
+        logger.warning("政策提案生成でエラー: %s", e)
+
+
+def _scheduled_collect_metrics():
+    """週1回（月曜 0:00 JST）: 各省庁統計データを収集して metrics テーブルに保存。"""
+    try:
+        from app.services.metrics_service import collect_all_metrics
+        logger.info("メトリクス収集 開始")
+        total = collect_all_metrics()
+        logger.info("メトリクス収集 完了: %d 件", total)
+    except Exception as e:
+        logger.warning("メトリクス収集でエラー: %s", e)
 
 
 def _seed_if_needed():
@@ -237,6 +275,13 @@ async def lifespan(app: FastAPI):
             logger.info("起動時: 一覧キャッシュを DB から同期しました（%d 件）", len(NewsAggregator._news_cache or []))
         except Exception as e:
             logger.warning("起動時一覧キャッシュ同期に失敗: %s", e)
+        # 投票キャッシュを起動時に読み込む
+        try:
+            from app.services.vote_service import refresh_vote_cache
+            refresh_vote_cache()
+            logger.info("起動時: 投票キャッシュを初期化しました")
+        except Exception as e:
+            logger.warning("起動時投票キャッシュ初期化に失敗: %s", e)
         try:
             from app.services.sitemap_service import sitemap_snapshot_path
 
@@ -296,6 +341,20 @@ async def lifespan(app: FastAPI):
                 id=cr_id,
             )
         logger.info("Claude ウェブリサーチ: 8:30/16:30/22:00 JST（各 ニュース5+論文4・バズ3）")
+        # 月2回（1日・15日 9:00）: 政策提案生成
+        scheduler.add_job(
+            _scheduled_generate_policy,
+            CronTrigger(day="1,15", hour=9, minute=0, timezone=JST),
+            id="generate_policy",
+        )
+        logger.info("政策提案生成: 毎月1日・15日 9:00 JST に設定")
+        # 週1回（月曜 0:00）: 統計メトリクス収集
+        scheduler.add_job(
+            _scheduled_collect_metrics,
+            CronTrigger(day_of_week="mon", hour=0, minute=0, timezone=JST),
+            id="collect_metrics",
+        )
+        logger.info("統計メトリクス収集: 毎週月曜 0:00 JST に設定")
     scheduler.start()
     # 起動直後のメモリをログ（Render 512MB 制限の確認用）
     try:
@@ -334,6 +393,7 @@ if static_path.exists():
     app.mount("/static", StaticFiles(directory=str(static_path)), name="static")
 
 app.include_router(news.router)
+app.include_router(metrics_router.router)
 
 
 @app.post("/api/admin/sync-cache")

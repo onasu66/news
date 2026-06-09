@@ -201,6 +201,60 @@ def neon_init_schema():
                     updated_at TIMESTAMPTZ DEFAULT NOW()
                 )
             """)
+            # --- キャラ投票 ---
+            cur.execute("""
+                CREATE TABLE IF NOT EXISTS persona_vote_counts (
+                    persona_id INTEGER PRIMARY KEY,
+                    vote_count  INTEGER DEFAULT 0,
+                    updated_at  TIMESTAMPTZ DEFAULT NOW()
+                )
+            """)
+            # --- 政策トピック ---
+            cur.execute("""
+                CREATE TABLE IF NOT EXISTS policy_topics (
+                    id           TEXT PRIMARY KEY,
+                    title        TEXT NOT NULL,
+                    description  TEXT,
+                    status       TEXT DEFAULT 'active',
+                    generated_at TIMESTAMPTZ DEFAULT NOW()
+                )
+            """)
+            # --- 政策提案（1トピックに最大4件） ---
+            cur.execute("""
+                CREATE TABLE IF NOT EXISTS policy_proposals (
+                    id                TEXT PRIMARY KEY,
+                    topic_id          TEXT REFERENCES policy_topics(id),
+                    title             TEXT NOT NULL,
+                    summary           TEXT,
+                    cost_estimate     TEXT,
+                    effect_prediction TEXT,
+                    pros              TEXT,
+                    cons              TEXT,
+                    expert_sources    TEXT,
+                    rank              INTEGER,
+                    vote_count        INTEGER DEFAULT 0,
+                    generated_at      TIMESTAMPTZ DEFAULT NOW()
+                )
+            """)
+            cur.execute("CREATE INDEX IF NOT EXISTS idx_policy_proposals_topic ON policy_proposals(topic_id, rank)")
+            # --- 統計メトリクス ---
+            cur.execute("""
+                CREATE TABLE IF NOT EXISTS metrics (
+                    id          SERIAL PRIMARY KEY,
+                    category    TEXT NOT NULL,
+                    subcategory TEXT,
+                    name        TEXT NOT NULL,
+                    value       NUMERIC,
+                    unit        TEXT,
+                    year        INTEGER,
+                    month       INTEGER,
+                    region      TEXT,
+                    source      TEXT,
+                    source_url  TEXT,
+                    updated_at  TIMESTAMPTZ DEFAULT NOW()
+                )
+            """)
+            cur.execute("CREATE INDEX IF NOT EXISTS idx_metrics_category ON metrics(category, year DESC NULLS LAST)")
 
 
 # --- ヘルパー ---
@@ -691,3 +745,265 @@ def neon_ai_daily_save(data: dict) -> None:
                 """,
                 (blob,),
             )
+
+
+# --- キャラ投票 ---
+
+def neon_persona_vote_increment(persona_id: int) -> int:
+    """指定キャラの票数を +1 して新しい票数を返す。"""
+    with _conn("persona_vote_increment") as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                INSERT INTO persona_vote_counts (persona_id, vote_count, updated_at)
+                VALUES (%s, 1, NOW())
+                ON CONFLICT (persona_id) DO UPDATE SET
+                    vote_count = persona_vote_counts.vote_count + 1,
+                    updated_at = NOW()
+                RETURNING vote_count
+                """,
+                (persona_id,),
+            )
+            row = cur.fetchone()
+    return row[0] if row else 1
+
+
+def neon_persona_vote_get_all() -> dict:
+    """全キャラの票数を {persona_id: count} で返す。"""
+    with _conn("persona_vote_get_all") as conn:
+        with conn.cursor() as cur:
+            cur.execute("SELECT persona_id, vote_count FROM persona_vote_counts")
+            rows = cur.fetchall()
+    return {r[0]: r[1] for r in rows}
+
+
+# --- 政策トピック & 提案 ---
+
+def neon_policy_topic_upsert(topic_id: str, title: str, description: str = "") -> None:
+    with _conn("policy_topic_upsert") as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                INSERT INTO policy_topics (id, title, description, status, generated_at)
+                VALUES (%s, %s, %s, 'active', NOW())
+                ON CONFLICT (id) DO UPDATE SET
+                    title = EXCLUDED.title,
+                    description = EXCLUDED.description,
+                    generated_at = NOW()
+                """,
+                (topic_id, title, description),
+            )
+
+
+def neon_policy_proposals_save(topic_id: str, proposals: list) -> None:
+    """proposals は dict リスト（rank, title, summary, cost_estimate, effect_prediction, pros, cons, expert_sources）。"""
+    with _conn("policy_proposals_save") as conn:
+        with conn.cursor() as cur:
+            cur.execute("DELETE FROM policy_proposals WHERE topic_id = %s", (topic_id,))
+            for p in proposals:
+                pros_json = json.dumps(p.get("pros", []), ensure_ascii=False)
+                cons_json = json.dumps(p.get("cons", []), ensure_ascii=False)
+                sources_json = json.dumps(p.get("expert_sources", []), ensure_ascii=False)
+                proposal_id = f"{topic_id}_{p.get('rank', 0)}"
+                cur.execute(
+                    """
+                    INSERT INTO policy_proposals
+                        (id, topic_id, title, summary, cost_estimate, effect_prediction,
+                         pros, cons, expert_sources, rank, vote_count, generated_at)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, 0, NOW())
+                    ON CONFLICT (id) DO UPDATE SET
+                        title = EXCLUDED.title,
+                        summary = EXCLUDED.summary,
+                        cost_estimate = EXCLUDED.cost_estimate,
+                        effect_prediction = EXCLUDED.effect_prediction,
+                        pros = EXCLUDED.pros,
+                        cons = EXCLUDED.cons,
+                        expert_sources = EXCLUDED.expert_sources,
+                        rank = EXCLUDED.rank,
+                        generated_at = NOW()
+                    """,
+                    (
+                        proposal_id,
+                        topic_id,
+                        p.get("title", ""),
+                        p.get("summary", ""),
+                        p.get("cost_estimate", ""),
+                        p.get("effect_prediction", ""),
+                        pros_json,
+                        cons_json,
+                        sources_json,
+                        p.get("rank", 0),
+                    ),
+                )
+
+
+def neon_policy_proposals_get(topic_id: str) -> list:
+    """指定トピックの提案を rank 順で返す。"""
+    with _conn("policy_proposals_get") as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                "SELECT id, topic_id, title, summary, cost_estimate, effect_prediction, "
+                "pros, cons, expert_sources, rank, vote_count "
+                "FROM policy_proposals WHERE topic_id = %s ORDER BY rank",
+                (topic_id,),
+            )
+            rows = cur.fetchall()
+    cols = ["id", "topic_id", "title", "summary", "cost_estimate", "effect_prediction",
+            "pros", "cons", "expert_sources", "rank", "vote_count"]
+    result = []
+    for row in rows:
+        d = dict(zip(cols, row))
+        for k in ("pros", "cons", "expert_sources"):
+            try:
+                d[k] = json.loads(d[k]) if d[k] else []
+            except Exception:
+                d[k] = []
+        result.append(d)
+    return result
+
+
+def neon_policy_topics_get_active() -> list:
+    """アクティブなトピック一覧を新しい順で返す。"""
+    with _conn("policy_topics_get_active") as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                "SELECT id, title, description, status, generated_at "
+                "FROM policy_topics WHERE status = 'active' ORDER BY generated_at DESC"
+            )
+            rows = cur.fetchall()
+    cols = ["id", "title", "description", "status", "generated_at"]
+    return [dict(zip(cols, r)) for r in rows]
+
+
+def neon_policy_vote_increment(proposal_id: str) -> int:
+    """指定提案の票数を +1 して新しい票数を返す。"""
+    with _conn("policy_vote_increment") as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                UPDATE policy_proposals
+                SET vote_count = vote_count + 1
+                WHERE id = %s
+                RETURNING vote_count
+                """,
+                (proposal_id,),
+            )
+            row = cur.fetchone()
+    return row[0] if row else 0
+
+
+def neon_policy_vote_counts_get(topic_id: str) -> dict:
+    """指定トピックの提案票数 {proposal_id: count} を返す。"""
+    with _conn("policy_vote_counts_get") as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                "SELECT id, vote_count FROM policy_proposals WHERE topic_id = %s",
+                (topic_id,),
+            )
+            rows = cur.fetchall()
+    return {r[0]: r[1] for r in rows}
+
+
+# --- 統計メトリクス ---
+
+def neon_metrics_upsert(rows: list) -> int:
+    """メトリクスを一括 upsert（category+name+year+month+region で一意）。
+    rows は MetricRow namedtuple または dict リスト。"""
+    if not rows:
+        return 0
+    count = 0
+    with _conn("metrics_upsert") as conn:
+        with conn.cursor() as cur:
+            for r in rows:
+                if hasattr(r, "_asdict"):
+                    d = r._asdict()
+                elif isinstance(r, dict):
+                    d = r
+                else:
+                    continue
+                try:
+                    cur.execute(
+                        """
+                        INSERT INTO metrics
+                            (category, subcategory, name, value, unit, year, month, region, source, source_url, updated_at)
+                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, NOW())
+                        ON CONFLICT DO NOTHING
+                        """,
+                        (
+                            d.get("category", ""),
+                            d.get("subcategory"),
+                            d.get("name", ""),
+                            d.get("value"),
+                            d.get("unit"),
+                            d.get("year"),
+                            d.get("month"),
+                            d.get("region"),
+                            d.get("source"),
+                            d.get("source_url"),
+                        ),
+                    )
+                    count += cur.rowcount
+                except Exception as e:
+                    logger.warning("neon_metrics_upsert: 行スキップ(%s): %s", d.get("name"), e)
+    return count
+
+
+def neon_metrics_query(
+    *,
+    category: str = "",
+    subcategory: str = "",
+    name: str = "",
+    year: Optional[int] = None,
+    limit: int = 200,
+    offset: int = 0,
+) -> list:
+    conds = []
+    params = []
+    if category:
+        conds.append("category = %s")
+        params.append(category)
+    if subcategory:
+        conds.append("subcategory = %s")
+        params.append(subcategory)
+    if name:
+        conds.append("name ILIKE %s")
+        params.append(f"%{name}%")
+    if year is not None:
+        conds.append("year = %s")
+        params.append(year)
+    where = ("WHERE " + " AND ".join(conds)) if conds else ""
+    params += [limit, offset]
+    with _conn("metrics_query") as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                f"SELECT id, category, subcategory, name, value, unit, year, month, region, source, source_url, updated_at "
+                f"FROM metrics {where} ORDER BY year DESC NULLS LAST, id DESC LIMIT %s OFFSET %s",
+                params,
+            )
+            rows = cur.fetchall()
+    cols = ["id", "category", "subcategory", "name", "value", "unit", "year", "month", "region", "source", "source_url", "updated_at"]
+    return [dict(zip(cols, r)) for r in rows]
+
+
+def neon_metrics_search(q: str, limit: int = 100) -> list:
+    with _conn("metrics_search") as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                "SELECT id, category, subcategory, name, value, unit, year, month, region, source, source_url, updated_at "
+                "FROM metrics WHERE name ILIKE %s OR category ILIKE %s OR subcategory ILIKE %s "
+                "ORDER BY year DESC NULLS LAST, id DESC LIMIT %s",
+                (f"%{q}%", f"%{q}%", f"%{q}%", limit),
+            )
+            rows = cur.fetchall()
+    cols = ["id", "category", "subcategory", "name", "value", "unit", "year", "month", "region", "source", "source_url", "updated_at"]
+    return [dict(zip(cols, r)) for r in rows]
+
+
+def neon_metrics_categories() -> list:
+    with _conn("metrics_categories") as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                "SELECT category, COUNT(*) as cnt FROM metrics GROUP BY category ORDER BY cnt DESC"
+            )
+            rows = cur.fetchall()
+    return [{"category": r[0], "count": r[1]} for r in rows]

@@ -4403,3 +4403,211 @@ body::after {
 :root[data-theme="dark"] .persona-card[data-persona-id] .persona-content {
     background: color-mix(in srgb, var(--pc-soft, #f0f0f0) 12%, transparent);
 }
+
+/* ===== AI VOTE PAGE ===== */
+.ai-vote-page { max-width: 860px; margin: 0 auto; padding: 0 1rem 2rem; }
+.ai-vote-header { text-align: center; padding: 1.5rem 0 1rem; }
+.ai-vote-title { font-size: 1.6rem; font-weight: 900; margin: 0 0 0.4rem; }
+.ai-vote-desc { color: var(--color-text-muted); font-size: 0.92rem; margin: 0 0 0.75rem; }
+.ai-policy-link {
+    display: inline-block;
+    padding: 0.35rem 1rem;
+    border-radius: 999px;
+    background: var(--color-accent);
+    color: #fff;
+    font-size: 0.85rem;
+    font-weight: 700;
+    text-decoration: none;
+}
+.ai-section-title { font-size: 1.05rem; font-weight: 800; margin: 0 0 0.75rem; }
+
+/* リーダーボード */
+.ai-leaderboard { margin-bottom: 1.5rem; background: var(--color-card); border-radius: 16px; padding: 1.1rem 1rem; border: 1px solid var(--color-border-light); }
+.leaderboard-row { display: flex; gap: 0.75rem; justify-content: center; }
+.leaderboard-card {
+    flex: 1;
+    max-width: 180px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.3rem;
+    padding: 0.75rem 0.5rem;
+    border-radius: 12px;
+    background: var(--color-bg-elevated);
+}
+.leaderboard-rank-1 { box-shadow: 0 0 0 2px #f59e0b; }
+.leaderboard-medal { font-size: 1.4rem; }
+.leaderboard-avatar { width: 56px; height: 56px; border-radius: 50%; object-fit: cover; border: 2px solid var(--color-border-light); }
+.leaderboard-name { font-size: 0.82rem; font-weight: 700; text-align: center; }
+.leaderboard-count { font-size: 0.78rem; color: var(--color-accent); font-weight: 800; }
+
+/* キャラグリッド */
+.ai-persona-grid-section { margin-bottom: 1.5rem; }
+.ai-persona-vote-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 0.75rem;
+}
+.persona-vote-card {
+    background: var(--color-card);
+    border: 1px solid var(--color-border-light);
+    border-radius: 14px;
+    padding: 0.85rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+    transition: transform 0.15s, box-shadow 0.15s;
+}
+.persona-vote-card:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(0,0,0,0.08); }
+.persona-vote-avatar-link { display: block; }
+.persona-vote-avatar { width: 64px; height: 64px; border-radius: 50%; object-fit: cover; border: 2px solid var(--color-border-light); }
+.persona-vote-body { width: 100%; display: flex; flex-direction: column; align-items: center; gap: 0.3rem; }
+.persona-vote-name { font-size: 0.88rem; font-weight: 700; text-align: center; }
+.persona-vote-type { font-size: 0.72rem; color: var(--color-text-muted); }
+.persona-vote-bar-wrap { width: 100%; display: flex; align-items: center; gap: 0.4rem; }
+.persona-vote-bar { flex: 1; height: 6px; background: var(--color-border-light); border-radius: 3px; overflow: hidden; }
+.persona-vote-bar-fill { height: 100%; background: var(--color-accent); border-radius: 3px; transition: width 0.4s; }
+.persona-vote-count { font-size: 0.72rem; color: var(--color-text-muted); white-space: nowrap; }
+.persona-vote-btn {
+    width: 100%;
+    padding: 0.4rem 0.5rem;
+    border-radius: 8px;
+    border: 1.5px solid var(--color-accent);
+    background: transparent;
+    color: var(--color-accent);
+    font-size: 0.8rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.15s;
+}
+.persona-vote-btn:hover:not(:disabled) { background: var(--color-accent); color: #fff; }
+.persona-vote-btn:disabled, .persona-vote-btn.voted {
+    border-color: #10b981;
+    color: #10b981;
+    cursor: default;
+}
+.ai-memo-section, .ai-persona-comments-section { margin-bottom: 1.25rem; }
+.ai-memo-details { background: var(--color-card); border: 1px solid var(--color-border-light); border-radius: 12px; padding: 0.75rem 1rem; }
+.ai-memo-summary { font-size: 0.9rem; font-weight: 700; cursor: pointer; list-style: none; }
+.ai-memo-summary::-webkit-details-marker { display: none; }
+.ai-memo-card { margin-top: 0.75rem; line-height: 1.7; font-size: 0.9rem; }
+.ai-persona-avatar-sm { width: 32px; height: 32px; border-radius: 50%; object-fit: cover; flex: 0 0 auto; }
+.ai-persona-comments-list { display: flex; flex-direction: column; gap: 0.75rem; margin-top: 0.75rem; }
+.ai-persona-comment { display: flex; gap: 0.65rem; align-items: flex-start; font-size: 0.88rem; }
+
+/* ===== POLICY PAGE ===== */
+.policy-page { max-width: 900px; margin: 0 auto; padding: 0 1rem 2rem; }
+.policy-header { text-align: center; padding: 1.25rem 0 1rem; }
+.policy-header-badge {
+    display: inline-block;
+    background: linear-gradient(135deg, #6366f1, #8b5cf6);
+    color: #fff;
+    font-size: 0.8rem;
+    font-weight: 700;
+    padding: 0.2rem 0.75rem;
+    border-radius: 999px;
+    margin-bottom: 0.5rem;
+}
+.policy-title { font-size: 1.7rem; font-weight: 900; margin: 0 0 0.4rem; }
+.policy-desc { color: var(--color-text-muted); font-size: 0.9rem; margin: 0 0 0.4rem; }
+.policy-meta { font-size: 0.78rem; color: var(--color-text-muted); margin: 0 0 0.75rem; }
+.policy-nav-links { display: flex; flex-wrap: wrap; gap: 0.5rem; justify-content: center; align-items: center; }
+.policy-back-link { font-size: 0.85rem; color: var(--color-accent); text-decoration: none; }
+.policy-other-label { font-size: 0.78rem; color: var(--color-text-muted); }
+.policy-topic-link { font-size: 0.82rem; background: var(--color-bg-elevated); border: 1px solid var(--color-border); border-radius: 999px; padding: 0.2rem 0.65rem; text-decoration: none; color: var(--color-text); }
+.policy-empty { text-align: center; padding: 3rem 1rem; color: var(--color-text-muted); }
+.policy-vote-hint { font-size: 0.84rem; color: var(--color-text-muted); margin: -0.25rem 0 0.75rem; }
+
+/* 投票状況バナー */
+.policy-vote-summary { background: var(--color-card); border: 1px solid var(--color-border-light); border-radius: 14px; padding: 1rem; margin-bottom: 1.5rem; }
+.policy-vote-bars { display: flex; flex-direction: column; gap: 0.55rem; }
+.policy-summary-row { display: flex; align-items: center; gap: 0.6rem; }
+.policy-summary-rank { width: 1.5rem; text-align: center; font-size: 0.82rem; font-weight: 700; color: var(--color-text-muted); }
+.policy-summary-title { flex: 0 0 160px; font-size: 0.82rem; font-weight: 600; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.policy-summary-bar { flex: 1; height: 8px; background: var(--color-border-light); border-radius: 4px; overflow: hidden; }
+.policy-summary-bar-fill { height: 100%; background: linear-gradient(90deg, #6366f1, #8b5cf6); border-radius: 4px; transition: width 0.5s; }
+.policy-summary-count { font-size: 0.78rem; color: var(--color-text-muted); white-space: nowrap; }
+
+/* 施策グリッド */
+.policy-proposals-section { margin-bottom: 1.5rem; }
+.policy-proposals-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(380px, 1fr)); gap: 1rem; }
+.policy-proposal-card {
+    background: var(--color-card);
+    border: 1px solid var(--color-border-light);
+    border-radius: 16px;
+    padding: 1.25rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    transition: box-shadow 0.2s;
+}
+.policy-proposal-card:hover { box-shadow: 0 8px 24px rgba(99,102,241,0.1); }
+.policy-proposal-header { display: flex; align-items: flex-start; gap: 0.6rem; }
+.policy-rank-badge {
+    flex: 0 0 auto;
+    padding: 0.2rem 0.6rem;
+    border-radius: 6px;
+    font-size: 0.72rem;
+    font-weight: 800;
+    background: var(--color-accent);
+    color: #fff;
+}
+.policy-rank-badge.rank-1 { background: #f59e0b; }
+.policy-rank-badge.rank-2 { background: #64748b; }
+.policy-rank-badge.rank-3 { background: #b45309; }
+.policy-rank-badge.rank-4 { background: #6366f1; }
+.policy-proposal-title { font-size: 1rem; font-weight: 800; margin: 0; line-height: 1.35; }
+.policy-proposal-summary { font-size: 0.88rem; line-height: 1.65; margin: 0; color: var(--color-text); }
+.policy-detail-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.6rem; }
+.policy-detail-item { background: var(--color-bg-elevated); border-radius: 10px; padding: 0.6rem 0.7rem; }
+.policy-detail-label { display: block; font-size: 0.72rem; font-weight: 700; color: var(--color-text-muted); margin-bottom: 0.2rem; }
+.policy-detail-value { display: block; font-size: 0.82rem; font-weight: 600; line-height: 1.5; }
+.policy-collapse { border: 1px solid var(--color-border-light); border-radius: 10px; overflow: hidden; }
+.policy-collapse-summary { padding: 0.55rem 0.75rem; font-size: 0.82rem; font-weight: 700; cursor: pointer; list-style: none; background: var(--color-bg-elevated); }
+.policy-collapse-summary::-webkit-details-marker { display: none; }
+.policy-collapse[open] .policy-collapse-summary { border-bottom: 1px solid var(--color-border-light); }
+.policy-pros-list, .policy-cons-list { margin: 0; padding: 0.6rem 0.75rem 0.6rem 1.4rem; font-size: 0.83rem; line-height: 1.7; }
+.policy-pros-list { color: #059669; }
+.policy-cons-list { color: #dc2626; }
+.policy-sources { display: flex; flex-wrap: wrap; gap: 0.35rem; align-items: center; }
+.policy-sources-label { font-size: 0.73rem; color: var(--color-text-muted); font-weight: 600; }
+.policy-source-tag { font-size: 0.72rem; background: var(--color-bg-elevated); border: 1px solid var(--color-border); border-radius: 6px; padding: 0.1rem 0.5rem; color: var(--color-text-muted); }
+.policy-vote-area { display: flex; flex-direction: column; gap: 0.45rem; margin-top: auto; }
+.policy-vote-bar-wrap { display: flex; align-items: center; gap: 0.4rem; }
+.policy-vote-bar-sm { flex: 1; height: 6px; background: var(--color-border-light); border-radius: 3px; overflow: hidden; }
+.policy-vote-bar-sm-fill { height: 100%; background: linear-gradient(90deg, #6366f1, #8b5cf6); border-radius: 3px; transition: width 0.5s; }
+.policy-vote-count-sm { font-size: 0.73rem; color: var(--color-text-muted); white-space: nowrap; }
+.policy-vote-btn {
+    width: 100%;
+    padding: 0.5rem;
+    border-radius: 10px;
+    border: 1.5px solid #6366f1;
+    background: transparent;
+    color: #6366f1;
+    font-size: 0.85rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.15s;
+}
+.policy-vote-btn:hover:not(:disabled) { background: #6366f1; color: #fff; }
+.policy-vote-btn:disabled, .policy-vote-btn.voted { border-color: #10b981; color: #10b981; cursor: default; }
+
+/* モバイル対応 */
+@media (max-width: 600px) {
+    .ai-persona-vote-grid { grid-template-columns: repeat(2, 1fr); }
+    .leaderboard-row { gap: 0.4rem; }
+    .leaderboard-card { padding: 0.5rem 0.3rem; }
+    .policy-proposals-grid { grid-template-columns: 1fr; }
+    .policy-detail-grid { grid-template-columns: 1fr; }
+    .policy-summary-title { flex: 0 0 110px; font-size: 0.76rem; }
+}
+
+/* ダークモード */
+:root[data-theme="dark"] .persona-vote-card { background: var(--color-card); border-color: var(--color-border); }
+:root[data-theme="dark"] .persona-vote-btn { border-color: var(--color-accent); color: var(--color-accent); }
+:root[data-theme="dark"] .persona-vote-btn:hover:not(:disabled) { background: var(--color-accent); color: #fff; }
+:root[data-theme="dark"] .policy-proposal-card { background: var(--color-card); border-color: var(--color-border); }
+:root[data-theme="dark"] .policy-detail-item { background: rgba(255,255,255,0.04); }
+:root[data-theme="dark"] .policy-pros-list { color: #34d399; }
+:root[data-theme="dark"] .policy-cons-list { color: #f87171; }
