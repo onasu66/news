@@ -104,11 +104,14 @@ class Settings:
     # 完全な本文がこれ以上あれば要約が短くても可
     ARTICLE_MIN_BODY_CHARS: int = int(os.getenv("ARTICLE_MIN_BODY_CHARS", "200"))
     # 生成後: ミドルマン text ブロック合計の最低文字数（3分読了の目安）
-    ARTICLE_MIN_GENERATED_TEXT_CHARS: int = int(os.getenv("ARTICLE_MIN_GENERATED_TEXT_CHARS", "1200"))
+    ARTICLE_MIN_GENERATED_TEXT_CHARS: int = int(os.getenv("ARTICLE_MIN_GENERATED_TEXT_CHARS", "900"))
     ARTICLE_MIN_EXPLAIN_COUNT: int = int(os.getenv("ARTICLE_MIN_EXPLAIN_COUNT", "3"))
     ARTICLE_MIN_NAVIGATOR_CHARS: int = int(os.getenv("ARTICLE_MIN_NAVIGATOR_CHARS", "500"))
-    # Claude 選定 JSON の summary がこれ未満なら curated 読み込み時に除外
-    CURATED_MIN_SUMMARY_CHARS: int = int(os.getenv("CURATED_MIN_SUMMARY_CHARS", "280"))
+    # Claude 選定 JSON の summary がこれ未満なら curated 読み込み時に除外（reason方式移行後は実質不使用）
+    CURATED_MIN_SUMMARY_CHARS: int = int(os.getenv("CURATED_MIN_SUMMARY_CHARS", "0"))
+    # Notion 連携（Claude 選定ログ）
+    NOTION_API_KEY: str = os.getenv("NOTION_API_KEY", "")
+    NOTION_DATABASE_ID: str = os.getenv("NOTION_DATABASE_ID", "")
     # 論文トップ「すべて」で読み込む上限（Neon/SQLite いずれも一覧の負荷に直結）
     PAPERS_LIST_MAX: int = int(os.getenv("PAPERS_LIST_MAX", "120"))
     # 論文一覧のメモリキャッシュ秒（アプリ側）

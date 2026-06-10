@@ -244,27 +244,28 @@ def load_curated_articles(path: Optional[Path] = None) -> list[NewsItem]:
             category = "テクノロジー"
         category = _resolve_curated_category(url, category)
 
+        # reason（選定理由）を優先し、なければ summary にフォールバック
+        reason = (entry.get("reason") or "").strip()
         summary = (entry.get("summary") or "").strip()
-        try:
-            from app.config import settings as _s
-
-            min_sum = max(80, int(getattr(_s, "CURATED_MIN_SUMMARY_CHARS", 280)))
-        except Exception:
-            min_sum = 280
-        if len(summary) < min_sum:
-            logger.info("要約が短すぎるため除外 (%d字): %s", len(summary), title[:50])
+        # reason方式では summary チェックをスキップ（本文フェッチで判断する）
+        # 旧形式互換: summary のみの場合は最低80字チェック
+        if not reason and len(summary) < 80:
+            logger.info("reason/summary ともに不足のため除外: %s", title[:50])
             continue
 
-        items.append(NewsItem(
+        item = NewsItem(
             id=item_id,
             title=title,
             link=url,
-            summary=summary,
+            summary=summary,  # reason方式では空文字になる（本文フェッチで補完）
             published=published,
             source=entry.get("source") or "Claude Code選定",
             category=category,
             image_url=entry.get("image_url") or None,
-        ))
+        )
+        # reason を NewsItem の extra 属性として保持（Notion ログに使う）
+        item._reason = reason  # type: ignore[attr-defined]
+        items.append(item)
 
     logger.info("curated_articles.json: %d件読み込み（重複除外後 %d件）", len(data), len(items))
     return items
@@ -286,24 +287,23 @@ def process_curated_articles(path: Optional[Path] = None, max_per_run: int = 30)
         logger.info("処理する記事がありません")
         return 0
 
-    # すでにAI解説生成済みの記事はスキップ
+    # すでにAI解説生成済みの記事はスキップ（候補池は全件・目標件数まで補充）
     cached_ids = get_cached_article_ids()
-    to_process = [x for x in items if x.id not in cached_ids][:max_per_run]
+    uncached = [x for x in items if x.id not in cached_ids]
 
-    if not to_process:
+    if not uncached:
         logger.info("全件すでに記事化済みです")
         return 0
 
-    logger.info("記事化開始: %d件", len(to_process))
-    processed_urls: set[str] = set()
-    count = 0
-
-    from .news_aggregator import NewsAggregator
-
-    # 本文フェッチ前: 要約が極端に短いものだけ弾く。
-    # 400〜600字の curated 要約は本文取得後に400字判定＋途中切れ除外（process_rss_to_site_article 内）。
+    # reason方式では summary の事前チェックをスキップ（本文フェッチ後に quality check する）
+    # reason を持つアイテムは summary が空でも通す
     pre_filtered: list = []
-    for item in to_process:
+    for item in uncached:
+        has_reason = bool(getattr(item, "_reason", ""))
+        if has_reason:
+            pre_filtered.append(item)
+            continue
+        # 旧形式互換: summary のみの場合は最低チェック
         is_paper = (item.category or "").strip() == "研究・論文"
         summary_len = len((item.summary or "").strip())
         min_pre = 360 if is_paper else 200
@@ -312,39 +312,84 @@ def process_curated_articles(path: Optional[Path] = None, max_per_run: int = 30)
             _log_save(item.id, item.title, False, error="要約不足(pre-check)", source="curated")
         else:
             pre_filtered.append(item)
-    if len(pre_filtered) < len(to_process):
-        logger.info("事前フィルタ: %d件 → %d件", len(to_process), len(pre_filtered))
-    to_process = pre_filtered
+    if len(pre_filtered) < len(uncached):
+        logger.info("事前フィルタ: %d件 → %d件", len(uncached), len(pre_filtered))
 
-    if not to_process:
+    if not pre_filtered:
         logger.info("事前チェックで全件スキップ")
         return 0
 
+    logger.info("記事化開始: 候補池 %d 件（目標 %d 件）", len(pre_filtered), max_per_run)
+    processed_urls: set[str] = set()
+    notion_results: dict[str, str] = {}  # url → 処理結果
+    count = 0
+    attempts = 0
+
+    from .news_aggregator import NewsAggregator
+
     NewsAggregator.begin_bulk_update()
     try:
-        for item in to_process:
+        for item in pre_filtered:
+            if count >= max_per_run:
+                break
+            attempts += 1
             try:
                 ok = process_rss_to_site_article(item, force=False)
                 if ok:
                     count += 1
                     processed_urls.add(item.link)
+                    notion_results[item.link] = "成功"
                     _log_save(item.id, item.title, True, source="curated")
                     logger.info("[OK] %s", item.title[:60])
                 else:
+                    notion_results[item.link] = "スキップ"
                     _log_save(item.id, item.title, False,
-                              error="スキップ（既存または生成失敗）", source="curated")
-                    logger.warning("[SKIP] %s", item.title[:60])
+                              error="スキップ（既存または生成失敗）→次候補へ", source="curated")
+                    logger.warning("[SKIP] %s → 次候補", item.title[:60])
             except Exception as e:
+                notion_results[item.link] = "失敗"
                 _log_save(item.id, item.title, False, error=str(e), source="curated")
                 logger.error("[ERR] %s: %s", item.title[:60], e)
     finally:
         NewsAggregator.end_bulk_update()
+    if count < max_per_run:
+        logger.warning(
+            "記事化: 目標 %d 件に届かず %d 件（候補 %d 件・試行 %d 件）",
+            max_per_run,
+            count,
+            len(pre_filtered),
+            attempts,
+        )
 
     # 処理済み URL を履歴に記録（次回の重複除外に使う）
     if processed_urls:
         _save_history(processed_urls)
 
-    logger.info("記事化完了: %d / %d 件", count, len(to_process))
+    logger.info("記事化完了: %d / %d 件（試行 %d 件）", count, max_per_run, attempts)
+
+    # Notion に処理結果をログ記録
+    try:
+        from .notion_logger import log_research_batch
+        from app.services.claude_researcher import _detect_current_slot  # type: ignore[attr-defined]
+        slot = _detect_current_slot()
+    except Exception:
+        slot = "unknown"
+    try:
+        from .notion_logger import log_research_batch
+        notion_articles = []
+        for item in pre_filtered:
+            notion_articles.append({
+                "title": item.title or "",
+                "url": item.link or "",
+                "reason": getattr(item, "_reason", ""),
+                "category": item.category or "",
+                "source": item.source or "",
+                "published": item.published.isoformat() if item.published else None,
+            })
+        log_research_batch(notion_articles, slot=slot, results=notion_results)
+    except Exception as e:
+        logger.warning("Notion ログ記録失敗（処理には影響なし）: %s", e)
+
     # （案A）ローカルで記事化したら Render に通知して一覧キャッシュを更新させる
     if count > 0:
         try:

@@ -9,7 +9,7 @@
     <meta property="og:type" content="website">
     <meta property="og:title" content="知リポAI - 最新ニュースをAIが知的に解説">
     <meta property="og:description" content="信頼メディアの最新ニュースを収集し、AIが背景・ポイントを解説。">
-    <meta property="og:image" content="{{ og_image|default('https://picsum.photos/1200/630') }}">
+    <meta property="og:image" content="{{ og_image|default(default_og()) }}">
     <meta property="og:url" content="{{ site_url }}/news">
     <meta property="og:site_name" content="知リポAI">
     {% if news_breadcrumb_jsonld %}
@@ -42,7 +42,7 @@
                 {% for rec in top_recommendations[:3] %}
                 <article class="top-pick-card">
                     <a href="/topic/{{ rec.id }}" class="top-pick-link">
-                        <img src="{{ rec.image_url or 'https://picsum.photos/400/225' }}" alt="{{ rec.title }}" loading="lazy">
+                        <img src="{{ rec.image_url or category_card(rec.category) }}" alt="{{ rec.title }}" loading="lazy">
                         <div class="top-pick-body">
                             <span class="top-pick-meta">{{ rec.source }}</span>
                             <h3>{{ rec.title }}</h3>
@@ -86,7 +86,7 @@
                         </div>
                     </div>
                     <div class="news-card-image">
-                        <img src="{{ item.image_url or 'https://picsum.photos/400/225' }}" alt="{{ item.title }}" loading="lazy" onerror="this.src='https://picsum.photos/seed/{{ item.id }}/400/225'">
+                        <img src="{{ item.image_url or category_card(item.category) }}" alt="{{ item.title }}" loading="lazy" onerror="this.src='{{ category_card(item.category) }}'">
                         <span class="news-card-category">{{ item.category }}</span>
                     </div>
                 </a>

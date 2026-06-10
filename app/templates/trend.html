@@ -20,7 +20,7 @@
                         <p class="news-summary-line">👀 {{ item.summary[:80] }}{% if item.summary|length > 80 %}...{% endif %}</p>
                     </div>
                     <div class="news-card-image">
-                        <img src="{{ item.image_url or 'https://picsum.photos/400/225' }}" alt="{{ item.title }}" loading="lazy">
+                        <img src="{{ item.image_url or category_card(item.category) }}" alt="{{ item.title }}" loading="lazy">
                         <span class="news-card-category">{{ item.category }}</span>
                     </div>
                 </a>

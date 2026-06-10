@@ -639,39 +639,40 @@ def process_new_rss_articles(
         else:
             news_picks = _select_diverse_batch(non_papers, remaining_slots, max_per_source=2, max_per_category=2)
 
-    to_process = paper_picks + news_picks
+    primary_picks = paper_picks + news_picks
 
-    # max_per_run 本を狙うため、足りない場合は条件を緩めて補充する。
-    # 1) まだ未選出のニュース候補（dedup済み）から順に補充
-    # 2) それでも不足なら、論文候補の残りから補充
-    selected_ids = {x.id for x in to_process}
-    if len(to_process) < max_per_run:
-        for x in non_papers:
-            if len(to_process) >= max_per_run:
-                break
-            if x.id in selected_ids:
-                continue
-            to_process.append(x)
-            selected_ids.add(x.id)
-    if len(to_process) < max_per_run:
-        for x in deduped_papers:
-            if len(to_process) >= max_per_run:
-                break
-            if x.id in selected_ids:
-                continue
-            to_process.append(x)
-            selected_ids.add(x.id)
+    # 優先順の候補池: 選定分 → 残りニュース → 残り論文（スキップ時に次候補へ）
+    reserve_queue: list[NewsItem] = []
+    reserve_seen: set[str] = set()
+
+    def _enqueue_reserve(candidates: list[NewsItem]) -> None:
+        for x in candidates:
+            if x.id not in reserve_seen:
+                reserve_queue.append(x)
+                reserve_seen.add(x.id)
+
+    _enqueue_reserve(primary_picks)
+    _enqueue_reserve(non_papers)
+    _enqueue_reserve(deduped_papers)
+
+    logger.info(
+        "RSS記事化: 候補池 %d 件（目標 %d 件）",
+        len(reserve_queue),
+        max_per_run,
+    )
 
     count = 0
+    attempts = 0
     from .news_aggregator import NewsAggregator
 
     NewsAggregator.begin_bulk_update()
     try:
-        for idx, item in enumerate(to_process):
+        for item in reserve_queue:
+            if count >= max_per_run:
+                break
+            attempts += 1
             try:
                 ok = process_rss_to_site_article(item, force=force)
-                # force=false のままだと「実際には既存キャッシュがある/途中状態」が原因でスキップ扱いになることがある。
-                # 選んだ分は記事化する方針に寄せるため、失敗時は force=true で1回だけ上書き再試行する。
                 if not ok and not force:
                     ok = process_rss_to_site_article(item, force=True)
                 if ok:
@@ -682,14 +683,28 @@ def process_new_rss_articles(
                         item.id,
                         item.title,
                         False,
-                        error="スキップ（既存/生成失敗）※force=true再試行でも失敗",
+                        error="スキップ（既存/生成失敗）→次候補へ",
                         source="rss_seed",
+                    )
+                    logger.info(
+                        "RSSスキップ (%d/%d): %s",
+                        count,
+                        max_per_run,
+                        (item.title or "")[:50],
                     )
             except Exception as e:
                 _log_save(item.id, item.title, False, error=str(e), source="rss_seed")
-            _wait_between_gemini_articles(idx, len(to_process))
+            _wait_between_gemini_articles(attempts - 1, len(reserve_queue))
     finally:
         NewsAggregator.end_bulk_update()
+    if count < max_per_run:
+        logger.warning(
+            "RSS記事化: 目標 %d 件に届かず %d 件（候補 %d 件・試行 %d 件）",
+            max_per_run,
+            count,
+            len(reserve_queue),
+            attempts,
+        )
     # （案A）ローカルで記事化したら Render に通知して一覧キャッシュを更新させる
     if count > 0:
         try:

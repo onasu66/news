@@ -65,7 +65,7 @@ def _load_middleman_prompt_config() -> dict:
         },
         "length": {
             "reading_time_minutes": 3,
-            "article_chars_min": 1200,
+            "article_chars_min": 900,
             "article_chars_max": 2500,
         },
         "blocks": {
@@ -131,7 +131,7 @@ def _build_middleman_claude_prompt(title: str, content: str) -> str:
 - explain（吹き出し解説）は{blocks.get("explain_min", 3)}〜{blocks.get("explain_max", 6)}個
 - explain は{blocks.get("explain_sentence_range", "1〜3文")}で簡潔に
 - 全体で約{length.get("reading_time_minutes", 3)}分で読める分量
-- 本文目安: {length.get("article_chars_min", 1200)}〜{length.get("article_chars_max", 2500)}文字
+- 本文目安: {length.get("article_chars_min", 900)}〜{length.get("article_chars_max", 2500)}文字
 
 補足方針:
 {focus_text if focus_text else "- 記事理解を最優先し、難所を補足する"}"""

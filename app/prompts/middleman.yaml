@@ -10,7 +10,7 @@ style:
 
 length:
   reading_time_minutes: 3
-  article_chars_min: 1200
+  article_chars_min: 900
   article_chars_max: 2500
 
 blocks:

@@ -80,6 +80,57 @@
         <button type="button" class="read-mode-btn" id="tab-mode-deep" role="tab" aria-selected="false" aria-controls="article-deep-content" data-mode="deep" tabindex="-1">📚 3分で深掘り</button>
     </div>
 
+    {% if personas %}
+    <section class="personas-section personas-section--early" aria-label="偉人の視点">
+        <h2 class="personas-title">偉人の視点 <span class="personas-hint">— 同じニュースを14人のAIが別の角度から解説</span></h2>
+        {% for p in personas %}
+        {% if loop.first %}
+        <div class="persona-spotlight persona-card persona-card--spotlight" data-persona-id="{{ p.id }}" data-article-id="{{ article.id }}">
+            <div class="persona-spotlight-head">
+                <img src="{{ p.image_url }}" alt="" class="persona-avatar persona-avatar--spotlight" loading="lazy">
+                <div class="persona-spotlight-meta">
+                    <p class="persona-spotlight-intro"><span class="persona-name">{{ p.name }}</span><span class="persona-spotlight-suffix">の視点</span></p>
+                    <div class="persona-spotlight-actions" aria-label="シェア"></div>
+                </div>
+            </div>
+            <div class="persona-content persona-content--spotlight">
+                <p class="persona-loading">読込中...</p>
+            </div>
+        </div>
+        {% endif %}
+        {% endfor %}
+        {% if personas|length > 1 %}
+        <p class="personas-more-label">ほかの偉人の視点（タップで開く）</p>
+        <div class="personas-grid personas-grid--more">
+            {% for p in personas %}
+            {% if not loop.first %}
+            <div class="persona-card" data-persona-id="{{ p.id }}" data-article-id="{{ article.id }}">
+                <button type="button" class="persona-trigger" aria-expanded="false">
+                    <img src="{{ p.image_url }}" alt="" class="persona-avatar" loading="lazy">
+                    <span class="persona-name">{{ p.name }}</span>
+                    <span class="persona-arrow">▶</span>
+                </button>
+                <div class="persona-content" hidden>
+                    <p class="persona-loading">読込中...</p>
+                </div>
+            </div>
+            {% endif %}
+            {% endfor %}
+        </div>
+        {% endif %}
+        {% if all_personas %}
+        <details class="personas-all-list">
+            <summary>全{{ all_personas|length }}人格一覧</summary>
+            <ul class="personas-all-ul">
+                {% for p in all_personas %}
+                <li class="personas-all-item"><img src="{{ p.image_url }}" alt="" class="personas-all-avatar" loading="lazy"> {{ p.name }}</li>
+                {% endfor %}
+            </ul>
+        </details>
+        {% endif %}
+    </section>
+    {% endif %}
+
     <div class="article-content-wrapper">
         <div class="article-main">
             <div id="article-short-content" class="article-read-content" role="tabpanel" aria-labelledby="tab-mode-short" tabindex="0">
@@ -156,34 +207,6 @@
         </div>
     </section>
     {% endif %}
-
-    <section class="personas-section">
-        <h2 class="personas-title">AIの多角的な視点 <span class="personas-hint">（3人の偉人が解説・タップで開閉）</span></h2>
-        <div class="personas-grid">
-            {% for p in personas %}
-            <div class="persona-card" data-persona-id="{{ p.id }}" data-article-id="{{ article.id }}">
-                <button type="button" class="persona-trigger" aria-expanded="{{ 'true' if loop.first else 'false' }}">
-                    <img src="{{ p.image_url }}" alt="" class="persona-avatar" loading="lazy">
-                    <span class="persona-name">{{ p.name }}</span>
-                    <span class="persona-arrow">{{ '▼' if loop.first else '▶' }}</span>
-                </button>
-                <div class="persona-content"{% if not loop.first %} hidden{% endif %}>
-                    <p class="persona-loading">読込中...</p>
-                </div>
-            </div>
-            {% endfor %}
-        </div>
-        {% if all_personas %}
-        <details class="personas-all-list" style="margin-top:1rem;">
-            <summary>全{{ all_personas|length }}人格一覧</summary>
-            <ul class="personas-all-ul" style="list-style:none;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:0.25rem;margin:0.5rem 0 0;">
-                {% for p in all_personas %}
-                <li class="personas-all-item"><img src="{{ p.image_url }}" alt="" class="personas-all-avatar" loading="lazy"> {{ p.name }}</li>
-                {% endfor %}
-            </ul>
-        </details>
-        {% endif %}
-    </section>
 
     {% if vote_data %}
     <section class="vote-section" id="vote-section">
@@ -636,21 +659,28 @@ document.addEventListener('DOMContentLoaded', function() {
         var shareText = '【' + name + 'の一言】\n\n「' + comment + '」\n\n' + articleTitle + '\n' + url + '\n\n#知リポAI';
         var xUrl = 'https://twitter.com/intent/tweet?text=' + encodeURIComponent(shareText);
 
-        var bar = document.createElement('div');
-        bar.className = 'persona-share-bar';
+        var actionsHost = card.querySelector('.persona-spotlight-actions');
+        var bar = actionsHost || document.createElement('div');
+        if (!actionsHost) {
+            bar.className = 'persona-share-bar';
+        } else {
+            bar.innerHTML = '';
+            bar.className = 'persona-spotlight-actions';
+        }
 
         var copyBtn = document.createElement('button');
         copyBtn.type = 'button';
         copyBtn.className = 'persona-share-btn';
-        copyBtn.innerHTML = '🔗 コピー';
+        copyBtn.innerHTML = '🔗';
         copyBtn.title = 'このコメントをクリップボードにコピー';
+        copyBtn.setAttribute('aria-label', 'コメントをコピー');
         copyBtn.addEventListener('click', function(e) {
             e.stopPropagation();
             if (navigator.clipboard && navigator.clipboard.writeText) {
                 navigator.clipboard.writeText(shareText).then(function() {
-                    copyBtn.innerHTML = '✅ コピー済み';
+                    copyBtn.innerHTML = '✅';
                     if (window.showSiteToast) window.showSiteToast(name + 'のコメントをコピーしました');
-                    setTimeout(function() { copyBtn.innerHTML = '🔗 コピー'; }, 1800);
+                    setTimeout(function() { copyBtn.innerHTML = '🔗'; }, 1800);
                 });
             }
         });
@@ -663,9 +693,11 @@ document.addEventListener('DOMContentLoaded', function() {
         xBtn.innerHTML = '𝕏 ポスト';
         xBtn.title = 'Xにポストする';
 
-        bar.appendChild(copyBtn);
         bar.appendChild(xBtn);
-        content.appendChild(bar);
+        bar.appendChild(copyBtn);
+        if (!actionsHost) {
+            content.appendChild(bar);
+        }
     }
 
     var hasSsr = contentEl && contentEl.querySelector('.article-text, .article-readflow') && ssrPersonas && ssrPersonas.length > 0;
@@ -740,9 +772,10 @@ document.addEventListener('DOMContentLoaded', function() {
             });
     }
 
-    // Persona toggle
+    // Persona toggle（スポットライト1人目は常時展開のため対象外）
     document.querySelectorAll('.persona-card').forEach(function(card) {
         var btn = card.querySelector('.persona-trigger');
+        if (!btn) return;
         var content = card.querySelector('.persona-content');
         btn.addEventListener('click', function() {
             var isOpen = btn.getAttribute('aria-expanded') === 'true';

@@ -1461,8 +1461,38 @@ body::after {
 /* ========== ニュースカード ========== */
 .news-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
     gap: 1.5rem;
+}
+
+/* PC: 一覧を2〜3列で見やすく */
+@media (min-width: 769px) {
+    .news-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 1.25rem;
+    }
+    .top-picks-grid {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 0.75rem;
+    }
+}
+
+@media (min-width: 1100px) {
+    .news-grid {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 1.5rem;
+    }
+    .page-layout--news .news-grid,
+    .page-layout--papers .news-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (min-width: 1280px) {
+    .page-layout--news .news-grid,
+    .page-layout--papers .news-grid {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
 }
 
 .news-card {
@@ -2340,6 +2370,112 @@ body::after {
     border-top: 2px solid var(--color-border);
 }
 
+.personas-section--early {
+    margin-top: 1.25rem;
+    padding: 1.25rem 1rem 1.5rem;
+    border-top: none;
+    border: 1px solid var(--color-border-light);
+    border-radius: var(--radius-lg);
+    background: linear-gradient(165deg, rgba(99, 102, 241, 0.06) 0%, rgba(255, 255, 255, 0.92) 55%);
+    box-shadow: var(--shadow-sm);
+}
+
+.persona-spotlight {
+    border: 1px solid rgba(99, 102, 241, 0.22);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    background: var(--color-surface);
+    box-shadow: 0 8px 28px rgba(99, 102, 241, 0.1);
+}
+
+.persona-spotlight-head {
+    display: flex;
+    align-items: center;
+    gap: 0.85rem;
+    padding: 1rem 1.1rem 0.65rem;
+    flex-wrap: wrap;
+}
+
+.persona-avatar--spotlight {
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 2px solid var(--pc, var(--color-accent));
+    flex-shrink: 0;
+}
+
+.persona-spotlight-meta {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+}
+
+.persona-spotlight-intro {
+    margin: 0;
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: var(--color-primary);
+    line-height: 1.35;
+}
+
+.persona-spotlight-suffix {
+    font-weight: 500;
+    color: var(--color-text-muted);
+    font-size: 0.92rem;
+}
+
+.persona-spotlight-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    flex-shrink: 0;
+}
+
+.persona-content--spotlight {
+    padding: 0 1.1rem 1.15rem;
+    border-top: none;
+}
+
+.persona-content--spotlight .persona-opinion {
+    font-size: 0.98rem;
+    line-height: 1.75;
+    margin: 0;
+    padding: 0.85rem 1rem;
+    background: var(--pc-soft, var(--color-bg-subtle));
+    border-radius: 12px;
+    border-left: 4px solid var(--pc, var(--color-accent));
+}
+
+.personas-more-label {
+    margin: 1rem 0 0.55rem;
+    font-size: 0.82rem;
+    color: var(--color-text-muted);
+    font-weight: 600;
+}
+
+.personas-grid--more {
+    grid-template-columns: 1fr;
+    gap: 0.55rem;
+}
+
+.personas-all-list {
+    margin-top: 1rem;
+}
+
+.personas-all-ul {
+    list-style: none;
+    padding: 0;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    gap: 0.25rem;
+    margin: 0.5rem 0 0;
+}
+
 .personas-title {
     font-size: 1.2rem;
     font-weight: 700;
@@ -2433,6 +2569,16 @@ body::after {
     font-size: 0.85rem;
     color: var(--color-accent);
 }
+.persona-spotlight-actions .persona-share-btn {
+    min-height: 36px;
+    padding: 0.35rem 0.75rem;
+    font-size: 0.82rem;
+}
+
+.persona-spotlight-actions .persona-share-btn--x {
+    font-weight: 700;
+}
+
 .persona-share-bar {
     display: flex;
     gap: 0.5rem;
@@ -4635,6 +4781,16 @@ body::after {
 /* ダークモード対応: persona カードの背景は透過 */
 :root[data-theme="dark"] .persona-card[data-persona-id] .persona-content {
     background: color-mix(in srgb, var(--pc-soft, #f0f0f0) 12%, transparent);
+}
+
+:root[data-theme="dark"] .personas-section--early {
+    background: linear-gradient(165deg, rgba(99, 102, 241, 0.12) 0%, rgba(15, 23, 42, 0.95) 55%);
+    border-color: var(--color-border);
+}
+
+:root[data-theme="dark"] .persona-spotlight {
+    background: var(--color-card);
+    border-color: rgba(129, 140, 248, 0.35);
 }
 
 /* ===== AI VOTE PAGE ===== */

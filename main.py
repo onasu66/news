@@ -34,14 +34,14 @@ JST = ZoneInfo("Asia/Tokyo")
 
 
 def _scheduled_rss_fetch_and_article():
-    """指定時刻: RSS取得→新しい記事だけ良い記事を記事化（13:00/20:00）"""
+    """指定時刻: RSS取得→新しい記事だけ良い記事を記事化（13:00/19:00）"""
     NewsAggregator._db_backoff_until = None  # スケジュール実行は必ず試みる
     NewsAggregator.get_news(force_refresh=True)
     _scheduled_refresh_vote_cache()
 
 
-def _scheduled_2000_rss_and_ai_daily():
-    """20:00 JST: (1) RSS取得→記事化 (2) その後にAI日次コンテンツを1日1回だけ更新"""
+def _scheduled_1900_rss_and_ai_daily():
+    """19:00 JST: (1) RSS取得→記事化 (2) その後にAI日次コンテンツを1日1回だけ更新"""
     NewsAggregator._db_backoff_until = None  # スケジュール実行は必ず試みる
     NewsAggregator.get_news(force_refresh=True)
     try:
@@ -320,13 +320,13 @@ async def lifespan(app: FastAPI):
             CronTrigger(hour=13, minute=0, timezone=JST),
             id="rss_1300",
         )
-        # 20:00: 記事更新のあと、AI日次コンテンツを1日1回だけ更新
+        # 19:00: 記事更新のあと、AI日次コンテンツを1日1回だけ更新
         scheduler.add_job(
-            _scheduled_2000_rss_and_ai_daily,
-            CronTrigger(hour=20, minute=0, timezone=JST),
-            id="rss_2000_and_ai_daily",
+            _scheduled_1900_rss_and_ai_daily,
+            CronTrigger(hour=19, minute=0, timezone=JST),
+            id="rss_1900_and_ai_daily",
         )
-        logger.info("RSS記事化: 13:00 / 20:00 JST に設定")
+        logger.info("RSS記事化: 13:00 / 19:00 JST に設定")
         # Claude ウェブリサーチ: 8:30(朝) / 16:30(夕) / 22:00(夜) の3スロット
         # スロットごとにカテゴリ比率・記事数・SEO指示が異なる
         # claude CLI がない環境（Render 本番）では各関数内で自動スキップ

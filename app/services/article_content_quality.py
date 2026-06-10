@@ -41,6 +41,10 @@ def _settings_int(name: str, default: int) -> int:
         return default
 
 
+def min_generated_text_chars() -> int:
+    return _settings_int("ARTICLE_MIN_GENERATED_TEXT_CHARS", 900)
+
+
 def build_source_text(title: str, summary: str, body: str | None) -> str:
     """AI に渡す前の素材テキスト（タイトル・要約・本文）。"""
     parts: list[str] = []
@@ -140,6 +144,9 @@ def is_source_material_sufficient(
     min_body = _settings_int("ARTICLE_MIN_BODY_CHARS", 200)
 
     if body_len >= min_body:
+        # 本文が十分ある場合: 500字以上あれば summary なしでも通す（Claude reason方式対応）
+        if body_len >= 500:
+            return total >= min_total
         return total >= min_total and summary_len >= 80
 
     if summary_len >= min_summary and total >= min_total:
@@ -190,7 +197,7 @@ def is_generated_article_sufficient(blocks: list[dict[str, Any]] | None) -> bool
         elif typ == "explain":
             explain_count += 1
 
-    min_text = _settings_int("ARTICLE_MIN_GENERATED_TEXT_CHARS", 1200)
+    min_text = min_generated_text_chars()
     min_explains = _settings_int("ARTICLE_MIN_EXPLAIN_COUNT", 3)
 
     if text_chars < min_text:
