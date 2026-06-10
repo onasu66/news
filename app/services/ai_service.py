@@ -249,16 +249,12 @@ def _valid_text_explain_blocks(blocks: object) -> bool:
     return any(str(x.get("content", "")).strip() for x in blocks)
 
 
-def get_image_url(
-    path: str,
-    width: int = 800,
-    height: int = 450,
-    category: str | None = None,
-) -> str:
-    """記事画像URL。実URLがなければカテゴリ別固定画像を返す。"""
-    from app.services.image_assets import get_image_url as _category_image_url
-
-    return _category_image_url(path, width, height, category=category)
+def get_image_url(path: str, width: int = 800, height: int = 450) -> str:
+    """CDN経由で画像URLを生成（プレースホルダー用）"""
+    if path and path.startswith("http"):
+        return path
+    seed = abs(hash(path or "")) % 10000 if path else 0
+    return f"{settings.CDN_BASE_URL}/seed/{seed}/{width}/{height}"
 
 
 def explain_article_with_ai(

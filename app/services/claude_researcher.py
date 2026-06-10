@@ -728,26 +728,34 @@ def _invoke_claude_research_session(
     cmd = _build_cmd(cmd_path, use_last30days=use_last30days)
     logger.info("[%s] Claude 起動 (タイムアウト=%d 秒)", label, timeout)
 
+    def _decode_cli_bytes(b: bytes) -> str:
+        for enc in ("utf-8", "cp932", "latin-1"):
+            try:
+                return b.decode(enc)
+            except UnicodeDecodeError:
+                continue
+        return b.decode("utf-8", errors="replace")
+
     try:
         proc = subprocess.run(
             cmd,
-            input=prompt,
+            input=prompt.encode("utf-8"),
             capture_output=True,
-            text=True,
-            encoding="utf-8",
             timeout=timeout,
             cwd=str(PROJECT_ROOT),
             env=_subprocess_env(),
             shell=False,
         )
+        proc_stdout = _decode_cli_bytes(proc.stdout or b"")
+        proc_stderr = _decode_cli_bytes(proc.stderr or b"")
 
         if proc.returncode != 0:
             logger.error(
                 "[%s] 終了コード %d:\nstdout=%s\nstderr=%s",
                 label,
                 proc.returncode,
-                (proc.stdout or "")[:500],
-                (proc.stderr or "")[:500],
+                proc_stdout[:500],
+                proc_stderr[:500],
             )
             return None
 
@@ -755,8 +763,8 @@ def _invoke_claude_research_session(
         if output_file.exists():
             raw = output_file.read_text(encoding="utf-8").strip()
         else:
-            stdout = (proc.stdout or "").strip()
-            stderr_tail = (proc.stderr or "")[-800:]
+            stdout = proc_stdout.strip()
+            stderr_tail = proc_stderr[-800:]
             logger.warning(
                 "[%s] 指定パスに出力なし。stdout から JSON を救済します (stderr末尾=%r)",
                 label,

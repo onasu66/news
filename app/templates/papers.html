@@ -11,9 +11,6 @@
     <meta property="og:title" content="知リポAI — 偉人14人が解説するAI論文・ニュースメディア">
     <meta property="og:description" content="ブッダ・ニーチェ・織田信長ら14人のAIが、Nature・Science・arXivなど最新研究論文を多角的に解説。難解な論文も1分で理解。">
     <meta property="og:url" content="{{ site_url }}/">
-    <meta property="og:image" content="{{ og_image|default(category_og('研究・論文')) }}">
-    <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:image" content="{{ og_image|default(category_og('研究・論文')) }}">
     {% if papers_breadcrumb_jsonld %}
     <script type="application/ld+json">{{ papers_breadcrumb_jsonld|tojson }}</script>
     {% endif %}
@@ -47,7 +44,7 @@
                 {% for rec in top_recommendations[:3] %}
                 <article class="top-pick-card">
                     <a href="/topic/{{ rec.id }}" class="top-pick-link">
-                        <img src="{{ rec.image_url or category_card(rec.category) }}" alt="{{ rec.title }}" loading="lazy" decoding="async">
+                        <img src="{{ rec.image_url or 'https://picsum.photos/400/225' }}" alt="{{ rec.title }}" loading="lazy" decoding="async">
                         <div class="top-pick-body">
                             <span class="top-pick-meta">{{ rec.source }}</span>
                             <h3>{{ rec.title }}</h3>
@@ -89,7 +86,7 @@
                         </div>
                     </div>
                     <div class="news-card-image">
-                        <img src="{{ item.image_url or category_card(item.category) }}" alt="{{ item.title }}" loading="lazy" decoding="async" onerror="this.src='{{ category_card(item.category) }}'">
+                        <img src="{{ item.image_url or 'https://picsum.photos/400/225' }}" alt="{{ item.title }}" loading="lazy" decoding="async" onerror="this.src='https://picsum.photos/seed/{{ item.id }}/400/225'">
                         <span class="news-card-category">{{ item.paper_domain or '総合科学' }}</span>
                     </div>
                 </a>
