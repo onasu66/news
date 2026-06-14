@@ -1,5 +1,7 @@
 {% extends "base.html" %}
-{% block title %}知リポAI — 偉人14人が解説するAI論文・ニュースメディア{% endblock %}
+{% block title %}AI論文をわかりやすく解説 — arXiv・Nature・Science最新論文 | 知リポAI{% endblock %}
+{% block meta_description %}AI論文・研究論文をわかりやすく日本語で解説。arXiv・Nature・Scienceから最新論文を毎日収集し、機械学習・LLM・深層学習論文の要約・解説を提供。論文検索・AI最新研究の情報収集に。{% endblock %}
+{% block meta_keywords %}<meta name="keywords" content="AI論文,論文解説,arXiv日本語,論文わかりやすく,論文要約AI,AI最新研究,機械学習論文解説,LLM論文,Nature論文日本語,研究論文まとめ,論文解説日本語,AI研究わかりやすく,知リポAI">{% endblock %}
 {% block meta_extra %}
     {# トップ（論文）: canonical は `/` 固定。page>1 は noindex #}
     <link rel="canonical" href="{{ site_url }}/">
@@ -8,26 +10,20 @@
     <meta name="robots" content="noindex,follow">
     {% endif %}
     <meta property="og:type" content="website">
-    <meta property="og:title" content="知リポAI — 偉人14人が解説するAI論文・ニュースメディア">
-    <meta property="og:description" content="ブッダ・ニーチェ・織田信長ら14人のAIが、Nature・Science・arXivなど最新研究論文を多角的に解説。難解な論文も1分で理解。">
+    <meta property="og:title" content="AI論文をわかりやすく解説 — arXiv・Nature最新論文 | 知リポAI">
+    <meta property="og:description" content="arXiv・Nature・Scienceの最新AI論文を毎日収集し、14人の偉人AIが日本語でわかりやすく解説。機械学習・LLM・深層学習の論文要約に。">
     <meta property="og:url" content="{{ site_url }}/">
-    {% if papers_breadcrumb_jsonld %}
-    <script type="application/ld+json">{{ papers_breadcrumb_jsonld|tojson }}</script>
-    {% endif %}
-    {% if papers_itemlist_jsonld %}
-    <script type="application/ld+json">{{ papers_itemlist_jsonld|tojson }}</script>
-    {% endif %}
 {% endblock %}
 {% block content %}
 <section class="site-hero">
     <div class="site-hero-inner">
-        <h1 class="site-hero-title">過去の偉人14人が、現代ニュースを解説する</h1>
-        <p class="site-hero-desc">ブッダ・ニーチェ・織田信長など時代と思想を超えた14人のAIキャラクターが、最新の研究論文とニュースを多角的に解説。難解な論文も「1分で理解」できる形に変換します。</p>
+        <h1 class="site-hero-title">AI論文・研究論文をわかりやすく解説</h1>
+        <p class="site-hero-desc">arXiv・Nature・Scienceから最新のAI論文・研究論文を毎日収集。ブッダ・アインシュタイン・ニーチェなど14人の偉人AIが、難解な機械学習・LLM論文を「1分で理解」できる日本語解説に変換します。</p>
         <div class="site-hero-pills">
-            <a href="/" class="site-hero-pill site-hero-pill--active">📄 研究論文</a>
-            <a href="/news" class="site-hero-pill">📰 ニュース</a>
+            <a href="/" class="site-hero-pill site-hero-pill--active">📄 AI論文解説</a>
+            <a href="/news" class="site-hero-pill">📰 AIニュース</a>
             <a href="/personas" class="site-hero-pill">🎭 14人の偉人</a>
-            <a href="/ai" class="site-hero-pill">🤖 AI政策立案</a>
+            <a href="/ai" class="site-hero-pill">🤖 AI政策</a>
         </div>
     </div>
 </section>
@@ -96,6 +92,23 @@
         </div>
 
         {% if has_papers %}
+        <section class="papers-about-section">
+            <h2 class="papers-about-title">AI論文・研究論文の解説について</h2>
+            <div class="papers-about-grid">
+                <div class="papers-about-item">
+                    <h3 class="papers-about-item-title">📄 対応している論文・ソース</h3>
+                    <p class="papers-about-item-desc">arXiv（cs.AI・cs.LG・cs.CL・cs.CV）、Nature、Science、BMJ Open、PLOS ONE、Frontiers など主要な一次ソースから毎日収集。機械学習・LLM・深層学習・医学・物理学の最新研究論文を幅広くカバーします。</p>
+                </div>
+                <div class="papers-about-item">
+                    <h3 class="papers-about-item-title">🧠 わかりやすく解説する方法</h3>
+                    <p class="papers-about-item-desc">「1分で理解」では論文の要点を3つのポイントに整理。「3分で深掘り」ではブッダ・アインシュタイン・ニーチェなど14人の偉人AIがそれぞれの視点で解説します。難解な英語論文も日本語でわかりやすく読めます。</p>
+                </div>
+                <div class="papers-about-item">
+                    <h3 class="papers-about-item-title">🔗 一次ソースの確認</h3>
+                    <p class="papers-about-item-desc">各論文ページには arXiv・Nature・DOI への直接リンクを掲載。AI解説はあくまで補助情報であり、研究・学習・業務利用の際は必ず原論文をご確認ください。</p>
+                </div>
+            </div>
+        </section>
         <div id="papers-sentinel" style="height:1px;"></div>
         <div id="papers-loader" class="infinite-loader" style="display:none;" aria-busy="true" aria-label="追加の論文を読み込み中">
             <div class="loader-spinner" aria-hidden="true"></div>

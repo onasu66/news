@@ -786,10 +786,16 @@ def _generate_long_article_blocks(
     max_attempts: int = 3,
     log_prefix: str = "long_article",
 ) -> list[dict[str, Any]] | None:
-    """最低字数以上の text/explain blocks を生成。短い場合はフィードバック付きで再試行。"""
-    from app.services.article_content_quality import is_generated_article_sufficient, min_generated_text_chars
+    """最低字数・日本語比率以上の text/explain blocks を生成。不足時はフィードバック付きで再試行。"""
+    from app.services.article_content_quality import (
+        blocks_mainly_japanese,
+        is_generated_blocks_quantity_sufficient,
+        min_generated_ja_ratio,
+        min_generated_text_chars,
+    )
 
     min_text = min_generated_text_chars()
+    min_ja_pct = int(min_generated_ja_ratio() * 100)
 
     system = LONG_ARTICLE_BUBBLES_ROLE + " 出力はJSONの blocks 配列のみ。余計な説明は不要です。"
     messages: list[dict[str, str]] = [
@@ -814,20 +820,40 @@ def _generate_long_article_blocks(
             blocks = _parse_blocks_json(raw)
             if blocks:
                 last_blocks = blocks
-                if is_generated_article_sufficient(blocks):
+                quantity_ok = is_generated_blocks_quantity_sufficient(blocks)
+                ja_ok = blocks_mainly_japanese(blocks)
+                if quantity_ok and ja_ok:
                     return blocks
-                text_chars = _text_chars_in_blocks(blocks)
-                logger.warning("%s: 生成 text が短い (%d字) attempt=%d", log_prefix, text_chars, attempt + 1)
                 messages.append({"role": "assistant", "content": raw})
-                messages.append(
-                    {
-                        "role": "user",
-                        "content": (
-                            f"textブロック合計が{text_chars}字しかありません。最低{min_text}字必要です。"
-                            "同じJSON形式で全文を書き直してください。背景・影響・今後の見通しを詳しく膨らませてください。"
-                        ),
-                    }
-                )
+                if not ja_ok:
+                    logger.warning(
+                        "%s: 生成が日本語比率不足 attempt=%d (最低 %d%%)",
+                        log_prefix,
+                        attempt + 1,
+                        min_ja_pct,
+                    )
+                    messages.append(
+                        {
+                            "role": "user",
+                            "content": (
+                                f"出力が英語または日本語比率が低すぎます。"
+                                f"text/explain のすべてを日本語で書き直してください（日本語文字が{min_ja_pct}%以上）。"
+                                "入力が英語でも必ず日本語で出力すること。同じJSON形式の blocks 配列のみ返してください。"
+                            ),
+                        }
+                    )
+                else:
+                    text_chars = _text_chars_in_blocks(blocks)
+                    logger.warning("%s: 生成 text が短い (%d字) attempt=%d", log_prefix, text_chars, attempt + 1)
+                    messages.append(
+                        {
+                            "role": "user",
+                            "content": (
+                                f"textブロック合計が{text_chars}字しかありません。最低{min_text}字必要です。"
+                                "同じJSON形式で全文を書き直してください。背景・影響・今後の見通しを詳しく膨らませてください。"
+                            ),
+                        }
+                    )
                 continue
         except Exception as e:
             if use_schema:
@@ -835,7 +861,11 @@ def _generate_long_article_blocks(
             else:
                 logger.warning("%s 生成失敗 attempt=%d: %s", log_prefix, attempt + 1, e)
 
-    return last_blocks if last_blocks and is_generated_article_sufficient(last_blocks) else None
+    if not last_blocks:
+        return None
+    if is_generated_blocks_quantity_sufficient(last_blocks) and blocks_mainly_japanese(last_blocks):
+        return last_blocks
+    return None
 
 
 def explain_article_inline_with_ai(

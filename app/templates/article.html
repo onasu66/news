@@ -1,6 +1,13 @@
 {% extends "base.html" %}
-{% block title %}{{ article.title }} - 知リポAI{% endblock %}
+{% block title %}{{ article.title }}{% if article.category == '研究・論文' %} わかりやすく解説{% else %} AI解説{% endif %} - 知リポAI{% endblock %}
 {% block meta_description %}{{ meta_description|default(article.summary[:160] if article.summary else article.title)|e }}{% endblock %}
+{% block meta_keywords %}
+    {% if article.category == '研究・論文' %}
+    <meta name="keywords" content="{{ article.title }},{{ article.title }} わかりやすく,{{ article.title }} 解説,{{ article.title }} AI解説,{{ article.source }},論文解説,AI論文,研究解説,わかりやすく,知リポAI">
+    {% else %}
+    <meta name="keywords" content="{{ article.title }},{{ article.title }} AI解説,{{ article.source }},ニュース解説,AIニュース,知リポAI,{{ article.category }}">
+    {% endif %}
+{% endblock %}
 {% block meta_extra %}
     <link rel="canonical" href="{{ article_url }}">
     <meta property="og:type" content="article">
@@ -14,12 +21,6 @@
     <meta name="twitter:description" content="{{ meta_description|e }}">
     <meta name="twitter:image" content="{{ og_image|default(image_url) }}">
     <meta name="robots" content="index,follow,max-image-preview:large">
-    {% if article_jsonld %}
-    <script type="application/ld+json">{{ article_jsonld|tojson }}</script>
-    {% endif %}
-    {% if related_itemlist_jsonld %}
-    <script type="application/ld+json">{{ related_itemlist_jsonld|tojson }}</script>
-    {% endif %}
 {% endblock %}
 
 {% block content %}
@@ -72,7 +73,15 @@
             <span class="article-badge">AI解説</span>
         </div>
         <h1 class="article-title">{{ article.title }}</h1>
+        {% set _lead = meta_description|default('') %}
+        {% if _lead %}<p class="article-speakable-summary">{{ _lead[:80] }}{% if _lead|length > 80 %}…{% endif %}</p>{% endif %}
         <p class="live-readers">今 <span class="animated-number" data-target="{{ readers_now|default(42) }}">0</span> 人が読んでいます</p>
+        {% if article.link %}
+        <div class="article-primary-source">
+            <span class="article-primary-source-label">📎 一次ソース</span>
+            <a href="{{ article.link }}" target="_blank" rel="noopener noreferrer" class="article-primary-source-link">{{ article.source }} で原文を確認 →</a>
+        </div>
+        {% endif %}
     </header>
 
     <div class="read-mode-switch" role="tablist" aria-label="記事の表示モード">
@@ -520,6 +529,11 @@ document.addEventListener('DOMContentLoaded', function() {
                 this.setAttribute('title', '保存済み');
                 this.setAttribute('aria-label', '保存済み。タップで保存解除');
                 if (window.announceToScreenReader) window.announceToScreenReader('記事を保存しました');
+                if (window.gtag) gtag('event', 'article_save', {
+                    event_category: 'engagement',
+                    article_id: articleId,
+                    article_title: this.dataset.title
+                });
             }
             localStorage.setItem('saved_articles', JSON.stringify(saved));
         });

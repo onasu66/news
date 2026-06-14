@@ -1,7 +1,13 @@
 {% extends "base.html" %}
 {% block title %}AI推しキャラ投票 - 知リポAI{% endblock %}
+{% block meta_description %}14人の偉人AIキャラに推し投票！あなたの推しキャラを選んで投票しよう。{% endblock %}
 {% block meta_extra %}
-<meta name="description" content="14人の偉人AIキャラに推し投票！あなたの推しキャラを選んで投票しよう。">
+    <link rel="canonical" href="{{ site_url }}/ai">
+    <meta property="og:type" content="website">
+    <meta property="og:title" content="AI投票・政策立案 | 知リポAI">
+    <meta property="og:description" content="14人の偉人AIキャラクターへの推し投票とAIによる政策提案。少子化・経済などのテーマについてAIが政策案を立案します。">
+    <meta property="og:url" content="{{ site_url }}/ai">
+    <meta property="og:site_name" content="知リポAI">
 {% endblock %}
 {% block content %}
 <div class="ai-vote-page">
@@ -143,6 +149,14 @@
         markVoted(personaId);
         btn.textContent = '投票済み ✅';
         btn.classList.add('voted');
+        if (window.gtag) {
+          var nameEl = btn.closest('.persona-vote-card').querySelector('.persona-vote-name');
+          gtag('event', 'persona_vote', {
+            event_category: 'engagement',
+            persona_id: personaId,
+            persona_name: nameEl ? nameEl.textContent.trim() : String(personaId)
+          });
+        }
         // 票数表示を更新
         var newCount = data.vote_count || 0;
         var countEl = document.getElementById('pvc-count-' + personaId);

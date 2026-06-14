@@ -388,6 +388,10 @@ try:
 except Exception:
     pass
 
+from app.middleware.markdown_for_agents import MarkdownForAgentsMiddleware
+
+app.add_middleware(MarkdownForAgentsMiddleware)
+
 static_path = Path(__file__).resolve().parent / "app" / "static"
 if static_path.exists():
     app.mount("/static", StaticFiles(directory=str(static_path)), name="static")

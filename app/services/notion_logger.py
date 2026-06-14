@@ -1,8 +1,11 @@
 """Claude 記事選定ログを Notion データベースに記録する。
 
-DB 構造:
+DB 構造（必須）:
   タイトル (title) / URL (url) / 選定理由 (rich_text)
   スロット (select) / 日時 (date) / 処理結果 (select) / カテゴリ (select) / ソース (rich_text)
+
+DB 構造（任意・列を追加すると書き込まれる）:
+  Xポスト (rich_text) / 記事リンク (url)
 """
 from __future__ import annotations
 
@@ -53,6 +56,9 @@ def _notion_request(path: str, payload: dict, token: str) -> dict:
         return json.loads(r.read().decode("utf-8"))
 
 
+_OPTIONAL_PROPS = ("Xポスト", "記事リンク")
+
+
 def log_article_selected(
     *,
     title: str,
@@ -63,6 +69,8 @@ def log_article_selected(
     source: str,
     result: ResultKind = "スキップ",
     published: str | None = None,
+    x_post: str | None = None,
+    site_article_url: str | None = None,
 ) -> bool:
     """Notion DB に1件追加。失敗時は警告ログのみで例外を投げない。"""
     creds = _get_credentials()
@@ -73,25 +81,40 @@ def log_article_selected(
     now_iso = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S+00:00")
     date_str = published or now_iso
 
-    payload = {
-        "parent": {"database_id": db_id},
-        "properties": {
-            "タイトル": {"title": [{"text": {"content": (title or "")[:200]}}]},
-            "URL": {"url": url or None},
-            "選定理由": {"rich_text": [{"text": {"content": (reason or "")[:2000]}}]},
-            "スロット": {"select": {"name": slot or "unknown"}},
-            "日時": {"date": {"start": date_str}},
-            "処理結果": {"select": {"name": result}},
-            "カテゴリ": {"select": {"name": (category or "その他")[:50]}},
-            "ソース": {"rich_text": [{"text": {"content": (source or "")[:200]}}]},
-        },
+    properties: dict = {
+        "タイトル": {"title": [{"text": {"content": (title or "")[:200]}}]},
+        "URL": {"url": url or None},
+        "選定理由": {"rich_text": [{"text": {"content": (reason or "")[:2000]}}]},
+        "スロット": {"select": {"name": slot or "unknown"}},
+        "日時": {"date": {"start": date_str}},
+        "処理結果": {"select": {"name": result}},
+        "カテゴリ": {"select": {"name": (category or "その他")[:50]}},
+        "ソース": {"rich_text": [{"text": {"content": (source or "")[:200]}}]},
     }
-    try:
-        _notion_request("/pages", payload, token)
+    if x_post:
+        properties["Xポスト"] = {"rich_text": [{"text": {"content": x_post[:2000]}}]}
+    if site_article_url:
+        properties["記事リンク"] = {"url": site_article_url}
+
+    def _try_request(props: dict) -> bool:
+        _notion_request("/pages", {"parent": {"database_id": db_id}, "properties": props}, token)
         return True
+
+    try:
+        return _try_request(properties)
     except urllib.error.HTTPError as e:
-        body = e.read().decode("utf-8", errors="replace")[:300]
-        logger.warning("Notion ログ失敗 HTTP %d: %s", e.code, body)
+        body = e.read().decode("utf-8", errors="replace")[:500]
+        # Xポスト / 記事リンク 列が DB に未追加の場合、任意列を除いて再試行
+        if e.code == 400 and any(k in body for k in _OPTIONAL_PROPS):
+            fallback = {k: v for k, v in properties.items() if k not in _OPTIONAL_PROPS}
+            try:
+                result_ok = _try_request(fallback)
+                logger.info("Notion ログ: 任意列（Xポスト/記事リンク）なしで保存 — DB に列を追加してください")
+                return result_ok
+            except Exception as e2:
+                logger.warning("Notion ログ再試行失敗: %s", e2)
+        else:
+            logger.warning("Notion ログ失敗 HTTP %d: %s", e.code, body[:300])
     except Exception as e:
         logger.warning("Notion ログ失敗: %s", e)
     return False
@@ -126,6 +149,8 @@ def log_research_batch(
             source=art.get("source", ""),
             result=result,
             published=art.get("published"),
+            x_post=art.get("x_post") or None,
+            site_article_url=art.get("site_article_url") or None,
         )
         if success:
             ok_count += 1

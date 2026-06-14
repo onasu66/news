@@ -1,5 +1,7 @@
 {% extends "base.html" %}
-{% block title %}知リポAI - 最新ニュースをAIが知的に解説{% endblock %}
+{% block title %}AIニュースまとめ — 最新情報を人工知能が解説 | 知リポAI{% endblock %}
+{% block meta_description %}国内外の最新ニュースをAIが解説してまとめ。NHK・BBC・Reuters・TechCrunchなど信頼メディアの情報を、14人の偉人AIが背景・ポイント・影響をわかりやすく解説。人工知能・テクノロジー・国際ニュースの最新情報を毎日更新。{% endblock %}
+{% block meta_keywords %}<meta name="keywords" content="AIニュースまとめ,人工知能最新情報,AI最新ニュース,ニュース解説AI,テクノロジーニュース,AI最新情報,国際ニュースまとめ,知リポAI,AIニュース">{% endblock %}
 {% block meta_extra %}
     {# キーワード付きURLは重複になりやすいので正規URLへ統一 + noindex 寄せ #}
     <link rel="canonical" href="{{ site_url }}/news">
@@ -7,25 +9,19 @@
     <meta name="robots" content="noindex,follow">
     {% endif %}
     <meta property="og:type" content="website">
-    <meta property="og:title" content="知リポAI - 最新ニュースをAIが知的に解説">
-    <meta property="og:description" content="信頼メディアの最新ニュースを収集し、AIが背景・ポイントを解説。">
+    <meta property="og:title" content="AIニュースまとめ — 最新情報を人工知能が解説 | 知リポAI">
+    <meta property="og:description" content="NHK・BBC・Reuters等の最新ニュースを14人の偉人AIが解説。人工知能・テクノロジー・国際ニュースの最新情報を毎日更新。">
     <meta property="og:image" content="{{ og_image|default('https://picsum.photos/1200/630') }}">
     <meta property="og:url" content="{{ site_url }}/news">
     <meta property="og:site_name" content="知リポAI">
-    {% if news_breadcrumb_jsonld %}
-    <script type="application/ld+json">{{ news_breadcrumb_jsonld|tojson }}</script>
-    {% endif %}
-    {% if news_itemlist_jsonld %}
-    <script type="application/ld+json">{{ news_itemlist_jsonld|tojson }}</script>
-    {% endif %}
 {% endblock %}
 
 {% block content %}
 {% if not search_keyword %}
 <section class="page-intro-bar">
     <div class="page-intro-bar-inner">
-        <h1 class="page-intro-title">AIニュース解説 — 偉人14人の多角的な視点で読む</h1>
-        <p class="page-intro-desc">国内外の最新ニュースを、ブッダ・織田信長・ニーチェなど思想の異なる14人のAIが解説。同じニュースでも見え方がまったく変わります。</p>
+        <h1 class="page-intro-title">AIニュースまとめ — 最新情報を偉人14人が解説</h1>
+        <p class="page-intro-desc">NHK・BBC・Reuters・TechCrunchなど国内外の信頼メディアから最新ニュースを収集し、ブッダ・織田信長・アインシュタインなど14人の偉人AIが背景・影響・今後の注目点をわかりやすく解説します。</p>
     </div>
 </section>
 {% endif %}

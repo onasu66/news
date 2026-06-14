@@ -105,6 +105,7 @@ class Settings:
     ARTICLE_MIN_BODY_CHARS: int = int(os.getenv("ARTICLE_MIN_BODY_CHARS", "200"))
     # 生成後: ミドルマン text ブロック合計の最低文字数（3分読了の目安）
     ARTICLE_MIN_GENERATED_TEXT_CHARS: int = int(os.getenv("ARTICLE_MIN_GENERATED_TEXT_CHARS", "900"))
+    ARTICLE_MIN_JA_RATIO: float = float(os.getenv("ARTICLE_MIN_JA_RATIO", "0.35"))
     ARTICLE_MIN_EXPLAIN_COUNT: int = int(os.getenv("ARTICLE_MIN_EXPLAIN_COUNT", "3"))
     ARTICLE_MIN_NAVIGATOR_CHARS: int = int(os.getenv("ARTICLE_MIN_NAVIGATOR_CHARS", "500"))
     # Claude 選定 JSON の summary がこれ未満なら curated 読み込み時に除外（reason方式移行後は実質不使用）
@@ -146,6 +147,7 @@ class Settings:
     # IndexNow（Bing等）: 8〜128文字の英数字・ハイフン。{SITE_URL}/{KEY}.txt に同一文字列を公開する
     INDEXNOW_KEY: str = os.getenv("INDEXNOW_KEY", "").strip()
     INDEXNOW_ENABLED: str = os.getenv("INDEXNOW_ENABLED", "true").strip().lower()
+    GA4_MEASUREMENT_ID: str = os.getenv("GA4_MEASUREMENT_ID", "").strip()
     # 公開HTML（/topic, /, /news）の Cache-Control max-age（秒）。0 でヘッダなし。CDN/ブラウザの再訪削減用。
     PUBLIC_HTML_CACHE_MAX_AGE_SEC: int = int(os.getenv("PUBLIC_HTML_CACHE_MAX_AGE_SEC", "120"))
     # RapidAPI（Super Duper Trends 等）。未設定ならGoogleトレンドRSSのみ使用

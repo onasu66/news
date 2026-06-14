@@ -29,7 +29,7 @@ def summary_looks_english(summary: str) -> bool:
     return ascii_letters / letters > 0.4
 
 
-def text_mainly_japanese(text: str) -> bool:
+def text_mainly_japanese(text: str, *, min_ratio: float = 0.3) -> bool:
     """テキストが主に日本語か（ひらがな・カタカナ・漢字・CJK記号の割合）"""
     if not text or len(text) < 5:
         return True
@@ -46,7 +46,7 @@ def text_mainly_japanese(text: str) -> bool:
         return False
 
     ja_count = sum(1 for c in sample if _ja_char(c))
-    return ja_count / len(sample) > 0.3
+    return ja_count / len(sample) > min_ratio
 
 
 def is_foreign_article(source: str, title: str, summary: str) -> bool:

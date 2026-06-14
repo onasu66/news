@@ -249,8 +249,10 @@ def generate_all_explanations(
         # openai 指定時は Claude を使わず OpenAI へ直行
         if provider != "openai":
             claude_blocks = _generate_blocks_via_claude(navigator_blocks, title)
-            if claude_blocks:
+            if claude_blocks and is_generated_article_sufficient(claude_blocks):
                 return claude_blocks
+            if claude_blocks:
+                logger.info("Claude ミドルマンが品質基準未達のため OpenAI へフォールバック")
         model = (getattr(settings, "MIDDLEMAN_OPENAI_MODEL", "") or "").strip() or settings.OPENAI_MODEL
         logger.info("ミドルマン記事生成: provider=%s model=%s", provider, model)
         blocks = expand_navigator_to_article(navigator_blocks, title, model=model, source_content=content)

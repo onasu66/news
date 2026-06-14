@@ -1,5 +1,14 @@
 {% extends "base.html" %}
 {% block title %}探す - 知リポAI{% endblock %}
+{% block meta_extra %}
+    <link rel="canonical" href="{{ site_url }}/search">
+    <meta name="robots" content="noindex,follow">
+    <meta property="og:type" content="website">
+    <meta property="og:title" content="探す — 論文・ニュースを横断検索 | 知リポAI">
+    <meta property="og:description" content="キーワードを組み合わせて、AI論文もAIニュースも横断検索できます。">
+    <meta property="og:url" content="{{ site_url }}/search">
+    <meta property="og:site_name" content="知リポAI">
+{% endblock %}
 {% block content %}
 <section class="page-header">
     <h1 class="page-title">🔍 探す</h1>

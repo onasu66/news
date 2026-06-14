@@ -271,6 +271,141 @@ def load_curated_articles(path: Optional[Path] = None) -> list[NewsItem]:
     return items
 
 
+_CATEGORY_HASHTAGS: dict[str, str] = {
+    "テクノロジー": "#テクノロジー",
+    "政治・社会": "#社会",
+    "国内": "#ニュース",
+    "国際": "#国際ニュース",
+    "研究・論文": "#研究 #サイエンス",
+    "エンタメ": "#エンタメ",
+    "スポーツ": "#スポーツ",
+}
+
+
+def _generate_x_post_body_with_ai(
+    title: str,
+    reason: str,
+    category: str,
+    persona_name: str,
+    persona_comment: str,
+) -> str:
+    """AIでX投稿の本文を生成（ハッシュタグ・URL は含まない）。失敗時は空文字を返す。"""
+    try:
+        from app.utils.llm_client import get_chat_client, is_ai_configured
+        from app.utils.openai_compat import create_with_retry
+        from app.config import settings as _s
+
+        if not is_ai_configured():
+            return ""
+
+        client = get_chat_client()
+        model = (
+            getattr(_s, "TITLE_OPENAI_MODEL", "")
+            or getattr(_s, "OPENAI_MODEL", "")
+            or "gpt-4o-mini"
+        ).strip()
+
+        system_prompt = (
+            "あなたはSNSマーケターです。ニュース記事をX(Twitter)に投稿する魅力的な本文を作ります。\n\n"
+            "ルール:\n"
+            "- 日本語120字以内\n"
+            "- 書き出しで「えっ？」「知らなかった」「これは面白い」と思わせる意外性・驚き・共感を出す\n"
+            "- 「実は」「意外にも」「〜だったとは」「〜な理由が判明」など好奇心を刺激する表現を使う\n"
+            "- ペルソナの視点・ひとことを自然に盛り込む（直接引用 or 要約どちらでも可）\n"
+            "- 読んだ人が「詳しく読みたい」と思うような終わり方にする\n"
+            "- 煽り・デマ誘導禁止（「衝撃」「ヤバい」「暴露」「真相」など）\n"
+            "- ハッシュタグ・URLは含めない\n"
+            "- 出力は本文テキストのみ（説明・引用符・記号不要）"
+        )
+        user_prompt = (
+            f"カテゴリ: {category}\n"
+            f"記事タイトル: {title[:80]}\n"
+            f"選定理由: {reason[:200]}\n"
+            f"{persona_name}のひとこと: 「{persona_comment[:100]}」\n\n"
+            "上のルールでX投稿本文を1つ生成してください。"
+        )
+
+        resp = create_with_retry(
+            client,
+            200,
+            gemini_task="x_post",
+            model=model,
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt},
+            ],
+            temperature=0.8,
+        )
+        out = (resp.choices[0].message.content or "").strip().strip("「」\"'")
+        return out[:220] if out else ""
+    except Exception:
+        return ""
+
+
+def _build_x_post(item: NewsItem, article_id: str, cached: dict | None) -> str:
+    """X(Twitter)投稿文を生成。AIバズ文 → ペルソナコメント → ハッシュタグ → URL の構成。
+    AI失敗時はペルソナコメントのみのルールベースにフォールバック。"""
+    if not cached:
+        return ""
+    personas = cached.get("personas") or []
+    display_ids = cached.get("display_persona_ids") or []
+    if not personas:
+        return ""
+
+    comment = (personas[0] if personas else "").strip()
+    if not comment:
+        return ""
+
+    persona_name = ""
+    persona_emoji = ""
+    try:
+        from app.services.ai_service import PERSONAS
+        pid = display_ids[0] if display_ids else None
+        if pid is not None:
+            p = next((x for x in PERSONAS if x.get("id") == pid), None)
+            if p:
+                persona_name = p.get("name", "")
+                persona_emoji = p.get("emoji", "")
+    except Exception:
+        pass
+
+    try:
+        from app.config import settings as _s
+        site_url = (getattr(_s, "SITE_URL", "") or "").rstrip("/")
+    except Exception:
+        site_url = ""
+
+    article_url = f"{site_url}/topic/{article_id}" if site_url else ""
+    category_tag = _CATEGORY_HASHTAGS.get(item.category or "", "")
+    hashtags = f"#知リポAI {category_tag}".strip() if category_tag else "#知リポAI"
+    reason = (getattr(item, "_reason", "") or "").strip()
+
+    # AI生成バズ文を試みる
+    ai_body = _generate_x_post_body_with_ai(
+        title=item.title or "",
+        reason=reason,
+        category=item.category or "",
+        persona_name=persona_name,
+        persona_comment=comment,
+    )
+
+    if ai_body:
+        text = ai_body
+    else:
+        # フォールバック: タイトル + ペルソナひとこと
+        title_short = (item.title or "")[:35]
+        comment_short = comment[:80]
+        text = title_short
+        if persona_name:
+            header = f"{persona_emoji}{persona_name}のひとこと" if persona_emoji else f"{persona_name}のひとこと"
+            text += f"\n\n{header}\n「{comment_short}」"
+
+    text += f"\n\n{hashtags}"
+    if article_url:
+        text += f"\n{article_url}"
+    return text
+
+
 # ── メイン処理 ────────────────────────────────────────────────────────────────
 
 def process_curated_articles(path: Optional[Path] = None, max_per_run: int = 30) -> int:
@@ -322,6 +457,7 @@ def process_curated_articles(path: Optional[Path] = None, max_per_run: int = 30)
     logger.info("記事化開始: 候補池 %d 件（目標 %d 件）", len(pre_filtered), max_per_run)
     processed_urls: set[str] = set()
     notion_results: dict[str, str] = {}  # url → 処理結果
+    x_post_by_url: dict[str, str] = {}   # url → X投稿文
     count = 0
     attempts = 0
 
@@ -341,6 +477,13 @@ def process_curated_articles(path: Optional[Path] = None, max_per_run: int = 30)
                     notion_results[item.link] = "成功"
                     _log_save(item.id, item.title, True, source="curated")
                     logger.info("[OK] %s", item.title[:60])
+                    try:
+                        from .explanation_cache import get_cached as _get_cached
+                        _xpost = _build_x_post(item, item.id, _get_cached(item.id))
+                        if _xpost:
+                            x_post_by_url[item.link] = _xpost
+                    except Exception:
+                        pass
                 else:
                     notion_results[item.link] = "スキップ"
                     _log_save(item.id, item.title, False,
@@ -376,8 +519,14 @@ def process_curated_articles(path: Optional[Path] = None, max_per_run: int = 30)
         slot = "unknown"
     try:
         from .notion_logger import log_research_batch
+        try:
+            from app.config import settings as _s
+            _site_base = (getattr(_s, "SITE_URL", "") or "").rstrip("/")
+        except Exception:
+            _site_base = ""
         notion_articles = []
         for item in pre_filtered:
+            site_article_url = f"{_site_base}/topic/{item.id}" if _site_base else ""
             notion_articles.append({
                 "title": item.title or "",
                 "url": item.link or "",
@@ -385,6 +534,8 @@ def process_curated_articles(path: Optional[Path] = None, max_per_run: int = 30)
                 "category": item.category or "",
                 "source": item.source or "",
                 "published": item.published.isoformat() if item.published else None,
+                "x_post": x_post_by_url.get(item.link or "", ""),
+                "site_article_url": site_article_url,
             })
         log_research_batch(notion_articles, slot=slot, results=notion_results)
     except Exception as e:

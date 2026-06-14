@@ -179,8 +179,41 @@ def blocks_text_char_count(blocks: list[dict[str, Any]] | None) -> int:
     return total
 
 
-def is_generated_article_sufficient(blocks: list[dict[str, Any]] | None) -> bool:
-    """ミドルマン記事（text+explain）がサイト掲載に足りる分量か。"""
+def _blocks_readable_content(blocks: list[dict[str, Any]] | None) -> str:
+    """text/explain の本文を結合（プレースホルダー除外）。"""
+    parts: list[str] = []
+    for b in blocks or []:
+        if not isinstance(b, dict):
+            continue
+        if b.get("type") not in ("text", "explain"):
+            continue
+        content = str(b.get("content") or "").strip()
+        if content and not content.startswith("（"):
+            parts.append(content)
+    return "\n".join(parts)
+
+
+def min_generated_ja_ratio() -> float:
+    try:
+        from app.config import settings
+
+        return max(0.1, min(0.9, float(getattr(settings, "ARTICLE_MIN_JA_RATIO", 0.35) or 0.35)))
+    except Exception:
+        return 0.35
+
+
+def blocks_mainly_japanese(blocks: list[dict[str, Any]] | None) -> bool:
+    """生成 blocks の text+explain が主に日本語か。"""
+    combined = _blocks_readable_content(blocks)
+    if len(combined) < 20:
+        return True
+    from app.services.translate_service import text_mainly_japanese
+
+    return text_mainly_japanese(combined, min_ratio=min_generated_ja_ratio())
+
+
+def is_generated_blocks_quantity_sufficient(blocks: list[dict[str, Any]] | None) -> bool:
+    """ミドルマン記事（text+explain）が字数・explain 数の基準を満たすか。"""
     if not blocks:
         return False
     text_chars = 0
@@ -205,6 +238,16 @@ def is_generated_article_sufficient(blocks: list[dict[str, Any]] | None) -> bool
         return False
     if explain_count < min_explains:
         logger.info("explain 不足: %d個 (最低 %d個)", explain_count, min_explains)
+        return False
+    return True
+
+
+def is_generated_article_sufficient(blocks: list[dict[str, Any]] | None) -> bool:
+    """ミドルマン記事（text+explain）がサイト掲載に足りる分量か。"""
+    if not is_generated_blocks_quantity_sufficient(blocks):
+        return False
+    if not blocks_mainly_japanese(blocks):
+        logger.info("生成記事が日本語比率不足 (最低 %.0f%%)", min_generated_ja_ratio() * 100)
         return False
     return True
 

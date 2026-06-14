@@ -30,6 +30,12 @@ router = APIRouter()
 templates = Jinja2Templates(directory=str(Path(__file__).resolve().parent.parent / "templates"))
 logger = logging.getLogger(__name__)
 
+SITE_JSONLD_TITLE = "知リポAI — 偉人14人が解説するAI論文・ニュースメディア"
+SITE_JSONLD_DESCRIPTION = (
+    "知リポAIは、ブッダ・ニーチェ・アインシュタインなど14人の歴史的偉人AIが"
+    "最新のAI論文・国内外ニュースを日本語でわかりやすく解説する、無料のニュースメディアです。"
+)
+
 
 def _public_html_cache_headers() -> dict[str, str]:
     """CDN・ブラウザ向け Cache-Control。PUBLIC_HTML_CACHE_MAX_AGE_SEC<=0 なら空（ヘッダ付与しない）。"""
@@ -389,9 +395,16 @@ async def indexnow_key_file(key_filename: str):
 
 @router.get("/robots.txt")
 async def robots_txt(request: Request):
-    """検索エンジン向け robots.txt"""
+    """検索エンジン・AIクローラー向け robots.txt"""
     site_url = _get_site_url(request)
-    # keyword パラメータ付きページ（例: /?keyword=...）は重複になりやすいのでクロール抑制
+    ai_bots = (
+        "GPTBot",
+        "Claude-Web",
+        "Google-Extended",
+        "PerplexityBot",
+        "Amazonbot",
+    )
+    ai_sections = "".join(f"User-agent: {bot}\nAllow: /\n\n" for bot in ai_bots)
     body = (
         f"User-agent: *\n"
         f"Allow: /\n"
@@ -401,8 +414,52 @@ async def robots_txt(request: Request):
         f"Disallow: /?keyword=\n"
         f"Disallow: /news?keyword=\n\n"
         f"Sitemap: {site_url}/sitemap.xml\n"
-        f"Sitemap: {site_url}/sitemap-news.xml\n"
+        f"Sitemap: {site_url}/sitemap-news.xml\n\n"
+        f"{ai_sections}"
     )
+    return Response(content=body, media_type="text/plain; charset=utf-8")
+
+
+@router.get("/llms.txt")
+async def llms_txt(request: Request):
+    """AIエージェント向け llms.txt（GEO: Generative Engine Optimization）"""
+    site_url = _get_site_url(request)
+    body = f"""# 知リポAI
+
+> 14人の歴史的偉人AIが最新研究論文・ニュースを多角的に解説する知的ニュースメディア（日本語）。
+
+## サイト概要
+
+知リポAI（チリポAI）は、ブッダ・ニーチェ・織田信長・アインシュタインなど14人の歴史的偉人AIが、最新のAI論文・科学論文・国内外ニュースを解説するサービスです。arXiv・Nature・Science・NHK・BBC・Reutersなどから毎日収集し、「1分で理解」「3分で深掘り」の2段階で解説します。
+
+## 主要ページ
+
+- [AI論文解説（トップ）]({site_url}/): 最新研究論文をAIが平易に解説。arXiv・Nature・Science等から毎日収集。
+- [AIニュースアーカイブ]({site_url}/news): 国内外ニュースのAI解説アーカイブ。カテゴリ別フィルター対応。
+- [AI投票・政策]({site_url}/ai): AIが生成する政策提案とユーザー投票。少子化・経済等のテーマ。
+- [14キャラクター一覧]({site_url}/personas): 解説キャラクター（偉人AI）14人の一覧とプロフィール。
+
+## コンテンツ仕様
+
+- **ソース**: arXiv（cs.AI/cs.LG/cs.CL/cs.CV/cs.RO等）、Nature、Science、BMJ Open、PLOS ONE、NHK、BBC、Reuters、AP News 他
+- **更新頻度**: 8:30 / 13:00 / 16:30 / 19:00 / 22:00（JST）毎日
+- **解説言語**: 日本語
+- **一次ソース**: 各記事ページに元論文・ニュースへのリンクを掲載（arXiv・Nature・DOI等）
+
+## AIキャラクター（偉人14人）
+
+ブッダ、織田信長、吉田松陰、坂本龍馬、太宰治、葛飾北斎、ソクラテス、野口英世、ダヴィンチ、エジソン、アインシュタイン、ナイチンゲール、ガリレオ、ニーチェ
+
+## 免責事項
+
+当サイトの解説はAI生成です。医療・法律・投資判断の根拠には使用しないでください。各記事の一次ソース（arXiv・Nature等）を必ずご確認ください。
+
+## クロール情報
+
+- robots.txt: {site_url}/robots.txt
+- sitemap: {site_url}/sitemap.xml
+- sitemap-news（直近48時間）: {site_url}/sitemap-news.xml
+"""
     return Response(content=body, media_type="text/plain; charset=utf-8")
 
 
@@ -601,6 +658,34 @@ async def news_index(request: Request, page: int = 1, keyword: str = ""):
         site_url=site_url,
         items=flat_news,
     )
+    page_jsonld = _build_site_graph_jsonld(
+        site_url=site_url,
+        page_url=f"{site_url}/news",
+        page_name="AIニュースまとめ — 最新情報を人工知能が解説 | 知リポAI",
+        page_description=(
+            "国内外の最新ニュースをAIが解説してまとめ。"
+            "NHK・BBC・Reuters・TechCrunchなど信頼メディアの情報を、"
+            "14人の偉人AIが背景・ポイント・影響をわかりやすく解説。"
+        ),
+        extra_nodes=[news_breadcrumb_jsonld, news_itemlist_jsonld],
+    )
+    from app.services.markdown_for_agents import accepts_markdown, build_list_markdown, build_markdown_response
+
+    if accepts_markdown(request):
+        md_body, md_frontmatter, md_jsonld = build_list_markdown(
+            title="AIニュースまとめ — 最新情報を人工知能が解説 | 知リポAI",
+            description=(
+                "国内外の最新ニュースをAIが解説してまとめ。"
+                "NHK・BBC・Reuters・TechCrunchなど信頼メディアの情報を、"
+                "14人の偉人AIが背景・ポイント・影響をわかりやすく解説。"
+            ),
+            page_url=f"{site_url}/news",
+            site_url=site_url,
+            items=flat_news,
+            page_jsonld=page_jsonld,
+            list_heading="AIニュースアーカイブ",
+        )
+        return build_markdown_response(md_body, frontmatter=md_frontmatter, jsonld=md_jsonld)
     _ph = _public_html_cache_headers()
     return templates.TemplateResponse(
         "index.html",
@@ -618,6 +703,7 @@ async def news_index(request: Request, page: int = 1, keyword: str = ""):
             "top_recommendations": top_recommendations,
             "news_breadcrumb_jsonld": news_breadcrumb_jsonld,
             "news_itemlist_jsonld": news_itemlist_jsonld,
+            "page_jsonld": page_jsonld,
         },
         headers=_ph or None,
     )
@@ -741,7 +827,23 @@ async def trend_page(request: Request):
             item.image_url = get_image_url(item.id, 400, 225)
         elif not item.image_url.startswith("http"):
             item.image_url = get_image_url(item.image_url, 400, 225)
-    return templates.TemplateResponse("trend.html", {"request": request, "articles": top_articles, "trends": trends})
+    site_url = _get_site_url(request)
+    page_jsonld = _build_site_graph_jsonld(
+        site_url=site_url,
+        page_url=f"{site_url}/trend",
+        page_name="トレンド — いま注目度の高いニュース | 知リポAI",
+        page_description="知リポAIのトレンドページ。AIが選ぶ注目度の高いニュースを一覧で確認できます。",
+    )
+    return templates.TemplateResponse(
+        "trend.html",
+        {
+            "request": request,
+            "articles": top_articles,
+            "trends": trends,
+            "site_url": site_url,
+            "page_jsonld": page_jsonld,
+        },
+    )
 
 
 @router.get("/ai", response_class=HTMLResponse)
@@ -792,6 +894,13 @@ async def ai_page(request: Request):
     except Exception:
         pass
 
+    site_url = _get_site_url(request)
+    page_jsonld = _build_site_graph_jsonld(
+        site_url=site_url,
+        page_url=f"{site_url}/ai",
+        page_name="AI投票・政策立案 | 知リポAI",
+        page_description="14人の偉人AIキャラクターへの推し投票とAIによる政策提案。少子化・経済などのテーマについてAIが政策案を立案し、ユーザーが投票できます。",
+    )
     return templates.TemplateResponse(
         "ai.html",
         {
@@ -800,6 +909,8 @@ async def ai_page(request: Request):
             "ai_personas": ai_personas,
             "personas": personas_with_votes,
             "active_topic": active_topic,
+            "site_url": site_url,
+            "page_jsonld": page_jsonld,
         },
     )
 
@@ -896,7 +1007,67 @@ async def admin_generate_policy(request: Request, topic_key: str = "shoushika"):
 @router.get("/about", response_class=HTMLResponse)
 async def about_page(request: Request):
     """運営者情報ページ"""
-    return templates.TemplateResponse("about.html", {"request": request})
+    site_url = _get_site_url(request)
+    faq_jsonld = {
+        "@type": "FAQPage",
+        "mainEntity": [
+            {
+                "@type": "Question",
+                "name": "知リポAIとは何ですか？",
+                "acceptedAnswer": {
+                    "@type": "Answer",
+                    "text": "知リポAIは、ブッダ・ニーチェ・アインシュタインなど14人の歴史的偉人AIが最新のAI論文と国内外ニュースを日本語でわかりやすく解説する、無料のニュースメディアです。",
+                },
+            },
+            {
+                "@type": "Question",
+                "name": "利用料金はかかりますか？",
+                "acceptedAnswer": {
+                    "@type": "Answer",
+                    "text": "すべての機能が完全無料です。会員登録・ログインも不要で、記事閲覧・論文解説・AI投票・解説リクエストのすべてを無料でご利用いただけます。有料プランの設定は現時点で予定していません。",
+                },
+            },
+            {
+                "@type": "Question",
+                "name": "AI解説の正確性はどのように担保されていますか？",
+                "acceptedAnswer": {
+                    "@type": "Answer",
+                    "text": "arXiv・Nature・NHK・BBCなど編集方針の明確な信頼メディアのみをソースとして収集し、各記事ページに元記事・元論文へのリンクを掲載しています。AI解説はあくまで「読む入口」であり、内容の正確性を保証するものではありません。医療・法律・投資判断の根拠には使用しないでください。",
+                },
+            },
+            {
+                "@type": "Question",
+                "name": "特定の偉人AIに解説をリクエストできますか？",
+                "acceptedAnswer": {
+                    "@type": "Answer",
+                    "text": "LINEの公式アカウントからリクエストを受け付けています。記事URL・キーワードと担当してほしいキャラクター名を添えてメッセージを送ってください。キャラクター指定は任意で、内容確認のうえできる限り対応します。",
+                },
+            },
+            {
+                "@type": "Question",
+                "name": "どのくらいの頻度で記事が更新されますか？",
+                "acceptedAnswer": {
+                    "@type": "Answer",
+                    "text": "毎日8:30・13:00・16:30・19:00・22:00（日本時間）の5回、arXiv・Nature・Science・NHK・BBC・Reutersなど国内外の主要メディアから記事を収集し、AIが解説を生成・更新します。",
+                },
+            },
+        ],
+    }
+    page_jsonld = _build_site_graph_jsonld(
+        site_url=site_url,
+        page_url=f"{site_url}/about",
+        page_name="運営者情報・開発ストーリー - 知リポAI",
+        page_description="なぜ知リポAIを作ったのか。ニュースキャスターをAIに置き換えるという発想、14人の偉人を選んだ理由、そしてAI政策立案という壮大な目標について。",
+        extra_nodes=[faq_jsonld],
+    )
+    return templates.TemplateResponse(
+        "about.html",
+        {
+            "request": request,
+            "site_url": site_url,
+            "page_jsonld": page_jsonld,
+        },
+    )
 
 
 @router.get("/privacy", response_class=HTMLResponse)
@@ -915,11 +1086,20 @@ async def authors_page(request: Request):
 async def personas_page(request: Request):
     """14キャラクター紹介ページ"""
     personas = [_build_persona_view(p) for p in PERSONAS]
+    site_url = _get_site_url(request)
+    page_jsonld = _build_site_graph_jsonld(
+        site_url=site_url,
+        page_url=f"{site_url}/personas",
+        page_name="14人の偉人コメンテーター — ブッダ・ニーチェ・信長ほか | 知リポAI",
+        page_description="ブッダ・織田信長・ニーチェ・ソクラテス・ダヴィンチなど時代と思想を超えた14人のAIが、最新ニュースと研究論文を多角的に解説。各人物の哲学・価値観・名言をご紹介します。",
+    )
     return templates.TemplateResponse(
         "personas.html",
         {
             "request": request,
             "personas": personas,
+            "site_url": site_url,
+            "page_jsonld": page_jsonld,
         },
     )
 
@@ -1027,7 +1207,23 @@ async def search_page(request: Request, q: str = ""):
                 item.image_url = get_image_url(item.id, 400, 225)
             elif not item.image_url.startswith("http"):
                 item.image_url = get_image_url(item.image_url, 400, 225)
-    return templates.TemplateResponse("search.html", {"request": request, "query": q, "results": results})
+    site_url = _get_site_url(request)
+    page_jsonld = _build_site_graph_jsonld(
+        site_url=site_url,
+        page_url=f"{site_url}/search",
+        page_name="探す — 論文・ニュースを横断検索 | 知リポAI",
+        page_description="キーワードを組み合わせて、AI論文もAIニュースも横断検索。知リポAIのすべてのコンテンツを一括で検索できます。",
+    )
+    return templates.TemplateResponse(
+        "search.html",
+        {
+            "request": request,
+            "query": q,
+            "results": results,
+            "site_url": site_url,
+            "page_jsonld": page_jsonld,
+        },
+    )
 
 
 @router.get("/saved", response_class=HTMLResponse)
@@ -1096,6 +1292,81 @@ def _iso_date(dt) -> str:
     return datetime.now().isoformat()
 
 
+def _webpage_id(page_url: str) -> str:
+    return f"{page_url.rstrip('/')}/#webpage"
+
+
+def _jsonld_strip_context(node: dict | None) -> dict | None:
+    if not node:
+        return None
+    return {k: v for k, v in node.items() if k != "@context"}
+
+
+def _build_site_graph_jsonld(
+    *,
+    site_url: str,
+    page_url: str,
+    page_name: str | None = None,
+    page_description: str | None = None,
+    extra_nodes: list[dict | None] | None = None,
+) -> dict:
+    """Organization + WebSite + WebPage を @graph で返す（ページ固有ノードは extra_nodes）"""
+    base = site_url.rstrip("/")
+    org_id = f"{base}/#organization"
+    website_id = f"{base}/#website"
+    logo_url = f"{base}/static/site-imgs/ロゴ.png"
+    graph: list[dict] = [
+        {
+            "@id": org_id,
+            "@type": "Organization",
+            "name": SITE_JSONLD_TITLE,
+            "url": base,
+            "description": SITE_JSONLD_DESCRIPTION,
+            "logo": {"@type": "ImageObject", "url": logo_url},
+        },
+        {
+            "@id": website_id,
+            "@type": "WebSite",
+            "name": SITE_JSONLD_TITLE,
+            "url": base,
+            "description": SITE_JSONLD_DESCRIPTION,
+            "inLanguage": "ja",
+            "alternateName": ["チリポ", "ちりぽ", "知りぽAI"],
+            "publisher": {"@id": org_id},
+            "potentialAction": {
+                "@type": "SearchAction",
+                "target": f"{base}/search?q={{search_term_string}}",
+                "query-input": "required name=search_term_string",
+            },
+        },
+        {
+            "@id": _webpage_id(page_url),
+            "@type": "WebPage",
+            "url": page_url,
+            "name": page_name or SITE_JSONLD_TITLE,
+            "description": page_description or SITE_JSONLD_DESCRIPTION,
+            "inLanguage": "ja",
+            "isPartOf": {"@id": website_id},
+        },
+    ]
+    for node in extra_nodes or []:
+        cleaned = _jsonld_strip_context(node)
+        if cleaned:
+            graph.append(cleaned)
+    return {"@context": "https://schema.org", "@graph": graph}
+
+
+def _default_site_graph_jsonld(request: Request) -> dict:
+    site_url = _get_site_url(request)
+    path = request.url.path or "/"
+    page_url = f"{site_url}/" if path == "/" else f"{site_url.rstrip('/')}{path}"
+    return _build_site_graph_jsonld(site_url=site_url, page_url=page_url)
+
+
+templates.env.globals["default_site_graph_jsonld"] = _default_site_graph_jsonld
+templates.env.globals["ga4_id"] = settings.GA4_MEASUREMENT_ID
+
+
 def _build_article_jsonld(
     *,
     item,
@@ -1114,11 +1385,12 @@ def _build_article_jsonld(
             contributors.append({"@type": "Person", "name": p.get("name", "")})
         except Exception:
             continue
-    logo_url = f"{site_url.rstrip('/')}/static/site-imgs/ロゴ.png"
-    return {
+    base = site_url.rstrip("/")
+    org_id = f"{base}/#organization"
+    jsonld = {
         "@context": "https://schema.org",
         "@type": article_type,
-        "mainEntityOfPage": {"@type": "WebPage", "@id": article_url},
+        "mainEntityOfPage": {"@type": "WebPage", "@id": _webpage_id(article_url)},
         "url": article_url,
         "headline": (item.title or "").strip(),
         "description": (meta_desc or "").strip(),
@@ -1127,16 +1399,27 @@ def _build_article_jsonld(
         "dateModified": _iso_date(getattr(item, "added_at", None) or getattr(item, "published", None)),
         "author": ai_authors,
         "contributor": contributors,
-        "publisher": {
-            "@type": "Organization",
-            "name": "知リポAI",
-            "url": site_url,
-            "logo": {"@type": "ImageObject", "url": logo_url},
-        },
+        "publisher": {"@id": org_id},
         "image": [og_image] if og_image else [],
         "articleSection": item.category or "ニュース",
         "isAccessibleForFree": True,
     }
+    if article_type == "NewsArticle":
+        jsonld["speakable"] = {
+            "@type": "SpeakableSpecification",
+            "cssSelector": [".article-title", ".article-speakable-summary"],
+        }
+    source_link = (getattr(item, "link", "") or "").strip()
+    if source_link:
+        jsonld["isBasedOn"] = {
+            "@type": "ScholarlyArticle" if article_type == "ScholarlyArticle" else "Article",
+            "url": source_link,
+            "publisher": {
+                "@type": "Organization",
+                "name": (getattr(item, "source", "") or "").strip(),
+            },
+        }
+    return jsonld
 
 
 def _build_breadcrumb_jsonld(items: list[tuple[str, str]]) -> dict:
@@ -1393,6 +1676,51 @@ def _render_papers_page(request: Request, page: int = 1):
         site_url=site_url,
         items=flat_papers,
     )
+    base = site_url.rstrip("/")
+    service_jsonld = {
+        "@type": "Service",
+        "@id": f"{base}/#service",
+        "name": "知リポAI — AI論文・ニュース解説サービス",
+        "url": base,
+        "description": (
+            "14人の歴史的偉人AIキャラクター（ブッダ・ニーチェ・アインシュタインほか）が"
+            "最新のAI論文・国内外ニュースを日本語でわかりやすく解説する無料Webサービス。"
+            "arXiv・Nature・Science・NHK・BBC・Reutersなどから毎日収集・更新。"
+        ),
+        "serviceType": "AIニュース・論文解説",
+        "inLanguage": "ja",
+        "provider": {"@id": f"{base}/#organization"},
+        "areaServed": "JP",
+        "isAccessibleForFree": True,
+    }
+    page_jsonld = _build_site_graph_jsonld(
+        site_url=site_url,
+        page_url=f"{site_url}/",
+        page_name="AI論文をわかりやすく解説 — arXiv・Nature・Science最新論文 | 知リポAI",
+        page_description=(
+            "AI論文・研究論文をわかりやすく日本語で解説。"
+            "arXiv・Nature・Scienceから最新論文を毎日収集し、"
+            "機械学習・LLM・深層学習論文の要約・解説を提供。"
+        ),
+        extra_nodes=[papers_breadcrumb_jsonld, papers_itemlist_jsonld, service_jsonld],
+    )
+    from app.services.markdown_for_agents import accepts_markdown, build_list_markdown, build_markdown_response
+
+    if accepts_markdown(request):
+        md_body, md_frontmatter, md_jsonld = build_list_markdown(
+            title="AI論文をわかりやすく解説 — arXiv・Nature・Science最新論文 | 知リポAI",
+            description=(
+                "AI論文・研究論文をわかりやすく日本語で解説。"
+                "arXiv・Nature・Scienceから最新論文を毎日収集し、"
+                "機械学習・LLM・深層学習論文の要約・解説を提供。"
+            ),
+            page_url=f"{site_url}/",
+            site_url=site_url,
+            items=flat_papers,
+            page_jsonld=page_jsonld,
+            list_heading="AI論文解説一覧",
+        )
+        return build_markdown_response(md_body, frontmatter=md_frontmatter, jsonld=md_jsonld)
     has_papers = bool(all_papers)
 
     # おすすめは一覧と同じ all_papers の先頭3件（別取得ロジックなし）
@@ -1413,6 +1741,7 @@ def _render_papers_page(request: Request, page: int = 1):
             "top_recommendations": top_recommendations,
             "papers_breadcrumb_jsonld": papers_breadcrumb_jsonld,
             "papers_itemlist_jsonld": papers_itemlist_jsonld,
+            "page_jsonld": page_jsonld,
         },
         headers=_ph or None,
     )
@@ -1473,7 +1802,9 @@ async def topic_detail(request: Request, topic_id: str):
         raise HTTPException(status_code=404, detail="記事が見つかりません")
     # Bot が /topic/<16hex> を総当たりすると、毎回 DB を起こしてしまう。
     # 人間アクセスは「トップ/一覧から来る」ケースが大半なので、メモリに無いIDを bot には即404。
-    if _is_probably_bot_request(request):
+    from app.services.markdown_for_agents import accepts_markdown
+
+    if _is_probably_bot_request(request) and not accepts_markdown(request):
         try:
             cached_list = getattr(NewsAggregator, "_news_cache", []) or []
             if not any(getattr(x, "id", None) == topic_id for x in cached_list):
@@ -1615,6 +1946,30 @@ async def topic_detail(request: Request, topic_id: str):
         site_url=site_url,
         display_persona_ids=display_persona_ids,
     )
+    page_jsonld = _build_site_graph_jsonld(
+        site_url=site_url,
+        page_url=article_url,
+        page_name=(item.title or "").strip(),
+        page_description=meta_desc,
+        extra_nodes=[article_jsonld, related_itemlist_jsonld],
+    )
+    from app.services.markdown_for_agents import build_markdown_response, build_topic_markdown
+
+    if accepts_markdown(request):
+        md_body, md_frontmatter, md_jsonld = build_topic_markdown(
+            item=item,
+            article_url=article_url,
+            meta_desc=meta_desc,
+            og_image=og_image,
+            blocks=blocks,
+            quick_understand=quick_understand,
+            personas_data=personas_data,
+            display_personas=display_personas,
+            page_jsonld=page_jsonld,
+            related_articles=(related + latest_articles)[:8],
+            site_url=site_url,
+        )
+        return build_markdown_response(md_body, frontmatter=md_frontmatter, jsonld=md_jsonld)
     _article_cat = (getattr(item, "category", None) or "").strip()
     mobile_nav_papers_highlight = _article_cat == "研究・論文"
     mobile_nav_news_highlight = not mobile_nav_papers_highlight
@@ -1659,6 +2014,7 @@ async def topic_detail(request: Request, topic_id: str):
             "published_text": published_text,
             "copy_blurb": copy_blurb,
             "article_jsonld": article_jsonld,
+            "page_jsonld": page_jsonld,
             "mobile_nav_papers_highlight": mobile_nav_papers_highlight,
             "mobile_nav_news_highlight": mobile_nav_news_highlight,
             "midorman_image_url": _persona_image_url("ミドルマン"),

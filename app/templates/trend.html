@@ -1,5 +1,13 @@
 {% extends "base.html" %}
 {% block title %}トレンド - 知リポAI{% endblock %}
+{% block meta_extra %}
+    <link rel="canonical" href="{{ site_url }}/trend">
+    <meta property="og:type" content="website">
+    <meta property="og:title" content="トレンド — いま注目度の高いニュース | 知リポAI">
+    <meta property="og:description" content="知リポAIのトレンドページ。AIが選ぶ注目度の高いニュースを一覧で確認できます。">
+    <meta property="og:url" content="{{ site_url }}/trend">
+    <meta property="og:site_name" content="知リポAI">
+{% endblock %}
 {% block content %}
 <section class="page-header">
     <h1 class="page-title">🔥 トレンド</h1>

@@ -1,6 +1,14 @@
 {% extends "base.html" %}
 {% block title %}14人の偉人コメンテーター — ブッダ・ニーチェ・信長ほか - 知リポAI{% endblock %}
 {% block meta_description %}ブッダ・織田信長・ニーチェ・ソクラテス・ダヴィンチなど時代と思想を超えた14人のAIが、最新ニュースと研究論文を多角的に解説。各人物の哲学・価値観・名言をご紹介します。{% endblock %}
+{% block meta_extra %}
+    <link rel="canonical" href="{{ site_url }}/personas">
+    <meta property="og:type" content="website">
+    <meta property="og:title" content="14人の偉人コメンテーター — ブッダ・ニーチェ・信長ほか | 知リポAI">
+    <meta property="og:description" content="ブッダ・織田信長・ニーチェ・ソクラテス・ダヴィンチなど時代と思想を超えた14人のAIが最新ニュースと論文を解説。">
+    <meta property="og:url" content="{{ site_url }}/personas">
+    <meta property="og:site_name" content="知リポAI">
+{% endblock %}
 
 {% block content %}
 <section class="page-header personas-page">

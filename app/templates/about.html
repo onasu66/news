@@ -1,6 +1,14 @@
 {% extends "base.html" %}
 {% block title %}運営者情報・開発ストーリー - 知リポAI{% endblock %}
 {% block meta_description %}なぜ知リポAIを作ったのか。ニュースキャスターをAIに置き換えるという発想、14人の偉人を選んだ理由、そしてAI政策立案という壮大な目標について。{% endblock %}
+{% block meta_extra %}
+    <link rel="canonical" href="{{ site_url }}/about">
+    <meta property="og:type" content="website">
+    <meta property="og:title" content="運営者情報・開発ストーリー | 知リポAI">
+    <meta property="og:description" content="なぜ知リポAIを作ったのか。14人の偉人を選んだ理由、AI政策立案という目標について。">
+    <meta property="og:url" content="{{ site_url }}/about">
+    <meta property="og:site_name" content="知リポAI">
+{% endblock %}
 
 {% block content %}
 <section class="page-header">
@@ -74,10 +82,56 @@
     </article>
 
     <article class="about-section-card">
+        <h2>ご利用料金について</h2>
+        <p>知リポAIはすべての機能を<strong>完全無料</strong>でご利用いただけます。会員登録・ログインも不要です。</p>
+        <ul class="about-list">
+            <li>記事・論文解説の閲覧：無料</li>
+            <li>14キャラクターのコメント閲覧：無料</li>
+            <li>AI投票・政策提案の閲覧と投票：無料</li>
+            <li>解説リクエスト（LINE経由）：無料</li>
+        </ul>
+        <p>有料プランの設定は現時点で予定していません。今後もすべてのコンテンツを無料で提供し続けることを方針としています。</p>
+    </article>
+
+    <article class="about-section-card">
+        <h2>AI解説の信頼性と生成プロセス</h2>
+        <p>知リポAIの解説は、以下のプロセスで生成されます。</p>
+        <ol class="about-list">
+            <li><strong>一次ソースの収集</strong>：arXiv・Nature・Science・BMJ・NHK・BBC・Reuters・AP Newsなど、編集方針の明確な信頼メディアのみをソースとして使用します。</li>
+            <li><strong>記事選定</strong>：収集した記事のうち、速報性・社会的影響・背景の深さをAIがスコアリングし、今日読む価値のある記事を選定します。</li>
+            <li><strong>AI解説生成</strong>：Gemini・Claude・GPT-4oが「1分で理解」「3分で深掘り」の2段階で日本語解説を生成します。偉人キャラクターのコメントも同時に生成されます。</li>
+            <li><strong>一次ソースへのリンク掲載</strong>：各記事ページには元論文・元記事へのリンクを掲載しています。解説はあくまで「入口」です。詳細は必ず一次ソースでご確認ください。</li>
+        </ol>
+        <p>AIによる解説は内容の正確性を<strong>保証するものではありません</strong>。医療・法律・投資判断の根拠には使用しないでください。</p>
+    </article>
+
+    <article class="about-section-card">
         <h2>AIキャラクターについて</h2>
         <p>登場する14人のキャラクターは、歴史上の人物をモデルにしたAIです。実在した人物の哲学・思想・価値観を参考にしていますが、実際の発言・記録を正確に引用するものではありません。</p>
         <p>キャラクターのコメントはAIによる創作であり、史実として参照しないようお願いします。</p>
         <p><a href="/personas" class="about-link">→ 14キャラクター一覧を見る</a></p>
+    </article>
+
+    <article class="about-section-card">
+        <h2>解説リクエストの方法</h2>
+        <p>「このニュースを特定の偉人に解説してほしい」「この論文を取り上げてほしい」といったリクエストをLINEから受け付けています。ご意見・誤情報のご報告・追加してほしいキャラクターのリクエストもお気軽にどうぞ。</p>
+        <ol class="about-list">
+            <li>
+                <strong>LINEで「友だち追加」する</strong><br>
+                下のボタンから知リポAI公式LINEを友だち追加してください。
+            </li>
+            <li>
+                <strong>リクエスト内容を送信する</strong><br>
+                「〇〇（記事URL・キーワード）をアインシュタインに解説してほしい」のように、記事名・URLまたはキーワードと、担当してほしいキャラクター名を添えてメッセージを送ってください。キャラクター指定は任意です。
+            </li>
+            <li>
+                <strong>掲載をお待ちください</strong><br>
+                内容を確認のうえ、できる限り対応します。すべてのリクエストに応じられない場合もありますのでご了承ください。
+            </li>
+        </ol>
+        <div class="about-line-wrap">
+            <a href="https://lin.ee/rQgfdIR"><img src="https://scdn.line-apps.com/n/line_add_friends/btn/ja.png" alt="友だち追加" height="36" border="0"></a>
+        </div>
     </article>
 
     <article class="about-section-card">
@@ -89,13 +143,47 @@
         </ul>
     </article>
 
-    <article class="about-section-card">
-        <h2>お問い合わせ・リクエスト</h2>
-        <p>ご意見・誤情報のご報告・取り上げてほしい記事・追加してほしいキャラクターのリクエストなど、LINEからお気軽にどうぞ。</p>
-        <div class="about-line-wrap">
-            <a href="https://lin.ee/rQgfdIR"><img src="https://scdn.line-apps.com/n/line_add_friends/btn/ja.png" alt="友だち追加" height="36" border="0"></a>
-        </div>
-    </article>
+    <section class="about-section-card about-faq-section" itemscope itemtype="https://schema.org/FAQPage">
+        <h2>よくある質問</h2>
+        <dl class="about-faq-list">
+
+            <div class="about-faq-item" itemscope itemprop="mainEntity" itemtype="https://schema.org/Question">
+                <dt class="about-faq-q" itemprop="name">知リポAIとは何ですか？</dt>
+                <dd class="about-faq-a" itemscope itemprop="acceptedAnswer" itemtype="https://schema.org/Answer">
+                    <span itemprop="text">知リポAIは、ブッダ・ニーチェ・アインシュタインなど14人の歴史的偉人AIが最新のAI論文と国内外ニュースを日本語でわかりやすく解説する、無料のニュースメディアです。</span>
+                </dd>
+            </div>
+
+            <div class="about-faq-item" itemscope itemprop="mainEntity" itemtype="https://schema.org/Question">
+                <dt class="about-faq-q" itemprop="name">利用料金はかかりますか？</dt>
+                <dd class="about-faq-a" itemscope itemprop="acceptedAnswer" itemtype="https://schema.org/Answer">
+                    <span itemprop="text">すべての機能が完全無料です。会員登録・ログインも不要で、記事閲覧・論文解説・AI投票・解説リクエストのすべてを無料でご利用いただけます。有料プランの設定は現時点で予定していません。</span>
+                </dd>
+            </div>
+
+            <div class="about-faq-item" itemscope itemprop="mainEntity" itemtype="https://schema.org/Question">
+                <dt class="about-faq-q" itemprop="name">AI解説の正確性はどのように担保されていますか？</dt>
+                <dd class="about-faq-a" itemscope itemprop="acceptedAnswer" itemtype="https://schema.org/Answer">
+                    <span itemprop="text">arXiv・Nature・NHK・BBCなど編集方針の明確な信頼メディアのみをソースとして収集し、各記事ページに元記事・元論文へのリンクを掲載しています。AI解説はあくまで「読む入口」であり、内容の正確性を保証するものではありません。医療・法律・投資判断の根拠には使用しないでください。</span>
+                </dd>
+            </div>
+
+            <div class="about-faq-item" itemscope itemprop="mainEntity" itemtype="https://schema.org/Question">
+                <dt class="about-faq-q" itemprop="name">特定の偉人AIに解説をリクエストできますか？</dt>
+                <dd class="about-faq-a" itemscope itemprop="acceptedAnswer" itemtype="https://schema.org/Answer">
+                    <span itemprop="text">LINEの公式アカウントからリクエストを受け付けています。記事URL・キーワードと担当してほしいキャラクター名を添えてメッセージを送ってください。キャラクター指定は任意で、内容確認のうえできる限り対応します。</span>
+                </dd>
+            </div>
+
+            <div class="about-faq-item" itemscope itemprop="mainEntity" itemtype="https://schema.org/Question">
+                <dt class="about-faq-q" itemprop="name">どのくらいの頻度で記事が更新されますか？</dt>
+                <dd class="about-faq-a" itemscope itemprop="acceptedAnswer" itemtype="https://schema.org/Answer">
+                    <span itemprop="text">毎日8:30・13:00・16:30・19:00・22:00（日本時間）の5回、arXiv・Nature・Science・NHK・BBC・Reutersなど国内外の主要メディアから記事を収集し、AIが解説を生成・更新します。</span>
+                </dd>
+            </div>
+
+        </dl>
+    </section>
 
     <div class="about-footer-links">
         <a href="/privacy" class="about-link">プライバシーポリシー</a>
