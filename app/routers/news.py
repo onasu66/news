@@ -567,17 +567,6 @@ _PAPER_RELATED_TAGS_CACHE: dict[str, list[str]] = {}
 _PAPER_RELATED_TAGS_LOCK = threading.Lock()
 
 
-@router.get("/{key_filename}.txt", include_in_schema=False)
-async def indexnow_key_file(key_filename: str):
-    """IndexNow キー検証用（https://host/{INDEXNOW_KEY}.txt にキー文字列を返す）。"""
-    from app.services.indexnow_service import indexnow_key
-
-    key = indexnow_key()
-    if not key or key_filename != key:
-        raise HTTPException(status_code=404, detail="Not Found")
-    return Response(content=key + "\n", media_type="text/plain; charset=utf-8")
-
-
 @router.get("/robots.txt")
 async def robots_txt(request: Request):
     """検索エンジン・AIクローラー向け robots.txt"""
@@ -646,6 +635,17 @@ async def llms_txt(request: Request):
 - sitemap-news（直近48時間）: {site_url}/sitemap-news.xml
 """
     return Response(content=body, media_type="text/plain; charset=utf-8")
+
+
+@router.get("/{key_filename}.txt", include_in_schema=False)
+async def indexnow_key_file(key_filename: str):
+    """IndexNow キー検証用（https://host/{INDEXNOW_KEY}.txt にキー文字列を返す）。"""
+    from app.services.indexnow_service import indexnow_key
+
+    key = indexnow_key()
+    if not key or key_filename != key:
+        raise HTTPException(status_code=404, detail="Not Found")
+    return Response(content=key + "\n", media_type="text/plain; charset=utf-8")
 
 
 @router.get("/sitemap.xml")
