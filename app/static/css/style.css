@@ -5117,3 +5117,43 @@ body::after {
 :root[data-theme="dark"] .policy-detail-item { background: rgba(255,255,255,0.04); }
 :root[data-theme="dark"] .policy-pros-list { color: #34d399; }
 :root[data-theme="dark"] .policy-cons-list { color: #f87171; }
+
+/* ── SEOカバレッジセクション ────────────────────────────── */
+.seo-coverage-section {
+    border-top: 1px solid var(--color-border-light, #e2e8f0);
+    margin-top: 3rem;
+    padding: 2rem 1rem 2.5rem;
+    background: var(--color-surface-alt, #f8fafc);
+}
+.seo-coverage-inner {
+    max-width: 900px;
+    margin: 0 auto;
+}
+.seo-coverage-title {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--color-text-muted, #64748b);
+    margin-bottom: 0.5rem;
+}
+.seo-coverage-desc {
+    font-size: 0.82rem;
+    color: var(--color-text-muted, #64748b);
+    line-height: 1.7;
+    margin-bottom: 1rem;
+}
+.seo-tag-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem 0.6rem;
+}
+.seo-tag-list li {
+    font-size: 0.75rem;
+    color: var(--color-text-muted, #64748b);
+    background: var(--color-bg, #fff);
+    border: 1px solid var(--color-border-light, #e2e8f0);
+    border-radius: 4px;
+    padding: 0.2rem 0.5rem;
+}

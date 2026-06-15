@@ -120,6 +120,97 @@ def log_article_selected(
     return False
 
 
+def _get_xpost_page_id() -> str:
+    try:
+        from app.config import settings
+        return (getattr(settings, "NOTION_XPOST_PAGE_ID", "") or os.getenv("NOTION_XPOST_PAGE_ID", "")).strip()
+    except Exception:
+        return os.getenv("NOTION_XPOST_PAGE_ID", "").strip()
+
+
+def create_xpost_page(
+    *,
+    title: str,
+    x_post: str,
+    article_url: str = "",
+    persona_name: str = "",
+    category: str = "",
+    source: str = "",
+    published: str = "",
+) -> bool:
+    """Xポスト内容を Notion の子ページとして新規作成する。"""
+    creds = _get_credentials()
+    if not creds:
+        return False
+    token, _ = creds
+    page_id = _get_xpost_page_id()
+    if not page_id:
+        return False
+
+    # タイトル: 日時 + 記事タイトル
+    now_str = datetime.now(timezone.utc).strftime("%m/%d %H:%M")
+    page_title = f"{now_str} {(title or '')[:60]}"
+
+    # 本文ブロック構築
+    children = []
+
+    # Xポスト本文
+    if x_post:
+        children.append({
+            "object": "block", "type": "callout",
+            "callout": {
+                "icon": {"type": "emoji", "emoji": "📢"},
+                "color": "gray_background",
+                "rich_text": [{"type": "text", "text": {"content": x_post[:2000]}}],
+            },
+        })
+
+    # 区切り
+    children.append({"object": "block", "type": "divider", "divider": {}})
+
+    # メタ情報
+    meta_lines = []
+    if persona_name:
+        meta_lines.append(f"担当キャラ: {persona_name}")
+    if category:
+        meta_lines.append(f"カテゴリ: {category}")
+    if source:
+        meta_lines.append(f"ソース: {source}")
+    if published:
+        meta_lines.append(f"公開日: {published}")
+    if meta_lines:
+        children.append({
+            "object": "block", "type": "paragraph",
+            "paragraph": {
+                "rich_text": [{"type": "text", "text": {"content": "\n".join(meta_lines)},
+                               "annotations": {"color": "gray"}}],
+            },
+        })
+
+    # 記事リンク
+    if article_url:
+        children.append({
+            "object": "block", "type": "bookmark",
+            "bookmark": {"url": article_url},
+        })
+
+    payload = {
+        "parent": {"page_id": page_id},
+        "properties": {
+            "title": {"title": [{"text": {"content": page_title}}]},
+        },
+        "children": children,
+    }
+
+    try:
+        _notion_request("/pages", payload, token)
+        logger.info("Notion Xポストページ作成: %s", page_title)
+        return True
+    except Exception as e:
+        logger.warning("Notion Xポストページ作成失敗: %s", e)
+        return False
+
+
 def log_research_batch(
     articles: list[dict],
     *,

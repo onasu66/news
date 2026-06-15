@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% block title %}AI論文をわかりやすく解説 — arXiv・Nature・Science最新論文 | 知リポAI{% endblock %}
 {% block meta_description %}AI論文・研究論文をわかりやすく日本語で解説。arXiv・Nature・Scienceから最新論文を毎日収集し、機械学習・LLM・深層学習論文の要約・解説を提供。論文検索・AI最新研究の情報収集に。{% endblock %}
-{% block meta_keywords %}<meta name="keywords" content="AI論文,論文解説,arXiv日本語,論文わかりやすく,論文要約AI,AI最新研究,機械学習論文解説,LLM論文,Nature論文日本語,研究論文まとめ,論文解説日本語,AI研究わかりやすく,知リポAI">{% endblock %}
+{% block meta_keywords %}<meta name="keywords" content="AI論文,論文解説,論文要約AI,AI論文わかりやすく,arXiv日本語,arXiv解説,英語論文日本語,論文翻訳AI,機械学習論文,機械学習論文解説,深層学習論文,LLM論文,大規模言語モデル論文,生成AI論文,ChatGPT論文,GPT論文解説,自然言語処理論文,強化学習論文,画像生成AI論文,Vision Transformer,マルチモーダルAI論文,拡散モデル論文,Nature論文日本語,Science論文解説,AI最新研究,研究論文まとめ,AI研究わかりやすく,知リポAI">{% endblock %}
 {% block meta_extra %}
     {# トップ（論文）: canonical は `/` 固定。page>1 は noindex #}
     <link rel="canonical" href="{{ site_url }}/">
@@ -12,12 +12,18 @@
     <meta property="og:type" content="website">
     <meta property="og:title" content="AI論文をわかりやすく解説 — arXiv・Nature最新論文 | 知リポAI">
     <meta property="og:description" content="arXiv・Nature・Scienceの最新AI論文を毎日収集し、14人の偉人AIが日本語でわかりやすく解説。機械学習・LLM・深層学習の論文要約に。">
+    <meta property="og:image" content="{{ site_url }}/static/og/og-research.jpg">
     <meta property="og:url" content="{{ site_url }}/">
+    <meta property="og:site_name" content="知リポAI">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="AI論文をわかりやすく解説 — arXiv・Nature最新論文 | 知リポAI">
+    <meta name="twitter:description" content="arXiv・Nature・Scienceの最新AI論文を毎日収集し、14人の偉人AIが日本語でわかりやすく解説。">
+    <meta name="twitter:image" content="{{ site_url }}/static/og/og-research.jpg">
 {% endblock %}
 {% block content %}
 <section class="site-hero">
     <div class="site-hero-inner">
-        <h1 class="site-hero-title">AI論文・研究論文をわかりやすく解説</h1>
+        <h1 class="site-hero-title">14人の偉人AIがAI論文・研究論文をわかりやすく解説</h1>
         <p class="site-hero-desc">arXiv・Nature・Scienceから最新のAI論文・研究論文を毎日収集。ブッダ・アインシュタイン・ニーチェなど14人の偉人AIが、難解な機械学習・LLM論文を「1分で理解」できる日本語解説に変換します。</p>
         <div class="site-hero-pills">
             <a href="/" class="site-hero-pill site-hero-pill--active">📄 AI論文解説</a>
@@ -126,6 +132,27 @@
 
     </div>
 </div>
+
+<section class="seo-coverage-section">
+    <div class="seo-coverage-inner">
+        <h2 class="seo-coverage-title">対応AI論文・研究論文ジャンル</h2>
+        <p class="seo-coverage-desc">arXiv・Nature・Science・BMJなど一次ソースから毎日収集。機械学習・深層学習・LLMから画像生成AI・自然言語処理まで、英語論文を14人の偉人AIが日本語でわかりやすく解説・要約します。</p>
+        <ul class="seo-tag-list">
+            <li>機械学習（Machine Learning）論文</li>
+            <li>深層学習（Deep Learning）論文</li>
+            <li>LLM・大規模言語モデル論文</li>
+            <li>生成AI・拡散モデル論文</li>
+            <li>自然言語処理（NLP）論文</li>
+            <li>コンピュータビジョン・画像認識論文</li>
+            <li>強化学習（Reinforcement Learning）論文</li>
+            <li>マルチモーダルAI論文</li>
+            <li>ロボティクス・AI制御論文</li>
+            <li>AIアライメント・AI安全性論文</li>
+            <li>arXiv最新論文（cs.AI / cs.LG / cs.CL / cs.CV）</li>
+            <li>Nature・Science・BMJ研究論文</li>
+        </ul>
+    </div>
+</section>
 {% endblock %}
 
 {% block scripts %}

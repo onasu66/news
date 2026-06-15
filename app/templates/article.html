@@ -3,9 +3,9 @@
 {% block meta_description %}{{ meta_description|default(article.summary[:160] if article.summary else article.title)|e }}{% endblock %}
 {% block meta_keywords %}
     {% if article.category == '研究・論文' %}
-    <meta name="keywords" content="{{ article.title }},{{ article.title }} わかりやすく,{{ article.title }} 解説,{{ article.title }} AI解説,{{ article.source }},論文解説,AI論文,研究解説,わかりやすく,知リポAI">
+    <meta name="keywords" content="{{ article.title }},{{ article.title }} わかりやすく,{{ article.title }} 解説,{{ article.title }} AI解説,{{ article.source }},論文解説,AI論文,論文要約AI,機械学習論文,深層学習論文,LLM論文,生成AI論文,arXiv日本語,英語論文日本語,研究解説,AI研究わかりやすく,知リポAI">
     {% else %}
-    <meta name="keywords" content="{{ article.title }},{{ article.title }} AI解説,{{ article.source }},ニュース解説,AIニュース,知リポAI,{{ article.category }}">
+    <meta name="keywords" content="{{ article.title }},{{ article.title }} AI解説,{{ article.source }},AIニュース,生成AIニュース,AI最新ニュース,最新ニュースAI解説,テクノロジーニュース,人工知能ニュース,ニュース解説AI,知リポAI,{{ article.category }}">
     {% endif %}
 {% endblock %}
 {% block meta_extra %}
@@ -74,7 +74,7 @@
         </div>
         <h1 class="article-title">{{ article.title }}</h1>
         {% set _lead = meta_description|default('') %}
-        {% if _lead %}<p class="article-speakable-summary">{{ _lead[:80] }}{% if _lead|length > 80 %}…{% endif %}</p>{% endif %}
+        {% if _lead %}<p class="article-speakable-summary" aria-label="一言要約">{{ _lead[:60] }}{% if _lead|length > 60 %}…{% endif %}</p>{% endif %}
         <p class="live-readers">今 <span class="animated-number" data-target="{{ readers_now|default(42) }}">0</span> 人が読んでいます</p>
         {% if article.link %}
         <div class="article-primary-source">

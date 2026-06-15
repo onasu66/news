@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% block title %}AIニュースまとめ — 最新情報を人工知能が解説 | 知リポAI{% endblock %}
 {% block meta_description %}国内外の最新ニュースをAIが解説してまとめ。NHK・BBC・Reuters・TechCrunchなど信頼メディアの情報を、14人の偉人AIが背景・ポイント・影響をわかりやすく解説。人工知能・テクノロジー・国際ニュースの最新情報を毎日更新。{% endblock %}
-{% block meta_keywords %}<meta name="keywords" content="AIニュースまとめ,人工知能最新情報,AI最新ニュース,ニュース解説AI,テクノロジーニュース,AI最新情報,国際ニュースまとめ,知リポAI,AIニュース">{% endblock %}
+{% block meta_keywords %}<meta name="keywords" content="AIニュース,AI最新ニュース,生成AIニュース,ChatGPTニュース,OpenAIニュース,GeminiAIニュース,LLMニュース,AIニュースまとめ,人工知能最新情報,AI最新情報,テクノロジーニュース,テクノロジー最新情報,AI最新動向,AI規制ニュース,国内ニュースAI解説,国際ニュースAI解説,ニュース解説AI,科学ニュース解説,人工知能ニュース日本語,知リポAI">{% endblock %}
 {% block meta_extra %}
     {# キーワード付きURLは重複になりやすいので正規URLへ統一 + noindex 寄せ #}
     <link rel="canonical" href="{{ site_url }}/news">
@@ -11,7 +11,11 @@
     <meta property="og:type" content="website">
     <meta property="og:title" content="AIニュースまとめ — 最新情報を人工知能が解説 | 知リポAI">
     <meta property="og:description" content="NHK・BBC・Reuters等の最新ニュースを14人の偉人AIが解説。人工知能・テクノロジー・国際ニュースの最新情報を毎日更新。">
-    <meta property="og:image" content="{{ og_image|default('https://picsum.photos/1200/630') }}">
+    <meta property="og:image" content="{{ og_image|default(site_url + '/static/og/og-tech.jpg') }}">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="AIニュースまとめ — 最新情報を人工知能が解説 | 知リポAI">
+    <meta name="twitter:description" content="NHK・BBC・Reuters等の最新ニュースを14人の偉人AIが解説。生成AI・ChatGPT・国際ニュースを毎日更新。">
+    <meta name="twitter:image" content="{{ og_image|default(site_url + '/static/og/og-tech.jpg') }}">
     <meta property="og:url" content="{{ site_url }}/news">
     <meta property="og:site_name" content="知リポAI">
 {% endblock %}
@@ -123,6 +127,25 @@
         </div>
     </aside>
 </div>
+
+<section class="seo-coverage-section">
+    <div class="seo-coverage-inner">
+        <h2 class="seo-coverage-title">知リポAIがカバーするニュースジャンル</h2>
+        <p class="seo-coverage-desc">国内外の最新AIニュース・テクノロジーニュースを毎日5回更新。生成AI・ChatGPT・OpenAI・Geminiなど最新人工知能ニュースから、政治・社会・国際ニュースまで、14人の偉人AIがわかりやすく解説します。</p>
+        <ul class="seo-tag-list">
+            <li>生成AI・ChatGPT最新ニュース</li>
+            <li>OpenAI・Anthropic・Google最新動向</li>
+            <li>LLM（大規模言語モデル）ニュース</li>
+            <li>AI規制・政策ニュース</li>
+            <li>テクノロジー・科学最新情報</li>
+            <li>国内最新ニュースAI解説</li>
+            <li>国際ニュース日本語解説</li>
+            <li>経済・ビジネスニュース</li>
+            <li>政治・社会ニュース解説</li>
+            <li>スポーツ・エンタメニュース</li>
+        </ul>
+    </div>
+</section>
 {% endblock %}
 
 {% block scripts %}

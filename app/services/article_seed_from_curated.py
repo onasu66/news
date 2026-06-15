@@ -479,9 +479,40 @@ def process_curated_articles(path: Optional[Path] = None, max_per_run: int = 30)
                     logger.info("[OK] %s", item.title[:60])
                     try:
                         from .explanation_cache import get_cached as _get_cached
-                        _xpost = _build_x_post(item, item.id, _get_cached(item.id))
+                        _cached = _get_cached(item.id)
+                        _xpost = _build_x_post(item, item.id, _cached)
                         if _xpost:
                             x_post_by_url[item.link] = _xpost
+                            # Notion に Xポストページを即時作成
+                            try:
+                                from .notion_logger import create_xpost_page
+                                _personas = (_cached or {}).get("personas") or []
+                                _display_ids = (_cached or {}).get("display_persona_ids") or []
+                                _pname = ""
+                                try:
+                                    from app.services.ai_service import PERSONAS as _PS
+                                    _pid = _display_ids[0] if _display_ids else None
+                                    if _pid is not None:
+                                        _p = next((x for x in _PS if x.get("id") == _pid), None)
+                                        _pname = _p.get("name", "") if _p else ""
+                                except Exception:
+                                    pass
+                                try:
+                                    from app.config import settings as _s
+                                    _site_base = (getattr(_s, "SITE_URL", "") or "").rstrip("/")
+                                except Exception:
+                                    _site_base = ""
+                                create_xpost_page(
+                                    title=item.title or "",
+                                    x_post=_xpost,
+                                    article_url=f"{_site_base}/topic/{item.id}" if _site_base else "",
+                                    persona_name=_pname,
+                                    category=item.category or "",
+                                    source=item.source or "",
+                                    published=item.published.strftime("%Y-%m-%d %H:%M") if item.published else "",
+                                )
+                            except Exception as _ne:
+                                logger.warning("Notion Xポストページ作成スキップ: %s", _ne)
                     except Exception:
                         pass
                 else:

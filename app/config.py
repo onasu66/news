@@ -113,6 +113,8 @@ class Settings:
     # Notion 連携（Claude 選定ログ）
     NOTION_API_KEY: str = os.getenv("NOTION_API_KEY", "")
     NOTION_DATABASE_ID: str = os.getenv("NOTION_DATABASE_ID", "")
+    # Xポスト書き込み先 Notion ページID（子ページが自動作成される）
+    NOTION_XPOST_PAGE_ID: str = os.getenv("NOTION_XPOST_PAGE_ID", "")
     # 論文トップ「すべて」で読み込む上限（Neon/SQLite いずれも一覧の負荷に直結）
     PAPERS_LIST_MAX: int = int(os.getenv("PAPERS_LIST_MAX", "120"))
     # 論文一覧のメモリキャッシュ秒（アプリ側）

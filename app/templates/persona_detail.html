@@ -2,15 +2,17 @@
 {% block title %}{{ persona.name }} — 生涯・名言・価値観 - 知リポAI{% endblock %}
 {% block meta_description %}{{ persona.name }}（{{ persona.type }}）の生涯と功績、名言、価値観を紹介。知リポAIで記事を解説するAIキャラクターです。{% endblock %}
 {% block meta_extra %}
-<script type="application/ld+json">
-{
-  "@context": "https://schema.org",
-  "@type": "Person",
-  "name": "{{ persona.name }}",
-  "description": "{{ persona.bio | replace('\n', ' ') | truncate(160) }}",
-  "url": "{{ request.base_url }}personas/{{ persona.id }}"
-}
-</script>
+    <link rel="canonical" href="{{ site_url }}/personas/{{ persona.id }}">
+    <meta property="og:type" content="profile">
+    <meta property="og:title" content="{{ persona.name }} — 生涯・名言・価値観 | 知リポAI">
+    <meta property="og:description" content="{{ persona.name }}（{{ persona.type }}）の生涯と功績、名言、価値観。知リポAIで記事を解説するAIキャラクターです。">
+    <meta property="og:image" content="{{ site_url }}{{ persona.image_url }}">
+    <meta property="og:url" content="{{ site_url }}/personas/{{ persona.id }}">
+    <meta property="og:site_name" content="知リポAI">
+    <meta name="twitter:card" content="summary">
+    <meta name="twitter:title" content="{{ persona.name }} — 生涯・名言・価値観 | 知リポAI">
+    <meta name="twitter:description" content="{{ persona.name }}（{{ persona.type }}）の生涯と功績、名言、価値観。">
+    <meta name="twitter:image" content="{{ site_url }}{{ persona.image_url }}">
 {% endblock %}
 
 {% block content %}

@@ -144,9 +144,194 @@ PERSONA_IMAGE_MAP = {
     "ミドルマン":   "/static/char-imgs/ミドルマン.png",
 }
 
+# 14偉人の Person JSON-LD 用データ（sameAs / 生没年 / 職業）
+_PERSONA_WIKI_DATA: dict[str, dict] = {
+    "ブッダ": {
+        "sameAs": [
+            "https://ja.wikipedia.org/wiki/ゴータマ・ブッダ",
+            "https://en.wikipedia.org/wiki/Gautama_Buddha",
+            "https://www.wikidata.org/wiki/Q9441",
+        ],
+        "birthDate": "-0563",
+        "deathDate": "-0483",
+        "jobTitle": "宗教家・哲学者",
+        "nationality": "IN",
+    },
+    "織田信長": {
+        "sameAs": [
+            "https://ja.wikipedia.org/wiki/織田信長",
+            "https://en.wikipedia.org/wiki/Oda_Nobunaga",
+            "https://www.wikidata.org/wiki/Q46616",
+        ],
+        "birthDate": "1534-06-23",
+        "deathDate": "1582-06-21",
+        "jobTitle": "戦国武将・大名",
+        "nationality": "JP",
+    },
+    "吉田松陰": {
+        "sameAs": [
+            "https://ja.wikipedia.org/wiki/吉田松陰",
+            "https://en.wikipedia.org/wiki/Yoshida_Sh%C5%8Din",
+            "https://www.wikidata.org/wiki/Q312534",
+        ],
+        "birthDate": "1830-09-20",
+        "deathDate": "1859-10-27",
+        "jobTitle": "思想家・教育者",
+        "nationality": "JP",
+    },
+    "坂本龍馬": {
+        "sameAs": [
+            "https://ja.wikipedia.org/wiki/坂本龍馬",
+            "https://en.wikipedia.org/wiki/Sakamoto_Ry%C5%8Dma",
+            "https://www.wikidata.org/wiki/Q188415",
+        ],
+        "birthDate": "1836-01-03",
+        "deathDate": "1867-12-10",
+        "jobTitle": "志士・政治活動家",
+        "nationality": "JP",
+    },
+    "太宰治": {
+        "sameAs": [
+            "https://ja.wikipedia.org/wiki/太宰治",
+            "https://en.wikipedia.org/wiki/Osamu_Dazai",
+            "https://www.wikidata.org/wiki/Q130760",
+        ],
+        "birthDate": "1909-06-19",
+        "deathDate": "1948-06-13",
+        "jobTitle": "小説家",
+        "nationality": "JP",
+    },
+    "葛飾北斎": {
+        "sameAs": [
+            "https://ja.wikipedia.org/wiki/葛飾北斎",
+            "https://en.wikipedia.org/wiki/Hokusai",
+            "https://www.wikidata.org/wiki/Q5586",
+        ],
+        "birthDate": "1760-10-31",
+        "deathDate": "1849-05-10",
+        "jobTitle": "浮世絵師・画家",
+        "nationality": "JP",
+    },
+    "ソクラテス": {
+        "sameAs": [
+            "https://ja.wikipedia.org/wiki/ソクラテス",
+            "https://en.wikipedia.org/wiki/Socrates",
+            "https://www.wikidata.org/wiki/Q913",
+        ],
+        "birthDate": "-0470",
+        "deathDate": "-0399",
+        "jobTitle": "哲学者",
+        "nationality": "GR",
+    },
+    "野口英世": {
+        "sameAs": [
+            "https://ja.wikipedia.org/wiki/野口英世",
+            "https://en.wikipedia.org/wiki/Hideyo_Noguchi",
+            "https://www.wikidata.org/wiki/Q190858",
+        ],
+        "birthDate": "1876-11-09",
+        "deathDate": "1928-05-21",
+        "jobTitle": "細菌学者・医学者",
+        "nationality": "JP",
+    },
+    "ダヴィンチ": {
+        "sameAs": [
+            "https://ja.wikipedia.org/wiki/レオナルド・ダ・ヴィンチ",
+            "https://en.wikipedia.org/wiki/Leonardo_da_Vinci",
+            "https://www.wikidata.org/wiki/Q762",
+        ],
+        "birthDate": "1452-04-15",
+        "deathDate": "1519-05-02",
+        "jobTitle": "芸術家・科学者・発明家",
+        "nationality": "IT",
+    },
+    "エジソン": {
+        "sameAs": [
+            "https://ja.wikipedia.org/wiki/トーマス・エジソン",
+            "https://en.wikipedia.org/wiki/Thomas_Edison",
+            "https://www.wikidata.org/wiki/Q8743",
+        ],
+        "birthDate": "1847-02-11",
+        "deathDate": "1931-10-18",
+        "jobTitle": "発明家・実業家",
+        "nationality": "US",
+    },
+    "アインシュタイン": {
+        "sameAs": [
+            "https://ja.wikipedia.org/wiki/アルベルト・アインシュタイン",
+            "https://en.wikipedia.org/wiki/Albert_Einstein",
+            "https://www.wikidata.org/wiki/Q937",
+        ],
+        "birthDate": "1879-03-14",
+        "deathDate": "1955-04-18",
+        "jobTitle": "物理学者",
+        "nationality": "DE",
+    },
+    "ナイチンゲール": {
+        "sameAs": [
+            "https://ja.wikipedia.org/wiki/フローレンス・ナイチンゲール",
+            "https://en.wikipedia.org/wiki/Florence_Nightingale",
+            "https://www.wikidata.org/wiki/Q34517",
+        ],
+        "birthDate": "1820-05-12",
+        "deathDate": "1910-08-13",
+        "jobTitle": "看護師・統計学者・社会改革家",
+        "nationality": "GB",
+    },
+    "ガリレオ": {
+        "sameAs": [
+            "https://ja.wikipedia.org/wiki/ガリレオ・ガリレイ",
+            "https://en.wikipedia.org/wiki/Galileo_Galilei",
+            "https://www.wikidata.org/wiki/Q307",
+        ],
+        "birthDate": "1564-02-15",
+        "deathDate": "1642-01-08",
+        "jobTitle": "天文学者・物理学者・数学者",
+        "nationality": "IT",
+    },
+    "ニーチェ": {
+        "sameAs": [
+            "https://ja.wikipedia.org/wiki/フリードリヒ・ニーチェ",
+            "https://en.wikipedia.org/wiki/Friedrich_Nietzsche",
+            "https://www.wikidata.org/wiki/Q9358",
+        ],
+        "birthDate": "1844-10-15",
+        "deathDate": "1900-08-25",
+        "jobTitle": "哲学者・文献学者",
+        "nationality": "DE",
+    },
+}
+
 
 def _persona_image_url(name: str | None) -> str:
     return PERSONA_IMAGE_MAP.get((name or "").strip(), "/static/site-imgs/ロゴ.png")
+
+
+def _build_persona_person_node(p: dict, site_url: str) -> dict:
+    """偉人1人分の Person JSON-LD ノード（sameAs / 生没年付き）。"""
+    name = str(p.get("name", "") or "")
+    persona_id = p.get("id", "")
+    bio = str(p.get("bio", "") or "").replace("\n", " ").strip()
+    wiki = _PERSONA_WIKI_DATA.get(name, {})
+    base = site_url.rstrip("/")
+    node: dict = {
+        "@type": "Person",
+        "@id": f"{base}/personas/{persona_id}",
+        "name": name,
+        "url": f"{base}/personas/{persona_id}",
+        "image": f"{base}{_persona_image_url(name)}",
+    }
+    if bio:
+        node["description"] = bio[:200]
+    if wiki.get("jobTitle"):
+        node["jobTitle"] = wiki["jobTitle"]
+    if wiki.get("birthDate"):
+        node["birthDate"] = wiki["birthDate"]
+    if wiki.get("deathDate"):
+        node["deathDate"] = wiki["deathDate"]
+    if wiki.get("sameAs"):
+        node["sameAs"] = wiki["sameAs"]
+    return node
 
 
 def _build_persona_view(p: dict) -> dict:
@@ -1092,6 +1277,7 @@ async def personas_page(request: Request):
         page_url=f"{site_url}/personas",
         page_name="14人の偉人コメンテーター — ブッダ・ニーチェ・信長ほか | 知リポAI",
         page_description="ブッダ・織田信長・ニーチェ・ソクラテス・ダヴィンチなど時代と思想を超えた14人のAIが、最新ニュースと研究論文を多角的に解説。各人物の哲学・価値観・名言をご紹介します。",
+        extra_nodes=[_build_persona_person_node(p, site_url) for p in PERSONAS],
     )
     return templates.TemplateResponse(
         "personas.html",
@@ -1112,12 +1298,24 @@ async def persona_detail_page(request: Request, persona_id: int):
         raise HTTPException(status_code=404, detail="キャラクターが見つかりません")
     persona = _build_persona_view(target)
     other_personas = [_build_persona_view(p) for p in PERSONAS if int(p.get("id", -1)) != int(persona_id)][:6]
+    site_url = _get_site_url(request)
+    person_node = _build_persona_person_node(target, site_url)
+    bio_short = str(target.get("bio", "") or "").replace("\n", " ").strip()[:120]
+    page_jsonld = _build_site_graph_jsonld(
+        site_url=site_url,
+        page_url=f"{site_url}/personas/{persona_id}",
+        page_name=f"{persona['name']} — 生涯・名言・価値観 | 知リポAI",
+        page_description=f"{persona['name']}（{persona['type']}）の生涯と功績、名言、価値観。知リポAIで記事を解説するAIキャラクターです。{bio_short}",
+        extra_nodes=[person_node],
+    )
     return templates.TemplateResponse(
         "persona_detail.html",
         {
             "request": request,
             "persona": persona,
             "other_personas": other_personas,
+            "site_url": site_url,
+            "page_jsonld": page_jsonld,
         },
     )
 
@@ -1377,12 +1575,12 @@ def _build_article_jsonld(
     display_persona_ids: list[int] | None,
 ) -> dict:
     article_type = "ScholarlyArticle" if (item.category == "研究・論文") else "NewsArticle"
-    ai_authors = [{"@type": "Person", "name": p.get("name", "")} for p in PERSONAS]
+    ai_authors = [_build_persona_person_node(p, site_url) for p in PERSONAS]
     contributors = []
     for pid in (display_persona_ids or []):
         try:
             p = PERSONAS[int(pid)]
-            contributors.append({"@type": "Person", "name": p.get("name", "")})
+            contributors.append(_build_persona_person_node(p, site_url))
         except Exception:
             continue
     base = site_url.rstrip("/")

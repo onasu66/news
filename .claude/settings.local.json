@@ -18,7 +18,17 @@
       "mcp__Neon__get_connection_string",
       "mcp__Neon__run_sql_transaction",
       "mcp__Neon__run_sql",
-      "PowerShell(cd D:\\\\app\\\\newsite; git ls-files --cached \"app/services/__pycache__/\" | ForEach-Object { git rm --cached \"$_\" --quiet }; echo \"Done\")"
+      "PowerShell(cd D:\\\\app\\\\newsite; git ls-files --cached \"app/services/__pycache__/\" | ForEach-Object { git rm --cached \"$_\" --quiet }; echo \"Done\")",
+      "WebFetch(domain:app.noimosai.com)",
+      "WebFetch(domain:docs.google.com)",
+      "WebFetch(domain:doc-0o-04-docstext.googleusercontent.com)",
+      "WebFetch(domain:doc-04-04-docstext.googleusercontent.com)",
+      "PowerShell(\\(Get-Content \"D:\\\\app\\\\newsite\\\\app\\\\static\\\\css\\\\style.css\" | Measure-Object -Line\\).Lines)",
+      "PowerShell(cd D:\\\\app\\\\newsite; $env:PYTHONIOENCODING=\"utf-8\"; python scripts/_check_notion_db.py 2>&1)",
+      "PowerShell(cd D:\\\\app\\\\newsite; $env:PYTHONIOENCODING=\"utf-8\"; python scripts/_test_notion_page.py 2>&1)",
+      "PowerShell(cd D:\\\\app\\\\newsite; $env:PYTHONIOENCODING=\"utf-8\"; python scripts/_test_notion_page2.py 2>&1)",
+      "PowerShell(Invoke-WebRequest -Uri https://tiripo-ai.site/robots.txt -UseBasicParsing | Select-Object StatusCode, Content)",
+      "PowerShell(head *)"
     ]
   }
 }
