@@ -16,6 +16,7 @@ from apscheduler.triggers.cron import CronTrigger
 
 from app.routers import news
 from app.routers import metrics as metrics_router
+from app.routers import consultation as consultation_router
 from app.services.news_aggregator import NewsAggregator
 
 try:
@@ -398,6 +399,7 @@ if static_path.exists():
 
 app.include_router(news.router)
 app.include_router(metrics_router.router)
+app.include_router(consultation_router.router)
 
 
 @app.post("/api/admin/sync-cache")

@@ -1,83 +1,83 @@
 [
   {
-    "title": "FIFAワールドカップ2026開幕 日本代表オランダと2-2引き分け",
-    "url": "https://www.espn.com/soccer/story/_/id/49062798/netherlands-japan-live-world-cup-2026-latest-updates-commentary-score-result",
-    "reason": "W杯2026開幕でXトレンド1位。日本代表が強豪オランダと2-2引き分けを達成し、鎌田の土壇場ゴールが注目を集めた",
-    "source": "ESPN",
-    "category": "スポーツ",
-    "published": "2026-06-14T23:00:00",
-    "image_url": null
-  },
-  {
-    "title": "日銀 政策金利1.0%に引き上げへ 6月会合で31年ぶり高水準",
-    "url": "https://news.web.nhk/newsweb/na/na-k10015145141000",
-    "reason": "本日開幕の日銀会合で1%利上げがほぼ確実。31年ぶりの高水準で住宅ローン・預金金利への影響大、通勤読者の必読経済速報",
-    "source": "NHKニュース",
-    "category": "国内",
-    "published": "2026-06-09T12:00:00",
-    "image_url": null
-  },
-  {
-    "title": "G7エビアンサミット開幕 高市首相が出席しエネルギー安保を提案",
-    "url": "https://news.web.nhk/newsweb/na/na-k10015146981000",
-    "reason": "本日開幕。中東緊張を受けエネルギー安保がG7最大議題に。高市首相がアジア代表として原油市場安定への主導を呼びかける",
-    "source": "NHKニュース",
-    "category": "国際",
-    "published": "2026-06-14T20:00:00",
-    "image_url": null
-  },
-  {
-    "title": "SpaceX 上場初日に急騰 初値150ドルで時価総額100兆円突破",
-    "url": "https://www.cnbc.com/2026/06/12/spacex-ipo-spcx-live-updates.html",
-    "reason": "マスク氏率いるSpaceXが6月12日にNasdaq上場。初値150ドルから161ドルへ急騰し、民間宇宙の株式市場参入が本格化",
-    "source": "CNBC",
+    "title": "Sakana AI「Marlin」が自律型リサーチアシスタントを正式公開",
+    "url": "https://the-decoder.com/sakana-ai-launches-ultra-deep-research-to-automate-weeks-of-strategy-work/",
+    "reason": "Xトレンド1位。Sakana AIが初商用品として8時間自律で戦略レポートを生成するVirtual CSO製品を公開",
+    "source": "The Decoder",
     "category": "テクノロジー",
-    "published": "2026-06-12T21:00:00",
+    "published": "2026-06-15T00:00:00",
     "image_url": null
   },
   {
-    "title": "トランプ大統領 AI規制強化の大統領令に署名 モデル事前審査を義務化",
-    "url": "https://www.cnbc.com/2026/06/02/trump-executive-order-ai.html",
-    "reason": "XでAI規制が話題。米大統領令で強力AIモデルのリリース前に政府審査30日間を企業に義務づけ、世界のAI開発ルールに影響",
-    "source": "CNBC",
-    "category": "政治・社会",
-    "published": "2026-06-02T20:00:00",
+    "title": "AnthropicのAIモデルが米輸出規制で外国人接続を全面停止",
+    "url": "https://techcrunch.com/2026/06/12/anthropics-safety-warnings-may-have-just-backfired-the-government-has-pulled-the-plug-on-its-most-powerful-ai/",
+    "reason": "Xトレンド上位。米政府の輸出規制でAnthropicのFable・Mythosが外国人全員に即日停止、AI主権問題が浮上",
+    "source": "TechCrunch",
+    "category": "国際",
+    "published": "2026-06-12T00:00:00",
     "image_url": null
   },
   {
-    "title": "睡眠時間と生物学的老化の関係 最適7時間が23の老化指標に影響する",
-    "url": "https://www.nature.com/articles/s41586-026-10524-5",
-    "reason": "Nature掲載の最新研究。適切な睡眠（6.4〜7.8時間）が23の生物学的老化指標と関連し、短長睡眠が疾病・死亡リスクを高めると実証",
-    "source": "Nature",
+    "title": "KPMGのAIレポートがハルシネーションで緊急撤回された理由",
+    "url": "https://techcrunch.com/2026/06/13/kpmg-pulls-report-on-ai-usage-due-to-apparent-hallucinations/",
+    "reason": "Xで話題。KPMGのAIレポートがハルシネーションで虚偽引用が発覚し緊急撤回、コンサル業界の信頼性が問われる",
+    "source": "TechCrunch",
+    "category": "テクノロジー",
+    "published": "2026-06-13T00:00:00",
+    "image_url": null
+  },
+  {
+    "title": "日本のフィジカルAI戦略：世界市場30%狙う3873億円投資",
+    "url": "https://techcrunch.com/2026/04/05/japan-is-proving-experimental-physical-ai-is-ready-for-the-real-world/",
+    "reason": "日本政府が3873億円を投じてフィジカルAI産業を育成、2040年に世界ロボット市場30%獲得を国家目標に設定",
+    "source": "TechCrunch",
+    "category": "国内",
+    "published": "2026-04-05T00:00:00",
+    "image_url": null
+  },
+  {
+    "title": "中国の「安価な電力」がAI競争で米国に対する隠し球となる理由",
+    "url": "https://www.aljazeera.com/economy/2026/5/28/chinas-secret-weapon-in-ai-race-with-us-lots-of-cheap-energy",
+    "reason": "米中AIパワー競争の裏側。中国が安価な再生可能エネルギーを武器にLLM訓練コストで米国企業を凌ごうとする戦略分析",
+    "source": "Al Jazeera",
+    "category": "国際",
+    "published": "2026-05-28T00:00:00",
+    "image_url": null
+  },
+  {
+    "title": "バレートロニクス光チップが室温でAIと量子計算を加速する可能性",
+    "url": "https://www.nature.com/articles/s41566-026-01916-0",
+    "reason": "Nature Photonics掲載。光と電子を1チップに統合するバレートロニクス技術が室温動作に成功、低消費電力計算への道を開く",
+    "source": "Nature Photonics",
     "category": "研究・論文",
-    "published": "2026-06-11T00:00:00",
+    "published": "2026-05-25T00:00:00",
     "image_url": null
   },
   {
-    "title": "睡眠EEGと脳年齢でわかる認知症リスク 7000人超コホート解析",
-    "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC12486002/",
-    "reason": "7000人超のコホートで睡眠EEGから算出した脳年齢指数と認知症リスクを解析。AIによる睡眠スコアが早期診断への活用を示す",
-    "source": "PubMed",
+    "title": "スタンフォード大が「ねじれ光」量子デバイスを室温動作で実現",
+    "url": "https://www.sciencedaily.com/releases/2026/05/260528074028.htm",
+    "reason": "Nature Communications掲載。スタンフォード大が極低温不要の量子デバイスを実現、量子通信の普及に向けた画期的突破口",
+    "source": "ScienceDaily",
     "category": "研究・論文",
-    "published": "2026-05-20T00:00:00",
+    "published": "2026-05-28T00:00:00",
     "image_url": null
   },
   {
-    "title": "AIエージェントの行動科学 感情・経済合理性・社会バイアスを実証",
-    "url": "https://arxiv.org/abs/2506.06366",
-    "reason": "arXiv新着。LLMが戦略的ゲームで人間より高い経済合理性を示す一方、感情・社会バイアスも再現することをゲーム実験で実証",
+    "title": "LLMのエージェント強化学習：自律的な意思決定エージェントへの転換",
+    "url": "https://arxiv.org/abs/2604.27859",
+    "reason": "arXiv新着。LLMをテキスト生成から動的な意思決定エージェントへと転換するエージェント強化学習の新パラダイムを提唱",
     "source": "arXiv",
     "category": "研究・論文",
-    "published": "2025-06-09T00:00:00",
+    "published": "2026-04-28T00:00:00",
     "image_url": null
   },
   {
-    "title": "AIエージェントがソフトウェア開発を変える アジェンティック革命",
-    "url": "https://arxiv.org/abs/2606.05608",
-    "reason": "arXiv 2026年6月新着。AIエージェントが従来のソフトウェア設計パラダイムを根本から変える革命的概念を提唱・整理",
+    "title": "LLMはまだ科学者になれない：自律研究エージェント4例の検証と課題",
+    "url": "https://arxiv.org/abs/2601.03315",
+    "reason": "arXiv新着。LLMエージェント4系統の自律研究実験から科学的手法習得の根本的な障壁を解析した実証研究",
     "source": "arXiv",
     "category": "研究・論文",
-    "published": "2026-06-05T00:00:00",
+    "published": "2026-01-06T00:00:00",
     "image_url": null
   }
 ]

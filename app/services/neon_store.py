@@ -258,6 +258,20 @@ def neon_init_schema():
                 )
             """)
             cur.execute("CREATE INDEX IF NOT EXISTS idx_metrics_category ON metrics(category, year DESC NULLS LAST)")
+            # --- 偉人への相談 ---
+            cur.execute("""
+                CREATE TABLE IF NOT EXISTS consultations (
+                    id TEXT PRIMARY KEY,
+                    question TEXT NOT NULL,
+                    source TEXT DEFAULT 'line',
+                    source_user TEXT,
+                    persona_id INTEGER NOT NULL,
+                    persona_name TEXT NOT NULL,
+                    persona_emoji TEXT DEFAULT '',
+                    answer TEXT NOT NULL,
+                    published_at TIMESTAMPTZ DEFAULT NOW()
+                )
+            """)
 
 
 # --- ヘルパー ---

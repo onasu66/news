@@ -35,24 +35,53 @@
             <a href="/" class="page-switch-link">論文</a>
             <a href="/news" class="page-switch-link is-active" aria-current="page">ニュース</a>
         </div>
-        {% if top_recommendations and not search_keyword %}
-        <section class="top-picks top-picks--news" aria-label="ニュースおすすめ">
-            <h2 class="top-picks-title">🔥 今のAIおすすめニュース</h2>
-            <div class="top-picks-grid">
-                {% for rec in top_recommendations[:3] %}
-                <article class="top-pick-card">
-                    <a href="/topic/{{ rec.id }}" class="top-pick-link">
-                        <img src="{{ rec.image_url or 'https://picsum.photos/400/225' }}" alt="{{ rec.title }}" loading="lazy">
-                        <div class="top-pick-body">
-                            <span class="top-pick-meta">{{ rec.source }}</span>
-                            <h3>{{ rec.title }}</h3>
+        {% if featured and not search_keyword %}
+        <section class="home-featured-section" aria-label="話題のニュース">
+            <h2 class="home-section-title">🔥 話題のニュース</h2>
+            <article class="home-featured-card persona-p{{ featured.persona_id }}">
+                <a href="/topic/{{ featured.id }}" class="home-featured-img-link">
+                    <img src="{{ featured.image_url }}" alt="{{ featured.title }}" class="home-featured-img" loading="lazy">
+                </a>
+                <div class="home-featured-body">
+                    <span class="home-featured-source">{{ featured.source }}</span>
+                    <h3 class="home-featured-title"><a href="/topic/{{ featured.id }}">{{ featured.title }}</a></h3>
+                    <div class="home-featured-persona">
+                        <img src="{{ featured.persona_image_url }}" alt="{{ featured.persona_name }}" class="home-featured-persona-img">
+                        <div class="home-featured-persona-body">
+                            <span class="home-featured-persona-name">{{ featured.persona_emoji }} {{ featured.persona_name }}</span>
+                            <p class="home-featured-persona-comment">{{ featured.persona_comment }}</p>
                         </div>
-                    </a>
-                </article>
-                {% endfor %}
-            </div>
+                    </div>
+                    <a href="/topic/{{ featured.id }}" class="home-featured-cta">記事を読む →</a>
+                </div>
+            </article>
         </section>
         {% endif %}
+
+        {% if latest_consultation and not search_keyword %}
+        <section class="home-consult-section" aria-label="今日の相談">
+            <h2 class="home-section-title">💬 今日の相談</h2>
+            <article class="home-consult-card persona-p{{ latest_consultation.persona_id }}">
+                <blockquote class="home-consult-question">{{ latest_consultation.question }}</blockquote>
+                <div class="home-consult-answer-wrap">
+                    <div class="home-consult-persona-header">
+                        <img src="/static/char-imgs/{{ latest_consultation.persona_name }}.png"
+                             alt="{{ latest_consultation.persona_name }}"
+                             class="home-consult-persona-img"
+                             onerror="this.src='/static/site-imgs/ロゴ.png'">
+                        <span class="home-consult-persona-name">{{ latest_consultation.persona_emoji }} {{ latest_consultation.persona_name }}</span>
+                    </div>
+                    <p class="home-consult-answer">{{ latest_consultation.answer }}</p>
+                </div>
+                <a href="/consultation" class="home-featured-cta">相談室を見る →</a>
+            </article>
+        </section>
+        {% endif %}
+
+        {% if not search_keyword %}
+        <h2 class="home-section-title">📰 最新ニュース</h2>
+        {% endif %}
+
         {% if search_keyword %}
         <div class="search-result-header">
             <p class="search-keyword-msg">「{{ search_keyword }}」の関連記事</p>

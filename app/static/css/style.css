@@ -4737,9 +4737,375 @@ body::after {
     .vote-section { background: #fff; border: 1px solid #e2e8f0; }
     .vote-btn { background: #fff; border-color: #e2e8f0; color: #334155; }
     .vote-btn:hover { border-color: var(--color-accent); background: #f8fafc; }
-
     .news-card-sm { background: transparent; border: none; }
 }
+
+/* ========== ホームページ 話題カード・相談カード ========== */
+.home-section-title {
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--color-text-secondary);
+    margin: 1.5rem 0 0.75rem;
+    letter-spacing: 0.02em;
+}
+
+/* 話題のニュース */
+.home-featured-section { margin-bottom: 0.5rem; }
+
+.home-featured-card {
+    background: var(--color-card);
+    border: 1px solid var(--color-border-light);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-md);
+    overflow: hidden;
+    border-left: 4px solid var(--pc, var(--color-accent));
+}
+
+.home-featured-img-link { display: block; }
+
+.home-featured-img {
+    width: 100%;
+    height: 220px;
+    object-fit: cover;
+    display: block;
+}
+
+.home-featured-body {
+    padding: 1.25rem;
+}
+
+.home-featured-source {
+    font-size: 0.75rem;
+    color: var(--color-text-muted);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.home-featured-title {
+    font-size: 1.1rem;
+    font-weight: 700;
+    line-height: 1.5;
+    margin: 0.4rem 0 1rem;
+    color: var(--color-text);
+}
+.home-featured-title a {
+    color: inherit;
+    text-decoration: none;
+}
+.home-featured-title a:hover { text-decoration: underline; }
+
+.home-featured-persona {
+    display: flex;
+    gap: 0.75rem;
+    align-items: flex-start;
+    background: var(--color-bg-subtle);
+    border-radius: var(--radius);
+    padding: 0.875rem;
+    margin-bottom: 1rem;
+    border-left: 3px solid var(--pc, var(--color-accent));
+}
+
+.home-featured-persona-img {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 2px solid var(--pc, var(--color-accent));
+    flex-shrink: 0;
+}
+
+.home-featured-persona-body {
+    flex: 1;
+    min-width: 0;
+}
+
+.home-featured-persona-name {
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: var(--color-text);
+    display: block;
+    margin-bottom: 0.3rem;
+}
+
+.home-featured-persona-comment {
+    font-size: 0.88rem;
+    line-height: 1.7;
+    color: var(--color-text-secondary);
+    margin: 0;
+    display: -webkit-box;
+    -webkit-line-clamp: 4;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+.home-featured-cta {
+    display: inline-block;
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: var(--color-accent);
+    text-decoration: none;
+    padding: 0.5rem 1rem;
+    border: 1.5px solid var(--color-accent);
+    border-radius: 999px;
+    transition: background 0.15s, color 0.15s;
+}
+.home-featured-cta:hover {
+    background: var(--color-accent);
+    color: #fff;
+}
+
+/* 今日の相談 */
+.home-consult-section { margin-bottom: 0.5rem; }
+
+.home-consult-card {
+    background: var(--color-card);
+    border: 1px solid var(--color-border-light);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-md);
+    padding: 1.25rem;
+    border-left: 4px solid var(--pc, var(--color-accent));
+}
+
+.home-consult-question {
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: var(--color-text);
+    margin: 0 0 1rem;
+    padding-left: 0.875rem;
+    border-left: 3px solid var(--color-accent);
+}
+
+.home-consult-answer-wrap {
+    background: var(--color-bg-subtle);
+    border-radius: var(--radius);
+    padding: 0.875rem;
+    margin-bottom: 1rem;
+}
+
+.home-consult-persona-header {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    margin-bottom: 0.6rem;
+}
+
+.home-consult-persona-img {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 2px solid var(--pc, var(--color-accent));
+    flex-shrink: 0;
+}
+
+.home-consult-persona-name {
+    font-size: 0.88rem;
+    font-weight: 700;
+    color: var(--color-text);
+}
+
+.home-consult-answer {
+    font-size: 0.88rem;
+    line-height: 1.75;
+    color: var(--color-text-secondary);
+    margin: 0;
+    display: -webkit-box;
+    -webkit-line-clamp: 5;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+/* ========== 偉人への相談室 ========== */
+.consultation-list {
+    max-width: 760px;
+    margin: 0 auto;
+    padding: 0 1rem 3rem;
+    display: flex;
+    flex-direction: column;
+    gap: 2rem;
+}
+
+.consultation-card {
+    background: var(--color-card);
+    border: 1px solid var(--color-border-light);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-sm);
+    overflow: hidden;
+}
+
+.consultation-question-wrap {
+    background: var(--color-bg-subtle);
+    padding: 1rem 1.25rem;
+    border-bottom: 1px solid var(--color-border-light);
+}
+
+.consultation-source {
+    display: inline-block;
+    font-size: 0.72rem;
+    font-weight: 700;
+    padding: 0.15rem 0.6rem;
+    border-radius: 999px;
+    margin-bottom: 0.5rem;
+    letter-spacing: 0.03em;
+}
+.consultation-source--line {
+    background: #06c755;
+    color: #fff;
+}
+.consultation-source--x {
+    background: #000;
+    color: #fff;
+}
+
+.consultation-source-user {
+    font-size: 0.8rem;
+    color: var(--color-text-muted);
+    font-weight: 600;
+}
+
+.consultation-question {
+    margin: 0;
+    font-size: 0.97rem;
+    line-height: 1.7;
+    color: var(--color-text);
+    border-left: 3px solid var(--color-accent);
+    padding-left: 0.75rem;
+    white-space: pre-wrap;
+}
+
+.consultation-answer-wrap {
+    padding: 1.25rem;
+}
+
+.consultation-persona-header {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 0.875rem;
+}
+
+.consultation-persona-img {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 2px solid var(--pc, var(--color-accent));
+    background: var(--color-bg-subtle);
+    flex-shrink: 0;
+}
+
+.consultation-persona-emoji {
+    font-size: 1.1rem;
+    margin-right: 0.2rem;
+}
+
+.consultation-persona-name {
+    font-weight: 700;
+    font-size: 1rem;
+    color: var(--color-text);
+}
+
+.consultation-persona-label {
+    font-size: 0.82rem;
+    color: var(--color-text-muted);
+    margin-left: 0.25rem;
+}
+
+.consultation-answer {
+    font-size: 0.95rem;
+    line-height: 1.8;
+    color: var(--color-text);
+    margin: 0 0 0.75rem;
+    white-space: pre-wrap;
+    border-left: 2px solid var(--pc, var(--color-accent));
+    padding-left: 0.75rem;
+}
+
+.consultation-date {
+    font-size: 0.78rem;
+    color: var(--color-text-muted);
+    display: block;
+    text-align: right;
+}
+
+.consultation-empty {
+    text-align: center;
+    color: var(--color-text-muted);
+    padding: 3rem 1rem;
+    line-height: 1.8;
+}
+
+/* CTA */
+.consultation-cta {
+    max-width: 760px;
+    margin: 0 auto 4rem;
+    padding: 2rem 1.25rem;
+    background: var(--color-card);
+    border: 1px solid var(--color-border-light);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-sm);
+    text-align: center;
+}
+
+.consultation-cta-title {
+    font-size: 1.05rem;
+    font-weight: 700;
+    margin: 0 0 1.25rem;
+    color: var(--color-text);
+}
+
+.consultation-cta-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.5rem;
+    margin-bottom: 1rem;
+}
+
+@media (max-width: 540px) {
+    .consultation-cta-grid { grid-template-columns: 1fr; }
+}
+
+.consultation-cta-item {
+    padding: 1rem;
+    background: var(--color-bg-subtle);
+    border-radius: var(--radius);
+}
+
+.consultation-cta-label {
+    font-weight: 700;
+    font-size: 0.9rem;
+    margin: 0 0 0.5rem;
+    color: var(--color-text);
+}
+
+.consultation-cta-hashtag {
+    font-size: 1.35rem;
+    font-weight: 900;
+    color: var(--color-accent);
+    margin: 0.25rem 0 0.5rem;
+}
+
+.consultation-cta-btn {
+    display: inline-block;
+    margin: 0.25rem 0 0.5rem;
+}
+
+.consultation-cta-note {
+    font-size: 0.8rem;
+    color: var(--color-text-muted);
+    margin: 0;
+    line-height: 1.5;
+}
+
+.consultation-cta-disclaimer {
+    font-size: 0.78rem;
+    color: var(--color-text-muted);
+    margin: 0.5rem 0 0;
+}
+
+/* ダークモード修正 */
+:root[data-theme="dark"] .consultation-source--x { background: #333; }
 
 /* ===== MOBILE: DARK MODE overrides ===== */
 @media (max-width: 768px) {

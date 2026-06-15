@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+{% block title %}偉人への相談室 — 知リポAI{% endblock %}
+{% block meta_description %}悩みを偉人に相談。ブッダ・ニーチェ・エジソンら14人の歴史的偉人AIが、あなたの相談に本音で答えます。{% endblock %}
+
+{% block content %}
+<section class="page-header">
+    <h1 class="page-title">🏛️ 偉人への相談室</h1>
+    <p class="personas-intro">読者から届いた悩みに、14人の偉人AIが本音で答えます。<br>相談は公式LINE または <strong>#知リポ相談</strong> のハッシュタグでポストしてください。</p>
+</section>
+
+<section class="consultation-list">
+    {% if consultations %}
+        {% for c in consultations %}
+        <article class="consultation-card persona-p{{ c.persona_id }}">
+            <div class="consultation-question-wrap">
+                {% if c.source == 'x' %}
+                <span class="consultation-source consultation-source--x">𝕏 ポスト</span>
+                {% else %}
+                <span class="consultation-source consultation-source--line">LINE</span>
+                {% endif %}
+                <blockquote class="consultation-question">
+                    {% if c.source == 'x' and c.source_user %}
+                    <span class="consultation-source-user">@{{ c.source_user }}</span><br>
+                    {% endif %}
+                    {{ c.question }}
+                </blockquote>
+            </div>
+
+            <div class="consultation-answer-wrap">
+                <div class="consultation-persona-header">
+                    <img
+                        src="/static/char-imgs/{{ c.persona_name }}.png"
+                        alt="{{ c.persona_name }}"
+                        class="consultation-persona-img"
+                        onerror="this.src='/static/site-imgs/ロゴ.png'"
+                    >
+                    <div>
+                        <span class="consultation-persona-emoji">{{ c.persona_emoji }}</span>
+                        <span class="consultation-persona-name">{{ c.persona_name }}</span>
+                        <span class="consultation-persona-label">より</span>
+                    </div>
+                </div>
+                <p class="consultation-answer">{{ c.answer }}</p>
+                <time class="consultation-date" datetime="{{ c.published_at }}">
+                    {{ c.published_at[:10] if c.published_at else '' }}
+                </time>
+            </div>
+        </article>
+        {% endfor %}
+    {% else %}
+        <p class="consultation-empty">まだ相談が投稿されていません。<br>公式LINE または <strong>#知リポ相談</strong> で相談してみてください。</p>
+    {% endif %}
+</section>
+
+<section class="consultation-cta">
+    <h2 class="consultation-cta-title">相談を送るには</h2>
+    <div class="consultation-cta-grid">
+        <div class="consultation-cta-item">
+            <p class="consultation-cta-label">📱 公式LINE</p>
+            <a href="https://lin.ee/rQgfdIR" class="consultation-cta-btn">
+                <img src="https://scdn.line-apps.com/n/line_add_friends/btn/ja.png" alt="友だち追加" height="36">
+            </a>
+            <p class="consultation-cta-note">友だち追加後にメッセージで相談を送ってください</p>
+        </div>
+        <div class="consultation-cta-item">
+            <p class="consultation-cta-label">𝕏 ハッシュタグ</p>
+            <p class="consultation-cta-hashtag">#知リポ相談</p>
+            <p class="consultation-cta-note">このタグをつけてポストすると選考対象になります</p>
+        </div>
+    </div>
+    <p class="consultation-cta-disclaimer">※ すべての相談に回答するわけではありません。編集部が選んだものを掲載します。</p>
+</section>
+{% endblock %}

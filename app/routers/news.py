@@ -307,6 +307,62 @@ def _persona_image_url(name: str | None) -> str:
     return PERSONA_IMAGE_MAP.get((name or "").strip(), "/static/site-imgs/ロゴ.png")
 
 
+def _get_featured_item_with_persona(news_list: list) -> dict | None:
+    """解説つき記事から話題記事+偉人コメント1件を取得する。"""
+    from app.services.explanation_cache import get_cached
+    for item in news_list[:15]:
+        try:
+            cached = get_cached(item.id)
+        except Exception:
+            continue
+        if not cached:
+            continue
+        cached_personas = cached.get("personas") or []
+        display_ids = cached.get("display_persona_ids") or []
+        persona_id = None
+        comment = ""
+        if isinstance(display_ids, list) and display_ids and \
+                isinstance(cached_personas, list) and len(cached_personas) == 3:
+            try:
+                persona_id = int(display_ids[0])
+                comment = str(cached_personas[0]) if cached_personas[0] else ""
+            except Exception:
+                pass
+        elif isinstance(cached_personas, list):
+            for pid, c in enumerate(cached_personas):
+                if c and 0 <= pid < len(PERSONAS):
+                    persona_id = pid
+                    comment = str(c)
+                    break
+        if persona_id is None or not (0 <= persona_id < len(PERSONAS)):
+            continue
+        p = PERSONAS[persona_id]
+        img = item.image_url
+        if not img:
+            img = get_image_url(item.id, 800, 450)
+        return {
+            "id": item.id,
+            "title": item.title,
+            "source": item.source or "",
+            "image_url": img,
+            "persona_id": persona_id,
+            "persona_name": p["name"],
+            "persona_emoji": p.get("emoji", ""),
+            "persona_image_url": _persona_image_url(p["name"]),
+            "persona_comment": comment,
+        }
+    return None
+
+
+def _get_latest_consultation() -> dict | None:
+    try:
+        from app.services.consultation_store import get_consultations
+        items = get_consultations(limit=1)
+        return items[0] if items else None
+    except Exception:
+        return None
+
+
 def _build_persona_person_node(p: dict, site_url: str) -> dict:
     """偉人1人分の Person JSON-LD ノード（sameAs / 生没年付き）。"""
     name = str(p.get("name", "") or "")
@@ -832,6 +888,8 @@ async def news_index(request: Request, page: int = 1, keyword: str = ""):
             elif item.image_url and not item.image_url.startswith("http"):
                 item.image_url = get_image_url(item.image_url, 400, 225)
     top_recommendations: list = []
+    featured = _get_featured_item_with_persona(all_news)
+    latest_consultation = _get_latest_consultation()
     site_url = _get_site_url(request)
     og_image = "https://picsum.photos/1200/630"
     flat_news = [it for _, items in news_by_category for it in items]
@@ -886,6 +944,8 @@ async def news_index(request: Request, page: int = 1, keyword: str = ""):
             "og_image": og_image,
             "search_keyword": keyword,
             "top_recommendations": top_recommendations,
+            "featured": featured,
+            "latest_consultation": latest_consultation,
             "news_breadcrumb_jsonld": news_breadcrumb_jsonld,
             "news_itemlist_jsonld": news_itemlist_jsonld,
             "page_jsonld": page_jsonld,
@@ -1921,8 +1981,9 @@ def _render_papers_page(request: Request, page: int = 1):
         return build_markdown_response(md_body, frontmatter=md_frontmatter, jsonld=md_jsonld)
     has_papers = bool(all_papers)
 
-    # おすすめは一覧と同じ all_papers の先頭3件（別取得ロジックなし）
     top_recommendations: list = []
+    featured = _get_featured_item_with_persona(all_papers)
+    latest_consultation = _get_latest_consultation()
 
     _ph = _public_html_cache_headers()
     return templates.TemplateResponse(
@@ -1937,6 +1998,8 @@ def _render_papers_page(request: Request, page: int = 1):
             "site_url": site_url,
             "page": pagination.get("page", 1),
             "top_recommendations": top_recommendations,
+            "featured": featured,
+            "latest_consultation": latest_consultation,
             "papers_breadcrumb_jsonld": papers_breadcrumb_jsonld,
             "papers_itemlist_jsonld": papers_itemlist_jsonld,
             "page_jsonld": page_jsonld,

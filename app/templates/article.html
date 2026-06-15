@@ -89,57 +89,6 @@
         <button type="button" class="read-mode-btn" id="tab-mode-deep" role="tab" aria-selected="false" aria-controls="article-deep-content" data-mode="deep" tabindex="-1">📚 3分で深掘り</button>
     </div>
 
-    {% if personas %}
-    <section class="personas-section personas-section--early" aria-label="偉人の視点">
-        <h2 class="personas-title">偉人の視点 <span class="personas-hint">— 同じニュースを14人のAIが別の角度から解説</span></h2>
-        {% for p in personas %}
-        {% if loop.first %}
-        <div class="persona-spotlight persona-card persona-card--spotlight" data-persona-id="{{ p.id }}" data-article-id="{{ article.id }}">
-            <div class="persona-spotlight-head">
-                <img src="{{ p.image_url }}" alt="" class="persona-avatar persona-avatar--spotlight" loading="lazy">
-                <div class="persona-spotlight-meta">
-                    <p class="persona-spotlight-intro"><span class="persona-name">{{ p.name }}</span><span class="persona-spotlight-suffix">の視点</span></p>
-                    <div class="persona-spotlight-actions" aria-label="シェア"></div>
-                </div>
-            </div>
-            <div class="persona-content persona-content--spotlight">
-                <p class="persona-loading">読込中...</p>
-            </div>
-        </div>
-        {% endif %}
-        {% endfor %}
-        {% if personas|length > 1 %}
-        <p class="personas-more-label">ほかの偉人の視点（タップで開く）</p>
-        <div class="personas-grid personas-grid--more">
-            {% for p in personas %}
-            {% if not loop.first %}
-            <div class="persona-card" data-persona-id="{{ p.id }}" data-article-id="{{ article.id }}">
-                <button type="button" class="persona-trigger" aria-expanded="false">
-                    <img src="{{ p.image_url }}" alt="" class="persona-avatar" loading="lazy">
-                    <span class="persona-name">{{ p.name }}</span>
-                    <span class="persona-arrow">▶</span>
-                </button>
-                <div class="persona-content" hidden>
-                    <p class="persona-loading">読込中...</p>
-                </div>
-            </div>
-            {% endif %}
-            {% endfor %}
-        </div>
-        {% endif %}
-        {% if all_personas %}
-        <details class="personas-all-list">
-            <summary>全{{ all_personas|length }}人格一覧</summary>
-            <ul class="personas-all-ul">
-                {% for p in all_personas %}
-                <li class="personas-all-item"><img src="{{ p.image_url }}" alt="" class="personas-all-avatar" loading="lazy"> {{ p.name }}</li>
-                {% endfor %}
-            </ul>
-        </details>
-        {% endif %}
-    </section>
-    {% endif %}
-
     <div class="article-content-wrapper">
         <div class="article-main">
             <div id="article-short-content" class="article-read-content" role="tabpanel" aria-labelledby="tab-mode-short" tabindex="0">
@@ -204,6 +153,57 @@
             </div>
         </div>
     </div>
+
+    {% if personas %}
+    <section class="personas-section" aria-label="偉人の視点">
+        <h2 class="personas-title">偉人の視点 <span class="personas-hint">— 同じニュースを14人のAIが別の角度から解説</span></h2>
+        {% for p in personas %}
+        {% if loop.first %}
+        <div class="persona-spotlight persona-card persona-card--spotlight" data-persona-id="{{ p.id }}" data-article-id="{{ article.id }}">
+            <div class="persona-spotlight-head">
+                <img src="{{ p.image_url }}" alt="" class="persona-avatar persona-avatar--spotlight" loading="lazy">
+                <div class="persona-spotlight-meta">
+                    <p class="persona-spotlight-intro"><span class="persona-name">{{ p.name }}</span><span class="persona-spotlight-suffix">の視点</span></p>
+                    <div class="persona-spotlight-actions" aria-label="シェア"></div>
+                </div>
+            </div>
+            <div class="persona-content persona-content--spotlight">
+                <p class="persona-loading">読込中...</p>
+            </div>
+        </div>
+        {% endif %}
+        {% endfor %}
+        {% if personas|length > 1 %}
+        <p class="personas-more-label">ほかの偉人の視点（タップで開く）</p>
+        <div class="personas-grid personas-grid--more">
+            {% for p in personas %}
+            {% if not loop.first %}
+            <div class="persona-card" data-persona-id="{{ p.id }}" data-article-id="{{ article.id }}">
+                <button type="button" class="persona-trigger" aria-expanded="false">
+                    <img src="{{ p.image_url }}" alt="" class="persona-avatar" loading="lazy">
+                    <span class="persona-name">{{ p.name }}</span>
+                    <span class="persona-arrow">▶</span>
+                </button>
+                <div class="persona-content" hidden>
+                    <p class="persona-loading">読込中...</p>
+                </div>
+            </div>
+            {% endif %}
+            {% endfor %}
+        </div>
+        {% endif %}
+        {% if all_personas %}
+        <details class="personas-all-list">
+            <summary>全{{ all_personas|length }}人格一覧</summary>
+            <ul class="personas-all-ul">
+                {% for p in all_personas %}
+                <li class="personas-all-item"><img src="{{ p.image_url }}" alt="" class="personas-all-avatar" loading="lazy"> {{ p.name }}</li>
+                {% endfor %}
+            </ul>
+        </details>
+        {% endif %}
+    </section>
+    {% endif %}
 
     {% if paper_graph and paper_graph.related_tags %}
     <section class="vote-section">
