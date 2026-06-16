@@ -9,6 +9,12 @@ from fastapi.templating import Jinja2Templates
 router = APIRouter()
 templates = Jinja2Templates(directory=str(Path(__file__).resolve().parent.parent / "templates"))
 
+from app.config import settings
+from app.routers.news import _default_site_graph_jsonld
+
+templates.env.globals["default_site_graph_jsonld"] = _default_site_graph_jsonld
+templates.env.globals["ga4_id"] = settings.GA4_MEASUREMENT_ID
+
 _cache: list = []
 _cache_at: float = 0.0
 _CACHE_TTL = 3600  # 1時間

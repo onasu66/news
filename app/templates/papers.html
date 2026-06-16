@@ -43,9 +43,6 @@
         <section class="home-featured-section" aria-label="話題のニュース">
             <h2 class="home-section-title">🔥 話題のニュース</h2>
             <article class="home-featured-card persona-p{{ featured.persona_id }}">
-                <a href="/topic/{{ featured.id }}" class="home-featured-img-link">
-                    <img src="{{ featured.image_url }}" alt="{{ featured.title }}" class="home-featured-img" loading="lazy">
-                </a>
                 <div class="home-featured-body">
                     <span class="home-featured-source">{{ featured.source }}</span>
                     <h3 class="home-featured-title"><a href="/topic/{{ featured.id }}">{{ featured.title }}</a></h3>
