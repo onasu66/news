@@ -1995,8 +1995,10 @@ def _render_papers_page(request: Request, page: int = 1):
     has_papers = bool(all_papers)
 
     top_recommendations: list = []
-    featured = _get_featured_item_with_persona(all_papers)
-    latest_consultation = _get_latest_consultation()
+    featured_items = _get_featured_items_with_persona(all_papers)
+    featured = featured_items[0] if featured_items else None
+    _consultations = _get_latest_consultations(limit=1)
+    latest_consultation = _consultations[0] if _consultations else None
 
     _ph = _public_html_cache_headers()
     return templates.TemplateResponse(
