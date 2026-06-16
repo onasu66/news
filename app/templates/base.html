@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <meta name="description" content="{% block meta_description %}AI論文・最新ニュースをわかりやすく日本語で解説。arXiv・Nature・Scienceから論文を毎日収集し、14人の偉人AIが論文要約・AI最新情報を解説します。{% endblock %}">
+    <meta name="description" content="{% block meta_description %}AI論文・最新ニュースをわかりやすく日本語で解説。arXiv・Nature・Scienceから論文を毎日収集し、偉人AIが論文要約・AI最新情報を解説します。{% endblock %}">
     {% block meta_keywords %}<meta name="keywords" content="知リポAI,AIニュース,AI論文,生成AIニュース,AI最新ニュース,論文要約AI,AI解説,人工知能ニュース,チリポ,ちりぽ,AI最新情報">{% endblock %}
     {% block structured_data %}
     <script type="application/ld+json">{{ (page_jsonld or default_site_graph_jsonld(request))|tojson }}</script>
@@ -126,6 +126,55 @@
         a.textContent = '';
         setTimeout(function() { a.textContent = text; }, 50);
     };
+    </script>
+    <script>
+    // スマホ横スワイプ ページ遷移
+    (function() {
+        var PAGES = ['/', '/news', '/ai', '/search', '/saved', '/personas'];
+        var path = window.location.pathname;
+        var idx = PAGES.indexOf(path);
+
+        // 入場アニメーション
+        var swipeDir = sessionStorage.getItem('swipe_dir');
+        if (swipeDir) {
+            sessionStorage.removeItem('swipe_dir');
+            var mainEl = document.getElementById('main-content');
+            if (mainEl) {
+                var inCls = swipeDir === 'left' ? 'page-slide-in-right' : 'page-slide-in-left';
+                mainEl.classList.add(inCls);
+                mainEl.addEventListener('animationend', function() { mainEl.classList.remove(inCls); }, { once: true });
+            }
+        }
+
+        if (idx === -1 || !('ontouchstart' in window)) return;
+
+        var startX = 0, startY = 0;
+        var MIN_SWIPE = 60;
+
+        document.addEventListener('touchstart', function(e) {
+            startX = e.changedTouches[0].clientX;
+            startY = e.changedTouches[0].clientY;
+        }, { passive: true });
+
+        document.addEventListener('touchend', function(e) {
+            var dx = e.changedTouches[0].clientX - startX;
+            var dy = e.changedTouches[0].clientY - startY;
+            if (Math.abs(dx) < MIN_SWIPE || Math.abs(dy) > Math.abs(dx) * 0.7) return;
+
+            // 横スクロール可能な要素内なら無視
+            var el = e.target;
+            while (el && el !== document.body) {
+                var ox = window.getComputedStyle(el).overflowX;
+                if ((ox === 'auto' || ox === 'scroll') && el.scrollWidth > el.clientWidth + 4) return;
+                el = el.parentElement;
+            }
+
+            var nextIdx = dx < 0 ? idx + 1 : idx - 1;
+            if (nextIdx < 0 || nextIdx >= PAGES.length) return;
+            sessionStorage.setItem('swipe_dir', dx < 0 ? 'left' : 'right');
+            window.location.href = PAGES[nextIdx];
+        }, { passive: true });
+    })();
     </script>
     {% block scripts %}{% endblock %}
     {% if ga4_id %}

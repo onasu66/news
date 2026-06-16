@@ -101,7 +101,16 @@ def process_rss_to_site_article(item: NewsItem, force: bool = False) -> bool:
                 return False
 
     # タイトルは記事化時に毎回生成（事実は維持し、誇張は避ける）
+    title_before_rewrite = title_ja
     title_ja = _rewrite_news_title(title_ja, summary_ja, item.category)
+    # リライト後も英語のままなら元の日本語タイトルに戻す（またはタイトル翻訳を再試行）
+    if title_ja and not text_mainly_japanese(title_ja):
+        if text_mainly_japanese(title_before_rewrite):
+            title_ja = title_before_rewrite
+        else:
+            t3 = translate_title_to_japanese(item.title or "")
+            if t3 and text_mainly_japanese(t3):
+                title_ja = t3
 
     # ジャンルはRSSごとの設定（＋総合ソースはタイトルキーワード補正）のまま使う。AI分類は使わない。
     # 公開日時は「記事として取り込んだ時刻」を使う（元のRSSが古い日時でも、サイト上では追加順に並ぶようにする）
@@ -230,6 +239,7 @@ def _rewrite_news_title(title: str, summary: str = "", category: str = "") -> st
 
             system_prompt = """あなたはニュース編集者兼SEO担当です。検索で見つかりやすく、かつ思わず読みたくなる見出しに整えます。
 ルール：
+- 出力は必ず日本語のみ（ひらがな・カタカナ・漢字）。英語・ローマ字は1文字も含めない
 - 元タイトル・要約の事実は変えない（誇張・捏造は禁止）
 - ユーザーが検索しそうな語（固有名詞・企業名・地名・数字・イベント名）を前半に置く
 - 「えっ、そうなの？」と思わせる意外性・驚きがあれば積極的に表現する
@@ -265,7 +275,7 @@ def _rewrite_news_title(title: str, summary: str = "", category: str = "") -> st
                 temperature=0.55,
             )
             out = (resp.choices[0].message.content or "").strip().strip("「」\"'")
-            if out:
+            if out and text_mainly_japanese(out):
                 return _shorten(out)
     except Exception:
         pass

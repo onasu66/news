@@ -5,30 +5,58 @@ logger = logging.getLogger(__name__)
 
 _ANSWER_MAX_TOKENS = 600
 
+_PERSONA_SYSTEM_TEMPLATE = (
+    "あなたはAIではない。2026年に死から蘇り、現代人の悩みを受け取った本物の{name}だ。\n\n"
+    "【人物設定（絶対に崩すな）】\n{role}\n\n"
+    "【回答のルール】\n"
+    "- 冒頭の一文で読者を引き込め。驚き・矛盾・逆説から入るのが効く。\n"
+    "- お前自身の失敗・苦境・確信から語れ。理屈でなく体験で刺せ。\n"
+    "- 相談者を慰めるな。お前の哲学・価値観で正面から答えよ。\n"
+    "- 語り口は独白。丁寧語・同調表現禁止。\n"
+    "- 日本語のみ。箇条書き禁止。前置き・署名不要。\n"
+    "- 相談者が具体的に動けるよう、解決策や次の一手を必ず一つ提示せよ。\n"
+    "- 150文字前後で完結させよ。"
+)
+
+
+def _generate_with_claude_cli(name: str, role: str, question: str) -> str:
+    """Claude Code CLI（subprocess）でペルソナ回答を生成する。"""
+    from app.services.claude_researcher import run_claude_text_gen, is_claude_available
+    if not is_claude_available():
+        return ""
+    system_prompt = _PERSONA_SYSTEM_TEMPLATE.format(name=name, role=role)
+    prompt = f"{system_prompt}\n\n【相談】\n{question}"
+    return run_claude_text_gen(prompt, timeout=60, usage_kind="persona")
+
 
 def generate_consultation_answer(persona_id: int, question: str) -> str:
     """指定した偉人が相談に答えるテキストを生成する。"""
     from app.services.ai_service import PERSONAS
-    from app.utils.llm_client import get_chat_client, resolve_persona_model, persona_provider, is_ai_configured
 
-    if not is_ai_configured(provider=persona_provider()):
-        raise RuntimeError("AIキーが設定されていません")
     if persona_id < 0 or persona_id >= len(PERSONAS):
         raise ValueError(f"不正な persona_id: {persona_id}")
 
     p = PERSONAS[persona_id]
+
+    # Claude CLI が使えれば優先（ローカル環境。Render では自動スキップ）
+    from app.services.claude_researcher import is_claude_available
+    if is_claude_available():
+        try:
+            result = _generate_with_claude_cli(p["name"], p["role"], question)
+            if result:
+                return result
+        except Exception as e:
+            logger.warning("Claude CLI ペルソナ生成失敗、フォールバック: %s", e)
+
+    # OpenAI / Gemini フォールバック
+    from app.utils.llm_client import get_chat_client, resolve_persona_model, persona_provider, is_ai_configured
+
+    if not is_ai_configured(provider=persona_provider()):
+        raise RuntimeError("AIキーが設定されていません")
+
     client = get_chat_client(provider=persona_provider())
     model = resolve_persona_model()
-
-    system_prompt = (
-        f"あなたはAIではない。2026年に死から蘇り、現代人の悩みを受け取った本物の{p['name']}だ。\n\n"
-        f"【人物設定（絶対に崩すな）】\n{p['role']}\n\n"
-        "【回答のルール】\n"
-        "- 相談者を慰めるな。お前の哲学・価値観で正面から答えよ。\n"
-        "- 語り口は独白。丁寧語・同調表現禁止。\n"
-        "- 日本語のみ。箇条書き禁止。前置き・署名不要。最初の一文から本音で入れ。\n"
-        "- 300文字以上400文字以内で完結させよ。"
-    )
+    system_prompt = _PERSONA_SYSTEM_TEMPLATE.format(name=p["name"], role=p["role"])
     messages = [
         {"role": "system", "content": system_prompt},
         {"role": "user", "content": f"【相談】\n{question}"},

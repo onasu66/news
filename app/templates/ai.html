@@ -1,11 +1,11 @@
 {% extends "base.html" %}
 {% block title %}AI推しキャラ投票 - 知リポAI{% endblock %}
-{% block meta_description %}14人の偉人AIキャラに推し投票！あなたの推しキャラを選んで投票しよう。{% endblock %}
+{% block meta_description %}偉人AIキャラに推し投票！あなたの推しキャラを選んで投票しよう。{% endblock %}
 {% block meta_extra %}
     <link rel="canonical" href="{{ site_url }}/ai">
     <meta property="og:type" content="website">
-    <meta property="og:title" content="AI投票・政策立案 | 知リポAI">
-    <meta property="og:description" content="14人の偉人AIキャラクターへの推し投票とAIによる政策提案。少子化・経済などのテーマについてAIが政策案を立案します。">
+    <meta property="og:title" content="AI推しキャラ投票 | 知リポAI">
+    <meta property="og:description" content="偉人AIキャラクターへの推し投票。あなたの推しキャラに投票しよう。">
     <meta property="og:url" content="{{ site_url }}/ai">
     <meta property="og:site_name" content="知リポAI">
 {% endblock %}
@@ -15,10 +15,7 @@
   <!-- ヘッダー -->
   <section class="ai-vote-header">
     <h1 class="ai-vote-title">AI投票・政策立案</h1>
-    <p class="ai-vote-desc">14人の偉人AIキャラのうち、あなたの推しは誰？ 1キャラ1票まで投票できます。</p>
-    {% if active_topic %}
-    <a href="/policy" class="ai-policy-link">📊 政策提案AIを見る →</a>
-    {% endif %}
+    <p class="ai-vote-desc">偉人AIキャラのうち、あなたの推しは誰？ 1キャラ1票まで投票できます。</p>
   </section>
 
   <!-- リーダーボード（上位3） -->
@@ -98,6 +95,32 @@
         {% endfor %}
       </div>
     </details>
+  </section>
+  {% endif %}
+
+  <!-- 過去の相談履歴 -->
+  {% if past_consultations %}
+  <section class="ai-consult-history-section" id="past-consultations">
+    <h2 class="ai-section-title">💬 偉人への相談 — 過去の記録</h2>
+    <div class="ai-consult-history-list">
+      {% for c in past_consultations %}
+      <article class="ai-consult-history-card persona-p{{ c.persona_id }}">
+        <blockquote class="ai-consult-history-question">{{ c.question }}</blockquote>
+        <div class="ai-consult-history-answer-wrap">
+          <div class="ai-consult-history-persona">
+            <img src="{{ c.persona_image_url }}" alt="{{ c.persona_name }}"
+                 class="ai-consult-history-avatar"
+                 onerror="this.src='/static/site-imgs/ロゴ.png'">
+            <span class="ai-consult-history-name">{{ c.persona_emoji }} {{ c.persona_name }}</span>
+          </div>
+          <p class="ai-consult-history-answer">{{ c.answer }}</p>
+        </div>
+        {% if c.published_at %}
+        <time class="ai-consult-history-date">{{ c.published_at[:10] if c.published_at is string else c.published_at.strftime('%Y-%m-%d') }}</time>
+        {% endif %}
+      </article>
+      {% endfor %}
+    </div>
   </section>
   {% endif %}
 

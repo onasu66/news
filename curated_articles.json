@@ -1,83 +1,83 @@
 [
   {
-    "title": "Sakana AI「Marlin」が自律型リサーチアシスタントを正式公開",
-    "url": "https://the-decoder.com/sakana-ai-launches-ultra-deep-research-to-automate-weeks-of-strategy-work/",
-    "reason": "Xトレンド1位。Sakana AIが初商用品として8時間自律で戦略レポートを生成するVirtual CSO製品を公開",
-    "source": "The Decoder",
-    "category": "テクノロジー",
-    "published": "2026-06-15T00:00:00",
+    "title": "W杯2026 日本代表 オランダに2-2引き分け 89分鎌田の同点弾",
+    "url": "https://news.web.nhk/newsweb/na/na-k10015149851000",
+    "reason": "W杯初戦でX・SNSがトレンド1位。89分の劇的同点弾で日本代表が強豪オランダに粘り2-2。朝の通勤時に確認したい試合結果",
+    "source": "NHK",
+    "category": "スポーツ",
+    "published": "2026-06-15T06:00:00",
     "image_url": null
   },
   {
-    "title": "AnthropicのAIモデルが米輸出規制で外国人接続を全面停止",
-    "url": "https://techcrunch.com/2026/06/12/anthropics-safety-warnings-may-have-just-backfired-the-government-has-pulled-the-plug-on-its-most-powerful-ai/",
-    "reason": "Xトレンド上位。米政府の輸出規制でAnthropicのFable・Mythosが外国人全員に即日停止、AI主権問題が浮上",
-    "source": "TechCrunch",
+    "title": "日経平均 史上初6万9000円台 米イラン停戦合意受け急騰",
+    "url": "https://www.nikkei.com/article/DGXZQOUB153XM0V10C26A6000000/",
+    "reason": "米イラン電撃停戦合意を受け日経平均が史上初6万9000円台を記録。投資家・サラリーマンが注目する株式市場の歴史的節目",
+    "source": "日本経済新聞",
+    "category": "国内",
+    "published": "2026-06-15T15:30:00",
+    "image_url": null
+  },
+  {
+    "title": "高市首相がG7エビアン・サミット出席 重要鉱物共同備蓄を提案へ",
+    "url": "https://news.web.nhk/newsweb/na/na-k10015149721000",
+    "reason": "G7エビアン・サミットは16日まで開催中。高市首相が重要鉱物共同備蓄の新構想を提案。今日の日本外交の焦点を速報",
+    "source": "NHK",
     "category": "国際",
-    "published": "2026-06-12T00:00:00",
+    "published": "2026-06-15T10:00:00",
     "image_url": null
   },
   {
-    "title": "KPMGのAIレポートがハルシネーションで緊急撤回された理由",
-    "url": "https://techcrunch.com/2026/06/13/kpmg-pulls-report-on-ai-usage-due-to-apparent-hallucinations/",
-    "reason": "Xで話題。KPMGのAIレポートがハルシネーションで虚偽引用が発覚し緊急撤回、コンサル業界の信頼性が問われる",
+    "title": "SpaceX 史上最大IPOで上場初日19%急騰 世界初の兆万長者誕生",
+    "url": "https://techcrunch.com/2026/06/12/spacex-ipo-closes-up-19-and-delivers-the-worlds-first-trillionaire/",
+    "reason": "XでIPOトレンド入り。史上最大規模の上場でマスク氏が世界初の兆万長者に。テクノロジー株に注目する読者必読の速報",
     "source": "TechCrunch",
     "category": "テクノロジー",
+    "published": "2026-06-12T20:00:00",
+    "image_url": null
+  },
+  {
+    "title": "コメ購入額が12年ぶりにパン上回る 総務省家計調査で判明",
+    "url": "https://www.nikkei.com/article/DGXZQOUA293OG0Z20C26A5000000/",
+    "reason": "総務省の家計調査で米価高騰を反映しコメ支出が12年ぶりにパンを超えた。食生活・物価上昇に関心のある読者向けの注目データ",
+    "source": "日本経済新聞",
+    "category": "国内",
+    "published": "2026-05-29T08:30:00",
+    "image_url": null
+  },
+  {
+    "title": "強化学習でLLM推論と要約を統合するReSum：精度向上を実現",
+    "url": "https://arxiv.org/abs/2606.13316v1",
+    "reason": "arXiv新着2606.13316。強化学習でLLMが推論中に自己要約しながら精度を高める新手法。NLP・AIエンジニア注目の研究",
+    "source": "arXiv",
+    "category": "研究・論文",
     "published": "2026-06-13T00:00:00",
     "image_url": null
   },
   {
-    "title": "日本のフィジカルAI戦略：世界市場30%狙う3873億円投資",
-    "url": "https://techcrunch.com/2026/04/05/japan-is-proving-experimental-physical-ai-is-ready-for-the-real-world/",
-    "reason": "日本政府が3873億円を投じてフィジカルAI産業を育成、2040年に世界ロボット市場30%獲得を国家目標に設定",
-    "source": "TechCrunch",
-    "category": "国内",
-    "published": "2026-04-05T00:00:00",
-    "image_url": null
-  },
-  {
-    "title": "中国の「安価な電力」がAI競争で米国に対する隠し球となる理由",
-    "url": "https://www.aljazeera.com/economy/2026/5/28/chinas-secret-weapon-in-ai-race-with-us-lots-of-cheap-energy",
-    "reason": "米中AIパワー競争の裏側。中国が安価な再生可能エネルギーを武器にLLM訓練コストで米国企業を凌ごうとする戦略分析",
-    "source": "Al Jazeera",
-    "category": "国際",
-    "published": "2026-05-28T00:00:00",
-    "image_url": null
-  },
-  {
-    "title": "バレートロニクス光チップが室温でAIと量子計算を加速する可能性",
-    "url": "https://www.nature.com/articles/s41566-026-01916-0",
-    "reason": "Nature Photonics掲載。光と電子を1チップに統合するバレートロニクス技術が室温動作に成功、低消費電力計算への道を開く",
-    "source": "Nature Photonics",
-    "category": "研究・論文",
-    "published": "2026-05-25T00:00:00",
-    "image_url": null
-  },
-  {
-    "title": "スタンフォード大が「ねじれ光」量子デバイスを室温動作で実現",
-    "url": "https://www.sciencedaily.com/releases/2026/05/260528074028.htm",
-    "reason": "Nature Communications掲載。スタンフォード大が極低温不要の量子デバイスを実現、量子通信の普及に向けた画期的突破口",
-    "source": "ScienceDaily",
-    "category": "研究・論文",
-    "published": "2026-05-28T00:00:00",
-    "image_url": null
-  },
-  {
-    "title": "LLMのエージェント強化学習：自律的な意思決定エージェントへの転換",
-    "url": "https://arxiv.org/abs/2604.27859",
-    "reason": "arXiv新着。LLMをテキスト生成から動的な意思決定エージェントへと転換するエージェント強化学習の新パラダイムを提唱",
+    "title": "皮膚病変AI診断の人口統計バイアス：性別・年齢で精度に差",
+    "url": "https://arxiv.org/abs/2606.03214",
+    "reason": "arXiv新着2606.03214。皮膚病変AI診断で男女・年齢によって精度に差が生じることを実証。医療AIの公平性問題に警鐘",
     "source": "arXiv",
     "category": "研究・論文",
-    "published": "2026-04-28T00:00:00",
+    "published": "2026-06-02T00:00:00",
     "image_url": null
   },
   {
-    "title": "LLMはまだ科学者になれない：自律研究エージェント4例の検証と課題",
-    "url": "https://arxiv.org/abs/2601.03315",
-    "reason": "arXiv新着。LLMエージェント4系統の自律研究実験から科学的手法習得の根本的な障壁を解析した実証研究",
-    "source": "arXiv",
+    "title": "睡眠EEGを機械学習で解析：将来の認知機能・認知症リスクを予測",
+    "url": "https://academic.oup.com/sleep/advance-article-abstract/doi/10.1093/sleep/zsag100/8644007",
+    "reason": "Sleep誌掲載。機械学習で睡眠EEGを解析し将来の認知機能低下と認知症リスクを予測できることを示した注目研究",
+    "source": "SLEEP (Oxford Academic)",
     "category": "研究・論文",
-    "published": "2026-01-06T00:00:00",
+    "published": "2026-01-15T00:00:00",
+    "image_url": null
+  },
+  {
+    "title": "日中の眠気が仕事のパフォーマンスを低下させる：昼間労働者の実態",
+    "url": "https://www.ncbi.nlm.nih.gov/pmc/articles/PMC12066196/",
+    "reason": "PubMed掲載。日中の眠気があると業務効率（プレゼンティーズム・アブセンティーズム）が有意に低下するとした研究",
+    "source": "PubMed",
+    "category": "研究・論文",
+    "published": "2025-04-01T00:00:00",
     "image_url": null
   }
 ]

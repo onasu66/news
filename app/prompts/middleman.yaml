@@ -19,7 +19,7 @@ blocks:
     - "explain"
   explain_min: 3
   explain_max: 6
-  explain_sentence_range: "1〜3文"
+  explain_sentence_range: "1〜2文（80字以内）"
 
 comment_focus:
   - "記事の事実を崩さず、背景や難語を噛み砕いて補足する"

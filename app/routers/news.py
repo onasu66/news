@@ -30,9 +30,9 @@ router = APIRouter()
 templates = Jinja2Templates(directory=str(Path(__file__).resolve().parent.parent / "templates"))
 logger = logging.getLogger(__name__)
 
-SITE_JSONLD_TITLE = "知リポAI — 偉人14人が解説するAI論文・ニュースメディア"
+SITE_JSONLD_TITLE = "知リポAI — 偉人AIが解説するAI論文・ニュースメディア"
 SITE_JSONLD_DESCRIPTION = (
-    "知リポAIは、ブッダ・ニーチェ・アインシュタインなど14人の歴史的偉人AIが"
+    "知リポAIは、ブッダ・ニーチェ・アインシュタインなど歴史的偉人AIが"
     "最新のAI論文・国内外ニュースを日本語でわかりやすく解説する、無料のニュースメディアです。"
 )
 
@@ -307,10 +307,13 @@ def _persona_image_url(name: str | None) -> str:
     return PERSONA_IMAGE_MAP.get((name or "").strip(), "/static/site-imgs/ロゴ.png")
 
 
-def _get_featured_item_with_persona(news_list: list) -> dict | None:
-    """解説つき記事から話題記事+偉人コメント1件を取得する。"""
+def _get_featured_items_with_persona(news_list: list, max_items: int = 3) -> list[dict]:
+    """解説つき記事から話題記事+偉人コメントを最大 max_items 件取得する。"""
     from app.services.explanation_cache import get_cached
-    for item in news_list[:15]:
+    results = []
+    for item in news_list[:30]:
+        if len(results) >= max_items:
+            break
         try:
             cached = get_cached(item.id)
         except Exception:
@@ -340,7 +343,7 @@ def _get_featured_item_with_persona(news_list: list) -> dict | None:
         img = item.image_url
         if not img:
             img = get_image_url(item.id, 800, 450)
-        return {
+        results.append({
             "id": item.id,
             "title": item.title,
             "source": item.source or "",
@@ -350,17 +353,16 @@ def _get_featured_item_with_persona(news_list: list) -> dict | None:
             "persona_emoji": p.get("emoji", ""),
             "persona_image_url": _persona_image_url(p["name"]),
             "persona_comment": comment,
-        }
-    return None
+        })
+    return results
 
 
-def _get_latest_consultation() -> dict | None:
+def _get_latest_consultations(limit: int = 3) -> list[dict]:
     try:
         from app.services.consultation_store import get_consultations
-        items = get_consultations(limit=1)
-        return items[0] if items else None
+        return get_consultations(limit=limit)
     except Exception:
-        return None
+        return []
 
 
 def _build_persona_person_node(p: dict, site_url: str) -> dict:
@@ -656,18 +658,18 @@ async def llms_txt(request: Request):
     site_url = _get_site_url(request)
     body = f"""# 知リポAI
 
-> 14人の歴史的偉人AIが最新研究論文・ニュースを多角的に解説する知的ニュースメディア（日本語）。
+> 歴史的偉人AIが最新研究論文・ニュースを多角的に解説する知的ニュースメディア（日本語）。
 
 ## サイト概要
 
-知リポAI（チリポAI）は、ブッダ・ニーチェ・織田信長・アインシュタインなど14人の歴史的偉人AIが、最新のAI論文・科学論文・国内外ニュースを解説するサービスです。arXiv・Nature・Science・NHK・BBC・Reutersなどから毎日収集し、「1分で理解」「3分で深掘り」の2段階で解説します。
+知リポAI（チリポAI）は、ブッダ・ニーチェ・織田信長・アインシュタインなど歴史的偉人AIが、最新のAI論文・科学論文・国内外ニュースを解説するサービスです。arXiv・Nature・Science・NHK・BBC・Reutersなどから毎日収集し、「1分で理解」「3分で深掘り」の2段階で解説します。
 
 ## 主要ページ
 
 - [AI論文解説（トップ）]({site_url}/): 最新研究論文をAIが平易に解説。arXiv・Nature・Science等から毎日収集。
 - [AIニュースアーカイブ]({site_url}/news): 国内外ニュースのAI解説アーカイブ。カテゴリ別フィルター対応。
 - [AI投票・政策]({site_url}/ai): AIが生成する政策提案とユーザー投票。少子化・経済等のテーマ。
-- [14キャラクター一覧]({site_url}/personas): 解説キャラクター（偉人AI）14人の一覧とプロフィール。
+- [キャラクター一覧]({site_url}/personas): 解説キャラクター（偉人AI）の一覧とプロフィール。
 
 ## コンテンツ仕様
 
@@ -676,7 +678,7 @@ async def llms_txt(request: Request):
 - **解説言語**: 日本語
 - **一次ソース**: 各記事ページに元論文・ニュースへのリンクを掲載（arXiv・Nature・DOI等）
 
-## AIキャラクター（偉人14人）
+## AIキャラクター（偉人）
 
 ブッダ、織田信長、吉田松陰、坂本龍馬、太宰治、葛飾北斎、ソクラテス、野口英世、ダヴィンチ、エジソン、アインシュタイン、ナイチンゲール、ガリレオ、ニーチェ
 
@@ -888,8 +890,9 @@ async def news_index(request: Request, page: int = 1, keyword: str = ""):
             elif item.image_url and not item.image_url.startswith("http"):
                 item.image_url = get_image_url(item.image_url, 400, 225)
     top_recommendations: list = []
-    featured = _get_featured_item_with_persona(all_news)
-    latest_consultation = _get_latest_consultation()
+    featured_items = _get_featured_items_with_persona(all_news, max_items=3)
+    featured = featured_items[0] if featured_items else None
+    latest_consultations = _get_latest_consultations(limit=3)
     site_url = _get_site_url(request)
     og_image = "https://picsum.photos/1200/630"
     flat_news = [it for _, items in news_by_category for it in items]
@@ -908,7 +911,7 @@ async def news_index(request: Request, page: int = 1, keyword: str = ""):
         page_description=(
             "国内外の最新ニュースをAIが解説してまとめ。"
             "NHK・BBC・Reuters・TechCrunchなど信頼メディアの情報を、"
-            "14人の偉人AIが背景・ポイント・影響をわかりやすく解説。"
+            "偉人AIが背景・ポイント・影響をわかりやすく解説。"
         ),
         extra_nodes=[news_breadcrumb_jsonld, news_itemlist_jsonld],
     )
@@ -920,7 +923,7 @@ async def news_index(request: Request, page: int = 1, keyword: str = ""):
             description=(
                 "国内外の最新ニュースをAIが解説してまとめ。"
                 "NHK・BBC・Reuters・TechCrunchなど信頼メディアの情報を、"
-                "14人の偉人AIが背景・ポイント・影響をわかりやすく解説。"
+                "偉人AIが背景・ポイント・影響をわかりやすく解説。"
             ),
             page_url=f"{site_url}/news",
             site_url=site_url,
@@ -945,7 +948,8 @@ async def news_index(request: Request, page: int = 1, keyword: str = ""):
             "search_keyword": keyword,
             "top_recommendations": top_recommendations,
             "featured": featured,
-            "latest_consultation": latest_consultation,
+            "featured_items": featured_items,
+            "latest_consultations": latest_consultations,
             "news_breadcrumb_jsonld": news_breadcrumb_jsonld,
             "news_itemlist_jsonld": news_itemlist_jsonld,
             "page_jsonld": page_jsonld,
@@ -1139,12 +1143,23 @@ async def ai_page(request: Request):
     except Exception:
         pass
 
+    # 過去の相談履歴
+    past_consultations = []
+    try:
+        from app.services.consultation_store import get_consultations
+        raw = get_consultations(limit=30)
+        for c in raw:
+            c["persona_image_url"] = _persona_image_url(c.get("persona_name"))
+            past_consultations.append(c)
+    except Exception:
+        pass
+
     site_url = _get_site_url(request)
     page_jsonld = _build_site_graph_jsonld(
         site_url=site_url,
         page_url=f"{site_url}/ai",
         page_name="AI投票・政策立案 | 知リポAI",
-        page_description="14人の偉人AIキャラクターへの推し投票とAIによる政策提案。少子化・経済などのテーマについてAIが政策案を立案し、ユーザーが投票できます。",
+        page_description="偉人AIキャラクターへの推し投票とAIによる政策提案。少子化・経済などのテーマについてAIが政策案を立案し、ユーザーが投票できます。",
     )
     return templates.TemplateResponse(
         "ai.html",
@@ -1154,6 +1169,7 @@ async def ai_page(request: Request):
             "ai_personas": ai_personas,
             "personas": personas_with_votes,
             "active_topic": active_topic,
+            "past_consultations": past_consultations,
             "site_url": site_url,
             "page_jsonld": page_jsonld,
         },
@@ -1174,26 +1190,17 @@ async def vote_persona(persona_id: int):
 
 @router.post("/api/vote/policy/{proposal_id}")
 async def vote_policy(proposal_id: str):
-    """政策提案投票 API - 指定提案の票数を +1 して返す。"""
-    try:
-        from app.services.vote_service import increment_policy_vote
-        new_count = increment_policy_vote(proposal_id)
-        return {"ok": True, "proposal_id": proposal_id, "vote_count": new_count}
-    except Exception as e:
-        logger.warning("vote_policy error: %s", e)
-        return {"ok": False, "proposal_id": proposal_id, "vote_count": 0}
+    return {"ok": False, "proposal_id": proposal_id, "vote_count": 0}
 
 
 @router.get("/policy", response_class=HTMLResponse)
 async def policy_page(request: Request):
-    """政策提案AIページ（最新アクティブトピック）"""
-    return await _policy_page_impl(request, topic_id=None)
+    return RedirectResponse(url="/ai", status_code=302)
 
 
 @router.get("/policy/{topic_id}", response_class=HTMLResponse)
 async def policy_topic_page(request: Request, topic_id: str):
-    """政策提案AIページ（トピック指定）"""
-    return await _policy_page_impl(request, topic_id=topic_id)
+    return RedirectResponse(url="/ai", status_code=302)
 
 
 async def _policy_page_impl(request: Request, topic_id: str | None):
@@ -1261,7 +1268,7 @@ async def about_page(request: Request):
                 "name": "知リポAIとは何ですか？",
                 "acceptedAnswer": {
                     "@type": "Answer",
-                    "text": "知リポAIは、ブッダ・ニーチェ・アインシュタインなど14人の歴史的偉人AIが最新のAI論文と国内外ニュースを日本語でわかりやすく解説する、無料のニュースメディアです。",
+                    "text": "知リポAIは、ブッダ・ニーチェ・アインシュタインなど歴史的偉人AIが最新のAI論文と国内外ニュースを日本語でわかりやすく解説する、無料のニュースメディアです。",
                 },
             },
             {
@@ -1302,7 +1309,7 @@ async def about_page(request: Request):
         site_url=site_url,
         page_url=f"{site_url}/about",
         page_name="運営者情報・開発ストーリー - 知リポAI",
-        page_description="なぜ知リポAIを作ったのか。ニュースキャスターをAIに置き換えるという発想、14人の偉人を選んだ理由、そしてAI政策立案という壮大な目標について。",
+        page_description="なぜ知リポAIを作ったのか。ニュースキャスターをAIに置き換えるという発想、偉人を選んだ理由、そしてAI政策立案という壮大な目標について。",
         extra_nodes=[faq_jsonld],
     )
     return templates.TemplateResponse(
@@ -1335,8 +1342,8 @@ async def personas_page(request: Request):
     page_jsonld = _build_site_graph_jsonld(
         site_url=site_url,
         page_url=f"{site_url}/personas",
-        page_name="14人の偉人コメンテーター — ブッダ・ニーチェ・信長ほか | 知リポAI",
-        page_description="ブッダ・織田信長・ニーチェ・ソクラテス・ダヴィンチなど時代と思想を超えた14人のAIが、最新ニュースと研究論文を多角的に解説。各人物の哲学・価値観・名言をご紹介します。",
+        page_name="偉人コメンテーター — ブッダ・ニーチェ・信長ほか | 知リポAI",
+        page_description="ブッダ・織田信長・ニーチェ・ソクラテス・ダヴィンチなど時代と思想を超えたAIが、最新ニュースと研究論文を多角的に解説。各人物の哲学・価値観・名言をご紹介します。",
         extra_nodes=[_build_persona_person_node(p, site_url) for p in PERSONAS],
     )
     return templates.TemplateResponse(
@@ -1368,6 +1375,11 @@ async def persona_detail_page(request: Request, persona_id: int):
         page_description=f"{persona['name']}（{persona['type']}）の生涯と功績、名言、価値観。知リポAIで記事を解説するAIキャラクターです。{bio_short}",
         extra_nodes=[person_node],
     )
+    try:
+        from app.services.consultation_store import get_consultations
+        persona_consultations = [c for c in get_consultations(limit=100) if c.get("persona_id") == persona_id]
+    except Exception:
+        persona_consultations = []
     return templates.TemplateResponse(
         "persona_detail.html",
         {
@@ -1376,6 +1388,7 @@ async def persona_detail_page(request: Request, persona_id: int):
             "other_personas": other_personas,
             "site_url": site_url,
             "page_jsonld": page_jsonld,
+            "persona_consultations": persona_consultations,
         },
     )
 
@@ -1941,7 +1954,7 @@ def _render_papers_page(request: Request, page: int = 1):
         "name": "知リポAI — AI論文・ニュース解説サービス",
         "url": base,
         "description": (
-            "14人の歴史的偉人AIキャラクター（ブッダ・ニーチェ・アインシュタインほか）が"
+            "歴史的偉人AIキャラクター（ブッダ・ニーチェ・アインシュタインほか）が"
             "最新のAI論文・国内外ニュースを日本語でわかりやすく解説する無料Webサービス。"
             "arXiv・Nature・Science・NHK・BBC・Reutersなどから毎日収集・更新。"
         ),

@@ -104,6 +104,13 @@ def _run_claude_research_and_seed(slot: str, n_news: int, n_papers: int):
         else:
             logger.info("Claude リサーチ[%s]: 新規記事なし（重複または生成失敗）", slot)
         _scheduled_refresh_vote_cache()
+        # Notion 相談は朝の更新（8:30）のみ掲載
+        if slot == "morning":
+            try:
+                from app.services.notion_consultation import process_notion_consultation
+                process_notion_consultation()
+            except Exception as _e:
+                logger.warning("Notion 相談処理でエラー: %s", _e)
     except Exception as e:
         logger.warning("Claude リサーチタスク[%s]でエラー: %s", slot, e)
 
@@ -342,13 +349,12 @@ async def lifespan(app: FastAPI):
                 id=cr_id,
             )
         logger.info("Claude ウェブリサーチ: 8:30/16:30/22:00 JST（各 ニュース5+論文4・バズ3）")
-        # 月2回（1日・15日 9:00）: 政策提案生成
-        scheduler.add_job(
-            _scheduled_generate_policy,
-            CronTrigger(day="1,15", hour=9, minute=0, timezone=JST),
-            id="generate_policy",
-        )
-        logger.info("政策提案生成: 毎月1日・15日 9:00 JST に設定")
+        # 政策提案生成: 一時停止中
+        # scheduler.add_job(
+        #     _scheduled_generate_policy,
+        #     CronTrigger(day="1,15", hour=9, minute=0, timezone=JST),
+        #     id="generate_policy",
+        # )
         # 週1回（月曜 0:00）: 統計メトリクス収集
         scheduler.add_job(
             _scheduled_collect_metrics,

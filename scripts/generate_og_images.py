@@ -75,7 +75,7 @@ def _draw_brand(img: Image.Image, label: str, subtitle: str) -> None:
 
     draw.text((w * 0.1, h * 0.34), label, fill=(255, 255, 255), font=title_font)
     draw.text((w * 0.1, h * 0.52), subtitle, fill=(226, 232, 240), font=sub_font)
-    draw.text((w * 0.1, h * 0.82), "知リポAI — 偉人14人の多角的な視点で読む", fill=(203, 213, 225), font=brand_font)
+    draw.text((w * 0.1, h * 0.82), "知リポAI — 偉人AIの多角的な視点で読む", fill=(203, 213, 225), font=brand_font)
 
 
 def generate_one(slug: str, label: str, c1: tuple, c2: tuple, w: int, h: int) -> Path:

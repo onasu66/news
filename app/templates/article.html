@@ -73,8 +73,6 @@
             <span class="article-badge">AI解説</span>
         </div>
         <h1 class="article-title">{{ article.title }}</h1>
-        {% set _lead = meta_description|default('') %}
-        {% if _lead %}<p class="article-speakable-summary" aria-label="一言要約">{{ _lead[:60] }}{% if _lead|length > 60 %}…{% endif %}</p>{% endif %}
         <p class="live-readers">今 <span class="animated-number" data-target="{{ readers_now|default(42) }}">0</span> 人が読んでいます</p>
         {% if article.link %}
         <div class="article-primary-source">
@@ -144,19 +142,13 @@
                     {% endif %}
                 </div>
             </div>
-            <div class="article-actions">
-                <button
-                    type="button"
-                    id="btn-go-deep"
-                    class="read-original read-original--pill"
-                ><span class="read-original-mid">3分で深掘り</span><span class="read-original-chev" aria-hidden="true">›</span></button>
-            </div>
+
         </div>
     </div>
 
     {% if personas %}
     <section class="personas-section" aria-label="偉人の視点">
-        <h2 class="personas-title">偉人の視点 <span class="personas-hint">— 同じニュースを14人のAIが別の角度から解説</span></h2>
+        <h2 class="personas-title">偉人の視点 <span class="personas-hint">— 同じニュースを複数のAIが別の角度から解説</span></h2>
         {% for p in personas %}
         {% if loop.first %}
         <div class="persona-spotlight persona-card persona-card--spotlight" data-persona-id="{{ p.id }}" data-article-id="{{ article.id }}">

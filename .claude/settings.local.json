@@ -32,7 +32,21 @@
       "PowerShell(Invoke-WebRequest -Uri https://tiripo-ai.site/ -UseBasicParsing | Select-Object StatusCode; Invoke-WebRequest -Uri https://tiripo-ai.site/sitemap.xml -UseBasicParsing | Select-Object StatusCode)",
       "PowerShell(\\(Invoke-WebRequest -Uri https://tiripo-ai.site/robots.txt -UseBasicParsing\\).Content)",
       "PowerShell($lines = Get-Content \"D:\\\\app\\\\newsite\\\\app\\\\static\\\\css\\\\style.css\"; $total = $lines.Count; $lines[\\($total-10\\)..\\($total-1\\)] | ForEach-Object { \"$_\" })",
-      "PowerShell($lines = Get-Content \"D:\\\\app\\\\newsite\\\\app\\\\static\\\\css\\\\style.css\"; $total = $lines.Count; Write-Host \"Total lines: $total\"; $lines[\\($total-25\\)..\\($total-1\\)] | ForEach-Object -Begin { $i = $total-24 } -Process { \"${i}: $_\"; $i++ })"
+      "PowerShell($lines = Get-Content \"D:\\\\app\\\\newsite\\\\app\\\\static\\\\css\\\\style.css\"; $total = $lines.Count; Write-Host \"Total lines: $total\"; $lines[\\($total-25\\)..\\($total-1\\)] | ForEach-Object -Begin { $i = $total-24 } -Process { \"${i}: $_\"; $i++ })",
+      "mcp__claude_ai_Notion__notion-search",
+      "mcp__claude_ai_Notion__notion-fetch",
+      "mcp__claude_ai_Notion__notion-create-database",
+      "WebFetch(domain:tiripo-ai.site)",
+      "Skill(claude-api)",
+      "PowerShell(Start-Sleep -Seconds 5; Invoke-WebRequest -Uri \"http://127.0.0.1:8765/news\" -UseBasicParsing -TimeoutSec 10 | Select-Object -ExpandProperty StatusCode)",
+      "PowerShell(Start-Sleep -Seconds 6; try { $r = Invoke-WebRequest -Uri \"http://127.0.0.1:8765/news\" -UseBasicParsing -TimeoutSec 10; $r.StatusCode } catch { $_.Exception.Message })",
+      "PowerShell($r = Invoke-WebRequest -Uri \"http://127.0.0.1:8765/news\" -UseBasicParsing; $body = $r.Content; $idx = $body.IndexOf\\('home-carousel'\\); if \\($idx -ge 0\\) { $body.Substring\\([Math]::Max\\(0,$idx-50\\), 400\\) } else { \"home-carousel NOT FOUND\" })",
+      "PowerShell($r = Invoke-WebRequest -Uri \"http://127.0.0.1:8765/news\" -UseBasicParsing; $body = $r.Content; $matches = [regex]::Matches\\($body, 'home-featured-card'\\); \"featured cards: \" + $matches.Count; $m2 = [regex]::Matches\\($body, 'home-consult-card'\\); \"consult cards: \" + $m2.Count; $d = [regex]::Matches\\($body, 'home-carousel-dot'\\); \"dots: \" + $d.Count)",
+      "PowerShell(cd D:\\\\app\\\\newsite; Start-Process -FilePath \"python\" -ArgumentList \"-m uvicorn main:app --host 127.0.0.1 --port 8765\" -PassThru -WindowStyle Hidden; Start-Sleep -Seconds 7; try { $r = Invoke-WebRequest -Uri \"http://127.0.0.1:8765/ai\" -UseBasicParsing -TimeoutSec 10; $body = $r.Content; $found = $body -match 'ai-consult-history'; \"status: $\\($r.StatusCode\\)  history section found: $found\" } catch { $_.Exception.Message })",
+      "PowerShell($r = Invoke-WebRequest -Uri \"http://127.0.0.1:8765/ai\" -UseBasicParsing; $body = $r.Content; $idx = $body.IndexOf\\('ai-memo-section'\\); if \\($idx -ge 0\\) { \"memo section found at $idx\" }; $idx2 = $body.IndexOf\\('past_consult'\\); if \\($idx2 -ge 0\\) { \"past_consult found\" } else { \"past_consult NOT found\" }; $idx3 = $body.IndexOf\\('LINE'\\); if \\($idx3 -ge 0\\) { $body.Substring\\([Math]::Max\\(0,$idx3-300\\), 350\\) })",
+      "PowerShell($r = Invoke-WebRequest -Uri \"http://127.0.0.1:8765/api/debug/neon-status\" -UseBasicParsing; $r.Content)",
+      "PowerShell($r = Invoke-WebRequest -Uri \"http://127.0.0.1:8765/api/debug/neon-status\" -UseBasicParsing; $j = $r.Content | ConvertFrom-Json; Write-Output \"connection_ok: $\\($j.connection_ok\\)\"; Write-Output \"articles_count: $\\($j.articles_count\\)\")",
+      "PowerShell(Get-Process *)"
     ]
   }
 }

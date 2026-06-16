@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 {% block title %}AIニュースまとめ — 最新情報を人工知能が解説 | 知リポAI{% endblock %}
-{% block meta_description %}国内外の最新ニュースをAIが解説してまとめ。NHK・BBC・Reuters・TechCrunchなど信頼メディアの情報を、14人の偉人AIが背景・ポイント・影響をわかりやすく解説。人工知能・テクノロジー・国際ニュースの最新情報を毎日更新。{% endblock %}
+{% block meta_description %}国内外の最新ニュースをAIが解説してまとめ。NHK・BBC・Reuters・TechCrunchなど信頼メディアの情報を、偉人AIが背景・ポイント・影響をわかりやすく解説。人工知能・テクノロジー・国際ニュースの最新情報を毎日更新。{% endblock %}
 {% block meta_keywords %}<meta name="keywords" content="AIニュース,AI最新ニュース,生成AIニュース,ChatGPTニュース,OpenAIニュース,GeminiAIニュース,LLMニュース,AIニュースまとめ,人工知能最新情報,AI最新情報,テクノロジーニュース,テクノロジー最新情報,AI最新動向,AI規制ニュース,国内ニュースAI解説,国際ニュースAI解説,ニュース解説AI,科学ニュース解説,人工知能ニュース日本語,知リポAI">{% endblock %}
 {% block meta_extra %}
     {# キーワード付きURLは重複になりやすいので正規URLへ統一 + noindex 寄せ #}
@@ -10,11 +10,11 @@
     {% endif %}
     <meta property="og:type" content="website">
     <meta property="og:title" content="AIニュースまとめ — 最新情報を人工知能が解説 | 知リポAI">
-    <meta property="og:description" content="NHK・BBC・Reuters等の最新ニュースを14人の偉人AIが解説。人工知能・テクノロジー・国際ニュースの最新情報を毎日更新。">
+    <meta property="og:description" content="NHK・BBC・Reuters等の最新ニュースを偉人AIが解説。人工知能・テクノロジー・国際ニュースの最新情報を毎日更新。">
     <meta property="og:image" content="{{ og_image|default(site_url + '/static/og/og-tech.jpg') }}">
     <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:title" content="AIニュースまとめ — 最新情報を人工知能が解説 | 知リポAI">
-    <meta name="twitter:description" content="NHK・BBC・Reuters等の最新ニュースを14人の偉人AIが解説。生成AI・ChatGPT・国際ニュースを毎日更新。">
+    <meta name="twitter:description" content="NHK・BBC・Reuters等の最新ニュースを偉人AIが解説。生成AI・ChatGPT・国際ニュースを毎日更新。">
     <meta name="twitter:image" content="{{ og_image|default(site_url + '/static/og/og-tech.jpg') }}">
     <meta property="og:url" content="{{ site_url }}/news">
     <meta property="og:site_name" content="知リポAI">
@@ -24,8 +24,8 @@
 {% if not search_keyword %}
 <section class="page-intro-bar">
     <div class="page-intro-bar-inner">
-        <h1 class="page-intro-title">AIニュースまとめ — 最新情報を偉人14人が解説</h1>
-        <p class="page-intro-desc">NHK・BBC・Reuters・TechCrunchなど国内外の信頼メディアから最新ニュースを収集し、ブッダ・織田信長・アインシュタインなど14人の偉人AIが背景・影響・今後の注目点をわかりやすく解説します。</p>
+        <h1 class="page-intro-title">AIニュースまとめ — 最新情報を偉人AIが解説</h1>
+        <p class="page-intro-desc">NHK・BBC・Reuters・TechCrunchなど国内外の信頼メディアから最新ニュースを収集し、ブッダ・織田信長・アインシュタインなど偉人AIが背景・影響・今後の注目点をわかりやすく解説します。</p>
     </div>
 </section>
 {% endif %}
@@ -35,46 +35,72 @@
             <a href="/" class="page-switch-link">論文</a>
             <a href="/news" class="page-switch-link is-active" aria-current="page">ニュース</a>
         </div>
-        {% if featured and not search_keyword %}
+        {% if featured_items and not search_keyword %}
         <section class="home-featured-section" aria-label="話題のニュース">
             <h2 class="home-section-title">🔥 話題のニュース</h2>
-            <article class="home-featured-card persona-p{{ featured.persona_id }}">
-                <a href="/topic/{{ featured.id }}" class="home-featured-img-link">
-                    <img src="{{ featured.image_url }}" alt="{{ featured.title }}" class="home-featured-img" loading="lazy">
-                </a>
-                <div class="home-featured-body">
-                    <span class="home-featured-source">{{ featured.source }}</span>
-                    <h3 class="home-featured-title"><a href="/topic/{{ featured.id }}">{{ featured.title }}</a></h3>
-                    <div class="home-featured-persona">
-                        <img src="{{ featured.persona_image_url }}" alt="{{ featured.persona_name }}" class="home-featured-persona-img">
-                        <div class="home-featured-persona-body">
-                            <span class="home-featured-persona-name">{{ featured.persona_emoji }} {{ featured.persona_name }}</span>
-                            <p class="home-featured-persona-comment">{{ featured.persona_comment }}</p>
+            <div class="home-carousel-wrap">
+                <div class="home-carousel" id="featured-carousel" role="list">
+                    {% for item in featured_items %}
+                    <article class="home-featured-card persona-p{{ item.persona_id }}" role="listitem">
+                        <a href="/topic/{{ item.id }}" class="home-featured-img-link">
+                            <img src="{{ item.image_url }}" alt="{{ item.title }}" class="home-featured-img" loading="lazy">
+                        </a>
+                        <div class="home-featured-body">
+                            <span class="home-featured-source">{{ item.source }}</span>
+                            <h3 class="home-featured-title"><a href="/topic/{{ item.id }}">{{ item.title }}</a></h3>
+                            <div class="home-featured-persona">
+                                <img src="{{ item.persona_image_url }}" alt="{{ item.persona_name }}" class="home-featured-persona-img">
+                                <div class="home-featured-persona-body">
+                                    <span class="home-featured-persona-name">{{ item.persona_emoji }} {{ item.persona_name }}</span>
+                                    <p class="home-featured-persona-comment">{{ item.persona_comment }}</p>
+                                </div>
+                            </div>
+                            <a href="/topic/{{ item.id }}" class="home-featured-cta">記事を読む →</a>
                         </div>
-                    </div>
-                    <a href="/topic/{{ featured.id }}" class="home-featured-cta">記事を読む →</a>
+                    </article>
+                    {% endfor %}
                 </div>
-            </article>
+                {% if featured_items|length > 1 %}
+                <div class="home-carousel-dots" aria-hidden="true">
+                    {% for item in featured_items %}
+                    <button class="home-carousel-dot{% if loop.first %} is-active{% endif %}" data-carousel="featured-carousel" data-index="{{ loop.index0 }}" tabindex="-1"></button>
+                    {% endfor %}
+                </div>
+                {% endif %}
+            </div>
         </section>
         {% endif %}
 
-        {% if latest_consultation and not search_keyword %}
+        {% if latest_consultations and not search_keyword %}
         <section class="home-consult-section" aria-label="今日の相談">
             <h2 class="home-section-title">💬 今日の相談</h2>
-            <article class="home-consult-card persona-p{{ latest_consultation.persona_id }}">
-                <blockquote class="home-consult-question">{{ latest_consultation.question }}</blockquote>
-                <div class="home-consult-answer-wrap">
-                    <div class="home-consult-persona-header">
-                        <img src="/static/char-imgs/{{ latest_consultation.persona_name }}.png"
-                             alt="{{ latest_consultation.persona_name }}"
-                             class="home-consult-persona-img"
-                             onerror="this.src='/static/site-imgs/ロゴ.png'">
-                        <span class="home-consult-persona-name">{{ latest_consultation.persona_emoji }} {{ latest_consultation.persona_name }}</span>
-                    </div>
-                    <p class="home-consult-answer">{{ latest_consultation.answer }}</p>
+            <div class="home-carousel-wrap">
+                <div class="home-carousel" id="consult-carousel" role="list">
+                    {% for c in latest_consultations %}
+                    <article class="home-consult-card persona-p{{ c.persona_id }}" role="listitem">
+                        <blockquote class="home-consult-question">{{ c.question }}</blockquote>
+                        <div class="home-consult-answer-wrap">
+                            <div class="home-consult-persona-header">
+                                <img src="/static/char-imgs/{{ c.persona_name }}.png"
+                                     alt="{{ c.persona_name }}"
+                                     class="home-consult-persona-img"
+                                     onerror="this.src='/static/site-imgs/ロゴ.png'">
+                                <span class="home-consult-persona-name">{{ c.persona_emoji }} {{ c.persona_name }}</span>
+                            </div>
+                            <p class="home-consult-answer">{{ c.answer }}</p>
+                        </div>
+                        <a href="/ai#past-consultations" class="home-featured-cta home-consult-card-link">相談室を見る →</a>
+                    </article>
+                    {% endfor %}
                 </div>
-                <a href="/consultation" class="home-featured-cta">相談室を見る →</a>
-            </article>
+                {% if latest_consultations|length > 1 %}
+                <div class="home-carousel-dots" aria-hidden="true">
+                    {% for c in latest_consultations %}
+                    <button class="home-carousel-dot{% if loop.first %} is-active{% endif %}" data-carousel="consult-carousel" data-index="{{ loop.index0 }}" tabindex="-1"></button>
+                    {% endfor %}
+                </div>
+                {% endif %}
+            </div>
         </section>
         {% endif %}
 
@@ -114,10 +140,7 @@
                             <span class="news-badge">AI解説</span>
                         </div>
                     </div>
-                    <div class="news-card-image">
-                        <img src="{{ item.image_url or 'https://picsum.photos/400/225' }}" alt="{{ item.title }}" loading="lazy" onerror="this.src='https://picsum.photos/seed/{{ item.id }}/400/225'">
-                        <span class="news-card-category">{{ item.category }}</span>
-                    </div>
+
                 </a>
             </article>
             {% endfor %}
@@ -160,7 +183,7 @@
 <section class="seo-coverage-section">
     <div class="seo-coverage-inner">
         <h2 class="seo-coverage-title">知リポAIがカバーするニュースジャンル</h2>
-        <p class="seo-coverage-desc">国内外の最新AIニュース・テクノロジーニュースを毎日5回更新。生成AI・ChatGPT・OpenAI・Geminiなど最新人工知能ニュースから、政治・社会・国際ニュースまで、14人の偉人AIがわかりやすく解説します。</p>
+        <p class="seo-coverage-desc">国内外の最新AIニュース・テクノロジーニュースを毎日5回更新。生成AI・ChatGPT・OpenAI・Geminiなど最新人工知能ニュースから、政治・社会・国際ニュースまで、偉人AIがわかりやすく解説します。</p>
         <ul class="seo-tag-list">
             <li>生成AI・ChatGPT最新ニュース</li>
             <li>OpenAI・Anthropic・Google最新動向</li>
@@ -179,6 +202,38 @@
 
 {% block scripts %}
 <script>
+(function() {
+    // Carousel
+    function initCarousel(carouselId) {
+        var track = document.getElementById(carouselId);
+        if (!track) return;
+        var dots = document.querySelectorAll('.home-carousel-dot[data-carousel="' + carouselId + '"]');
+        var cards = track.children;
+        if (cards.length <= 1) return;
+        var currentIdx = 0;
+        function goTo(idx) {
+            currentIdx = idx;
+            var card = cards[idx];
+            if (card) track.scrollTo({ left: card.offsetLeft, behavior: 'smooth' });
+            dots.forEach(function(d, i) { d.classList.toggle('is-active', i === idx); });
+        }
+        dots.forEach(function(dot) {
+            dot.addEventListener('click', function() { goTo(parseInt(this.getAttribute('data-index'))); });
+        });
+        track.addEventListener('scroll', function() {
+            var cardW = cards[0] ? cards[0].offsetWidth : 0;
+            if (!cardW) return;
+            var idx = Math.round(track.scrollLeft / cardW);
+            idx = Math.max(0, Math.min(idx, cards.length - 1));
+            if (idx !== currentIdx) {
+                currentIdx = idx;
+                dots.forEach(function(d, i) { d.classList.toggle('is-active', i === idx); });
+            }
+        }, { passive: true });
+    }
+    initCarousel('featured-carousel');
+    initCarousel('consult-carousel');
+})();
 (function() {
     // Genre tab filtering（#news-grid 内のみ。他ページの .news-card と干渉しない）
     var grid = document.getElementById('news-grid');

@@ -18,7 +18,7 @@
     --color-surface: #ffffff;
     --color-text: #1e1b4b;
     --color-text-secondary: #475569;
-    --color-text-muted: #64748b;
+    --color-text-muted: #4b5563;
     --color-card: #ffffff;
     --color-border: #cbd5e1;
     --color-border-light: #e2e8f0;
@@ -517,6 +517,47 @@ body::after {
 .persona-detail-layout {
     display: grid;
     grid-template-columns: minmax(280px, 340px) 1fr;
+    gap: 1rem;
+}
+.persona-hero-wrap {
+    margin-bottom: 1.2rem;
+}
+.persona-hero {
+    display: flex;
+    align-items: center;
+    gap: 2rem;
+    background: var(--color-bg-elevated);
+    border: 1px solid var(--color-border-light);
+    border-radius: 16px;
+    padding: 1.8rem;
+    margin-top: 0.5rem;
+}
+.persona-hero-img {
+    width: 180px;
+    height: 180px;
+    border-radius: 50%;
+    object-fit: cover;
+    flex-shrink: 0;
+    border: 3px solid var(--color-border-light);
+}
+.persona-hero-info {
+    flex: 1;
+    min-width: 0;
+}
+.persona-hero-name {
+    margin: 0 0 0.6rem;
+    font-size: 2rem;
+    line-height: 1.2;
+}
+.persona-hero-summary {
+    margin: 0;
+    color: var(--color-text-secondary);
+    line-height: 1.7;
+    font-size: 0.95rem;
+}
+.persona-detail-content {
+    display: flex;
+    flex-direction: column;
     gap: 1rem;
 }
 .persona-profile-card,
@@ -1616,7 +1657,7 @@ body::after {
 }
 
 .news-card-body {
-    padding: 1.35rem 1.5rem;
+    padding: 1rem 1.25rem;
 }
 
 .news-source {
@@ -1715,8 +1756,8 @@ body::after {
 }
 
 .next-read-section {
-    margin-top: 2.5rem;
-    padding-top: 1.75rem;
+    margin-top: 1.5rem;
+    padding-top: 1.25rem;
     border-top: 2px dashed var(--color-border-light);
 }
 
@@ -1809,8 +1850,8 @@ body::after {
 
 /* ========== ページネーション ========== */
 .pagination {
-    margin-top: 3rem;
-    padding-top: 2rem;
+    margin-top: 1.75rem;
+    padding-top: 1.25rem;
     border-top: 2px solid var(--color-border-light);
 }
 
@@ -1884,8 +1925,8 @@ body::after {
 }
 
 .article-header {
-    margin-bottom: 2rem;
-    padding-bottom: 1.5rem;
+    margin-bottom: 1.25rem;
+    padding-bottom: 1rem;
     border-bottom: 1px solid var(--color-border-light);
 }
 
@@ -2275,8 +2316,8 @@ body::after {
 
 /* ミドルマンが補足：アニメ風吹き出し・読みやすくはっきり */
 .midorman-asides {
-    margin-top: 2.25rem;
-    padding-top: 1.75rem;
+    margin-top: 1.5rem;
+    padding-top: 1.25rem;
     border-top: 2px dashed rgba(251, 191, 36, 0.4);
 }
 
@@ -2356,8 +2397,8 @@ body::after {
 
 /* 記事末尾の解説ブロック（隙間なし本文の後にまとめて表示） */
 .article-asides {
-    margin-top: 2.5rem;
-    padding-top: 1.5rem;
+    margin-top: 1.5rem;
+    padding-top: 1rem;
     border-top: 2px solid #e7e5e4;
 }
 .article-asides .article-h3 {
@@ -2464,8 +2505,8 @@ body::after {
 
 /* ========== 5人格セクション ========== */
 .personas-section {
-    margin-top: 2.5rem;
-    padding-top: 2rem;
+    margin-top: 1.5rem;
+    padding-top: 1.25rem;
     border-top: 2px solid var(--color-border);
 }
 
@@ -2740,8 +2781,8 @@ body::after {
 
 /* ========== フッター ========== */
 .site-footer {
-    margin-top: 4rem;
-    padding: 3rem 1.5rem;
+    margin-top: 2.5rem;
+    padding: 2rem 1.5rem;
     background: linear-gradient(145deg, var(--color-primary) 0%, #312e81 50%, var(--color-primary-dark) 100%);
     border-top: 1px solid rgba(255,255,255,0.08);
 }
@@ -3827,8 +3868,8 @@ body::after {
     display: flex;
     gap: 0.75rem;
     align-items: flex-start;
-    margin-bottom: 1rem;
-    padding: 1rem;
+    margin-bottom: 0;
+    padding: 0.6rem 0.75rem;
     background: var(--color-card);
     border-radius: 12px;
 }
@@ -4148,8 +4189,8 @@ body::after {
 
 /* ===== ARTICLE: VOTE METER ===== */
 .vote-section {
-    margin-top: 2rem;
-    padding: 1.5rem;
+    margin-top: 1.25rem;
+    padding: 1.25rem;
     background: var(--color-card);
     border-radius: 16px;
     box-shadow: 0 2px 12px rgba(0,0,0,0.04);
@@ -4341,6 +4382,19 @@ body::after {
     }
     .persona-prompt-details p {
         font-size: 0.76rem;
+    }
+    .persona-hero {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 1.2rem;
+        padding: 1.2rem;
+    }
+    .persona-hero-img {
+        width: 120px;
+        height: 120px;
+    }
+    .persona-hero-name {
+        font-size: 1.5rem;
     }
 }
 @media (min-width: 769px) {
@@ -4749,6 +4803,47 @@ body::after {
     letter-spacing: 0.02em;
 }
 
+/* カルーセル共通 */
+.home-carousel-wrap {
+    position: relative;
+}
+.home-carousel {
+    display: flex;
+    gap: 0.875rem;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    overscroll-behavior-x: contain;
+    padding-bottom: 0.25rem;
+}
+.home-carousel::-webkit-scrollbar { display: none; }
+.home-carousel > * {
+    flex: 0 0 100%;
+    scroll-snap-align: start;
+    min-width: 0;
+}
+.home-carousel-dots {
+    display: flex;
+    justify-content: center;
+    gap: 0.4rem;
+    margin-top: 0.6rem;
+}
+.home-carousel-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    border: none;
+    background: var(--color-border-light);
+    cursor: pointer;
+    padding: 0;
+    transition: background 0.2s, transform 0.2s;
+}
+.home-carousel-dot.is-active {
+    background: var(--color-accent);
+    transform: scale(1.25);
+}
+
 /* 話題のニュース */
 .home-featured-section { margin-bottom: 0.5rem; }
 
@@ -4833,10 +4928,6 @@ body::after {
     line-height: 1.7;
     color: var(--color-text-secondary);
     margin: 0;
-    display: -webkit-box;
-    -webkit-line-clamp: 4;
-    -webkit-box-orient: vertical;
-    overflow: hidden;
 }
 
 .home-featured-cta {
@@ -4865,6 +4956,19 @@ body::after {
     box-shadow: var(--shadow-md);
     padding: 1.25rem;
     border-left: 4px solid var(--pc, var(--color-accent));
+    position: relative;
+    cursor: pointer;
+    transition: box-shadow 0.18s, transform 0.18s;
+}
+.home-consult-card:hover {
+    box-shadow: var(--shadow-lg);
+    transform: translateY(-2px);
+}
+.home-consult-card-link::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
 }
 
 .home-consult-question {
@@ -4910,10 +5014,6 @@ body::after {
     line-height: 1.75;
     color: var(--color-text-secondary);
     margin: 0;
-    display: -webkit-box;
-    -webkit-line-clamp: 5;
-    -webkit-box-orient: vertical;
-    overflow: hidden;
 }
 
 /* ========== 偉人への相談室 ========== */
@@ -5106,6 +5206,17 @@ body::after {
 
 /* ダークモード修正 */
 :root[data-theme="dark"] .consultation-source--x { background: #333; }
+
+/* 偉人詳細ページ: 相談履歴リスト */
+.persona-consultations-section {
+    margin-top: 2.5rem;
+}
+.persona-consultations-list {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+    margin-top: 1rem;
+}
 
 /* ===== MOBILE: DARK MODE overrides ===== */
 @media (max-width: 768px) {
@@ -5350,6 +5461,66 @@ body::after {
 .ai-persona-comments-list { display: flex; flex-direction: column; gap: 0.75rem; margin-top: 0.75rem; }
 .ai-persona-comment { display: flex; gap: 0.65rem; align-items: flex-start; font-size: 0.88rem; }
 
+/* 過去の相談履歴 */
+.ai-consult-history-section { margin-bottom: 1.5rem; }
+.ai-consult-history-list {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+.ai-consult-history-card {
+    background: var(--color-card);
+    border: 1px solid var(--color-border-light);
+    border-left: 4px solid var(--pc, var(--color-accent));
+    border-radius: var(--radius-lg);
+    padding: 1rem 1.1rem;
+    box-shadow: var(--shadow-sm);
+}
+.ai-consult-history-question {
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: var(--color-text);
+    margin: 0 0 0.75rem;
+    padding-left: 0.75rem;
+    border-left: 3px solid var(--pc, var(--color-accent));
+}
+.ai-consult-history-answer-wrap {
+    background: var(--color-bg-subtle);
+    border-radius: var(--radius);
+    padding: 0.75rem 0.875rem;
+    margin-bottom: 0.5rem;
+}
+.ai-consult-history-persona {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.5rem;
+}
+.ai-consult-history-avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    object-fit: cover;
+    flex: 0 0 auto;
+}
+.ai-consult-history-name {
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: var(--color-text);
+}
+.ai-consult-history-answer {
+    font-size: 0.875rem;
+    line-height: 1.75;
+    color: var(--color-text-secondary);
+    margin: 0;
+}
+.ai-consult-history-date {
+    display: block;
+    font-size: 0.75rem;
+    color: var(--color-text-muted);
+    text-align: right;
+}
+
 /* ===== POLICY PAGE ===== */
 .policy-page { max-width: 900px; margin: 0 auto; padding: 0 1rem 2rem; }
 .policy-header { text-align: center; padding: 1.25rem 0 1rem; }
@@ -5522,4 +5693,22 @@ body::after {
     border: 1px solid var(--color-border-light, #e2e8f0);
     border-radius: 4px;
     padding: 0.2rem 0.5rem;
+}
+
+/* ===== スマホ横スワイプ ページ遷移 ===== */
+@keyframes page-slide-in-right {
+    from { transform: translateX(100%); }
+    to { transform: translateX(0); }
+}
+@keyframes page-slide-in-left {
+    from { transform: translateX(-100%); }
+    to { transform: translateX(0); }
+}
+@media (max-width: 767px) and (prefers-reduced-motion: no-preference) {
+    .page-slide-in-right {
+        animation: page-slide-in-right 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94) both;
+    }
+    .page-slide-in-left {
+        animation: page-slide-in-left 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94) both;
+    }
 }

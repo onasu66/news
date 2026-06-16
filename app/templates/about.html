@@ -1,11 +1,11 @@
 {% extends "base.html" %}
 {% block title %}運営者情報・開発ストーリー - 知リポAI{% endblock %}
-{% block meta_description %}なぜ知リポAIを作ったのか。ニュースキャスターをAIに置き換えるという発想、14人の偉人を選んだ理由、そしてAI政策立案という壮大な目標について。{% endblock %}
+{% block meta_description %}なぜ知リポAIを作ったのか。ニュースキャスターをAIに置き換えるという発想、偉人を選んだ理由、そしてAI政策立案という壮大な目標について。{% endblock %}
 {% block meta_extra %}
     <link rel="canonical" href="{{ site_url }}/about">
     <meta property="og:type" content="website">
     <meta property="og:title" content="運営者情報・開発ストーリー | 知リポAI">
-    <meta property="og:description" content="なぜ知リポAIを作ったのか。14人の偉人を選んだ理由、AI政策立案という目標について。">
+    <meta property="og:description" content="なぜ知リポAIを作ったのか。偉人を選んだ理由、AI政策立案という目標について。">
     <meta property="og:url" content="{{ site_url }}/about">
     <meta property="og:site_name" content="知リポAI">
 {% endblock %}
@@ -26,10 +26,10 @@
     </article>
 
     <article class="about-section-card about-story-card">
-        <h2>なぜ14人の偉人なのか</h2>
-        <p>14人を選んだ基準はシンプルです。<strong>ジャンルと時代と思想を、できる限り飛び越えること</strong>。</p>
+        <h2>なぜ多様な偉人なのか</h2>
+        <p>偉人を選んだ基準はシンプルです。<strong>ジャンルと時代と思想を、できる限り飛び越えること</strong>。</p>
         <p>東洋と西洋、古代と近代、科学者と哲学者と武将と作家——それぞれがまったく違う価値観と人生経験を持っています。同じニュースを見ても、ブッダとニーチェとエジソンでは見ているものが根本的に違う。その「多角的なコメント」が一覧できることに意味があると思っています。</p>
-        <p>一人の評論家の視点を深く読むより、思想の違う14人の反応を並べて見るほうが、自分なりの考えを持つきっかけになる。そういうメディアが欲しかったのです。</p>
+        <p>一人の評論家の視点を深く読むより、思想の違う偉人たちの反応を並べて見るほうが、自分なりの考えを持つきっかけになる。そういうメディアが欲しかったのです。</p>
     </article>
 
     <article class="about-section-card about-story-card">
@@ -72,7 +72,7 @@
         <ul class="about-list about-merits-list">
             <li>
                 <strong>多角的な視点が一度に手に入る</strong><br>
-                同じニュース・論文に対して、哲学・科学・文学・武将など異なるバックグラウンドを持つ14人がコメント。一つの出来事を多面的に考える練習ができます。
+                同じニュース・論文に対して、哲学・科学・文学・武将など異なるバックグラウンドを持つ偉人たちがコメント。一つの出来事を多面的に考える練習ができます。
             </li>
             <li>
                 <strong>難しい論文が「1分で理解」できる</strong><br>
@@ -101,7 +101,7 @@
             <dt>運営開始</dt>
             <dd>2025年</dd>
             <dt>主なコンテンツ</dt>
-            <dd>国内外のニュース・AI研究・学術論文のAI解説、14人の偉人AIキャラクターによるコメント、AI政策立案・投票</dd>
+            <dd>国内外のニュース・AI研究・学術論文のAI解説、偉人AIキャラクターによるコメント、AI政策立案・投票</dd>
             <dt>技術スタック</dt>
             <dd>FastAPI / Python・AI生成（Gemini / Claude / GPT-4o）・Neon Postgres・Render</dd>
         </dl>
@@ -113,7 +113,7 @@
         <ul class="about-list">
             <li>記事・論文解説の閲覧：無料</li>
             <li>14キャラクターのコメント閲覧：無料</li>
-            <li>AI投票・政策提案の閲覧と投票：無料</li>
+            <li>AI推しキャラ投票：無料</li>
             <li>解説リクエスト（LINE経由）：無料</li>
         </ul>
         <p>有料プランの設定は現時点で予定していません。今後もすべてのコンテンツを無料で提供し続けることを方針としています。</p>
@@ -133,7 +133,7 @@
 
     <article class="about-section-card">
         <h2>AIキャラクターについて</h2>
-        <p>登場する14人のキャラクターは、歴史上の人物をモデルにしたAIです。実在した人物の哲学・思想・価値観を参考にしていますが、実際の発言・記録を正確に引用するものではありません。</p>
+        <p>登場するキャラクターは、歴史上の人物をモデルにしたAIです。実在した人物の哲学・思想・価値観を参考にしていますが、実際の発言・記録を正確に引用するものではありません。</p>
         <p>キャラクターのコメントはAIによる創作であり、史実として参照しないようお願いします。</p>
         <p><a href="/personas" class="about-link">→ 14キャラクター一覧を見る</a></p>
     </article>
@@ -176,7 +176,7 @@
             <div class="about-faq-item" itemscope itemprop="mainEntity" itemtype="https://schema.org/Question">
                 <dt class="about-faq-q" itemprop="name">知リポAIとは何ですか？</dt>
                 <dd class="about-faq-a" itemscope itemprop="acceptedAnswer" itemtype="https://schema.org/Answer">
-                    <span itemprop="text">知リポAIは、ブッダ・ニーチェ・アインシュタインなど14人の歴史的偉人AIが最新のAI論文と国内外ニュースを日本語でわかりやすく解説する、無料のニュースメディアです。</span>
+                    <span itemprop="text">知リポAIは、ブッダ・ニーチェ・アインシュタインなど歴史的偉人AIが最新のAI論文と国内外ニュースを日本語でわかりやすく解説する、無料のニュースメディアです。</span>
                 </dd>
             </div>
 
