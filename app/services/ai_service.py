@@ -991,8 +991,9 @@ blocks配列のJSONのみ返す。"""
 # 人格コメントはこの文字数以下に収める（プロンプトで厳守させ、APIトークンも十分に確保して途中打ち切りを防ぐ）
 # 180文字は3〜4文しか書けず制約を満たしながら「本人感」を出すのが困難なため 260 に拡大
 PERSONA_COMMENT_MAX_LEN = 210
-# 出力が210文字程度でも日本語で完結するまで生成できるよう余裕を持たせる
-PERSONA_COMMENT_MAX_COMPLETION_TOKENS = 480
+# 日本語（特に漢字）は1文字が1.5〜2.5トークンになりやすく、210字 ≒ 最大500トークン超になり得るため、
+# 480 では API 側の max_tokens で文の途中で打ち切られることがあった。余裕を持って800に拡大。
+PERSONA_COMMENT_MAX_COMPLETION_TOKENS = 800
 
 # 各偉人コメントで触れる固有要素（プロンプトでハード指定）
 PERSONA_SIGNATURE_ELEMENTS: dict[str, list[str]] = {
@@ -1098,19 +1099,28 @@ def remember_persona_comment(name: str, comment: str) -> None:
 
 
 def _fit_persona_comment_to_max(text: str, max_len: int) -> str:
-    """200字超のとき、句読点で区切れるならそこまでに収めて文を完結させる（単純な中間切断を避ける）。"""
+    """200字超のとき、句読点で区切れるならそこまでに収めて文を完結させる（単純な中間切断を避ける）。
+    max_len 以下でも句点で終わっていない場合は、API側のトークン上限で文が
+    途中打ち切りになっている可能性があるため、同様に直前の句点まで戻す。"""
     text = (text or "").strip()
-    if len(text) <= max_len:
+    if not text:
+        return text
+    if len(text) <= max_len and text[-1] in "。！？．":
         return text
     chunk = text[:max_len]
+    # 閾値は chunk 自体の長さに対する比率で判定する（max_len 基準だと、
+    # max_len よりずっと短い位置で打ち切られたテキストでは閾値に届かず、
+    # 実際にある句点を無視して不完全な単語の直後に「。」を付けてしまう）
     for sep in ("。", "！", "？", "．"):
         i = chunk.rfind(sep)
-        if i >= max_len // 5:
+        if i >= len(chunk) // 5:
             return text[: i + 1].strip()
     i = chunk.rfind("、")
-    if i >= max_len // 3:
+    if i >= len(chunk) // 3:
         return text[: i].strip() + "。"
-    return text[:max_len].rstrip()
+    # 区切り記号が見つからない場合でも、不完全な文をそのまま見せるより句点で閉じる
+    # （呼び出し側が max_len 超過時に再度ハード切断するため、句点分の余白を残す）
+    return text[: max_len - 1].rstrip() + "。"
 
 
 def _shorten_persona_comment_retry(
