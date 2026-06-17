@@ -51,7 +51,8 @@
       "PowerShell(cd D:\\\\app\\\\newsite; git show cc2d88c -- app/routers/news.py | Select-String -Pattern \"^\\\\+\" | Where-Object { $_ -match \"persona_detail|persona_consult\" } | Out-String)",
       "PowerShell(try { $r = Invoke-WebRequest -Uri \"http://127.0.0.1:8765/consultation\" -UseBasicParsing -TimeoutSec 20; Write-Output \"OK $\\($r.StatusCode\\)\" } catch { Write-Output \"ERROR: $\\($_.Exception.Response.StatusCode\\)\" })",
       "PowerShell(try { $r = Invoke-WebRequest -Uri \"http://127.0.0.1:8765/policy\" -UseBasicParsing -TimeoutSec 20; Write-Output \"$\\($r.StatusCode\\) -> $\\($r.BaseResponse.ResponseUri\\)\" } catch { Write-Output \"ERROR: $\\($_.Exception.Message\\)\" })",
-      "PowerShell(Get-NetTCPConnection *)"
+      "PowerShell(Get-NetTCPConnection *)",
+      "PowerShell(cd D:\\\\app\\\\newsite; Select-String -Path .env -Pattern \"OPENAI_API_KEY|GEMINI_API_KEY|AI_PROVIDER|PERSONA_PROVIDER\" | ForEach-Object { \\($_ -split '='\\)[0] })"
     ]
   }
 }
