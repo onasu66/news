@@ -111,7 +111,7 @@
                         </div>
                     </div>
                     <div class="news-card-image">
-                        <img src="{{ item.image_url or 'https://picsum.photos/400/225' }}" alt="{{ item.title }}" loading="lazy" decoding="async" onerror="this.src='https://picsum.photos/seed/{{ item.id }}/400/225'">
+                        <img src="{{ item.image_url or '/static/og/card-research.jpg' }}" alt="{{ item.title }}" loading="lazy" decoding="async" onerror="this.onerror=null;this.src='/static/og/card-research.jpg'">
                         <span class="news-card-category">{{ item.paper_domain or '総合科学' }}</span>
                     </div>
                 </a>

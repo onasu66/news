@@ -131,14 +131,15 @@
                             <span class="news-card-source">{{ item.source }}</span>
                         </div>
                         <h3 class="news-title">{{ item.title }}</h3>
-                        <p class="news-summary-line">👀 {{ item.summary[:80] }}{% if item.summary|length > 80 %}...{% endif %}</p>
+                        {% set _sum = item.summary or '' %}
+                        <p class="news-summary-line">👀 {{ _sum[:80] }}{% if _sum|length > 80 %}...{% endif %}</p>
                         <div class="news-card-footer">
                             <span class="news-card-ai">✍ AIが解説</span>
                             <span class="news-badge">AI解説</span>
                         </div>
                     </div>
                     <div class="news-card-image">
-                        <img src="{{ item.image_url or 'https://picsum.photos/400/225' }}" alt="{{ item.title }}" loading="lazy" decoding="async" onerror="this.src='https://picsum.photos/seed/{{ item.id }}/400/225'">
+                        <img src="{{ item.image_url or '/static/og/card-default.jpg' }}" alt="{{ item.title }}" loading="lazy" decoding="async" onerror="this.onerror=null;this.src='/static/og/card-default.jpg'">
                         <span class="news-card-category">{{ item.category }}</span>
                     </div>
                 </a>

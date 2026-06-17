@@ -1,7 +1,12 @@
 {% extends "base.html" %}
 {% block title %}{{ topic.title if topic else '政策提案AI' }} - 知リポAI{% endblock %}
+{% block meta_description %}AIが統計データをもとに政策を議論。あなたが支持する施策に投票しよう。{% endblock %}
 {% block meta_extra %}
-<meta name="description" content="AIが統計データをもとに政策を議論。あなたが支持する施策に投票しよう。">
+    <link rel="canonical" href="{{ site_url|default('') }}/policy{% if topic %}/{{ topic.id }}{% endif %}">
+    <meta property="og:type" content="website">
+    <meta property="og:title" content="{{ topic.title if topic else '政策提案AI' }} | 知リポAI">
+    <meta property="og:description" content="AIが統計データをもとに政策を議論。あなたが支持する施策に投票しよう。">
+    <meta property="og:site_name" content="知リポAI">
 {% endblock %}
 {% block content %}
 <div class="policy-page">

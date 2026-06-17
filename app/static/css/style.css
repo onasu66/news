@@ -4233,6 +4233,28 @@ body::after {
 .vote-label { min-width: 6em; font-weight: 600; }
 #vote-quiz-result { white-space: pre-line; }
 
+.vote-quiz-next-btn {
+    margin-top: 0.85rem;
+    padding: 0.6rem 1.2rem;
+    border: none;
+    border-radius: 999px;
+    background: linear-gradient(90deg, var(--color-accent), #a855f7);
+    color: #fff;
+    font-size: 0.92rem;
+    font-weight: 700;
+    cursor: pointer;
+    box-shadow: 0 4px 14px rgba(99, 102, 241, 0.25);
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+.vote-quiz-next-btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 6px 18px rgba(99, 102, 241, 0.32);
+}
+.vote-quiz-next-btn:focus-visible {
+    outline: 3px solid rgba(99, 102, 241, 0.4);
+    outline-offset: 2px;
+}
+
 /* ===== ARTICLE: SAVE BUTTON ===== */
 .save-article-btn {
     display: inline-flex;

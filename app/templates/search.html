@@ -36,10 +36,11 @@
         <a href="/topic/{{ item.id }}" class="news-card-link">
             <div class="news-card-body">
                 <h3 class="news-title">{{ item.title }}</h3>
-                <p class="news-summary-line">{{ item.summary[:100] }}...</p>
+                {% set _sum = item.summary or '' %}
+                <p class="news-summary-line">{{ _sum[:100] }}{% if _sum|length > 100 %}...{% endif %}</p>
             </div>
             <div class="news-card-image">
-                <img src="{{ item.image_url or 'https://picsum.photos/400/225' }}" alt="{{ item.title }}" loading="lazy">
+                <img src="{{ item.image_url or '/static/og/card-default.jpg' }}" alt="{{ item.title }}" loading="lazy" onerror="this.onerror=null;this.src='/static/og/card-default.jpg'">
                 <span class="news-card-category">{{ item.category }}</span>
             </div>
         </a>

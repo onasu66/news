@@ -1,6 +1,14 @@
 {% extends "base.html" %}
 {% block title %}偉人への相談室 — 知リポAI{% endblock %}
 {% block meta_description %}悩みを偉人に相談。ブッダ・ニーチェ・エジソンら歴史的偉人AIが、あなたの相談に本音で答えます。{% endblock %}
+{% block meta_extra %}
+    <link rel="canonical" href="{{ site_url|default('') }}/consultation">
+    <meta property="og:type" content="website">
+    <meta property="og:title" content="偉人への相談室 | 知リポAI">
+    <meta property="og:description" content="悩みを偉人に相談。ブッダ・ニーチェ・エジソンら歴史的偉人AIが、あなたの相談に本音で答えます。">
+    <meta property="og:url" content="{{ site_url|default('') }}/consultation">
+    <meta property="og:site_name" content="知リポAI">
+{% endblock %}
 
 {% block content %}
 <section class="page-header">

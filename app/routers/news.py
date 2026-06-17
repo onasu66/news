@@ -25,6 +25,18 @@ from app.services.ai_service import (
     get_image_url,
     PERSONAS,
 )
+from app.services.image_assets import (
+    category_card_path,
+    is_placeholder_image,
+)
+
+
+def _normalize_item_image(item, *, is_paper: bool = False) -> None:
+    """item.image_url が picsum 等のプレースホルダなら、カテゴリ別ローカル画像に差し替える。"""
+    url = (getattr(item, "image_url", None) or "").strip()
+    if not url or is_placeholder_image(url):
+        category = "研究・論文" if is_paper else getattr(item, "category", None)
+        item.image_url = category_card_path(category)
 
 router = APIRouter()
 templates = Jinja2Templates(directory=str(Path(__file__).resolve().parent.parent / "templates"))
@@ -889,12 +901,13 @@ async def news_index(request: Request, page: int = 1, keyword: str = ""):
                 item.image_url = get_image_url(item.id, 400, 225)
             elif item.image_url and not item.image_url.startswith("http"):
                 item.image_url = get_image_url(item.image_url, 400, 225)
+            _normalize_item_image(item)
     top_recommendations: list = []
     featured_items = _get_featured_items_with_persona(all_news, max_items=3)
     featured = featured_items[0] if featured_items else None
     latest_consultations = _get_latest_consultations(limit=3)
     site_url = _get_site_url(request)
-    og_image = "https://picsum.photos/1200/630"
+    og_image = f"{site_url}/static/og/og-default.jpg"
     flat_news = [it for _, items in news_by_category for it in items]
     news_breadcrumb_jsonld = _build_breadcrumb_jsonld(
         [("ホーム", f"{site_url}/"), ("AIニュースアーカイブ", f"{site_url}/news")]
@@ -980,6 +993,7 @@ async def api_news_page(page: int = 1, keyword: str = ""):
             item.image_url = get_image_url(item.id, 400, 225)
         elif not item.image_url.startswith("http"):
             item.image_url = get_image_url(item.image_url, 400, 225)
+        _normalize_item_image(item)
     import html as html_mod
     cards_html = ""
     for item in items:
@@ -991,7 +1005,7 @@ async def api_news_page(page: int = 1, keyword: str = ""):
         source_safe = html_mod.escape(item.source or "")
         cat_safe = html_mod.escape(item.category or "")
         tab_cat_safe = html_mod.escape(_news_tab_filter_category(item))
-        img_src = item.image_url or "https://picsum.photos/400/225"
+        img_src = item.image_url or "/static/og/card-default.jpg"
         cards_html += f'''<article class="news-card animate-fade-in" data-category="{tab_cat_safe}">
 <a href="/topic/{item.id}" class="news-card-link">
 <div class="news-card-body">
@@ -1000,7 +1014,7 @@ async def api_news_page(page: int = 1, keyword: str = ""):
 <p class="news-summary-line">👀 {summary_safe}{ellipsis}</p>
 <div class="news-card-footer"><span class="news-card-ai">✍ AIが解説</span><span class="news-badge">AI解説</span></div>
 </div>
-<div class="news-card-image"><img src="{img_src}" alt="{title_safe}" loading="lazy" onerror="this.src='https://picsum.photos/seed/{item.id}/400/225'"><span class="news-card-category">{cat_safe}</span></div>
+<div class="news-card-image"><img src="{img_src}" alt="{title_safe}" loading="lazy" onerror="this.onerror=null;this.src='/static/og/card-default.jpg'"><span class="news-card-category">{cat_safe}</span></div>
 </a></article>'''
     return {"html": cards_html, "page": page, "total_pages": total_pages}
 
@@ -1029,6 +1043,7 @@ async def api_papers_page(page: int = 1):
             item.image_url = get_image_url(item.id, 400, 225)
         elif not item.image_url.startswith("http"):
             item.image_url = get_image_url(item.image_url, 400, 225)
+        _normalize_item_image(item, is_paper=True)
         pub = item.published.strftime('%m/%d %H:%M') if item.published else ''
         title_safe = html_mod.escape(item.title or "")
         raw_summary = item.summary or ""
@@ -1036,7 +1051,7 @@ async def api_papers_page(page: int = 1):
         domain_safe = html_mod.escape(getattr(item, "paper_domain", None) or "総合科学")
         source_safe = html_mod.escape(item.source or "")
         ellipsis = "..." if len(raw_summary) > 80 else ""
-        img_src = item.image_url or "https://picsum.photos/400/225"
+        img_src = item.image_url or "/static/og/card-research.jpg"
         cards_html += f'''<article class="news-card animate-fade-in" data-category="{domain_safe}">
 <a href="/topic/{item.id}" class="news-card-link">
 <div class="news-card-body">
@@ -1045,7 +1060,7 @@ async def api_papers_page(page: int = 1):
 <p class="news-summary-line">👀 {summary_safe}{ellipsis}</p>
 <div class="news-card-footer"><span class="news-card-ai">✍ AIが解説</span><span class="news-badge">AI解説</span></div>
 </div>
-<div class="news-card-image"><img src="{img_src}" alt="{title_safe}" loading="lazy" onerror="this.src='https://picsum.photos/seed/{item.id}/400/225'"><span class="news-card-category">{domain_safe}</span></div>
+<div class="news-card-image"><img src="{img_src}" alt="{title_safe}" loading="lazy" onerror="this.onerror=null;this.src='/static/og/card-research.jpg'"><span class="news-card-category">{domain_safe}</span></div>
 </a></article>'''
     return {"html": cards_html, "page": pagination["page"], "total_pages": pagination["total_pages"]}
 
@@ -1076,6 +1091,7 @@ async def trend_page(request: Request):
             item.image_url = get_image_url(item.id, 400, 225)
         elif not item.image_url.startswith("http"):
             item.image_url = get_image_url(item.image_url, 400, 225)
+        _normalize_item_image(item)
     site_url = _get_site_url(request)
     page_jsonld = _build_site_graph_jsonld(
         site_url=site_url,
@@ -1478,6 +1494,7 @@ async def search_page(request: Request, q: str = ""):
                 item.image_url = get_image_url(item.id, 400, 225)
             elif not item.image_url.startswith("http"):
                 item.image_url = get_image_url(item.image_url, 400, 225)
+            _normalize_item_image(item)
     site_url = _get_site_url(request)
     page_jsonld = _build_site_graph_jsonld(
         site_url=site_url,
@@ -1516,6 +1533,7 @@ async def confirm_page(request: Request):
             item.image_url = get_image_url(item.id, 400, 225)
         elif not item.image_url.startswith("http"):
             item.image_url = get_image_url(item.image_url, 400, 225)
+        _normalize_item_image(item)
     return templates.TemplateResponse(
         "confirm.html",
         {"request": request, "recent_articles": news}
@@ -1936,6 +1954,7 @@ def _render_papers_page(request: Request, page: int = 1):
             item.image_url = get_image_url(item.id, 400, 225)
         elif item.image_url and not item.image_url.startswith("http"):
             item.image_url = get_image_url(item.image_url, 400, 225)
+        _normalize_item_image(item, is_paper=True)
 
     site_url = _get_site_url(request)
     flat_papers = all_papers
@@ -2097,11 +2116,16 @@ async def topic_detail(request: Request, topic_id: str):
     image_url = item.image_url or get_image_url(item.id, 800, 450)
     if image_url and not image_url.startswith("http"):
         image_url = get_image_url(image_url, 800, 450)
+    if is_placeholder_image(image_url):
+        from app.services.image_assets import category_og_path
+        _is_paper = (getattr(item, "category", None) == "研究・論文")
+        image_url = category_og_path("研究・論文" if _is_paper else getattr(item, "category", None))
     site_url = _get_site_url(request)
     article_url = f"{site_url}/topic/{topic_id}"
     og_image = image_url if (image_url or "").startswith("http") else f"{site_url}{image_url}" if image_url else ""
-    if not og_image:
-        og_image = get_image_url(item.id, 1200, 630)
+    if not og_image or is_placeholder_image(og_image):
+        from app.services.image_assets import category_og_path
+        og_image = f"{site_url}{category_og_path(getattr(item, 'category', None))}"
     cached = get_cached(topic_id)
     blocks = _sanitize_blocks(cached["blocks"]) if cached and cached.get("blocks") else []
     def _normalize_persona_ids(ids) -> list[int]:

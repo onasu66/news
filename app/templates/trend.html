@@ -1,12 +1,16 @@
 {% extends "base.html" %}
 {% block title %}トレンド - 知リポAI{% endblock %}
+{% block meta_description %}知リポAIのトレンドページ。AIが選ぶ注目度の高いニュースを一覧で確認できます。{% endblock %}
 {% block meta_extra %}
     <link rel="canonical" href="{{ site_url }}/trend">
     <meta property="og:type" content="website">
     <meta property="og:title" content="トレンド — いま注目度の高いニュース | 知リポAI">
     <meta property="og:description" content="知リポAIのトレンドページ。AIが選ぶ注目度の高いニュースを一覧で確認できます。">
+    <meta property="og:image" content="{{ site_url }}/static/og/og-default.jpg">
     <meta property="og:url" content="{{ site_url }}/trend">
     <meta property="og:site_name" content="知リポAI">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:image" content="{{ site_url }}/static/og/og-default.jpg">
 {% endblock %}
 {% block content %}
 <section class="page-header">
@@ -25,7 +29,8 @@
                             <span class="news-card-source">{{ item.source }}</span>
                         </div>
                         <h3 class="news-title">{{ item.title }}</h3>
-                        <p class="news-summary-line">👀 {{ item.summary[:80] }}{% if item.summary|length > 80 %}...{% endif %}</p>
+                        {% set _sum = item.summary or '' %}
+                        <p class="news-summary-line">👀 {{ _sum[:80] }}{% if _sum|length > 80 %}...{% endif %}</p>
                     </div>
 
                 </a>

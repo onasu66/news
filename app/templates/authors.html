@@ -1,5 +1,14 @@
 {% extends "base.html" %}
 {% block title %}著者情報 - 知リポAI{% endblock %}
+{% block meta_description %}知リポAIの編集チーム・AI解説チームの紹介。記事制作とAI解説の役割分担について。{% endblock %}
+{% block meta_extra %}
+    <link rel="canonical" href="{{ site_url|default('') }}/authors">
+    <meta property="og:type" content="website">
+    <meta property="og:title" content="著者情報 | 知リポAI">
+    <meta property="og:description" content="知リポAIの編集チーム・AI解説チームについて。">
+    <meta property="og:url" content="{{ site_url|default('') }}/authors">
+    <meta property="og:site_name" content="知リポAI">
+{% endblock %}
 {% block content %}
 <section class="page-header">
     <h1 class="page-title">著者情報</h1>

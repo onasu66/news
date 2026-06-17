@@ -1,8 +1,9 @@
 {% extends "base.html" %}
-{% block title %}保存済み - 知リポAI{% endblock %}
+{% block title %}保存した記事 - 知リポAI{% endblock %}
+{% block meta_description %}保存した記事の一覧。記事ページの⭐ボタンで気になる記事を保存できます。{% endblock %}
 {% block meta_extra %}
     <meta name="robots" content="noindex,follow">
-    <link rel="canonical" href="{{ request.base_url }}">
+    <link rel="canonical" href="{{ site_url|default('') }}/saved">
 {% endblock %}
 {% block content %}
 <section class="page-header">
@@ -10,21 +11,38 @@
     <p class="page-desc">あなたが保存した記事はここに表示されます</p>
 </section>
 <div id="saved-list" class="news-grid" style="max-width:960px; margin:0 auto; padding:0 1rem;">
-    <p id="saved-empty" class="empty-msg">保存した記事はありません。記事ページの ⭐ ボタンで保存できます。</p>
+    <div id="saved-empty" class="empty-state" style="text-align:center; padding:2.5rem 1rem;">
+        <p class="empty-msg" style="margin-bottom:1rem;">保存した記事はまだありません。<br>記事ページの ⭐ ボタンで気になる記事をいつでも見返せます。</p>
+        <a href="/news" class="home-featured-cta" style="display:inline-block;">ニュース一覧を見る →</a>
+    </div>
 </div>
 {% endblock %}
 {% block scripts %}
 <script>
 (function() {
-    var saved = JSON.parse(localStorage.getItem('saved_articles') || '[]');
+    var saved = [];
+    try { saved = JSON.parse(localStorage.getItem('saved_articles') || '[]'); } catch(e) { saved = []; }
     var grid = document.getElementById('saved-list');
     var empty = document.getElementById('saved-empty');
-    if (!saved.length) return;
+    if (!Array.isArray(saved) || !saved.length) return;
     empty.style.display = 'none';
-    saved.reverse().forEach(function(a) {
+    function escapeHtml(s) {
+        if (s == null) return '';
+        var d = document.createElement('div');
+        d.textContent = s;
+        return d.innerHTML;
+    }
+    saved.slice().reverse().forEach(function(a) {
+        if (!a || !a.id) return;
         var card = document.createElement('article');
         card.className = 'news-card animate-fade-in';
-        card.innerHTML = '<a href="/topic/' + a.id + '" class="news-card-link"><div class="news-card-body"><h3 class="news-title">' + (a.title||'') + '</h3><p class="news-summary-line">' + (a.summary||'').substring(0,80) + '...</p></div></a>';
+        var sum = (a.summary || '').substring(0, 80);
+        var ellipsis = (a.summary || '').length > 80 ? '...' : '';
+        card.innerHTML = '<a href="/topic/' + encodeURIComponent(a.id) + '" class="news-card-link">' +
+            '<div class="news-card-body">' +
+            '<h3 class="news-title">' + escapeHtml(a.title || '') + '</h3>' +
+            '<p class="news-summary-line">' + escapeHtml(sum) + ellipsis + '</p>' +
+            '</div></a>';
         grid.appendChild(card);
     });
 })();

@@ -223,6 +223,7 @@
         </div>
         <p id="vote-quiz-result" class="article-text" style="display:none; margin-top:0.6rem;"></p>
         <p id="vote-quiz-rate" class="article-text" style="margin-top:0.35rem; color: var(--color-text-muted);"></p>
+        <button type="button" id="vote-quiz-next" class="vote-quiz-next-btn" style="display:none;">次の記事へ →</button>
     </section>
     {% endif %}
 
@@ -599,18 +600,20 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
                 updateVoteDisplay();
                 updateRateDisplay();
-                // クイズ回答後、少し待ってから次の記事へランダム遷移
-                var candidates = Array.prototype.slice.call(
-                    document.querySelectorAll('.article-navigation a[href^="/topic/"]')
-                ).map(function(a) { return a.getAttribute('href'); })
-                 .filter(function(href, idx, arr) {
-                     return href && href.indexOf('/topic/' + articleId) === -1 && arr.indexOf(href) === idx;
-                 });
-                if (candidates.length > 0) {
-                    var nextHref = candidates[Math.floor(Math.random() * candidates.length)];
-                    setTimeout(function() {
-                        window.location.href = nextHref;
-                    }, 1400);
+                // 次の記事へのボタンを提示（自動遷移はせず、ユーザー操作に委ねる）
+                var nextBtn = document.getElementById('vote-quiz-next');
+                if (nextBtn) {
+                    var candidates = Array.prototype.slice.call(
+                        document.querySelectorAll('.article-navigation a[href^="/topic/"]')
+                    ).map(function(a) { return a.getAttribute('href'); })
+                     .filter(function(href, idx, arr) {
+                         return href && href.indexOf('/topic/' + articleId) === -1 && arr.indexOf(href) === idx;
+                     });
+                    if (candidates.length > 0) {
+                        var nextHref = candidates[Math.floor(Math.random() * candidates.length)];
+                        nextBtn.style.display = 'inline-block';
+                        nextBtn.onclick = function() { window.location.href = nextHref; };
+                    }
                 }
             });
         });
