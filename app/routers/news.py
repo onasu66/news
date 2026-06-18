@@ -25,18 +25,7 @@ from app.services.ai_service import (
     get_image_url,
     PERSONAS,
 )
-from app.services.image_assets import (
-    category_card_path,
-    is_placeholder_image,
-)
-
-
-def _normalize_item_image(item, *, is_paper: bool = False) -> None:
-    """item.image_url が picsum 等のプレースホルダなら、カテゴリ別ローカル画像に差し替える。"""
-    url = (getattr(item, "image_url", None) or "").strip()
-    if not url or is_placeholder_image(url):
-        category = "研究・論文" if is_paper else getattr(item, "category", None)
-        item.image_url = category_card_path(category)
+from app.services.image_assets import is_placeholder_image
 
 router = APIRouter()
 templates = Jinja2Templates(directory=str(Path(__file__).resolve().parent.parent / "templates"))
@@ -901,7 +890,6 @@ async def news_index(request: Request, page: int = 1, keyword: str = ""):
                 item.image_url = get_image_url(item.id, 400, 225)
             elif item.image_url and not item.image_url.startswith("http"):
                 item.image_url = get_image_url(item.image_url, 400, 225)
-            _normalize_item_image(item)
     top_recommendations: list = []
     featured_items = _get_featured_items_with_persona(all_news, max_items=3)
     featured = featured_items[0] if featured_items else None
@@ -993,7 +981,6 @@ async def api_news_page(page: int = 1, keyword: str = ""):
             item.image_url = get_image_url(item.id, 400, 225)
         elif not item.image_url.startswith("http"):
             item.image_url = get_image_url(item.image_url, 400, 225)
-        _normalize_item_image(item)
     import html as html_mod
     cards_html = ""
     for item in items:
@@ -1043,7 +1030,6 @@ async def api_papers_page(page: int = 1):
             item.image_url = get_image_url(item.id, 400, 225)
         elif not item.image_url.startswith("http"):
             item.image_url = get_image_url(item.image_url, 400, 225)
-        _normalize_item_image(item, is_paper=True)
         pub = item.published.strftime('%m/%d %H:%M') if item.published else ''
         title_safe = html_mod.escape(item.title or "")
         raw_summary = item.summary or ""
@@ -1091,7 +1077,6 @@ async def trend_page(request: Request):
             item.image_url = get_image_url(item.id, 400, 225)
         elif not item.image_url.startswith("http"):
             item.image_url = get_image_url(item.image_url, 400, 225)
-        _normalize_item_image(item)
     site_url = _get_site_url(request)
     page_jsonld = _build_site_graph_jsonld(
         site_url=site_url,
@@ -1494,7 +1479,6 @@ async def search_page(request: Request, q: str = ""):
                 item.image_url = get_image_url(item.id, 400, 225)
             elif not item.image_url.startswith("http"):
                 item.image_url = get_image_url(item.image_url, 400, 225)
-            _normalize_item_image(item)
     site_url = _get_site_url(request)
     page_jsonld = _build_site_graph_jsonld(
         site_url=site_url,
@@ -1533,7 +1517,6 @@ async def confirm_page(request: Request):
             item.image_url = get_image_url(item.id, 400, 225)
         elif not item.image_url.startswith("http"):
             item.image_url = get_image_url(item.image_url, 400, 225)
-        _normalize_item_image(item)
     return templates.TemplateResponse(
         "confirm.html",
         {"request": request, "recent_articles": news}
@@ -1954,7 +1937,6 @@ def _render_papers_page(request: Request, page: int = 1):
             item.image_url = get_image_url(item.id, 400, 225)
         elif item.image_url and not item.image_url.startswith("http"):
             item.image_url = get_image_url(item.image_url, 400, 225)
-        _normalize_item_image(item, is_paper=True)
 
     site_url = _get_site_url(request)
     flat_papers = all_papers
@@ -2116,10 +2098,6 @@ async def topic_detail(request: Request, topic_id: str):
     image_url = item.image_url or get_image_url(item.id, 800, 450)
     if image_url and not image_url.startswith("http"):
         image_url = get_image_url(image_url, 800, 450)
-    if is_placeholder_image(image_url):
-        from app.services.image_assets import category_og_path
-        _is_paper = (getattr(item, "category", None) == "研究・論文")
-        image_url = category_og_path("研究・論文" if _is_paper else getattr(item, "category", None))
     site_url = _get_site_url(request)
     article_url = f"{site_url}/topic/{topic_id}"
     og_image = image_url if (image_url or "").startswith("http") else f"{site_url}{image_url}" if image_url else ""

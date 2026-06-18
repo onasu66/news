@@ -3,7 +3,7 @@ import logging
 import re
 from datetime import datetime
 from .rss_service import NewsItem, sanitize_display_text, JST
-from .translate_service import is_foreign_article, translate_and_rewrite, translate_title_to_japanese, text_mainly_japanese, FOREIGN_SOURCES
+from .translate_service import is_foreign_article, translate_and_rewrite, translate_title_to_japanese, text_mainly_japanese
 from .ai_batch_service import generate_all_explanations, upgrade_personas_with_claude_if_configured
 from .explanation_cache import save_cache, get_cached, get_cached_article_ids
 from .article_cache import save_article, load_all
@@ -86,19 +86,17 @@ def process_rss_to_site_article(item: NewsItem, force: bool = False) -> bool:
             t2 = translate_title_to_japanese(item.title or "")
             if t2 and text_mainly_japanese(t2):
                 title_ja = t2
-    # 海外ニュースは従来どおり。論文（arXiv/Nature 等）は FOREIGN_SOURCES に入っていないが、
-    # 英語タイトル・要約のまま掲載されるとサイト方針に反するため同様に弾く。
-    # ただし論文はタイトルが英語でも要約が日本語なら通す（curated論文でタイトル翻訳失敗しても消えないように）
-    strict_ja = item.source in FOREIGN_SOURCES or item.category == "研究・論文"
-    if strict_ja:
-        if item.category == "研究・論文":
-            # 論文: 要約が日本語であれば保存する（タイトルが英語のままでも許容）
-            if not text_mainly_japanese(summary_ja):
-                return False
-        else:
-            # 海外ニュース: タイトル・要約ともに日本語が必要
-            if not text_mainly_japanese(title_ja) or not text_mainly_japanese(summary_ja):
-                return False
+    # 翻訳に失敗した記事が英語のまま公開されるのを防ぐ。FOREIGN_SOURCES（既知の海外ソース名）の
+    # 有無に依存せず、実際のタイトル・要約の文字種で判定する（CNBC/Bloomberg/TechCrunch等、
+    # リストにないソースの翻訳失敗が素通りしていたバグの修正）。
+    if item.category == "研究・論文":
+        # 論文: 要約が日本語であれば保存する（タイトルが英語のままでも許容）
+        if not text_mainly_japanese(summary_ja):
+            return False
+    else:
+        # 通常ニュース: タイトル・要約ともに日本語が必要
+        if not text_mainly_japanese(title_ja) or not text_mainly_japanese(summary_ja):
+            return False
 
     # タイトルは記事化時に毎回生成（事実は維持し、誇張は避ける）
     title_before_rewrite = title_ja

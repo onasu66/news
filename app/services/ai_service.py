@@ -988,11 +988,12 @@ blocks配列のJSONのみ返す。"""
     return [{"type": "text", "content": content}, {"type": "explain", "content": "（構造化に失敗しました。しばらくしてから再度お試しください。）"}]
 
 
-# 人格コメントはこの文字数以下に収める（プロンプトで厳守させ、APIトークンも十分に確保して途中打ち切りを防ぐ）
-# 180文字は3〜4文しか書けず制約を満たしながら「本人感」を出すのが困難なため 260 に拡大
-PERSONA_COMMENT_MAX_LEN = 210
-# 日本語（特に漢字）は1文字が1.5〜2.5トークンになりやすく、210字 ≒ 最大500トークン超になり得るため、
-# 480 では API 側の max_tokens で文の途中で打ち切られることがあった。余裕を持って800に拡大。
+# 人格コメントはこの文字数レンジに収める（読んでて疲れない長さ。短すぎる一言落ちと、長すぎて読むのに
+# 時間がかかるのを両方避ける）。プロンプトで厳守させ、APIトークンも十分に確保して途中打ち切りを防ぐ。
+PERSONA_COMMENT_MIN_LEN = 150
+PERSONA_COMMENT_MAX_LEN = 180
+# 日本語（特に漢字）は1文字が1.5〜2.5トークンになりやすく、180字 ≒ 最大400トークン程度になり得るため、
+# 余裕を持って800に設定（文の途中打ち切り防止）。
 PERSONA_COMMENT_MAX_COMPLETION_TOKENS = 800
 
 # 各偉人コメントで触れる固有要素（プロンプトでハード指定）
@@ -1158,6 +1159,41 @@ def _shorten_persona_comment_retry(
         return long_text
 
 
+def _get_persona_opinion_via_claude_cli(
+    system_prompt: str, user_prompt: str, min_len: int, max_len: int
+) -> str:
+    """Claude CLI（ローカル開発機のみ。本番Renderではis_claude_availableがFalseになり呼ばれない）で
+    ペルソナコメントを生成。失敗・CLI未使用時は空文字を返し、呼び出し元がGemini/OpenAIにフォールバックする。
+    min_len未満の短すぎる出力は1回だけ書き直しリトライする。"""
+    try:
+        from app.services.claude_researcher import is_claude_available, run_claude_text_gen
+        if not is_claude_available():
+            return ""
+    except Exception:
+        return ""
+
+    def _ask(extra_note: str = "") -> str:
+        combined_prompt = (
+            f"{system_prompt}\n\n{user_prompt}\n\n"
+            f"出力はコメント本文のみ。前置き・説明・引用符・Markdownは付けない。{extra_note}"
+        )
+        raw = run_claude_text_gen(combined_prompt, timeout=90, usage_kind="persona_comment")
+        text = (raw or "").strip()
+        if text.startswith("```"):
+            text = "\n".join(ln for ln in text.splitlines() if not ln.startswith("```")).strip()
+        return text.strip("「」\"'　 \n﻿")
+
+    text = _ask()
+    if text and len(text) < min_len:
+        retried = _ask(
+            f"直前の出力は{len(text)}字で短すぎる。{min_len}〜{max_len}字になるよう、"
+            "同じ人物・同じ論点のまま具体的な描写や固有要素を補って書き直せ。"
+        )
+        if retried:
+            text = retried
+    return text
+
+
 def get_persona_opinion(
     title: str,
     content: str,
@@ -1166,16 +1202,13 @@ def get_persona_opinion(
     other_comments: list[str] | None = None,
 ) -> str:
     """指定された偉人キャラがニュースに対し主観100%で180文字以内コメントを返す。
-    other_comments: 先に生成済みの他キャラのコメント（重複表現を避けるために渡す）。"""
-    if not is_ai_configured(provider=persona_provider()):
-        return "（APIキーが設定されていません）"
+    other_comments: 先に生成済みの他キャラのコメント（重複表現を避けるために渡す）。
+    ローカル開発機でClaude CLIが使える場合はClaudeを優先し、使えない場合（本番Renderなど）は
+    Gemini/OpenAI（persona_provider()に従う）にフォールバックする。"""
     if persona_id < 0 or persona_id >= len(PERSONAS):
         return ""
 
-    model = resolve_persona_model(model)
     p = PERSONAS[persona_id]
-    prov = persona_provider()
-    client = get_chat_client(provider=prov)
 
     # 他キャラのコメントが渡されている場合、同じ言葉・視点を使わないよう指示を追加
     avoid_note = ""
@@ -1187,6 +1220,7 @@ def get_persona_opinion(
                 "↑上記と同じ言葉・結論・切り口は使わない。この人物にしか言えない別の軸で語ること。"
             )
 
+    min_len = PERSONA_COMMENT_MIN_LEN
     max_len = PERSONA_COMMENT_MAX_LEN
     signature_elements = get_persona_signature_elements(p["name"])
     signature_note = ""
@@ -1243,7 +1277,7 @@ def get_persona_opinion(
 - 日本語のみ。見出し・前置き・箇条書き禁止。最初の一文から{p['name']}の生の反応で始める。
 - ニュースの説明・要約から入るな。感情・評価・喜び・断罪・皮肉のどれかから入れ。
 - {p['name']}が生きた時代の経験・失敗・信念を自然に織り込む。
-- {max_len}文字以内で完結させ、必ず句点「。」で終わる。{focus_note}{catchphrase_note}{signature_note}{banned_note}{avoid_note}"""
+- {min_len}〜{max_len}文字程度で完結させ、必ず句点「。」で終わる。{min_len}文字に満たない一言コメントは不可。{focus_note}{catchphrase_note}{signature_note}{banned_note}{avoid_note}"""
 
     user_prompt = f"""2026年のこのニュースをタブレットで読んだ{p['name']}として、今すぐ独白せよ。
 
@@ -1251,6 +1285,23 @@ def get_persona_opinion(
 
 【内容】
 {content[:2000]}"""
+
+    # ローカル開発機でClaude CLIが使える場合は優先（本番Renderでは未使用→空文字でフォールバック）
+    claude_text = _get_persona_opinion_via_claude_cli(system_prompt, user_prompt, min_len, max_len)
+    if claude_text:
+        claude_text = _fit_persona_comment_to_max(claude_text, max_len)
+        if len(claude_text) > max_len:
+            claude_text = claude_text[:max_len].rstrip()
+        remember_persona_comment(p["name"], claude_text)
+        return claude_text
+
+    if not is_ai_configured(provider=persona_provider()):
+        return "（APIキーが設定されていません）"
+
+    model = resolve_persona_model(model)
+    prov = persona_provider()
+    client = get_chat_client(provider=prov)
+
     try:
         response = create_with_retry(
             client,

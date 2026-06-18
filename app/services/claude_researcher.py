@@ -499,7 +499,7 @@ def run_claude_text_gen(prompt: str, timeout: int = 120, usage_kind: str = "text
                 )
                 return ""
             if out_file.exists():
-                out = out_file.read_text(encoding="utf-8").strip()
+                out = out_file.read_text(encoding="utf-8-sig").strip()
                 _record_usage(
                     usage_kind,
                     prompt=full_prompt,
@@ -761,7 +761,7 @@ def _invoke_claude_research_session(
 
         raw = ""
         if output_file.exists():
-            raw = output_file.read_text(encoding="utf-8").strip()
+            raw = output_file.read_text(encoding="utf-8-sig").strip()
         else:
             stdout = proc_stdout.strip()
             stderr_tail = proc_stderr[-800:]
