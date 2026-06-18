@@ -87,7 +87,8 @@
       "PowerShell(Start-Process -FilePath python -ArgumentList \"main.py\" -WorkingDirectory \"D:\\\\app\\\\newsite\" -RedirectStandardOutput \"D:\\\\app\\\\newsite\\\\_tmp_server_out.log\" -RedirectStandardError \"D:\\\\app\\\\newsite\\\\_tmp_server_err.log\" -PassThru | Select-Object Id)",
       "PowerShell(Start-Sleep -Seconds 6; try { $r = Invoke-WebRequest -Uri \"http://127.0.0.1:8001/news\" -UseBasicParsing -TimeoutSec 10; Write-Output \\(\"STATUS:\" + $r.StatusCode\\); $r.Content | Select-String -Pattern \"picsum|/static/og/card-\" | Select-Object -First 10 } catch { Write-Output \\(\"ERR: \" + $_.Exception.Message\\) })",
       "PowerShell(Stop-Process *)",
-      "PowerShell(Start-Sleep -Seconds 8; try { $r = Invoke-WebRequest -Uri \"http://127.0.0.1:8001/news\" -UseBasicParsing -TimeoutSec 10; Write-Output \\(\"STATUS:\" + $r.StatusCode\\) } catch { Write-Output \\(\"ERR: \" + $_.Exception.Message\\) })"
+      "PowerShell(Start-Sleep -Seconds 8; try { $r = Invoke-WebRequest -Uri \"http://127.0.0.1:8001/news\" -UseBasicParsing -TimeoutSec 10; Write-Output \\(\"STATUS:\" + $r.StatusCode\\) } catch { Write-Output \\(\"ERR: \" + $_.Exception.Message\\) })",
+      "PowerShell($css = Invoke-WebRequest -Uri \"http://127.0.0.1:8001/static/css/style.css\" -UseBasicParsing -TimeoutSec 10 | Select-Object -ExpandProperty Content; \\($css -split \"`n\" | Select-String -Pattern \"padding: 0 20px|font-size: 17px\"\\) -join \"`n\")"
     ]
   }
 }

@@ -1905,6 +1905,7 @@ body::after {
 .article-detail {
     max-width: 1200px;
     margin: 0 auto;
+    padding: 0 20px;
 }
 
 .back-link {
@@ -2232,8 +2233,8 @@ body::after {
 
 /* メイン本文＝ニュース（事実）。一体感のある読み物として */
 .article-body {
-    font-size: 1.05rem;
-    line-height: 1.6;
+    font-size: 17px;
+    line-height: 1.8;
     color: var(--color-text);
     margin: 0 0 1.25rem 0;
     letter-spacing: 0.02em;
@@ -4784,7 +4785,7 @@ body::after {
     .genre-tabs-scroll .genre-tab { background: #fff; border-color: #e2e8f0; color: #475569; }
     .genre-tabs-wrap { background: rgba(248,250,252,0.95); backdrop-filter: blur(8px); }
 
-    .article-detail { background: transparent; border-radius: 0; padding: 0; margin: 0; box-shadow: none; }
+    .article-detail { background: transparent; border-radius: 0; padding: 0 20px; margin: 0; box-shadow: none; }
     .quick-understand { background: #f0f9ff; border-color: #bfdbfe; }
     .short-summary-box { background: transparent; border: none; padding: 0; box-shadow: none; }
 
