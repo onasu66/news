@@ -46,13 +46,6 @@
             </li>
         </ol>
     </nav>
-    <p class="article-list-hub">
-        <a href="{{ list_hub_path|default('/news') }}">← {{ list_hub_label|default('ニュース一覧') }}</a>
-        {% if latest_articles %}
-        <span class="article-list-hub-sep" aria-hidden="true">·</span>
-        <a href="{{ list_hub_path|default('/news') }}">同じ一覧の最新記事</a>
-        {% endif %}
-    </p>
     <div class="article-sn-toolbar">
         <a href="{% if mobile_nav_papers_highlight|default(false) %}/{% else %}/news{% endif %}" class="back-link">{% if mobile_nav_papers_highlight|default(false) %}← 論文一覧へ{% else %}← ニュース一覧へ{% endif %}</a>
         <div class="article-sn-toolbar-actions">
@@ -248,6 +241,7 @@
         </div>
         {% endif %}
 
+        {# 同カテゴリ／最新／AIおすすめは内容が被りやすいので、上から優先順位で1つだけ表示する（縦に同じ見た目のブロックが何段も続くのを避ける） #}
         {% if same_category_articles %}
         <div class="article-nav-section">
             <h3 class="article-nav-title">🏷 {{ article.category }}の記事</h3>
@@ -266,9 +260,7 @@
                 {% endfor %}
             </div>
         </div>
-        {% endif %}
-
-        {% if latest_articles %}
+        {% elif latest_articles %}
         <div class="article-nav-section">
             <h3 class="article-nav-title">🕒 最新の記事</h3>
             <div class="news-grid nav-grid">
@@ -286,9 +278,7 @@
                 {% endfor %}
             </div>
         </div>
-        {% endif %}
-
-        {% if ai_recommended %}
+        {% elif ai_recommended %}
         <div class="article-nav-section">
             <h3 class="article-nav-title">🤖 AIおすすめ</h3>
             <div class="news-grid nav-grid">
@@ -316,11 +306,6 @@
             <a href="/topic/{{ next_article.id }}" class="next-article-link next-article-next">次の記事へ →</a>
             {% endif %}
         </nav>
-
-        <div class="article-line-cta">
-            <p class="article-line-cta-text">取り上げてほしい記事・追加してほしいキャラなど、LINEでリクエストできます</p>
-            <a href="https://lin.ee/rQgfdIR"><img src="https://scdn.line-apps.com/n/line_add_friends/btn/ja.png" alt="友だち追加" height="36" border="0"></a>
-        </div>
     </section>
 </article>
 

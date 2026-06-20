@@ -215,10 +215,19 @@ def _rewrite_news_title(title: str, summary: str = "", category: str = "") -> st
     if t.startswith("【") and "】" in t[:12]:
         t = t.split("】", 1)[1].strip()
 
-    # 長すぎる場合のみ短縮（まずはルールベースで）
+    # 長すぎる場合のみ短縮（まずはルールベースで）。単語の途中で切れないよう、
+    # 区切りになりやすい文字の直後/直前まで戻ってから「…」を付ける。
     def _shorten(s: str, max_len: int = 42) -> str:
         s = " ".join(s.split())
-        return s if len(s) <= max_len else (s[:max_len] + "…")
+        if len(s) <= max_len:
+            return s
+        chunk = s[:max_len]
+        for sep in ("」", "』", "）", ")", "、", "・", " "):
+            i = chunk.rfind(sep)
+            if i >= max_len // 2:
+                cut = i + 1 if sep in ("」", "』", "）", ")") else i
+                return chunk[:cut].rstrip("、・ ") + "…"
+        return chunk + "…"
 
     # AI が使える場合は「編集者リライト」を1回だけ試す
     try:

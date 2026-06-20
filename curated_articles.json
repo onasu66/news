@@ -1,83 +1,83 @@
 [
   {
-    "title": "サッカーW杯 日本対オランダ2-2引き分け 鎌田が劇的同点弾",
-    "url": "https://news.web.nhk/newsweb/na/na-k10015149851000",
-    "reason": "本田圭佑の解説や日本サポーターの熱狂がXで大バズり。W杯初戦の劇的ドローを深掘りで振り返る。",
-    "source": "NHKニュース",
-    "category": "スポーツ",
-    "published": "2026-06-16T07:00:00",
+    "title": "高市首相G7で会見 米イラン覚書を歓迎",
+    "url": "https://www.kantei.go.jp/jp/105/statement/2026/0617naigai.html",
+    "reason": "G7サミット後の内外記者会見。米イラン覚書とホルムズ海峡の航行再開への期待を表明し国内関心が高い",
+    "source": "首相官邸",
+    "category": "政治・社会",
+    "published": "2026-06-18T07:00:00",
     "image_url": null
   },
   {
-    "title": "任天堂に2億円超の身代金要求 ハッカー集団が社員情報流出主張",
-    "url": "https://www.nintendolife.com/news/2026/06/hacker-group-claims-to-have-stolen-nintendo-data-posts-usd2-million-ransom",
-    "reason": "Xのセキュリティトレンドでも言及。ゲーム大手への身代金要求とデータ流出疑惑の最新動向を解説。",
-    "source": "Nintendo Life",
-    "category": "テクノロジー",
-    "published": "2026-06-12T10:00:00",
-    "image_url": null
-  },
-  {
-    "title": "リミナルスペース現象を映画化『バックルームズ』が世界的大ヒット",
-    "url": "https://www.cnn.com/2026/05/29/entertainment/video/backrooms-a24-liminal-spaces-interviews-spc-digvid",
-    "reason": "Xでも話題のリミナルスペース現象がA24映画化。世界2億ドル超ヒットとなった現象の裏側に迫る。",
-    "source": "CNN",
-    "category": "エンタメ",
-    "published": "2026-05-29T12:00:00",
-    "image_url": null
-  },
-  {
-    "title": "柏崎刈羽原発7号機で海水2.6万リットル漏れ 放射性物質なし",
-    "url": "https://news.web.nhk/newsweb/na/nb-1030036904",
-    "reason": "運転停止中の原発で発生した配管継ぎ目からの海水漏れ事故。安全管理への関心が高まる国内速報。",
-    "source": "NHKニュース",
-    "category": "国内",
-    "published": "2026-06-17T06:00:00",
-    "image_url": null
-  },
-  {
-    "title": "米とイラン戦闘終結の覚書に合意 ホルムズ海峡開放へ",
-    "url": "https://www.aljazeera.com/news/2026/6/14/us-iran-ceasefire-deal-announced-trump-says-strait-of-hormuz-reopening",
-    "reason": "中東情勢の大きな転換点。トランプ氏発表の停戦合意と高市首相のG7での反応を深掘りで解説。",
-    "source": "Al Jazeera",
+    "title": "米イランが戦闘終結覚書 ホルムズ海峡封鎖解除へ",
+    "url": "https://www.nikkei.com/article/DGXZQOGR1504W0V10C26A6000000/",
+    "reason": "中東情勢の大転換点。トランプ氏も合意表明し原油・物流への影響が大きい国際ニュース",
+    "source": "日本経済新聞",
     "category": "国際",
-    "published": "2026-06-14T18:00:00",
+    "published": "2026-06-16T06:00:00",
     "image_url": null
   },
   {
-    "title": "筋トレの『黄金量』を発見 長寿効果が最大化する研究",
-    "url": "https://www.sciencedaily.com/releases/2026/06/260611024609.htm",
-    "reason": "3つの大規模追跡調査・約15万人分のデータを解析し筋トレと寿命の関係を解明した注目の新着研究。",
+    "title": "W杯日本代表 オランダと2-2 終盤に追いつく",
+    "url": "https://www.nikkei.com/article/DGXZQODH140IM0U6A610C2000000/",
+    "reason": "Xでも本田圭佑解説が大バズり。W杯初戦で強豪オランダと引き分けた今日の話題ニュース",
+    "source": "日本経済新聞",
+    "category": "スポーツ",
+    "published": "2026-06-15T10:00:00",
+    "image_url": null
+  },
+  {
+    "title": "KADOKAWA元会長が夏野社長らを提訴",
+    "url": "https://bunshun.jp/articles/-/89541",
+    "reason": "出版大手の経営陣対立が法廷闘争に発展。Xでも著名人が言及し注目度が高い国内企業ニュース",
+    "source": "文春オンライン",
+    "category": "国内",
+    "published": "2026-06-16T18:00:00",
+    "image_url": null
+  },
+  {
+    "title": "OpenAI、IPO控え大物人材を続々獲得",
+    "url": "https://techcrunch.com/2026/06/18/openai-is-bringing-on-some-big-guns-in-the-lead-up-to-its-ipo/",
+    "reason": "Transformer共同発明者の移籍などIPO準備が本格化。AI業界再編の動きとして注目度が高い",
+    "source": "TechCrunch",
+    "category": "テクノロジー",
+    "published": "2026-06-18T09:00:00",
+    "image_url": null
+  },
+  {
+    "title": "睡眠脳波の臨界性で認知症の認知機能低下を予測",
+    "url": "https://arxiv.org/abs/2606.10889",
+    "reason": "arXiv新着。非侵襲な睡眠EEGの臨界性指標から認知症進行を予測できる可能性を示した注目研究",
+    "source": "arXiv",
+    "category": "研究・論文",
+    "published": "2026-06-09T00:00:00",
+    "image_url": null
+  },
+  {
+    "title": "汎用LLMが専門医療AIより診断精度で優位",
+    "url": "https://www.nature.com/articles/s41591-026-04431-5",
+    "reason": "GPT-5.2など汎用LLMが特化型臨床AIを上回る診断性能を示し、医療AI開発の常識を覆す結果",
+    "source": "Nature Medicine",
+    "category": "研究・論文",
+    "published": "2026-06-10T00:00:00",
+    "image_url": null
+  },
+  {
+    "title": "就寝時間の不規則さが心臓発作リスクを2倍に",
+    "url": "https://www.sciencedaily.com/releases/2026/05/260504154026.htm",
+    "reason": "就寝時間の不規則さと睡眠不足が重なると心血管イベントのリスクが約2倍になると判明した健康研究",
     "source": "ScienceDaily",
     "category": "研究・論文",
-    "published": "2026-06-11T00:00:00",
+    "published": "2026-05-05T00:00:00",
     "image_url": null
   },
   {
-    "title": "運動の『多様性』が死亡率19%減 11万人を30年追跡",
-    "url": "https://doi.org/10.1136/bmjmed-2025-001513",
-    "reason": "30年・11万人規模の追跡調査で運動量より種類の多様さが長寿に効くと判明した英国発の注目研究。",
-    "source": "BMJ Medicine",
-    "category": "研究・論文",
-    "published": "2026-01-20T00:00:00",
-    "image_url": null
-  },
-  {
-    "title": "睡眠の質と認知機能の関係 東京とロンドンの学生で比較",
-    "url": "https://www.frontiersin.org/journals/sleep/articles/10.3389/frsle.2025.1537997/full",
-    "reason": "東京とロンドンの学生データを比較し睡眠の質と記憶・注意力の関連を調べた国際比較研究。",
-    "source": "Frontiers in Sleep",
-    "category": "研究・論文",
-    "published": "2025-11-15T00:00:00",
-    "image_url": null
-  },
-  {
-    "title": "大西洋の海流『AMOC』が20年弱体化 観測データで証明",
-    "url": "https://www.sciencedaily.com/releases/2026/05/260509210639.htm",
-    "reason": "気候を左右する大西洋海流の衰退を直接観測で確認。気候変動への影響が今注目される新着研究。",
+    "title": "43年追跡調査でコーヒーが脳を保護と判明",
+    "url": "https://www.sciencedaily.com/releases/2026/03/260318033138.htm",
+    "reason": "13万人超を43年間追跡した大規模研究。毎日のコーヒー習慣が認知症リスクを18%下げると示した",
     "source": "ScienceDaily",
     "category": "研究・論文",
-    "published": "2026-05-09T00:00:00",
+    "published": "2026-03-18T00:00:00",
     "image_url": null
   }
 ]

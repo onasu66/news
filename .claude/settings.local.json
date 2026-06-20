@@ -88,7 +88,31 @@
       "PowerShell(Start-Sleep -Seconds 6; try { $r = Invoke-WebRequest -Uri \"http://127.0.0.1:8001/news\" -UseBasicParsing -TimeoutSec 10; Write-Output \\(\"STATUS:\" + $r.StatusCode\\); $r.Content | Select-String -Pattern \"picsum|/static/og/card-\" | Select-Object -First 10 } catch { Write-Output \\(\"ERR: \" + $_.Exception.Message\\) })",
       "PowerShell(Stop-Process *)",
       "PowerShell(Start-Sleep -Seconds 8; try { $r = Invoke-WebRequest -Uri \"http://127.0.0.1:8001/news\" -UseBasicParsing -TimeoutSec 10; Write-Output \\(\"STATUS:\" + $r.StatusCode\\) } catch { Write-Output \\(\"ERR: \" + $_.Exception.Message\\) })",
-      "PowerShell($css = Invoke-WebRequest -Uri \"http://127.0.0.1:8001/static/css/style.css\" -UseBasicParsing -TimeoutSec 10 | Select-Object -ExpandProperty Content; \\($css -split \"`n\" | Select-String -Pattern \"padding: 0 20px|font-size: 17px\"\\) -join \"`n\")"
+      "PowerShell($css = Invoke-WebRequest -Uri \"http://127.0.0.1:8001/static/css/style.css\" -UseBasicParsing -TimeoutSec 10 | Select-Object -ExpandProperty Content; \\($css -split \"`n\" | Select-String -Pattern \"padding: 0 20px|font-size: 17px\"\\) -join \"`n\")",
+      "Skill(run)",
+      "PowerShell(chromium-cli *)",
+      "PowerShell(python -c \"import playwright; print\\('python playwright ok'\\)\" 2>&1)",
+      "PowerShell(npx --yes playwright --version 2>&1)",
+      "PowerShell(npm ls *)",
+      "PowerShell(npx --yes playwright --help 2>&1 | Select-Object -First 40)",
+      "PowerShell(npx --yes playwright screenshot --help 2>&1)",
+      "PowerShell(npx --yes playwright install chromium 2>&1 | Select-Object -Last 10)",
+      "PowerShell(npx --yes playwright screenshot --device \"iPhone 12\" --wait-for-timeout 1000 \"http://127.0.0.1:8001/news\" \"D:\\\\app\\\\newsite\\\\_tmp_shot_news.png\" 2>&1)",
+      "PowerShell(npx --yes playwright screenshot --device \"iPhone 12\" --wait-for-timeout 1000 \"http://127.0.0.1:8001/\" \"D:\\\\app\\\\newsite\\\\_tmp_shot_papers.png\" 2>&1)",
+      "PowerShell(npx --yes playwright screenshot -b chromium --device \"iPhone 12\" --wait-for-timeout 1000 \"http://127.0.0.1:8001/news\" \"D:\\\\app\\\\newsite\\\\_tmp_shot_news.png\" 2>&1)",
+      "PowerShell(npx --yes playwright screenshot -b chromium --device \"iPhone 12\" --wait-for-timeout 1000 \"http://127.0.0.1:8001/\" \"D:\\\\app\\\\newsite\\\\_tmp_shot_papers.png\" 2>&1)",
+      "PowerShell(npx --yes playwright screenshot -b chromium --viewport-size \"390,844\" --wait-for-timeout 1000 \"http://127.0.0.1:8001/news\" \"D:\\\\app\\\\newsite\\\\_tmp_shot_news.png\" 2>&1)",
+      "PowerShell(npx --yes playwright screenshot -b chromium --viewport-size \"390,844\" --wait-for-timeout 1000 \"http://127.0.0.1:8001/\" \"D:\\\\app\\\\newsite\\\\_tmp_shot_papers.png\" 2>&1)",
+      "PowerShell(npx --yes playwright screenshot -b chromium --viewport-size \"390,844\" --wait-for-timeout 1000 \"http://127.0.0.1:8001/news\" \"D:\\\\app\\\\newsite\\\\_tmp_shot_check.png\" 2>&1)",
+      "PowerShell(try { $r = Invoke-WebRequest -Uri \"http://127.0.0.1:8001/news\" -UseBasicParsing -TimeoutSec 5; \"OK:\" + $r.StatusCode } catch { \"DOWN\" })",
+      "PowerShell(Out-Null *)",
+      "PowerShell(python _tmp_find_broken_titles.py)",
+      "PowerShell(python _tmp_find_truncated.py)",
+      "PowerShell(python -c \"import ast; ast.parse\\(open\\('app/services/article_processor.py', encoding='utf-8'\\).read\\(\\)\\)\"; echo OK)",
+      "PowerShell(python -c \"import ast; ast.parse\\(open\\('scripts/retitle_truncated_articles.py', encoding='utf-8'\\).read\\(\\)\\)\"; echo OK)",
+      "PowerShell(python scripts/retitle_truncated_articles.p)",
+      "PowerShell(python _tmp_debug_retitle.py)",
+      "PowerShell(python _tmp_debug2.py)"
     ]
   }
 }

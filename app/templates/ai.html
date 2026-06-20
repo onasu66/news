@@ -10,13 +10,15 @@
     <meta property="og:site_name" content="知リポAI">
 {% endblock %}
 {% block content %}
+<!-- ヘッダー -->
+<section class="site-hero">
+    <div class="site-hero-inner">
+        <span class="site-hero-eyebrow">🗳️ AI投票・政策立案</span>
+        <h1 class="site-hero-title">あなたの推し偉人AIに投票しよう</h1>
+        <p class="site-hero-desc">14人の偉人AIキャラのうち、あなたの推しは誰？ 1キャラ1票まで投票できます。</p>
+    </div>
+</section>
 <div class="ai-vote-page">
-
-  <!-- ヘッダー -->
-  <section class="ai-vote-header">
-    <h1 class="ai-vote-title">AI投票・政策立案</h1>
-    <p class="ai-vote-desc">偉人AIキャラのうち、あなたの推しは誰？ 1キャラ1票まで投票できます。</p>
-  </section>
 
   <!-- リーダーボード（上位3） -->
   {% set sorted_personas = personas | sort(attribute='vote_count', reverse=true) %}
@@ -123,11 +125,6 @@
     </div>
   </section>
   {% endif %}
-
-  <div class="article-line-cta">
-    <p class="article-line-cta-text">推しキャラのリクエスト・サイトへのご意見はLINEからどうぞ</p>
-    <a href="https://lin.ee/rQgfdIR"><img src="https://scdn.line-apps.com/n/line_add_friends/btn/ja.png" alt="友だち追加" height="36" border="0"></a>
-  </div>
 
 </div>
 
