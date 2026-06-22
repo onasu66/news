@@ -763,50 +763,60 @@ body::after {
     overflow: hidden;
     background: linear-gradient(135deg, var(--color-primary) 0%, #312e81 55%, #4338ca 100%);
     color: #fff;
-    padding: 1.85rem 1.25rem 1.6rem;
-    text-align: center;
+    padding: 1rem 1.25rem;
+    text-align: left;
 }
 .site-hero::before {
     content: "";
     position: absolute;
     inset: 0;
-    background:
-        radial-gradient(circle at 12% -10%, rgba(165, 180, 252, 0.45), transparent 50%),
-        radial-gradient(circle at 90% 110%, rgba(236, 72, 153, 0.25), transparent 55%);
+    background: radial-gradient(circle at 100% 0%, rgba(165, 180, 252, 0.35), transparent 55%);
     pointer-events: none;
 }
 .site-hero-inner {
     position: relative;
     z-index: 1;
-    max-width: 680px;
-    margin: 0 auto;
+    max-width: 720px;
+    margin: 0;
+    display: flex;
+    align-items: baseline;
+    flex-wrap: wrap;
+    gap: 0.5rem 0.7rem;
 }
 .site-hero-eyebrow {
     display: inline-flex;
     align-items: center;
-    gap: 0.35rem;
-    margin: 0 0 0.65rem;
-    padding: 0.28rem 0.75rem;
+    gap: 0.3rem;
+    margin: 0;
+    padding: 0.2rem 0.65rem;
     border-radius: 999px;
     background: rgba(255, 255, 255, 0.12);
     border: 1px solid rgba(255, 255, 255, 0.28);
-    font-size: 0.72rem;
+    font-size: 0.68rem;
     font-weight: 700;
     letter-spacing: 0.04em;
     color: rgba(255, 255, 255, 0.92);
+    flex-shrink: 0;
 }
 .site-hero-title {
-    margin: 0 0 0.6rem;
-    font-size: clamp(1.2rem, 3vw, 1.65rem);
-    font-weight: 900;
+    margin: 0;
+    font-size: clamp(1rem, 2.4vw, 1.25rem);
+    font-weight: 800;
     line-height: 1.4;
     color: #fff;
+    flex: 1 1 auto;
 }
 .site-hero-desc {
-    margin: 0;
-    font-size: 0.88rem;
-    line-height: 1.75;
-    color: rgba(255, 255, 255, 0.85);
+    margin: 0.3rem 0 0;
+    width: 100%;
+    font-size: 0.8rem;
+    line-height: 1.6;
+    color: rgba(255, 255, 255, 0.78);
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    overflow: hidden;
 }
 /* 論文ページ: AI論文解説 aboutセクション */
 .papers-about-section {
@@ -2552,10 +2562,8 @@ body::after {
     font-size: 0.98rem;
     line-height: 1.75;
     margin: 0;
-    padding: 0.85rem 1rem;
-    background: var(--pc-soft, var(--color-bg-subtle));
-    border-radius: 12px;
-    border-left: 4px solid var(--pc, var(--color-accent));
+    padding-left: 0.9rem;
+    border-left: 3px solid var(--pc, var(--color-accent));
 }
 
 .personas-more-label {
@@ -5330,7 +5338,7 @@ body::after {
 .persona-card[data-persona-id] .persona-trigger:hover {
     background: var(--pc-soft, var(--color-bg));
 }
-.persona-card[data-persona-id] .persona-content {
+.persona-card[data-persona-id] .persona-content:not(.persona-content--spotlight) {
     border-top-color: var(--pc, var(--color-border-light));
     background: var(--pc-soft, transparent);
 }
@@ -5339,7 +5347,7 @@ body::after {
 }
 
 /* ダークモード対応: persona カードの背景は透過 */
-:root[data-theme="dark"] .persona-card[data-persona-id] .persona-content {
+:root[data-theme="dark"] .persona-card[data-persona-id] .persona-content:not(.persona-content--spotlight) {
     background: color-mix(in srgb, var(--pc-soft, #f0f0f0) 12%, transparent);
 }
 
