@@ -150,6 +150,7 @@ class Settings:
     INDEXNOW_KEY: str = os.getenv("INDEXNOW_KEY", "").strip()
     INDEXNOW_ENABLED: str = os.getenv("INDEXNOW_ENABLED", "true").strip().lower()
     GA4_MEASUREMENT_ID: str = os.getenv("GA4_MEASUREMENT_ID", "").strip()
+    CLARITY_PROJECT_ID: str = os.getenv("CLARITY_PROJECT_ID", "").strip()
     # 公開HTML（/topic, /, /news）の Cache-Control max-age（秒）。0 でヘッダなし。CDN/ブラウザの再訪削減用。
     PUBLIC_HTML_CACHE_MAX_AGE_SEC: int = int(os.getenv("PUBLIC_HTML_CACHE_MAX_AGE_SEC", "120"))
     # RapidAPI（Super Duper Trends 等）。未設定ならGoogleトレンドRSSのみ使用

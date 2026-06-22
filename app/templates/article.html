@@ -649,8 +649,22 @@ document.addEventListener('DOMContentLoaded', function() {
         var titleEl = document.querySelector('.article-title');
         var articleTitle = titleEl ? titleEl.textContent.trim() : document.title;
         var url = window.location.href;
-        var comment = opinion.length > 140 ? opinion.slice(0, 137) + '…' : opinion;
-        var shareText = '【' + name + 'の一言】\n\n「' + comment + '」\n\n' + articleTitle + '\n' + url + '\n\n#知リポAI';
+        var hashtags = '#知リポAI';
+
+        // X(Twitter)は280字制限・URLはどんな長さでも23字として数えられる
+        var TWEET_LIMIT = 280;
+        var URL_WEIGHT = 23;
+        // 「ニュース＋偉人コメント」は本文100字前後が伸びやすい目安
+        var TARGET_CORE = 100;
+
+        var title = articleTitle.length > 60 ? articleTitle.slice(0, 57) + '…' : articleTitle;
+        var head = title + '\n\n【' + name + 'の一言】\n「';
+        var tail = '」\n\n' + hashtags + '\n';
+        var hardBudget = TWEET_LIMIT - URL_WEIGHT - tail.length - head.length;
+        var targetBudget = TARGET_CORE - head.length;
+        var available = Math.max(10, Math.min(targetBudget, hardBudget));
+        var comment = opinion.length > available ? opinion.slice(0, available - 1) + '…' : opinion;
+        var shareText = head + comment + tail + url;
         var xUrl = 'https://twitter.com/intent/tweet?text=' + encodeURIComponent(shareText);
 
         var actionsHost = card.querySelector('.persona-spotlight-actions');

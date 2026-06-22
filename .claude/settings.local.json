@@ -112,7 +112,14 @@
       "PowerShell(python -c \"import ast; ast.parse\\(open\\('scripts/retitle_truncated_articles.py', encoding='utf-8'\\).read\\(\\)\\)\"; echo OK)",
       "PowerShell(python scripts/retitle_truncated_articles.p)",
       "PowerShell(python _tmp_debug_retitle.py)",
-      "PowerShell(python _tmp_debug2.py)"
+      "PowerShell(python _tmp_debug2.py)",
+      "PowerShell(python -m py_compile app\\\\services\\\\article_seed_from_curated.py)",
+      "PowerShell(python -m py_compile consult.py)",
+      "PowerShell(python -m py_compile consult.py app\\\\services\\\\twitter_trends_service.py)",
+      "PowerShell(python -m py_compile run_claude_research_scheduler.py app\\\\services\\\\consultation_service.py)",
+      "PowerShell(python -m py_compile app\\\\services\\\\twitter_trends_service.py)",
+      "PowerShell(python -m py_compile consult.py app\\\\services\\\\consultation_service.py)",
+      "PowerShell(python _tmp_check.py; Get-Content -Encoding utf8 _tmp_out.txt)"
     ]
   }
 }

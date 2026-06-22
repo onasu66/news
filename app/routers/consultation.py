@@ -14,6 +14,7 @@ from app.routers.news import _default_site_graph_jsonld
 
 templates.env.globals["default_site_graph_jsonld"] = _default_site_graph_jsonld
 templates.env.globals["ga4_id"] = settings.GA4_MEASUREMENT_ID
+templates.env.globals["clarity_id"] = settings.CLARITY_PROJECT_ID
 
 _cache: list = []
 _cache_at: float = 0.0

@@ -1637,6 +1637,7 @@ def _default_site_graph_jsonld(request: Request) -> dict:
 
 templates.env.globals["default_site_graph_jsonld"] = _default_site_graph_jsonld
 templates.env.globals["ga4_id"] = settings.GA4_MEASUREMENT_ID
+templates.env.globals["clarity_id"] = settings.CLARITY_PROJECT_ID
 
 
 def _build_article_jsonld(

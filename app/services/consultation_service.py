@@ -81,6 +81,64 @@ def generate_consultation_answer(persona_id: int, question: str) -> str:
     return (resp.choices[0].message.content or "").strip()
 
 
+def summarize_post_text(text: str, max_chars: int = 100) -> str:
+    """X投稿本文をClaude CLIで要約する。失敗時は原文を切り詰めて返す。"""
+    text = (text or "").strip()
+    if not text:
+        return ""
+    from app.services.claude_researcher import run_claude_text_gen, is_claude_available
+    if is_claude_available():
+        prompt = (
+            f"以下のX(Twitter)投稿を日本語で{max_chars}字程度に要約してください。\n"
+            "説明・前置き・引用符は不要、要約文のみを出力してください。\n\n"
+            f"【投稿】\n{text[:500]}"
+        )
+        try:
+            out = run_claude_text_gen(prompt, timeout=60, usage_kind="x_trend_summary").strip().strip("「」\"'")
+            if out:
+                return out[: max_chars + 20]
+        except Exception as e:
+            logger.warning("投稿要約失敗、原文を使用: %s", e)
+    return text[:max_chars]
+
+
+def compress_to_140(text: str, limit: int = 140) -> str:
+    """文章をClaude CLIで指定字数以内に圧縮する。失敗時は単純切り詰め。"""
+    text = (text or "").strip()
+    if not text or len(text) <= limit:
+        return text
+    from app.services.claude_researcher import run_claude_text_gen, is_claude_available
+    if is_claude_available():
+        prompt = (
+            f"以下の文章を意味・トーンを保ったまま日本語で{limit}字以内に圧縮してください。\n"
+            "説明・前置き・引用符は不要、圧縮後の文章のみを出力してください。\n\n"
+            f"【文章】\n{text}"
+        )
+        try:
+            out = run_claude_text_gen(prompt, timeout=60, usage_kind="x_compress_140").strip().strip("「」\"'")
+            if out:
+                return out[:limit]
+        except Exception as e:
+            logger.warning("140字圧縮失敗、単純切り詰めを使用: %s", e)
+    return text[:limit]
+
+
+def format_trend_post(persona_name: str, persona_emoji: str, comment: str, limit: int = 140) -> str:
+    """誰のコメントか分かるヘッダーと知リポAIのサイトURLを付けてX投稿用に整形する。"""
+    from app.config import settings
+
+    site_url = (getattr(settings, "SITE_URL", "") or "").rstrip("/")
+    hashtag = "#知リポAI"
+
+    header = f"【{persona_emoji}{persona_name}の一言】\n「" if persona_name else "「"
+    tail = "」\n\n" + hashtag + (f"\n{site_url}" if site_url else "")
+
+    available = max(10, limit - len(header) - len(tail))
+    comment = (comment or "").strip()
+    body = comment if len(comment) <= available else comment[: available - 1] + "…"
+    return header + body + tail
+
+
 def fetch_x_posts_by_tag(tag: str, limit: int = 20) -> list[dict]:
     """Nitter経由でハッシュタグの投稿を取得する。"""
     try:
@@ -122,3 +180,54 @@ def fetch_x_posts_by_tag(tag: str, limit: int = 20) -> list[dict]:
             continue
 
     return results
+
+
+def run_trend_comment_once() -> bool:
+    """急上昇ポストを1件選び、要約→偉人コメント→140字変換→Notion追加までを無人実行する。
+    /consultation への公開は行わない（人が後でNotionを確認して判断する）。成功時True。"""
+    import random
+    from datetime import datetime
+
+    from app.services.twitter_trends_service import fetch_trending_posts
+    from app.services.ai_service import PERSONAS
+    from app.services.notion_logger import create_xpost_page
+
+    posts = fetch_trending_posts(limit=15)
+    if not posts:
+        logger.warning("急上昇ポストが取得できませんでした")
+        return False
+
+    selected = random.choice(posts)
+    persona = random.choice(PERSONAS)
+    pid, pname, pemoji = persona["id"], persona["name"], persona.get("emoji", "")
+
+    summary = summarize_post_text(selected.text)
+    if not summary:
+        logger.warning("投稿の要約に失敗しました: %s", selected.text[:60])
+        return False
+
+    try:
+        comment = generate_consultation_answer(pid, summary)
+    except Exception as e:
+        logger.warning("偉人コメント生成に失敗しました: %s", e)
+        return False
+    if not comment:
+        return False
+
+    compressed = compress_to_140(comment, limit=100)
+    final_text = format_trend_post(pname, pemoji, compressed)
+
+    ok = create_xpost_page(
+        title=f"[急上昇] #{selected.keyword}",
+        x_post=final_text,
+        article_url=selected.url,
+        persona_name=pname,
+        category="Xトレンド",
+        source=f"@{selected.user}",
+        published=datetime.now().strftime("%Y-%m-%d %H:%M"),
+    )
+    if ok:
+        logger.info("急上昇ポストへの偉人コメントをNotionに追加: #%s (%s)", selected.keyword, pname)
+    else:
+        logger.warning("Notion追加に失敗（未設定の可能性）: #%s", selected.keyword)
+    return ok
