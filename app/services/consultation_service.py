@@ -18,19 +18,29 @@ _PERSONA_SYSTEM_TEMPLATE = (
     "- 150文字前後で完結させよ。"
 )
 
+# Xトレンドへの返信用: 何でも否定から入る癖がつかないよう、賛同もできる旨を明示する
+_TREND_REPLY_EXTRA_RULE = (
+    "\n- 内容に心から賛同できるなら、力強く肯定・称賛してよい。納得できない点があるときだけ、"
+    "お前の哲学・価値観で率直に異論を述べよ。何でも否定から入る必要はない。"
+)
 
-def _generate_with_claude_cli(name: str, role: str, question: str) -> str:
+
+def _generate_with_claude_cli(name: str, role: str, question: str, *, allow_agreement: bool = False) -> str:
     """Claude Code CLI（subprocess）でペルソナ回答を生成する。"""
     from app.services.claude_researcher import run_claude_text_gen, is_claude_available
     if not is_claude_available():
         return ""
     system_prompt = _PERSONA_SYSTEM_TEMPLATE.format(name=name, role=role)
+    if allow_agreement:
+        system_prompt += _TREND_REPLY_EXTRA_RULE
     prompt = f"{system_prompt}\n\n【相談】\n{question}"
     return run_claude_text_gen(prompt, timeout=60, usage_kind="persona")
 
 
-def generate_consultation_answer(persona_id: int, question: str) -> str:
-    """指定した偉人が相談に答えるテキストを生成する。"""
+def generate_consultation_answer(persona_id: int, question: str, *, allow_agreement: bool = False) -> str:
+    """指定した偉人が相談に答えるテキストを生成する。
+    allow_agreement=True のとき、何でも否定から入らず賛同もできることを明示する
+    （Xトレンドへの返信など、何でも批判するキャラに見えてほしくない用途向け）。"""
     from app.services.ai_service import PERSONAS
 
     if persona_id < 0 or persona_id >= len(PERSONAS):
@@ -42,7 +52,7 @@ def generate_consultation_answer(persona_id: int, question: str) -> str:
     from app.services.claude_researcher import is_claude_available
     if is_claude_available():
         try:
-            result = _generate_with_claude_cli(p["name"], p["role"], question)
+            result = _generate_with_claude_cli(p["name"], p["role"], question, allow_agreement=allow_agreement)
             if result:
                 return result
         except Exception as e:
@@ -57,6 +67,8 @@ def generate_consultation_answer(persona_id: int, question: str) -> str:
     client = get_chat_client(provider=persona_provider())
     model = resolve_persona_model()
     system_prompt = _PERSONA_SYSTEM_TEMPLATE.format(name=p["name"], role=p["role"])
+    if allow_agreement:
+        system_prompt += _TREND_REPLY_EXTRA_RULE
     messages = [
         {"role": "system", "content": system_prompt},
         {"role": "user", "content": f"【相談】\n{question}"},
@@ -135,7 +147,19 @@ def format_trend_post(persona_name: str, persona_emoji: str, comment: str, limit
 
     available = max(10, limit - len(header) - len(tail))
     comment = (comment or "").strip()
-    body = comment if len(comment) <= available else comment[: available - 1] + "…"
+    if len(comment) <= available:
+        body = comment
+    else:
+        chunk = comment[: available - 1]
+        body = None
+        for sep in ("。", "、", "！", "？", "」", "・", " "):
+            i = chunk.rfind(sep)
+            if i >= available // 2:
+                body = chunk[: i + 1] if sep in ("。", "！", "？", "」") else chunk[:i]
+                break
+        if body is None:
+            body = chunk
+        body = body.rstrip("、・ ") + "…"
     return header + body + tail
 
 
@@ -207,7 +231,7 @@ def run_trend_comment_once() -> bool:
         return False
 
     try:
-        comment = generate_consultation_answer(pid, summary)
+        comment = generate_consultation_answer(pid, summary, allow_agreement=True)
     except Exception as e:
         logger.warning("偉人コメント生成に失敗しました: %s", e)
         return False

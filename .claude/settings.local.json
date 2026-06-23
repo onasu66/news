@@ -119,7 +119,12 @@
       "PowerShell(python -m py_compile run_claude_research_scheduler.py app\\\\services\\\\consultation_service.py)",
       "PowerShell(python -m py_compile app\\\\services\\\\twitter_trends_service.py)",
       "PowerShell(python -m py_compile consult.py app\\\\services\\\\consultation_service.py)",
-      "PowerShell(python _tmp_check.py; Get-Content -Encoding utf8 _tmp_out.txt)"
+      "PowerShell(python _tmp_check.py; Get-Content -Encoding utf8 _tmp_out.txt)",
+      "WebFetch(domain:x.com)",
+      "PowerShell(python _tmp_xpost_reply.py)",
+      "PowerShell(Get-WmiObject *)",
+      "PowerShell(python -c \"import ast; ast.parse\\(open\\('main.py', encoding='utf-8'\\).read\\(\\)\\)\")",
+      "PowerShell(python -c \"import ast; ast.parse\\(open\\('app/services/consultation_service.py', encoding='utf-8'\\).read\\(\\)\\)\")"
     ]
   }
 }

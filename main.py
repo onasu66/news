@@ -131,6 +131,16 @@ def _scheduled_claude_night():
     _run_claude_research_and_seed(slot="night", n_news=5, n_papers=4)
 
 
+def _scheduled_trend_comment():
+    """Xの急上昇ポストに偉人コメントを生成し、Notionにドラフト追加する（人が確認してから投稿）。"""
+    try:
+        from app.services.consultation_service import run_trend_comment_once
+        ok = run_trend_comment_once()
+        logger.info("Xトレンドコメント生成: %s", "成功" if ok else "スキップ")
+    except Exception as e:
+        logger.warning("Xトレンドコメント生成でエラー: %s", e)
+
+
 # 後方互換（scripts/ 等から呼ぶ場合）
 def _scheduled_claude_research_and_seed():
     """旧シグネチャ互換。現在時刻からスロットを自動判定して実行。"""
@@ -349,6 +359,18 @@ async def lifespan(app: FastAPI):
                 id=cr_id,
             )
         logger.info("Claude ウェブリサーチ: 8:30/16:30/22:00 JST（各 ニュース5+論文4・バズ3）")
+        # Xトレンドへの偉人コメント生成（Notionドラフトのみ・自動投稿はしない）: 研究と同じ3スロット
+        for tc_id, tc_hour, tc_minute in [
+            ("trend_comment_0830", 8, 30),
+            ("trend_comment_1630", 16, 30),
+            ("trend_comment_2200", 22, 0),
+        ]:
+            scheduler.add_job(
+                _scheduled_trend_comment,
+                CronTrigger(hour=tc_hour, minute=tc_minute, timezone=JST),
+                id=tc_id,
+            )
+        logger.info("Xトレンドコメント生成: 8:30/16:30/22:00 JST（Notionドラフトのみ）")
         # 政策提案生成: 一時停止中
         # scheduler.add_job(
         #     _scheduled_generate_policy,
