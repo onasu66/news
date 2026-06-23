@@ -124,7 +124,16 @@
       "PowerShell(python _tmp_xpost_reply.py)",
       "PowerShell(Get-WmiObject *)",
       "PowerShell(python -c \"import ast; ast.parse\\(open\\('main.py', encoding='utf-8'\\).read\\(\\)\\)\")",
-      "PowerShell(python -c \"import ast; ast.parse\\(open\\('app/services/consultation_service.py', encoding='utf-8'\\).read\\(\\)\\)\")"
+      "PowerShell(python -c \"import ast; ast.parse\\(open\\('app/services/consultation_service.py', encoding='utf-8'\\).read\\(\\)\\)\")",
+      "PowerShell(python main.py)",
+      "PowerShell(Start-Sleep -Seconds 6; try { $r = Invoke-WebRequest -Uri \"http://127.0.0.1:8001/\" -UseBasicParsing -TimeoutSec 15; \"STATUS: $\\($r.StatusCode\\)\" } catch { \"ERROR: $\\($_.Exception.Message\\)\" })",
+      "PowerShell(Test-NetConnection *)",
+      "PowerShell(npx --yes playwright@1.48.0 install chromium --with-deps 2>&1 | Select-Object -Last 40)",
+      "PowerShell(npm install *)",
+      "PowerShell(Get-ChildItem *)",
+      "PowerShell($env:NODE_PATH = \"C:\\\\Users\\\\User\\\\AppData\\\\Local\\\\npm-cache\\\\_npx\\\\5c6d8c4f680fcd0a\\\\node_modules\"; node -e \"const {chromium} = require\\('playwright'\\); console.log\\(typeof chromium\\)\")",
+      "PowerShell($env:NODE_PATH = \"C:\\\\Users\\\\User\\\\AppData\\\\Local\\\\npm-cache\\\\_npx\\\\5c6d8c4f680fcd0a\\\\node_modules\"; node _mobile_check.js)",
+      "PowerShell($env:NODE_PATH = \"C:\\\\Users\\\\User\\\\AppData\\\\Local\\\\npm-cache\\\\_npx\\\\5c6d8c4f680fcd0a\\\\node_modules\"; node _mobile_check2.js)"
     ]
   }
 }
