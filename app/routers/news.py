@@ -996,10 +996,9 @@ async def api_news_page(page: int = 1, keyword: str = ""):
         cards_html += f'''<article class="news-card animate-fade-in" data-category="{tab_cat_safe}">
 <a href="/topic/{item.id}" class="news-card-link">
 <div class="news-card-body">
-<div class="news-card-meta"><span class="news-card-time">🕒 {pub}</span><span class="news-card-source">{source_safe}</span></div>
+<div class="news-card-meta"><span class="news-card-source">{source_safe}</span><span class="news-card-time">{pub}</span></div>
 <h3 class="news-title">{title_safe}</h3>
-<p class="news-summary-line">👀 {summary_safe}{ellipsis}</p>
-<div class="news-card-footer"><span class="news-card-ai">✍ AIが解説</span><span class="news-badge">AI解説</span></div>
+<p class="news-summary-line">{summary_safe}{ellipsis}</p>
 </div>
 <div class="news-card-image"><img src="{img_src}" alt="{title_safe}" loading="lazy" onerror="this.onerror=null;this.src='/static/og/card-default.jpg'"><span class="news-card-category">{cat_safe}</span></div>
 </a></article>'''
@@ -1041,10 +1040,9 @@ async def api_papers_page(page: int = 1):
         cards_html += f'''<article class="news-card animate-fade-in" data-category="{domain_safe}">
 <a href="/topic/{item.id}" class="news-card-link">
 <div class="news-card-body">
-<div class="news-card-meta"><span class="news-card-time">🕒 {pub}</span><span class="news-card-source">{source_safe}</span></div>
+<div class="news-card-meta"><span class="news-card-source">{source_safe}</span><span class="news-card-time">{pub}</span></div>
 <h3 class="news-title">{title_safe}</h3>
-<p class="news-summary-line">👀 {summary_safe}{ellipsis}</p>
-<div class="news-card-footer"><span class="news-card-ai">✍ AIが解説</span><span class="news-badge">AI解説</span></div>
+<p class="news-summary-line">{summary_safe}{ellipsis}</p>
 </div>
 <div class="news-card-image"><img src="{img_src}" alt="{title_safe}" loading="lazy" onerror="this.onerror=null;this.src='/static/og/card-research.jpg'"><span class="news-card-category">{domain_safe}</span></div>
 </a></article>'''
