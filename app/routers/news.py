@@ -37,6 +37,112 @@ SITE_JSONLD_DESCRIPTION = (
     "最新のAI論文・国内外ニュースを日本語でわかりやすく解説する、無料のニュースメディアです。"
 )
 
+# カテゴリハブページの定義（slug → メタ情報）
+CATEGORY_PAGES: dict[str, dict] = {
+    "ai": {
+        "label": "AI論文・研究",
+        "category": "研究・論文",
+        "title": "AI論文・研究解説ニュース一覧 | 知リポAI",
+        "desc": "arXiv・Nature・Science最新AI論文を偉人AIが日本語でわかりやすく解説。ChatGPT・LLM・生成AI・深層学習の最新研究を毎日更新。",
+        "h1": "🔬 AI論文・研究解説",
+        "keywords": "AI論文,研究論文解説,arXiv日本語,LLM論文,生成AI論文,機械学習論文,深層学習論文",
+        "hero_desc": "arXiv・Nature・Scienceなどの最新AI研究論文を偉人AIが毎日解説。難しい論文も「1分で理解」できます。",
+    },
+    "tech": {
+        "label": "テクノロジー",
+        "category": "テクノロジー",
+        "title": "テクノロジーニュース AI解説一覧 | 知リポAI",
+        "desc": "最新テクノロジーニュースを偉人AIが解説。スマートフォン・半導体・IT・宇宙開発・自動運転など最新テクノロジー情報を毎日更新。",
+        "h1": "💡 テクノロジーニュース",
+        "keywords": "テクノロジーニュース,最新テクノロジー,IT最新情報,半導体ニュース,宇宙開発ニュース",
+        "hero_desc": "半導体・IT・宇宙開発・AI製品など最新テクノロジーニュースを偉人AIがわかりやすく解説します。",
+    },
+    "science": {
+        "label": "科学",
+        "category": "科学",
+        "title": "科学ニュース AI解説一覧 | 知リポAI",
+        "desc": "最新科学ニュースを偉人AIが解説。宇宙科学・生命科学・物理・化学など科学の最新発見をわかりやすく日本語で解説します。",
+        "h1": "🔭 科学ニュース",
+        "keywords": "科学ニュース,最新科学,科学解説,宇宙ニュース,生命科学ニュース,物理学ニュース",
+        "hero_desc": "宇宙・生命科学・物理・化学など最新科学ニュースを偉人AIがわかりやすく解説します。",
+    },
+    "world": {
+        "label": "国際ニュース",
+        "category": "国際",
+        "title": "国際ニュース AI解説一覧 | 知リポAI",
+        "desc": "世界の最新ニュースを偉人AIが解説。アメリカ・中国・ヨーロッパ・中東など国際情勢・外交・安全保障ニュースをわかりやすく解説。",
+        "h1": "🌍 国際ニュース",
+        "keywords": "国際ニュース,世界のニュース,海外ニュース最新,外交ニュース,国際情勢",
+        "hero_desc": "アメリカ・中国・ヨーロッパ・中東など世界の最新ニュースを偉人AIが解説。複数の視点で読み解きます。",
+    },
+    "social": {
+        "label": "社会・経済",
+        "category": "社会・経済",
+        "title": "社会・経済ニュース AI解説一覧 | 知リポAI",
+        "desc": "日本の社会・経済の最新ニュースを偉人AIが解説。株式・為替・政治・社会問題・企業ニュースなど最新情報をわかりやすく解説。",
+        "h1": "📊 社会・経済ニュース",
+        "keywords": "経済ニュース,社会ニュース,株式ニュース,日本経済最新,政治ニュース",
+        "hero_desc": "日本の最新経済・社会ニュースを偉人AIが背景・影響まで丁寧に解説します。",
+    },
+    "sports": {
+        "label": "スポーツ",
+        "category": "スポーツ",
+        "title": "スポーツニュース AI解説一覧 | 知リポAI",
+        "desc": "最新スポーツニュースを偉人AIが解説。野球・サッカー・オリンピックなどスポーツの最新情報をわかりやすく解説します。",
+        "h1": "⚽ スポーツニュース",
+        "keywords": "スポーツニュース,野球ニュース,サッカーニュース,スポーツ最新情報",
+        "hero_desc": "野球・サッカー・テニスなど最新スポーツニュースを偉人AIが解説します。",
+    },
+    "entertainment": {
+        "label": "エンタメ",
+        "category": "エンタメ",
+        "title": "エンタメニュース AI解説一覧 | 知リポAI",
+        "desc": "最新エンタメニュースを偉人AIが解説。映画・音楽・ゲーム・アニメなどエンタメの最新情報をわかりやすく解説します。",
+        "h1": "🎬 エンタメニュース",
+        "keywords": "エンタメニュース,映画ニュース,音楽ニュース,ゲームニュース,アニメニュース",
+        "hero_desc": "映画・音楽・ゲーム・アニメなど最新エンタメニュースを偉人AIが解説します。",
+    },
+}
+
+
+import re as _re
+
+
+def slugify_title(title: str, max_len: int = 55) -> str:
+    """記事タイトルからSEOフレンドリーなURLスラッグを生成。日本語はそのまま保持。"""
+    s = (title or "").strip()
+    # URLに不向きな記号を除去
+    s = _re.sub(r'[「」『』【】〈〉《》\[\]{}()（）<>""\'\'`！!？?。、，,．\.。:;：；・＊*＋+＝=＆&＠@＃#｜|＼\\／/]', '', s)
+    # 空白・全角スペース → ハイフン
+    s = _re.sub(r'[\s\u3000　]+', '-', s)
+    # 連続ハイフンを1つに
+    s = _re.sub(r'-+', '-', s)
+    s = s.strip('-')
+    return s[:max_len] if s else ""
+
+
+def article_url_path(article) -> str:
+    """記事オブジェクトからSEOフレンドリーなURLパス（/topic/...）を生成。
+    タイトルが取れればスラッグ、なければ元のIDをそのまま使う。"""
+    article_id = getattr(article, 'id', '') or ''
+    title = getattr(article, 'title', '') or ''
+    slug = slugify_title(title)
+    if slug:
+        # ユニーク性確保のため末尾にIDの後ろ6文字を付与
+        suffix = article_id[-6:] if len(article_id) >= 6 else article_id
+        return f"/topic/{slug}-{suffix}"
+    return f"/topic/{article_id}"
+
+
+def _find_article_by_slug(slug: str):
+    """スラッグ文字列から記事オブジェクトを返す。見つからなければ None。"""
+    all_news = NewsAggregator.get_news()
+    for a in all_news:
+        path = article_url_path(a)
+        if path == f"/topic/{slug}":
+            return a
+    return None
+
 
 def _public_html_cache_headers() -> dict[str, str]:
     """CDN・ブラウザ向け Cache-Control。PUBLIC_HTML_CACHE_MAX_AGE_SEC<=0 なら空（ヘッダ付与しない）。"""
@@ -737,6 +843,10 @@ async def sitemap_xml(request: Request):
         return Response(content=xml, media_type="application/xml; charset=utf-8")
 
     today = datetime.now().date().isoformat()
+    category_lines = [
+        f"  <url><loc>{site_url}/topics/{slug}</loc><lastmod>{today}</lastmod><changefreq>hourly</changefreq><priority>0.8</priority></url>"
+        for slug in CATEGORY_PAGES
+    ]
     lines = [
         '<?xml version="1.0" encoding="UTF-8"?>',
         '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">',
@@ -747,6 +857,7 @@ async def sitemap_xml(request: Request):
         f"  <url><loc>{site_url}/ai</loc><lastmod>{today}</lastmod><changefreq>daily</changefreq><priority>0.6</priority></url>",
         f"  <url><loc>{site_url}/about</loc><lastmod>{today}</lastmod><changefreq>monthly</changefreq><priority>0.5</priority></url>",
         f"  <url><loc>{site_url}/personas</loc><lastmod>{today}</lastmod><changefreq>monthly</changefreq><priority>0.5</priority></url>",
+        *category_lines,
         "</urlset>",
     ]
     return Response(content="\n".join(lines), media_type="application/xml; charset=utf-8")
@@ -794,7 +905,7 @@ async def sitemap_news_xml(request: Request):
     ]
     for article in recent[:1000]:
         title = (getattr(article, "title", "") or "").strip().replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
-        loc = f"{site_url}/topic/{article.id}"
+        loc = f"{site_url}{article_url_path(article)}"
         pub_date = _pub_iso(article)
         lines += [
             "  <url>",
@@ -994,7 +1105,7 @@ async def api_news_page(page: int = 1, keyword: str = ""):
         tab_cat_safe = html_mod.escape(_news_tab_filter_category(item))
         img_src = item.image_url or "/static/og/card-default.jpg"
         cards_html += f'''<article class="news-card animate-fade-in" data-category="{tab_cat_safe}">
-<a href="/topic/{item.id}" class="news-card-link">
+<a href="{article_url_path(item)}" class="news-card-link">
 <div class="news-card-body">
 <div class="news-card-meta"><span class="news-card-source">{source_safe}</span><span class="news-card-time">{pub}</span></div>
 <h3 class="news-title">{title_safe}</h3>
@@ -1038,7 +1149,7 @@ async def api_papers_page(page: int = 1):
         ellipsis = "..." if len(raw_summary) > 80 else ""
         img_src = item.image_url or "/static/og/card-research.jpg"
         cards_html += f'''<article class="news-card animate-fade-in" data-category="{domain_safe}">
-<a href="/topic/{item.id}" class="news-card-link">
+<a href="{article_url_path(item)}" class="news-card-link">
 <div class="news-card-body">
 <div class="news-card-meta"><span class="news-card-source">{source_safe}</span><span class="news-card-time">{pub}</span></div>
 <h3 class="news-title">{title_safe}</h3>
@@ -1054,6 +1165,56 @@ async def papers_legacy_redirect(request: Request):
     """旧URL互換：トップ（論文一覧）へ統合"""
     q = request.url.query
     return RedirectResponse(url=("/?" + q) if q else "/", status_code=301)
+
+
+@router.get("/topics/{slug}", response_class=HTMLResponse)
+async def category_hub(request: Request, slug: str):
+    """カテゴリハブページ（SEO向けインデックス可能なカテゴリ一覧）"""
+    cat_info = CATEGORY_PAGES.get(slug)
+    if not cat_info:
+        raise HTTPException(status_code=404, detail="カテゴリが見つかりません")
+    all_news = NewsAggregator.get_news()
+    category_name = cat_info["category"]
+    articles = [a for a in all_news if (getattr(a, "category", "") or "") == category_name]
+    for item in articles:
+        _ensure_japanese(item)
+        if not item.image_url:
+            item.image_url = get_image_url(item.id, 400, 225)
+        elif not item.image_url.startswith("http"):
+            item.image_url = get_image_url(item.image_url, 400, 225)
+    site_url = _get_site_url(request)
+    category_url = f"{site_url}/topics/{slug}"
+    breadcrumb_jsonld = _build_breadcrumb_jsonld(
+        [("ホーム", f"{site_url}/"), ("ニュース一覧", f"{site_url}/news"), (cat_info["label"], category_url)]
+    )
+    itemlist_jsonld = _build_itemlist_jsonld(
+        page_name=cat_info["title"],
+        site_url=site_url,
+        items=articles[:30],
+    )
+    page_jsonld = _build_site_graph_jsonld(
+        site_url=site_url,
+        page_url=category_url,
+        page_name=cat_info["title"],
+        page_description=cat_info["desc"],
+        extra_nodes=[breadcrumb_jsonld, itemlist_jsonld],
+    )
+    other_categories = {k: v for k, v in CATEGORY_PAGES.items() if k != slug}
+    _ph = _public_html_cache_headers()
+    return templates.TemplateResponse(
+        "category.html",
+        {
+            "request": request,
+            "cat_info": cat_info,
+            "slug": slug,
+            "articles": articles[:60],
+            "site_url": site_url,
+            "category_url": category_url,
+            "page_jsonld": page_jsonld,
+            "other_categories": other_categories,
+        },
+        headers=_ph or None,
+    )
 
 
 @router.get("/trend", response_class=HTMLResponse)
@@ -1636,6 +1797,7 @@ def _default_site_graph_jsonld(request: Request) -> dict:
 templates.env.globals["default_site_graph_jsonld"] = _default_site_graph_jsonld
 templates.env.globals["ga4_id"] = settings.GA4_MEASUREMENT_ID
 templates.env.globals["clarity_id"] = settings.CLARITY_PROJECT_ID
+templates.env.globals["article_url"] = article_url_path
 
 
 def _build_article_jsonld(
@@ -1648,7 +1810,7 @@ def _build_article_jsonld(
     display_persona_ids: list[int] | None,
 ) -> dict:
     article_type = "ScholarlyArticle" if (item.category == "研究・論文") else "NewsArticle"
-    ai_authors = [_build_persona_person_node(p, site_url) for p in PERSONAS]
+    # contributor: 記事に表示された偉人AIのみ（全14体をauthorに入れるのは不正確）
     contributors = []
     for pid in (display_persona_ids or []):
         try:
@@ -1658,6 +1820,14 @@ def _build_article_jsonld(
             continue
     base = site_url.rstrip("/")
     org_id = f"{base}/#organization"
+    # author はメディア組織として知リポAI編集部を設定（Google News 要件に合わせる）
+    editorial_author = {
+        "@type": "Organization",
+        "@id": org_id,
+        "name": "知リポAI編集部",
+        "url": f"{base}/authors",
+        "logo": {"@type": "ImageObject", "url": f"{base}/static/site-imgs/ロゴ.png"},
+    }
     jsonld = {
         "@context": "https://schema.org",
         "@type": article_type,
@@ -1668,7 +1838,7 @@ def _build_article_jsonld(
         "inLanguage": "ja",
         "datePublished": _iso_date(getattr(item, "published", None)),
         "dateModified": _iso_date(getattr(item, "added_at", None) or getattr(item, "published", None)),
-        "author": ai_authors,
+        "author": editorial_author,
         "contributor": contributors,
         "publisher": {"@id": org_id},
         "image": [og_image] if og_image else [],
@@ -1719,7 +1889,7 @@ def _build_itemlist_jsonld(*, page_name: str, site_url: str, items: list) -> dic
             {
                 "@type": "ListItem",
                 "position": idx + 1,
-                "url": f"{site_url.rstrip('/')}/topic/{it.id}",
+                "url": f"{site_url.rstrip('/')}{article_url_path(it)}",
                 "name": title,
             }
         )
@@ -2084,13 +2254,24 @@ async def topic_detail(request: Request, topic_id: str):
         try:
             cached_list = getattr(NewsAggregator, "_news_cache", []) or []
             if not any(getattr(x, "id", None) == topic_id for x in cached_list):
-                raise HTTPException(status_code=404, detail="記事が見つかりません")
+                # スラッグ形式でもヒットするか確認
+                if not _find_article_by_slug(topic_id):
+                    raise HTTPException(status_code=404, detail="記事が見つかりません")
         except HTTPException:
             raise
         except Exception:
-            # 判定に失敗した場合は既存挙動（DB照会）にフォールバック
             pass
+    # 旧 hex-ID URL: IDで直接引き当て → スラッグURLへ301リダイレクト
     item = NewsAggregator.get_article(topic_id)
+    if item:
+        slug_path = article_url_path(item)
+        slug_key = slug_path.removeprefix("/topic/")
+        if slug_key != topic_id:
+            # 旧IDで来た → 正規のスラッグURLへ永久リダイレクト
+            return RedirectResponse(url=slug_path, status_code=301)
+    else:
+        # スラッグURLで来た場合: スラッグ→記事を引き当て
+        item = _find_article_by_slug(topic_id)
     if not item:
         raise HTTPException(status_code=404, detail="記事が見つかりません")
     _ensure_japanese(item)
@@ -2098,7 +2279,9 @@ async def topic_detail(request: Request, topic_id: str):
     if image_url and not image_url.startswith("http"):
         image_url = get_image_url(image_url, 800, 450)
     site_url = _get_site_url(request)
-    article_url = f"{site_url}/topic/{topic_id}"
+    # canonical URL はスラッグURL
+    slug_path = article_url_path(item)
+    article_url = f"{site_url}{slug_path}"
     og_image = image_url if (image_url or "").startswith("http") else f"{site_url}{image_url}" if image_url else ""
     if not og_image or is_placeholder_image(og_image):
         from app.services.image_assets import category_og_path

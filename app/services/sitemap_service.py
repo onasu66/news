@@ -2,11 +2,26 @@
 from __future__ import annotations
 
 import logging
+import re
 from datetime import datetime
 from pathlib import Path
 from threading import Lock
 
 from app.config import settings
+
+
+def _slugify_for_sitemap(title: str, article_id: str, max_len: int = 55) -> str:
+    """sitemap_service 内部用スラッグ生成（routers/news の同関数と同一ロジック）。"""
+    s = (title or "").strip()
+    s = re.sub(r'[「」『』【】〈〉《》\[\]{}()（）<>""\'\'`！!？?。、，,．\.。:;：；・＊*＋+＝=＆&＠@＃#｜|＼\\／/]', '', s)
+    s = re.sub(r'[\s\u3000　]+', '-', s)
+    s = re.sub(r'-+', '-', s)
+    s = s.strip('-')
+    slug = s[:max_len] if s else ""
+    if slug:
+        suffix = article_id[-6:] if len(article_id) >= 6 else article_id
+        return f"{slug}-{suffix}"
+    return article_id
 
 logger = logging.getLogger(__name__)
 
@@ -38,6 +53,9 @@ def _article_lastmod(article, today: str) -> str:
     return today
 
 
+_CATEGORY_SLUGS = ["ai", "tech", "science", "world", "social", "sports", "entertainment"]
+
+
 def build_sitemap_xml(site_url: str, articles: list) -> str:
     base_url = (site_url or "").strip().rstrip("/")
     today = datetime.now().date().isoformat()
@@ -52,12 +70,21 @@ def build_sitemap_xml(site_url: str, articles: list) -> str:
         f"  <url><loc>{base_url}/about</loc><lastmod>{today}</lastmod><changefreq>monthly</changefreq><priority>0.5</priority></url>",
         f"  <url><loc>{base_url}/personas</loc><lastmod>{today}</lastmod><changefreq>monthly</changefreq><priority>0.5</priority></url>",
     ]
+    for slug in _CATEGORY_SLUGS:
+        lines.append(
+            f"  <url><loc>{base_url}/topics/{slug}</loc><lastmod>{today}</lastmod>"
+            f"<changefreq>hourly</changefreq><priority>0.8</priority></url>"
+        )
+
     for article in list(articles or [])[:5000]:
         lastmod = _article_lastmod(article, today)
         priority = "0.9" if getattr(article, "category", "") == "研究・論文" else "0.8"
+        article_id = getattr(article, 'id', '') or ''
+        title = getattr(article, 'title', '') or ''
+        slug = _slugify_for_sitemap(title, article_id)
         lines.append(
-            f"  <url><loc>{base_url}/topic/{article.id}</loc><lastmod>{lastmod}</lastmod>"
-            f"<changefreq>never</changefreq><priority>{priority}</priority></url>"
+            f"  <url><loc>{base_url}/topic/{slug}</loc><lastmod>{lastmod}</lastmod>"
+            f"<changefreq>weekly</changefreq><priority>{priority}</priority></url>"
         )
     lines.append("</urlset>")
     return "\n".join(lines)

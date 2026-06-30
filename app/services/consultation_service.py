@@ -207,51 +207,6 @@ def fetch_x_posts_by_tag(tag: str, limit: int = 20) -> list[dict]:
 
 
 def run_trend_comment_once() -> bool:
-    """急上昇ポストを1件選び、要約→偉人コメント→140字変換→Notion追加までを無人実行する。
-    /consultation への公開は行わない（人が後でNotionを確認して判断する）。成功時True。"""
-    import random
-    from datetime import datetime
-
-    from app.services.twitter_trends_service import fetch_trending_posts
-    from app.services.ai_service import PERSONAS
-    from app.services.notion_logger import create_xpost_page
-
-    posts = fetch_trending_posts(limit=15)
-    if not posts:
-        logger.warning("急上昇ポストが取得できませんでした")
-        return False
-
-    selected = random.choice(posts)
-    persona = random.choice(PERSONAS)
-    pid, pname, pemoji = persona["id"], persona["name"], persona.get("emoji", "")
-
-    summary = summarize_post_text(selected.text)
-    if not summary:
-        logger.warning("投稿の要約に失敗しました: %s", selected.text[:60])
-        return False
-
-    try:
-        comment = generate_consultation_answer(pid, summary, allow_agreement=True)
-    except Exception as e:
-        logger.warning("偉人コメント生成に失敗しました: %s", e)
-        return False
-    if not comment:
-        return False
-
-    compressed = compress_to_140(comment, limit=100)
-    final_text = format_trend_post(pname, pemoji, compressed)
-
-    ok = create_xpost_page(
-        title=f"[急上昇] #{selected.keyword}",
-        x_post=final_text,
-        article_url=selected.url,
-        persona_name=pname,
-        category="Xトレンド",
-        source=f"@{selected.user}",
-        published=datetime.now().strftime("%Y-%m-%d %H:%M"),
-    )
-    if ok:
-        logger.info("急上昇ポストへの偉人コメントをNotionに追加: #%s (%s)", selected.keyword, pname)
-    else:
-        logger.warning("Notion追加に失敗（未設定の可能性）: #%s", selected.keyword)
-    return ok
+    """急上昇ポストへの偉人コメント自動生成（Notionドラフト）。現在は無効。"""
+    logger.info("Xトレンドコメント生成は無効化されています（スキップ）")
+    return False

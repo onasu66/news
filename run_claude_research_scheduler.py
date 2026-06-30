@@ -1,7 +1,6 @@
 """
 Claude ウェブリサーチ スタンドアロンスケジューラ
-8:00 / 13:00 / 19:00 JST に Claude CLI でウェブリサーチ → Firestore に記事追加
-同時刻に X急上昇ポストへの偉人コメントも生成し、Notionにドラフト追加する
+8:00 / 13:00 / 19:00 JST に Claude CLI でウェブリサーチ → 記事化
 
 使い方:
   python run_claude_research_scheduler.py
@@ -52,17 +51,6 @@ def run_research():
         logger.error("記事化でエラー: %s", e)
 
 
-def run_trend_comment_job():
-    """X急上昇ポストへの偉人コメントを生成し、Notionにドラフト追加する"""
-    logger.info("=== Xトレンドコメント生成開始 ===")
-    try:
-        from app.services.consultation_service import run_trend_comment_once
-        ok = run_trend_comment_once()
-        logger.info("=== Xトレンドコメント生成完了: %s ===", "成功" if ok else "スキップ")
-    except Exception as e:
-        logger.error("Xトレンドコメント生成でエラー: %s", e)
-
-
 if __name__ == "__main__":
     # 起動時に Claude CLI の確認
     try:
@@ -84,15 +72,7 @@ if __name__ == "__main__":
             id=job_id,
         )
 
-    # 同時刻に X トレンドコメント生成（別ジョブ・記事リサーチと並行実行）
-    for job_id, hour in [("trend_0800", 8), ("trend_1300", 13), ("trend_1900", 19)]:
-        scheduler.add_job(
-            run_trend_comment_job,
-            CronTrigger(hour=hour, minute=0, timezone=JST),
-            id=job_id,
-        )
-
-    logger.info("スケジューラ起動: 8:00 / 13:00 / 19:00 JST に Claude リサーチ + Xトレンドコメント生成を実行します")
+    logger.info("スケジューラ起動: 8:00 / 13:00 / 19:00 JST に Claude リサーチを実行します")
     logger.info("終了するには Ctrl+C を押してください")
 
     try:

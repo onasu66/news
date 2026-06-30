@@ -46,6 +46,17 @@ def _load_personas_from_yaml() -> list[dict]:
                 data["role"] = str(data["role"]).strip()
             if "bio" in data:
                 data["bio"] = str(data["bio"]).strip()
+            # 新フィールド正規化（存在しない場合のデフォルト設定）
+            for _lf in ("lens", "humor_style", "favorite_moves", "avoid"):
+                v = data.get(_lf)
+                if v is None:
+                    data[_lf] = []
+                elif not isinstance(v, list):
+                    data[_lf] = [str(v).strip()]
+            if not isinstance(data.get("comment_angles"), list):
+                data["comment_angles"] = []
+            if not isinstance(data.get("comment_style"), dict):
+                data["comment_style"] = {}
             personas.append(data)
         except Exception as e:
             logger.warning("ペルソナ YAML 読み込みエラー %s: %s", path.name, e)
@@ -988,13 +999,28 @@ blocks配列のJSONのみ返す。"""
     return [{"type": "text", "content": content}, {"type": "explain", "content": "（構造化に失敗しました。しばらくしてから再度お試しください。）"}]
 
 
-# 人格コメントはこの文字数レンジに収める（読んでて疲れない長さ。短すぎる一言落ちと、長すぎて読むのに
-# 時間がかかるのを両方避ける）。プロンプトで厳守させ、APIトークンも十分に確保して途中打ち切りを防ぐ。
-PERSONA_COMMENT_MIN_LEN = 150
-PERSONA_COMMENT_MAX_LEN = 180
-# 日本語（特に漢字）は1文字が1.5〜2.5トークンになりやすく、180字 ≒ 最大400トークン程度になり得るため、
-# 余裕を持って800に設定（文の途中打ち切り防止）。
-PERSONA_COMMENT_MAX_COMPLETION_TOKENS = 800
+# short + body 形式のコメント文字数レンジ（スマホで一瞬で読めるテンポを優先）
+PERSONA_SHORT_MIN_LEN = 30
+PERSONA_SHORT_MAX_LEN = 60
+PERSONA_BODY_MIN_LEN = 80
+PERSONA_BODY_MAX_LEN = 120  # 180字は長すぎ。2文で完結させる
+# 旧形式（プレーン文字列）との後方互換用
+PERSONA_COMMENT_MIN_LEN = 80
+PERSONA_COMMENT_MAX_LEN = 120
+# short(60字) + body(120字) + JSON構造 ≈ 250字 ≈ 200tokens。余裕を持って600。
+PERSONA_COMMENT_MAX_COMPLETION_TOKENS = 600
+
+# ペルソナの「反応の角度」プール。記事ごとに各人物へ別々のスタイルをランダム割り当てし、
+# 3人のコメントが全員同じトーン（=全員否定）になる単調さを防ぐ。
+PERSONA_REACTION_MODES = [
+    "称賛・興奮（自分の理想がついに現実になったと感じ、当事者として喜びを爆発させる）",
+    "痛烈な断罪（自分の価値観に反すると見て、冷徹に切り捨てる）",
+    "皮肉・茶化し（面白がりつつ、鋭い皮肉を一刺し入れる）",
+    "自己投影（自分の過去の失敗・苦難・栄光に強引に引きつけて語る）",
+    "意外な着眼（誰も気づかない角度から本質を抉り出す）",
+    "問いかけ・挑発（断定せず、読者と自分自身に鋭い問いを突きつける）",
+    "驚き・好奇心（自分の時代にはなかった発想に素直に驚き、夢中で考察する）",
+]
 
 # 各偉人コメントで触れる固有要素（プロンプトでハード指定）
 PERSONA_SIGNATURE_ELEMENTS: dict[str, list[str]] = {
@@ -1047,6 +1073,14 @@ def _extract_ban_phrases(comment: str) -> list[str]:
     text = (comment or "").strip()
     if not text:
         return []
+    # JSON形式（{"short":..., "body":...}）の場合は両フィールドを結合してから処理
+    if text.startswith("{"):
+        try:
+            _d = json.loads(text)
+            parts = [str(_d.get("short") or ""), str(_d.get("body") or "")]
+            text = "。".join(p for p in parts if p.strip())
+        except Exception:
+            pass
     chunks = re.split(r"[。！？\n]", text)
     out: list[str] = []
     for c in chunks:
@@ -1056,6 +1090,49 @@ def _extract_ban_phrases(comment: str) -> list[str]:
         if len(out) >= 4:
             break
     return out
+
+
+def _build_persona_new_fields_prompt(p: dict) -> str:
+    """YAMLの新フィールド（lens/humor_style/favorite_moves/avoid/comment_angles/comment_style）
+    からClaudeプロンプト用セクションを組み立てる。フィールドが空の場合は空文字を返す。"""
+    sections: list[str] = []
+
+    lens = p.get("lens") or []
+    if lens:
+        sections.append("【この人物の世界の見方（lens）】\n" + "\n".join(f"・{l}" for l in lens[:4]))
+
+    humor = p.get("humor_style") or []
+    if humor:
+        sections.append("【ユーモアの出し方（humor_style）】\n" + "\n".join(f"・{h}" for h in humor[:3]))
+
+    moves = p.get("favorite_moves") or []
+    if moves:
+        chosen_move = random.choice(moves)
+        sections.append(f"【得意な切り口（参考例）】\n「{chosen_move}」のような語り口が自然に出る")
+
+    avoid_list = p.get("avoid") or []
+    if avoid_list:
+        sections.append("【絶対に避けること（avoid）】\n" + "\n".join(f"・{a}" for a in avoid_list))
+
+    angles = p.get("comment_angles") or []
+    if angles:
+        angle_lines: list[str] = []
+        for a in angles:
+            if not isinstance(a, dict):
+                continue
+            aid = a.get("id", "")
+            name_a = a.get("name", "")
+            use_when = a.get("use_when", "")
+            move = a.get("move", "")
+            angle_lines.append(f"  [{aid}] {name_a}：{use_when} → {move}")
+        if angle_lines:
+            sections.append(
+                "【comment_angles（記事内容に応じて最も合う1つを選べ）】\n"
+                + "\n".join(angle_lines)
+                + "\n→ 選んだ角度を軸にshortとbodyを構成せよ。毎回同じ角度を選ぶな。"
+            )
+
+    return "\n\n".join(sections)
 
 
 def get_persona_focus_topic(name: str) -> str:
@@ -1159,41 +1236,6 @@ def _shorten_persona_comment_retry(
         return long_text
 
 
-def _get_persona_opinion_via_claude_cli(
-    system_prompt: str, user_prompt: str, min_len: int, max_len: int
-) -> str:
-    """Claude CLI（ローカル開発機のみ。本番Renderではis_claude_availableがFalseになり呼ばれない）で
-    ペルソナコメントを生成。失敗・CLI未使用時は空文字を返し、呼び出し元がGemini/OpenAIにフォールバックする。
-    min_len未満の短すぎる出力は1回だけ書き直しリトライする。"""
-    try:
-        from app.services.claude_researcher import is_claude_available, run_claude_text_gen
-        if not is_claude_available():
-            return ""
-    except Exception:
-        return ""
-
-    def _ask(extra_note: str = "") -> str:
-        combined_prompt = (
-            f"{system_prompt}\n\n{user_prompt}\n\n"
-            f"出力はコメント本文のみ。前置き・説明・引用符・Markdownは付けない。{extra_note}"
-        )
-        raw = run_claude_text_gen(combined_prompt, timeout=90, usage_kind="persona_comment")
-        text = (raw or "").strip()
-        if text.startswith("```"):
-            text = "\n".join(ln for ln in text.splitlines() if not ln.startswith("```")).strip()
-        return text.strip("「」\"'　 \n﻿")
-
-    text = _ask()
-    if text and len(text) < min_len:
-        retried = _ask(
-            f"直前の出力は{len(text)}字で短すぎる。{min_len}〜{max_len}字になるよう、"
-            "同じ人物・同じ論点のまま具体的な描写や固有要素を補って書き直せ。"
-        )
-        if retried:
-            text = retried
-    return text
-
-
 def get_persona_opinion(
     title: str,
     content: str,
@@ -1201,10 +1243,9 @@ def get_persona_opinion(
     model: str | None = None,
     other_comments: list[str] | None = None,
 ) -> str:
-    """指定された偉人キャラがニュースに対し主観100%で180文字以内コメントを返す。
+    """指定された偉人キャラがニュースに対し主観100%でコメントを返す（short+body JSON形式）。
     other_comments: 先に生成済みの他キャラのコメント（重複表現を避けるために渡す）。
-    ローカル開発機でClaude CLIが使える場合はClaudeを優先し、使えない場合（本番Renderなど）は
-    Gemini/OpenAI（persona_provider()に従う）にフォールバックする。"""
+    PERSONA_PROVIDER（既定 openai）の API で生成する。"""
     if persona_id < 0 or persona_id >= len(PERSONAS):
         return ""
 
@@ -1261,11 +1302,23 @@ def get_persona_opinion(
     admire = (p.get("admire") or "").strip()
     admire_note = f"\n【お前の根本思想・理想】\n{admire}" if admire else ""
 
+    # 新フィールドをプロンプトに追加
+    new_fields_section = _build_persona_new_fields_prompt(p)
+    new_fields_note = f"\n\n{new_fields_section}" if new_fields_section else ""
+
     system_prompt = f"""あなたはAIではない。2026年に死から蘇り、タブレットでニュースを読んでいる本物の{p['name']}だ。
 
 【人物設定（絶対に崩すな）】
 {p['role']}
-{admire_note}
+{admire_note}{new_fields_note}
+
+【生成の指針】
+記事内容に応じて comment_angles から最も合う角度を1つ選べ。毎回同じ決め台詞や一番強い特徴だけに寄せるな。同じ人物でも、記事テーマに合わせて視点を変えよ。
+
+偉人コメントは記事の要約ではない。本文要約とは別に、その人物が現代のニュースや論文を見て、少し変な角度で本気になっているコメントにせよ。
+
+面白さとは、単なる冗談ではなく、読者が「その偉人がそれ言うのか」と思う知的なズレである。
+
 【評価の基準】
 まず、お前の根本思想に照らし合わせ、このニュースが上記の理想に合致するかを厳しく査定せよ。
 - 真に合致し感銘を受けたなら、全力で賛同・絶賛してよい。ただしニュースの解説はせず「ついに私の理想が現実になったか」のような当事者としての喜びを爆発させろ。
@@ -1274,10 +1327,19 @@ def get_persona_opinion(
 【絶対ルール】
 - ニュースを無条件に褒めるな。お前の基準で評価せよ。
 - 語り口は「独白」。読者に媚びるな。「〜でしょう」「〜ですね」など丁寧な同調表現は一切禁止。
-- 日本語のみ。見出し・前置き・箇条書き禁止。最初の一文から{p['name']}の生の反応で始める。
+- 日本語のみ。見出し・前置き・箇条書き禁止。
 - ニュースの説明・要約から入るな。感情・評価・喜び・断罪・皮肉のどれかから入れ。
 - {p['name']}が生きた時代の経験・失敗・信念を自然に織り込む。
-- {min_len}〜{max_len}文字程度で完結させ、必ず句点「。」で終わる。{min_len}文字に満たない一言コメントは不可。{focus_note}{catchphrase_note}{signature_note}{banned_note}{avoid_note}"""
+- 事実は捏造しない。記事に書かれていないことを断定的に言わない。
+- 「真面目な解釈 + ちょっとしたズレ + キャラの過剰反応」を目指せ。ただの解説にするな。{focus_note}{catchphrase_note}{signature_note}{banned_note}{avoid_note}
+
+【出力形式（必須）】
+以下のJSONのみを出力せよ。他の文字は一切出力しない。
+{{"short": "30〜60字の一言コメント（要約でなく、笑える・刺さる・気になる一言）", "body": "80〜120字・最大2文の本文コメント（記事内容とキャラ固有の視点を接続する）"}}
+- shortは必ず「。」「！」「？」のいずれかで終わる
+- bodyは最大2文・必ず「。」で終わる。説明しすぎず余韻・皮肉・問い・断言で締める
+- 180字を超えてはならない。スマホで一瞬で読めるテンポを優先する
+- shortとbodyで同じ言い回しを繰り返すな"""
 
     user_prompt = f"""2026年のこのニュースをタブレットで読んだ{p['name']}として、今すぐ独白せよ。
 
@@ -1285,15 +1347,6 @@ def get_persona_opinion(
 
 【内容】
 {content[:2000]}"""
-
-    # ローカル開発機でClaude CLIが使える場合は優先（本番Renderでは未使用→空文字でフォールバック）
-    claude_text = _get_persona_opinion_via_claude_cli(system_prompt, user_prompt, min_len, max_len)
-    if claude_text:
-        claude_text = _fit_persona_comment_to_max(claude_text, max_len)
-        if len(claude_text) > max_len:
-            claude_text = claude_text[:max_len].rstrip()
-        remember_persona_comment(p["name"], claude_text)
-        return claude_text
 
     if not is_ai_configured(provider=persona_provider()):
         return "（APIキーが設定されていません）"
@@ -1313,17 +1366,228 @@ def get_persona_opinion(
                 {"role": "user", "content": user_prompt},
             ],
             temperature=0.88,
+            response_format={"type": "json_object"} if prov == "openai" else None,
         )
-        text = (response.choices[0].message.content or "").strip()
-        if len(text) > max_len:
-            text = _shorten_persona_comment_retry(client, model, p["name"], text, max_len)
-        text = _fit_persona_comment_to_max(text, max_len)
-        if len(text) > max_len:
-            text = text[:max_len].rstrip()
-        remember_persona_comment(p["name"], text)
-        return text
+        raw = (response.choices[0].message.content or "").strip()
+
+        # JSON 抽出・検証
+        if "```" in raw:
+            raw = "\n".join(ln for ln in raw.splitlines() if not ln.strip().startswith("```")).strip()
+        if not raw.startswith("{"):
+            i, j = raw.find("{"), raw.rfind("}")
+            if i != -1 and j > i:
+                raw = raw[i : j + 1]
+
+        # JSON パース成功 → short/body を個別に長さチェック
+        try:
+            parsed = json.loads(raw)
+            short_txt = str(parsed.get("short") or "").strip()
+            body_txt = str(parsed.get("body") or "").strip()
+            # body が長すぎる場合は句点で切り詰める
+            if len(body_txt) > PERSONA_BODY_MAX_LEN + 20:
+                body_txt = _fit_persona_comment_to_max(body_txt, PERSONA_BODY_MAX_LEN)
+            body_txt = body_txt[:PERSONA_BODY_MAX_LEN + 20].rstrip() if len(body_txt) > PERSONA_BODY_MAX_LEN + 20 else body_txt
+            short_txt = short_txt[:PERSONA_SHORT_MAX_LEN + 10].rstrip() if len(short_txt) > PERSONA_SHORT_MAX_LEN + 10 else short_txt
+            result = json.dumps({"short": short_txt, "body": body_txt}, ensure_ascii=False)
+        except Exception:
+            # JSON パース失敗 → 旧形式（プレーンテキスト）にフォールバック
+            text = raw
+            if len(text) > max_len:
+                text = _shorten_persona_comment_retry(client, model, p["name"], text, max_len)
+            text = _fit_persona_comment_to_max(text, max_len)
+            result = text[:max_len].rstrip() if len(text) > max_len else text
+
+        remember_persona_comment(p["name"], result)
+        return result
     except Exception as e:
         return f"（取得失敗: {str(e)}）"
+
+
+def get_all_persona_opinions_batch(
+    title: str,
+    content: str,
+    persona_ids: list[int],
+    model: str | None = None,
+) -> list[str]:
+    """3人分のペルソナコメントを1回のAPI呼び出しで生成する（トークン節約版）。
+
+    content・system プロンプトを1回だけ送ることで、3回呼び出しの約1/4のトークンで済む。
+    各人物に異なる「反応スタイル」を毎回ランダムに割り当て、コメントの角度が
+    全員同じ（=全員否定）になるのを防ぐ。
+    失敗時は空リストを返し、呼び出し元が個別呼び出しにフォールバックする。
+    """
+    import json as _json
+
+    if not persona_ids or not is_ai_configured(provider=persona_provider()):
+        return []
+
+    # 対象ペルソナの定義を収集
+    personas_data: list[dict] = []
+    for pid in persona_ids:
+        if 0 <= pid < len(PERSONAS):
+            personas_data.append(PERSONAS[pid])
+    if not personas_data:
+        return []
+
+    n = len(personas_data)
+
+    # 反応スタイルを人物ごとに別々に割り当てる（毎回シャッフル）。
+    # これで「全員が同じ角度（否定）で語る」単調さを避ける。
+    modes = random.sample(PERSONA_REACTION_MODES, min(n, len(PERSONA_REACTION_MODES)))
+    while len(modes) < n:  # 人物数がモード数より多い場合の保険
+        modes.append(random.choice(PERSONA_REACTION_MODES))
+
+    # 各ペルソナの定義を簡潔にまとめる（role の核心部分 + 新フィールド）
+    persona_blocks: list[str] = []
+    for i, p in enumerate(personas_data):
+        name = p["name"]
+        role_lines = [ln.strip() for ln in (p.get("role") or "").splitlines() if ln.strip()]
+        # role の先頭2行（人物像の核心）＋ admire（根本思想）を使う
+        role_core = " ".join(role_lines[:2])[:200]
+        admire = (p.get("admire") or "").strip()[:80]
+        catchphrases = p.get("catchphrase") or []
+        cp = f"名言:「{random.choice(catchphrases)}」" if catchphrases else ""
+        focus = get_persona_focus_topic(name)
+        focus_note = f" 論点→{focus}。" if focus else ""
+        banned = get_persona_banned_phrases(name)
+        banned_note = f" 禁止フレーズ:{','.join(banned[:4])}。" if banned else ""
+
+        # comment_angles をコンパクトに整理（最大5つ）
+        angles = p.get("comment_angles") or []
+        angle_summary = ""
+        if angles:
+            angle_items = []
+            for a in angles[:5]:
+                if isinstance(a, dict):
+                    angle_items.append(f"[{a.get('id','')}]{a.get('name','')}: {a.get('use_when','')}")
+            if angle_items:
+                angle_summary = " 選択可能な角度: " + " / ".join(angle_items) + "。記事に最も合う1つを選べ。"
+
+        # avoid（禁止事項）
+        avoid_list = p.get("avoid") or []
+        avoid_note = f" 避けること: {', '.join(avoid_list[:3])}。" if avoid_list else ""
+
+        # lens（見方の特徴）
+        lens_list = p.get("lens") or []
+        lens_note = f" 視点: {lens_list[0]}" if lens_list else ""
+
+        persona_blocks.append(
+            f"【人物{i+1}: {name}】\n"
+            f"設定: {role_core}\n"
+            f"根本思想: {admire}\n"
+            f"★今回の反応スタイル: {modes[i]}\n"
+            f"{cp}{focus_note}{banned_note}{angle_summary}{avoid_note}{lens_note}"
+        )
+
+    persona_section = "\n\n".join(persona_blocks)
+
+    system_prompt = f"""あなたは{n}人の歴史上の人物を同時に演じる脚本家だ。
+各人物が2026年にタブレットでニュースを読んだ瞬間の独白を、それぞれの性格・時代観・価値観で生成する。
+
+【最重要】{n}人は必ず違う角度から語れ。全員が否定・批判で揃うのは厳禁。
+各人物に割り当てた「★今回の反応スタイル」に必ず従い、賛否・感情の温度をバラけさせる。
+本当に自分の理想に合致するニュースなら、その人物として全力で称賛・興奮してよい。
+
+記事内容に応じて comment_angles の選択肢から最も合う角度を1つ選べ。毎回同じ決め台詞や最強の特徴だけに寄せるな。
+偉人コメントは記事の要約ではない。その人物が現代のニュースを見て、少し変な角度で本気になっているコメントにせよ。
+面白さとは「その偉人がそれを言うのか」と読者が思う知的なズレである。
+事実は捏造しない。記事に書かれていないことを断定的に言わない。
+
+【絶対ルール（全人物共通）】
+- 各人物の口調・語尾・一人称を厳守（役を崩すな）
+- 最初の一文から感情で入れ（ニュースの説明・要約から入るな）
+- 丁寧な同調表現（〜でしょう・〜ですね）一切禁止
+- {n}人のコメントで同じ切り口・結論・言い回しを使うな
+- その人物が生きた時代の経験・固有の体験を1つは織り込む
+- 日本語のみ。見出し・箇条書き禁止
+
+【各人物の設定と今回の役割】
+{persona_section}
+
+【出力形式】（JSONのみ・他の文字は一切出力しない）
+各人物のコメントは short（30〜60字・笑える/刺さる一言）と body（80〜120字・最大2文）に分けよ。
+{{"c0": {{"short": "人物1の一言", "body": "人物1の本文"}}, "c1": {{"short": "人物2の一言", "body": "人物2の本文"}}, "c2": {{"short": "人物3の一言", "body": "人物3の本文"}}}}
+- shortは「。」「！」「？」で終わる。bodyは最大2文・「。」で終わる。
+- bodyは説明しすぎず余韻・皮肉・問い・断言で締める。180字を超えてはならない。
+- shortとbodyで同じ言い回しを繰り返すな。"""
+
+    # コンテンツは1200字に絞る（文脈を厚めに渡しつつトークンは抑える）
+    content_short = (content or "").strip()[:1200]
+
+    user_prompt = f"""【タイトル】{title}
+
+【内容】{content_short}
+
+上の3人分のコメントをJSONで出力せよ。"""
+
+    model_resolved = resolve_persona_model(model)
+    prov = persona_provider()
+    client = get_chat_client(provider=prov)
+
+    try:
+        from app.utils.openai_compat import create_with_retry
+
+        response = create_with_retry(
+            client,
+            800,  # short(60字)×3 + body(120字)×3 + JSON構造 ≈ 570字 ≈ 430tokens（余裕を持って800）
+            gemini_task="persona",
+            model=model_resolved,
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt},
+            ],
+            temperature=0.90,
+            response_format={"type": "json_object"} if prov == "openai" else None,
+        )
+        raw = (response.choices[0].message.content or "").strip()
+
+        # JSON 抽出
+        if "```" in raw:
+            raw = "\n".join(ln for ln in raw.splitlines() if not ln.strip().startswith("```")).strip()
+        if not raw.startswith("{"):
+            i, j = raw.find("{"), raw.rfind("}")
+            if i != -1 and j > i:
+                raw = raw[i : j + 1]
+
+        data = _json.loads(raw)
+        results: list[str] = []
+        for idx in range(n):
+            entry = data.get(f"c{idx}")
+            pname = personas_data[idx]["name"]
+
+            # 新形式: {"short": "...", "body": "..."} のネスト構造
+            if isinstance(entry, dict):
+                short_txt = str(entry.get("short") or "").strip()
+                body_txt = str(entry.get("body") or "").strip()
+                # 長さ調整
+                if len(body_txt) > PERSONA_BODY_MAX_LEN + 20:
+                    body_txt = _fit_persona_comment_to_max(body_txt, PERSONA_BODY_MAX_LEN)
+                body_txt = body_txt[:PERSONA_BODY_MAX_LEN + 20].rstrip() if len(body_txt) > PERSONA_BODY_MAX_LEN + 20 else body_txt
+                short_txt = short_txt[:PERSONA_SHORT_MAX_LEN + 10].rstrip() if len(short_txt) > PERSONA_SHORT_MAX_LEN + 10 else short_txt
+                # short か body のどちらかが存在すれば採用
+                if short_txt or len(body_txt) >= 30:
+                    result_str = _json.dumps({"short": short_txt, "body": body_txt}, ensure_ascii=False)
+                    remember_persona_comment(pname, result_str)
+                    results.append(result_str)
+                else:
+                    results.append("")
+
+            # 旧形式または文字列（後方互換）
+            elif isinstance(entry, str):
+                text = entry.strip()
+                if len(text) > PERSONA_COMMENT_MAX_LEN + 20:
+                    text = _fit_persona_comment_to_max(text, PERSONA_COMMENT_MAX_LEN)
+                if len(text) >= 80:
+                    remember_persona_comment(pname, text)
+                    results.append(text)
+                else:
+                    results.append("")
+            else:
+                results.append("")
+        return results
+    except Exception as e:
+        logger.warning("get_all_persona_opinions_batch 失敗: %s", e)
+        return []
 
 
 # 記事ジャンル分類で使う候補（news_aggregator.CATEGORY_ORDER と一致させる）

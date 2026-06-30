@@ -133,7 +133,22 @@
       "PowerShell(Get-ChildItem *)",
       "PowerShell($env:NODE_PATH = \"C:\\\\Users\\\\User\\\\AppData\\\\Local\\\\npm-cache\\\\_npx\\\\5c6d8c4f680fcd0a\\\\node_modules\"; node -e \"const {chromium} = require\\('playwright'\\); console.log\\(typeof chromium\\)\")",
       "PowerShell($env:NODE_PATH = \"C:\\\\Users\\\\User\\\\AppData\\\\Local\\\\npm-cache\\\\_npx\\\\5c6d8c4f680fcd0a\\\\node_modules\"; node _mobile_check.js)",
-      "PowerShell($env:NODE_PATH = \"C:\\\\Users\\\\User\\\\AppData\\\\Local\\\\npm-cache\\\\_npx\\\\5c6d8c4f680fcd0a\\\\node_modules\"; node _mobile_check2.js)"
+      "PowerShell($env:NODE_PATH = \"C:\\\\Users\\\\User\\\\AppData\\\\Local\\\\npm-cache\\\\_npx\\\\5c6d8c4f680fcd0a\\\\node_modules\"; node _mobile_check2.js)",
+      "PowerShell(if \\(Test-Path \"$env:USERPROFILE\\\\.claude.json\"\\) { Get-Content \"$env:USERPROFILE\\\\.claude.json\" | ConvertFrom-Json | ConvertTo-Json -Depth 5 | Select-Object -First 100 } else { \"ファイルなし\" })",
+      "PowerShell(Select-String -Path \"D:\\\\app\\\\newsite\\\\app\\\\services\\\\consultation_service.py\" -Pattern \"genai|GenerativeModel|GEMINI\" | Select-Object -First 15 | ForEach-Object { \"$\\($_.LineNumber\\): $\\($_.Line.Trim\\(\\)\\)\" })",
+      "PowerShell(Select-String -Path \"D:\\\\app\\\\newsite\\\\app\\\\utils\\\\llm_client.py\" -Pattern \".\" | Select-Object -First 60 | ForEach-Object { \"$\\($_.LineNumber\\): $\\($_.Line\\)\" })",
+      "PowerShell(Select-String -Path \"D:\\\\app\\\\newsite\\\\app\\\\utils\\\\llm_client.py\" -Pattern \".\" | Select-Object -Skip 78 -First 80 | ForEach-Object { \"$\\($_.LineNumber\\): $\\($_.Line\\)\" })",
+      "PowerShell(cd D:\\\\app\\\\newsite; Select-String -Path \"main.py\" -Pattern \"_run_claude_research_and_seed|article_seed_from_curated|seed_articles\" | Select-Object -First 20 | ForEach-Object { \"$\\($_.LineNumber\\): $\\($_.Line.Trim\\(\\)\\)\" })",
+      "PowerShell(Get-Content *)",
+      "PowerShell(Select-String -Path \"D:\\\\app\\\\newsite\\\\main.py\" -Pattern \"scheduler|add_job|cron|interval|scheduled_\" | ForEach-Object { \"$\\($_.LineNumber\\): $\\($_.Line.Trim\\(\\)\\)\" })",
+      "PowerShell(Select-String *)",
+      "PowerShell(Get-PSDrive C | Select-Object Used, Free, @{N='FreeGB';E={[math]::Round\\($_.Free/1GB,1\\)}})",
+      "PowerShell(Get-PSDrive -PSProvider FileSystem | Select-Object Name, @{N='FreeGB';E={[math]::Round\\($_.Free/1GB,1\\)}}, @{N='UsedGB';E={[math]::Round\\($_.Used/1GB,1\\)}})",
+      "PowerShell(npm *)",
+      "PowerShell(New-Item *)",
+      "PowerShell(Get-Content D:\\\\app\\\\newsite\\\\curated_articles.json -Raw | ConvertFrom-Json | Select-Object -First 3 | ForEach-Object { $_.date_published + \" | \" + $_.title })",
+      "PowerShell(\\(Get-Item D:\\\\app\\\\newsite\\\\curated_articles.json\\).LastWriteTime)",
+      "PowerShell(Get-ScheduledTask *)"
     ]
   }
 }

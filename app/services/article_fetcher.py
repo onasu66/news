@@ -99,6 +99,12 @@ def fetch_article_body(url: str) -> Optional[str]:
     """
     if not url or not url.startswith("http"):
         return None
+    try:
+        from app.services.google_news_url import resolve_google_news_url
+
+        url = resolve_google_news_url(url)
+    except Exception:
+        pass
     url = _normalize_article_url(url)
     try:
         import httpx

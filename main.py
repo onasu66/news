@@ -42,14 +42,9 @@ def _scheduled_rss_fetch_and_article():
 
 
 def _scheduled_1900_rss_and_ai_daily():
-    """19:00 JST: (1) RSS取得→記事化 (2) その後にAI日次コンテンツを1日1回だけ更新"""
+    """19:00 JST: RSS取得→記事化"""
     NewsAggregator._db_backoff_until = None  # スケジュール実行は必ず試みる
     NewsAggregator.get_news(force_refresh=True)
-    try:
-        from app.services.ai_daily import generate_daily_ai_content
-        generate_daily_ai_content()
-    except Exception as e:
-        logger.warning("AI日次コンテンツ生成に失敗: %s", e)
     _scheduled_refresh_vote_cache()
 
 
@@ -77,13 +72,20 @@ def _run_claude_research_and_seed(slot: str, n_news: int, n_papers: int):
             logger.warning("Claude タスク中止: DBウォームアップに失敗したためスキップ")
             return
 
-        from app.services.claude_researcher import is_claude_available, run_claude_research
-        if not is_claude_available():
-            logger.debug("claude CLI が未インストールのためリサーチをスキップ")
-            return
+        from app.services.claude_researcher import (
+            is_claude_available, run_claude_research, run_claude_research_v2,
+        )
 
-        n_total = n_news + n_papers
-        ok = run_claude_research(n=n_total, n_news=n_news, n_papers=n_papers, timeout=1200, slot=slot)
+        # v2（事前収集 → Gemini 選定）を優先。Claude CLI 不要。
+        ok = run_claude_research_v2(n_news=n_news, n_papers=n_papers, timeout=600, slot=slot)
+        if not ok:
+            # v1（Claude CLI 自力検索）は CLI が使える場合のみ
+            if is_claude_available():
+                logger.info("v2 失敗。v1（Claude 自力検索）にフォールバック")
+                n_total = n_news + n_papers
+                ok = run_claude_research(n=n_total, n_news=n_news, n_papers=n_papers, timeout=1200, slot=slot)
+            else:
+                logger.info("v2 失敗。v1 フォールバック不可（Claude CLI 未インストール）")
         if not ok:
             return
         # Claude が数分〜十数分ブロックするあいだ DB 接続はアイドルになり、Neon 側で切断されがち。
@@ -117,28 +119,18 @@ def _run_claude_research_and_seed(slot: str, n_news: int, n_papers: int):
 
 # スロット別ラッパー（APScheduler は引数なしの callable のみ受け付けるため）
 def _scheduled_claude_morning():
-    """8:30 朝: ニュース5 + 論文4（バズ3件必須）"""
-    _run_claude_research_and_seed(slot="morning", n_news=5, n_papers=4)
+    """8:30 朝: ニュース9 + 論文6（最大・届かなくても可。バズ3件目安）"""
+    _run_claude_research_and_seed(slot="morning", n_news=9, n_papers=6)
 
 
 def _scheduled_claude_afternoon():
-    """16:30 夕方: ニュース5 + 論文4（バズ3件必須）"""
-    _run_claude_research_and_seed(slot="afternoon", n_news=5, n_papers=4)
+    """16:30 夕方: ニュース9 + 論文6（最大・届かなくても可。バズ3件目安）"""
+    _run_claude_research_and_seed(slot="afternoon", n_news=9, n_papers=6)
 
 
 def _scheduled_claude_night():
-    """22:00 夜: ニュース5 + 論文4（バズ3件必須）"""
-    _run_claude_research_and_seed(slot="night", n_news=5, n_papers=4)
-
-
-def _scheduled_trend_comment():
-    """Xの急上昇ポストに偉人コメントを生成し、Notionにドラフト追加する（人が確認してから投稿）。"""
-    try:
-        from app.services.consultation_service import run_trend_comment_once
-        ok = run_trend_comment_once()
-        logger.info("Xトレンドコメント生成: %s", "成功" if ok else "スキップ")
-    except Exception as e:
-        logger.warning("Xトレンドコメント生成でエラー: %s", e)
+    """22:00 夜: ニュース9 + 論文6（最大・届かなくても可。バズ3件目安）"""
+    _run_claude_research_and_seed(slot="night", n_news=9, n_papers=6)
 
 
 # 後方互換（scripts/ 等から呼ぶ場合）
@@ -358,19 +350,8 @@ async def lifespan(app: FastAPI):
                 CronTrigger(hour=cr_hour, minute=cr_minute, timezone=JST),
                 id=cr_id,
             )
-        logger.info("Claude ウェブリサーチ: 8:30/16:30/22:00 JST（各 ニュース5+論文4・バズ3）")
-        # Xトレンドへの偉人コメント生成（Notionドラフトのみ・自動投稿はしない）: 研究と同じ3スロット
-        for tc_id, tc_hour, tc_minute in [
-            ("trend_comment_0830", 8, 30),
-            ("trend_comment_1630", 16, 30),
-            ("trend_comment_2200", 22, 0),
-        ]:
-            scheduler.add_job(
-                _scheduled_trend_comment,
-                CronTrigger(hour=tc_hour, minute=tc_minute, timezone=JST),
-                id=tc_id,
-            )
-        logger.info("Xトレンドコメント生成: 8:30/16:30/22:00 JST（Notionドラフトのみ）")
+        logger.info("Claude ウェブリサーチ: 8:30/16:30/22:00 JST（各 ニュース9+論文6）")
+        # Xトレンドコメント生成: 無効（consultation_service.run_trend_comment_once）
         # 政策提案生成: 一時停止中
         # scheduler.add_job(
         #     _scheduled_generate_policy,

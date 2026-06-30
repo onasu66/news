@@ -44,6 +44,7 @@ class TrendingPostItem:
     user: str
     text: str
     url: str = ""
+    engagement: int = 0  # いいね数+RT数（取得できない場合は0）
 
 
 def _is_valid_trend(text: str) -> bool:
@@ -149,11 +150,13 @@ def fetch_trending_posts_via_x_auth(limit: int = 10, count_per_query: int = 25) 
                 continue
             username = (t.get("author") or {}).get("username") or "匿名"
             seen_ids.add(tid)
+            engagement = (t.get("likeCount") or 0) + (t.get("retweetCount") or 0)
             posts.append(TrendingPostItem(
                 keyword=query.split()[0],
                 user=username,
                 text=text,
                 url=f"https://x.com/{username}/status/{tid}",
+                engagement=engagement,
             ))
             if len(posts) >= limit:
                 break

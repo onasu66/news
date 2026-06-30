@@ -1,35 +1,113 @@
 {% extends "base.html" %}
-{% block title %}著者情報 - 知リポAI{% endblock %}
-{% block meta_description %}知リポAIの編集チーム・AI解説チームの紹介。記事制作とAI解説の役割分担について。{% endblock %}
+{% block title %}知リポAI編集部・著者情報 — 編集方針と生成プロセス | 知リポAI{% endblock %}
+{% block meta_description %}知リポAI編集部の紹介。NHK・arXiv等の信頼ソースからAIが記事を収集・選定・解説する編集プロセス、人間によるキュレーション方針、偉人AIコメンテーターの役割を解説します。{% endblock %}
 {% block meta_extra %}
     <link rel="canonical" href="{{ site_url|default('') }}/authors">
     <meta property="og:type" content="website">
-    <meta property="og:title" content="著者情報 | 知リポAI">
-    <meta property="og:description" content="知リポAIの編集チーム・AI解説チームについて。">
+    <meta property="og:title" content="知リポAI編集部・著者情報 | 知リポAI">
+    <meta property="og:description" content="知リポAI編集部の編集方針・生成プロセス・信頼性基準について。">
     <meta property="og:url" content="{{ site_url|default('') }}/authors">
     <meta property="og:site_name" content="知リポAI">
 {% endblock %}
 {% block content %}
 <section class="page-header">
-    <h1 class="page-title">著者情報</h1>
-    <p class="page-desc">記事制作・AI解説の担当</p>
+    <h1 class="page-title">知リポAI編集部</h1>
+    <p class="page-desc">記事制作・AI解説の担当と編集方針</p>
 </section>
-<div class="ai-page-content" style="max-width:800px; margin:0 auto; padding:0 1rem;">
-    <section class="ai-section">
-        <div class="ai-persona-comment">
-            <span class="ai-persona-emoji">🧑‍💻</span>
-            <div>
-                <strong>編集チーム</strong>
-                <p>速報記事の選定、品質確認、公開方針を担当します。</p>
+
+<div class="about-page-wrap">
+
+    <article class="about-section-card" itemscope itemtype="https://schema.org/Organization">
+        <h2>編集チームについて</h2>
+        <meta itemprop="name" content="知リポAI編集部">
+        <meta itemprop="url" content="{{ site_url|default('') }}/authors">
+        <div class="authors-team-grid">
+            <div class="authors-team-card">
+                <span class="authors-team-icon">🧑‍💻</span>
+                <div>
+                    <strong>キュレーション担当（人間）</strong>
+                    <p>収集ソースの選定・除外基準の設計・ペルソナプロンプトの監修・品質確認を担当。信頼メディアのみをソースとするルール策定と定期見直しを行います。</p>
+                </div>
+            </div>
+            <div class="authors-team-card">
+                <span class="authors-team-icon">🤖</span>
+                <div>
+                    <strong>AI解説チーム（Gemini / Claude / GPT-4o）</strong>
+                    <p>記事の選定スコアリング、「1分で理解」要約、「3分で深掘り」解説、偉人AIコメントの生成を担当。複数のAIモデルを用途に応じて使い分けています。</p>
+                </div>
+            </div>
+            <div class="authors-team-card">
+                <span class="authors-team-icon">📜</span>
+                <div>
+                    <strong>偉人AIコメンテーター（14キャラクター）</strong>
+                    <p>ブッダ・織田信長・ニーチェ・アインシュタインなど14人の偉人AIが、記事ごとに独自の視点でコメントを提供します。<a href="/personas" class="about-link">→ 一覧を見る</a></p>
+                </div>
             </div>
         </div>
-        <div class="ai-persona-comment">
-            <span class="ai-persona-emoji">🤖</span>
-            <div>
-                <strong>AI解説チーム</strong>
-                <p>要約、背景説明、社会的影響、将来予測を分かりやすく生成します。</p>
-            </div>
-        </div>
-    </section>
+    </article>
+
+    <article class="about-section-card" id="ai-process">
+        <h2>記事生成プロセス（編集フロー）</h2>
+        <p>知リポAIの記事は以下のプロセスで生成・公開されます。</p>
+        <ol class="about-list authors-process-list">
+            <li>
+                <strong>ソース収集</strong>（自動、1日5回）<br>
+                arXiv・Nature・Science・BMJ・NHK・BBC・Reuters・AP News・TechCrunchなど、<strong>編集方針が明確な信頼メディアのみ</strong>を対象に記事を収集します。日経・産経など有料ペイウォールサイトは除外しています。
+            </li>
+            <li>
+                <strong>品質・信頼性フィルタ</strong>（自動）<br>
+                本文が取得できない記事、200字未満の素材不足記事、有料ペイウォール記事を自動除外します。一次ソースへのリンクが確認できる記事のみを対象にします。
+            </li>
+            <li>
+                <strong>記事選定・スコアリング</strong>（AIによる自動選定）<br>
+                速報性・社会的影響・背景の深さをAIがスコアリングし、1回の更新で7〜15件を選定します。
+            </li>
+            <li>
+                <strong>AI解説生成</strong>（自動）<br>
+                Gemini・Claude・GPT-4oが「1分で理解（3つのポイント）」「3分で深掘り（背景・影響・予測）」の2段階で日本語解説を生成します。
+            </li>
+            <li>
+                <strong>偉人AIコメント生成</strong>（自動）<br>
+                14人の偉人AIキャラクターのうち3人が記事ごとに選ばれ、それぞれの哲学・価値観に基づくコメントを生成します。
+            </li>
+            <li>
+                <strong>公開・インデックス通知</strong>（自動）<br>
+                IndexNow（Bing・Google対応）でリアルタイムにクロールを要請します。
+            </li>
+        </ol>
+        <p class="authors-disclaimer">AI解説は情報の「入口」であり、内容の正確性を保証するものではありません。各記事には一次ソースへのリンクを掲載しています。医療・法律・投資判断の根拠には使用しないでください。</p>
+    </article>
+
+    <article class="about-section-card">
+        <h2>信頼性の基準</h2>
+        <ul class="about-list">
+            <li><strong>一次ソースの明示</strong>：各記事ページに元記事・元論文へのリンクを掲載</li>
+            <li><strong>ソース限定</strong>：arXiv・Nature・NHK・BBCなど編集方針が明確なメディアのみ使用</li>
+            <li><strong>AI生成の明示</strong>：全記事に「AI解説」「AIによる自動収集・編集」を明記</li>
+            <li><strong>有料・ペイウォール除外</strong>：本文が取得できないソースは記事化しない</li>
+            <li><strong>免責事項の明示</strong>：AIによる解説であることを記事・サイト全体で明記</li>
+            <li><strong>誤情報報告窓口</strong>：公式LINE（<a href="https://lin.ee/rQgfdIR?utm_source=chiripo_ai&utm_medium=authors&utm_campaign=line_cta" class="about-link">友だち追加</a>）から誤情報報告を受け付けています</li>
+        </ul>
+    </article>
+
+    <article class="about-section-card">
+        <h2>更新スケジュール</h2>
+        <dl class="about-dl">
+            <dt>更新回数</dt>
+            <dd>1日5回（8:30 / 13:00 / 16:30 / 19:00 / 22:00 JST）</dd>
+            <dt>1回あたりの記事数</dt>
+            <dd>7〜15件（収集・品質フィルタ通過後）</dd>
+            <dt>対象ソース</dt>
+            <dd>国内外の主要ニュースメディア・学術論文データベース（約20ソース）</dd>
+        </dl>
+    </article>
+
+    <div class="about-footer-links">
+        <a href="/about" class="about-link">運営者情報</a>
+        <span class="about-sep">·</span>
+        <a href="/personas" class="about-link">14キャラクター</a>
+        <span class="about-sep">·</span>
+        <a href="/privacy" class="about-link">プライバシーポリシー</a>
+    </div>
 </div>
 {% endblock %}

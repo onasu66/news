@@ -1,42 +1,42 @@
 {% extends "base.html" %}
-{% block title %}{{ article.title }}{% if article.category == '研究・論文' %} わかりやすく解説{% else %} AI解説{% endif %} - 知リポAI{% endblock %}
-{% block meta_description %}{{ meta_description|default(article.summary[:160] if article.summary else article.title)|e }}{% endblock %}
+{% block title %}{{ article.title }}{% if article.category == '遐皮ｩｶ繝ｻ隲匁枚' %} 繧但I縺後ｏ縺九ｊ繧・☆縺剰ｧ｣隱ｬ{% else %} 窶・AI縺瑚ｧ｣隱ｬ{% endif %} | 遏･繝ｪ繝戡I{% endblock %}
+{% block meta_description %}{% if meta_description %}{{ meta_description|e }}{% elif article.summary %}{{ article.summary[:120]|e }}窶ｦ蛛我ｺｺAI縺瑚レ譎ｯ繝ｻ蠖ｱ髻ｿ繝ｻ繝昴う繝ｳ繝医ｒ繧上°繧翫ｄ縺吶￥隗｣隱ｬ縲・% else %}{{ article.title|e }} 窶・遏･繝ｪ繝戡I縺梧怙譁ｰ繝九Η繝ｼ繧ｹ繝ｻ隲匁枚繧偵ｏ縺九ｊ繧・☆縺剰ｧ｣隱ｬ縺励∪縺吶・% endif %}{% endblock %}
 {% block meta_keywords %}
-    {% if article.category == '研究・論文' %}
-    <meta name="keywords" content="{{ article.title }},{{ article.title }} わかりやすく,{{ article.title }} 解説,{{ article.title }} AI解説,{{ article.source }},論文解説,AI論文,論文要約AI,機械学習論文,深層学習論文,LLM論文,生成AI論文,arXiv日本語,英語論文日本語,研究解説,AI研究わかりやすく,知リポAI">
+    {% if article.category == '遐皮ｩｶ繝ｻ隲匁枚' %}
+    <meta name="keywords" content="{{ article.title }},{{ article.title }} 繧上°繧翫ｄ縺吶￥,{{ article.title }} 隗｣隱ｬ,{{ article.title }} AI隗｣隱ｬ,{{ article.source }},隲匁枚隗｣隱ｬ,AI隲匁枚,隲匁枚隕∫ｴБI,讖滓｢ｰ蟄ｦ鄙定ｫ匁枚,豺ｱ螻､蟄ｦ鄙定ｫ匁枚,LLM隲匁枚,逕滓・AI隲匁枚,arXiv譌･譛ｬ隱・闍ｱ隱櫁ｫ匁枚譌･譛ｬ隱・遐皮ｩｶ隗｣隱ｬ,AI遐皮ｩｶ繧上°繧翫ｄ縺吶￥,遏･繝ｪ繝戡I">
     {% else %}
-    <meta name="keywords" content="{{ article.title }},{{ article.title }} AI解説,{{ article.source }},AIニュース,生成AIニュース,AI最新ニュース,最新ニュースAI解説,テクノロジーニュース,人工知能ニュース,ニュース解説AI,知リポAI,{{ article.category }}">
+    <meta name="keywords" content="{{ article.title }},{{ article.title }} AI隗｣隱ｬ,{{ article.source }},AI繝九Η繝ｼ繧ｹ,逕滓・AI繝九Η繝ｼ繧ｹ,AI譛譁ｰ繝九Η繝ｼ繧ｹ,譛譁ｰ繝九Η繝ｼ繧ｹAI隗｣隱ｬ,繝・け繝弱Ο繧ｸ繝ｼ繝九Η繝ｼ繧ｹ,莠ｺ蟾･遏･閭ｽ繝九Η繝ｼ繧ｹ,繝九Η繝ｼ繧ｹ隗｣隱ｬAI,遏･繝ｪ繝戡I,{{ article.category }}">
     {% endif %}
 {% endblock %}
 {% block meta_extra %}
     <link rel="canonical" href="{{ article_url }}">
     <meta property="og:type" content="article">
-    <meta property="og:title" content="{{ article.title }} - 知リポAI">
+    <meta property="og:title" content="{{ article.title }} - 遏･繝ｪ繝戡I">
     <meta property="og:description" content="{{ meta_description|e }}">
     <meta property="og:image" content="{{ og_image|default(image_url) }}">
     <meta property="og:url" content="{{ article_url }}">
-    <meta property="og:site_name" content="知リポAI">
+    <meta property="og:site_name" content="遏･繝ｪ繝戡I">
     <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:title" content="{{ article.title }} - 知リポAI">
+    <meta name="twitter:title" content="{{ article.title }} - 遏･繝ｪ繝戡I">
     <meta name="twitter:description" content="{{ meta_description|e }}">
     <meta name="twitter:image" content="{{ og_image|default(image_url) }}">
     <meta name="robots" content="index,follow,max-image-preview:large">
 {% endblock %}
 
 {% block content %}
-<progress class="article-read-progress" id="article-read-progress" max="1" value="0" aria-label="記事の読了進捗" aria-valuetext="0%"></progress>
+<progress class="article-read-progress" id="article-read-progress" max="1" value="0" aria-label="險倅ｺ九・隱ｭ莠・ｲ謐・ aria-valuetext="0%"></progress>
 <article class="article-detail article-detail--smartnews">
-    <nav class="article-breadcrumb" aria-label="パンくず">
+    <nav class="article-breadcrumb" aria-label="繝代Φ縺上★">
         <ol itemscope itemtype="https://schema.org/BreadcrumbList">
             <li itemprop="itemListElement" itemscope itemtype="https://schema.org/ListItem">
-                <a itemprop="item" href="/"><span itemprop="name">ホーム</span></a>
+                <a itemprop="item" href="/"><span itemprop="name">繝帙・繝</span></a>
                 <meta itemprop="position" content="1">
             </li>
             <li itemprop="itemListElement" itemscope itemtype="https://schema.org/ListItem">
                 {% if mobile_nav_papers_highlight|default(false) %}
-                <a itemprop="item" href="/"><span itemprop="name">論文</span></a>
+                <a itemprop="item" href="/"><span itemprop="name">隲匁枚</span></a>
                 {% else %}
-                <a itemprop="item" href="/news"><span itemprop="name">ニュース</span></a>
+                <a itemprop="item" href="/news"><span itemprop="name">繝九Η繝ｼ繧ｹ</span></a>
                 {% endif %}
                 <meta itemprop="position" content="2">
             </li>
@@ -47,10 +47,10 @@
         </ol>
     </nav>
     <div class="article-sn-toolbar">
-        <a href="{% if mobile_nav_papers_highlight|default(false) %}/{% else %}/news{% endif %}" class="back-link">{% if mobile_nav_papers_highlight|default(false) %}← 論文一覧へ{% else %}← ニュース一覧へ{% endif %}</a>
+        <a href="{% if mobile_nav_papers_highlight|default(false) %}/{% else %}/news{% endif %}" class="back-link">{% if mobile_nav_papers_highlight|default(false) %}竊・隲匁枚荳隕ｧ縺ｸ{% else %}竊・繝九Η繝ｼ繧ｹ荳隕ｧ縺ｸ{% endif %}</a>
         <div class="article-sn-toolbar-actions">
-            <button type="button" class="save-article-btn save-article-btn--icon" id="btn-save" data-id="{{ article.id }}" data-title="{{ article.title|e }}" data-summary="{{ (article.summary or '')[:100]|e }}" title="保存" aria-label="この記事を保存">⭐</button>
-            <button type="button" class="save-article-btn save-article-btn--icon" id="btn-copy-share" title="リンクをコピー" aria-label="タイトルとURLをクリップボードにコピー">🔗</button>
+            <button type="button" class="save-article-btn save-article-btn--icon" id="btn-save" data-id="{{ article.id }}" data-title="{{ article.title|e }}" data-summary="{{ (article.summary or '')[:100]|e }}" title="菫晏ｭ・ aria-label="縺薙・險倅ｺ九ｒ菫晏ｭ・>箝・/button>
+            <button type="button" class="save-article-btn save-article-btn--icon" id="btn-copy-share" title="繝ｪ繝ｳ繧ｯ繧偵さ繝斐・" aria-label="繧ｿ繧､繝医Ν縺ｨURL繧偵け繝ｪ繝・・繝懊・繝峨↓繧ｳ繝斐・">迫</button>
         </div>
     </div>
 
@@ -63,48 +63,58 @@
             <span class="article-source">{{ article.source }}</span>
             <span class="article-date">{{ published_text|default('') }}</span>
             <span class="article-cat-badge">{{ article.category }}</span>
-            <span class="article-badge">AI解説</span>
+            <span class="article-badge">AI隗｣隱ｬ</span>
         </div>
         <h1 class="article-title">{{ article.title }}</h1>
-        <p class="live-readers">今 <span class="animated-number" data-target="{{ readers_now|default(42) }}">0</span> 人が読んでいます</p>
+        <div class="article-byline" itemscope itemtype="https://schema.org/Organization">
+            <span class="article-byline-icon" aria-hidden="true">✍️</span>
+            <a href="/authors" class="article-byline-author" itemprop="url">
+                <span itemprop="name">知リポAI編集部</span>
+            </a>
+            <span class="article-byline-sep" aria-hidden="true">·</span>
+            <span class="article-byline-note">AIによる自動収集・編集</span>
+            <span class="article-byline-sep" aria-hidden="true">·</span>
+            <a href="/about#ai-process" class="article-byline-link">生成プロセスを見る</a>
+        </div>
+        <p class="live-readers">莉・<span class="animated-number" data-target="{{ readers_now|default(42) }}">0</span> 莠ｺ縺瑚ｪｭ繧薙〒縺・∪縺・/p>
         {% if article.link %}
         <div class="article-primary-source">
-            <span class="article-primary-source-label">📎 一次ソース</span>
-            <a href="{{ article.link }}" target="_blank" rel="noopener noreferrer" class="article-primary-source-link">{{ article.source }} で原文を確認 →</a>
+            <span class="article-primary-source-label">梼 荳谺｡繧ｽ繝ｼ繧ｹ</span>
+            <a href="{{ article.link }}" target="_blank" rel="noopener noreferrer" class="article-primary-source-link">{{ article.source }} 縺ｧ蜴滓枚繧堤｢ｺ隱・竊・/a>
         </div>
         {% endif %}
     </header>
 
-    <div class="read-mode-switch" role="tablist" aria-label="記事の表示モード">
-        <button type="button" class="read-mode-btn is-active" id="tab-mode-short" role="tab" aria-selected="true" aria-controls="article-short-content" data-mode="short">📖 1分で理解</button>
-        <button type="button" class="read-mode-btn" id="tab-mode-deep" role="tab" aria-selected="false" aria-controls="article-deep-content" data-mode="deep" tabindex="-1">📚 3分で深掘り</button>
+    <div class="read-mode-switch" role="tablist" aria-label="險倅ｺ九・陦ｨ遉ｺ繝｢繝ｼ繝・>
+        <button type="button" class="read-mode-btn is-active" id="tab-mode-short" role="tab" aria-selected="true" aria-controls="article-short-content" data-mode="short">当 1蛻・〒逅・ｧ｣</button>
+        <button type="button" class="read-mode-btn" id="tab-mode-deep" role="tab" aria-selected="false" aria-controls="article-deep-content" data-mode="deep" tabindex="-1">答 3蛻・〒豺ｱ謗倥ｊ</button>
     </div>
 
     <div class="article-content-wrapper">
         <div class="article-main">
             <div id="article-short-content" class="article-read-content" role="tabpanel" aria-labelledby="tab-mode-short" tabindex="0">
                 {% if show_quick_points and quick_rows %}
-                <section class="three-points-card" aria-label="3つのポイント">
+                <section class="three-points-card" aria-label="3縺､縺ｮ繝昴う繝ｳ繝・>
                     <div class="three-points-card-head">
-                        <span class="three-points-mascot" aria-hidden="true">📌</span>
-                        <h2 class="three-points-title">3つのポイント</h2>
+                        <span class="three-points-mascot" aria-hidden="true">東</span>
+                        <h2 class="three-points-title">3縺､縺ｮ繝昴う繝ｳ繝・/h2>
                     </div>
                     <div class="three-points-rows">
                         {% if 'what' in quick_rows %}
                         <div class="three-points-row">
-                            <span class="three-points-q three-points-q--red" aria-hidden="true">何が起きた？</span>
+                            <span class="three-points-q three-points-q--red" aria-hidden="true">菴輔′襍ｷ縺阪◆・・/span>
                             <p class="three-points-a">{{ quick_rows['what']|safe }}</p>
                         </div>
                         {% endif %}
                         {% if 'why' in quick_rows %}
                         <div class="three-points-row">
-                            <span class="three-points-q three-points-q--orange" aria-hidden="true">ほかには？</span>
+                            <span class="three-points-q three-points-q--orange" aria-hidden="true">縺ｻ縺九↓縺ｯ・・/span>
                             <p class="three-points-a">{{ quick_rows['why']|safe }}</p>
                         </div>
                         {% endif %}
                         {% if 'how' in quick_rows %}
                         <div class="three-points-row">
-                            <span class="three-points-q three-points-q--green" aria-hidden="true">今後の注目は？</span>
+                            <span class="three-points-q three-points-q--green" aria-hidden="true">莉雁ｾ後・豕ｨ逶ｮ縺ｯ・・/span>
                             <p class="three-points-a">{{ quick_rows['how']|safe }}</p>
                         </div>
                         {% endif %}
@@ -116,7 +126,7 @@
                 </div>
                 {% else %}
                 <div class="short-summary-box">
-                    <h3 class="short-summary-heading">📝 要点まとめ</h3>
+                    <h3 class="short-summary-heading">統 隕∫せ縺ｾ縺ｨ繧・/h3>
                     {% if short_summary %}
                     {{ short_summary|safe }}
                     {% else %}
@@ -126,7 +136,7 @@
                 {% endif %}
             </div>
             <div id="article-deep-content" class="article-read-content" role="tabpanel" aria-labelledby="tab-mode-deep" tabindex="-1" hidden>
-                <h3 class="article-fixed-section-title">✍ AI解説</h3>
+                <h3 class="article-fixed-section-title">笨・AI隗｣隱ｬ</h3>
                 <div id="article-inline-content" class="article-inline-content" data-fallback="{{ article.summary|e }}">
                     {% if body_html %}
                     {{ body_html|safe }}
@@ -140,26 +150,26 @@
     </div>
 
     {% if personas %}
-    <section class="personas-section" aria-label="偉人の視点">
-        <h2 class="personas-title">偉人の視点 <span class="personas-hint">— 同じニュースを複数のAIが別の角度から解説</span></h2>
+    <section class="personas-section" aria-label="蛛我ｺｺ縺ｮ隕也せ">
+        <h2 class="personas-title">蛛我ｺｺ縺ｮ隕也せ <span class="personas-hint">窶・蜷後§繝九Η繝ｼ繧ｹ繧定､・焚縺ｮAI縺悟挨縺ｮ隗貞ｺｦ縺九ｉ隗｣隱ｬ</span></h2>
         {% for p in personas %}
         {% if loop.first %}
         <div class="persona-spotlight persona-card persona-card--spotlight" data-persona-id="{{ p.id }}" data-article-id="{{ article.id }}">
             <div class="persona-spotlight-head">
                 <img src="{{ p.image_url }}" alt="" class="persona-avatar persona-avatar--spotlight" loading="lazy">
                 <div class="persona-spotlight-meta">
-                    <p class="persona-spotlight-intro"><span class="persona-name">{{ p.name }}</span><span class="persona-spotlight-suffix">の視点</span></p>
-                    <div class="persona-spotlight-actions" aria-label="シェア"></div>
+                    <p class="persona-spotlight-intro"><span class="persona-name">{{ p.name }}</span><span class="persona-spotlight-suffix">縺ｮ隕也せ</span></p>
+                    <div class="persona-spotlight-actions" aria-label="繧ｷ繧ｧ繧｢"></div>
                 </div>
             </div>
             <div class="persona-content persona-content--spotlight">
-                <p class="persona-loading">読込中...</p>
+                <p class="persona-loading">隱ｭ霎ｼ荳ｭ...</p>
             </div>
         </div>
         {% endif %}
         {% endfor %}
         {% if personas|length > 1 %}
-        <p class="personas-more-label">ほかの偉人の視点（タップで開く）</p>
+        <p class="personas-more-label">縺ｻ縺九・蛛我ｺｺ縺ｮ隕也せ・医ち繝・・縺ｧ髢九￥・・/p>
         <div class="personas-grid personas-grid--more">
             {% for p in personas %}
             {% if not loop.first %}
@@ -167,10 +177,10 @@
                 <button type="button" class="persona-trigger" aria-expanded="false">
                     <img src="{{ p.image_url }}" alt="" class="persona-avatar" loading="lazy">
                     <span class="persona-name">{{ p.name }}</span>
-                    <span class="persona-arrow">▶</span>
+                    <span class="persona-arrow">笆ｶ</span>
                 </button>
                 <div class="persona-content" hidden>
-                    <p class="persona-loading">読込中...</p>
+                    <p class="persona-loading">隱ｭ霎ｼ荳ｭ...</p>
                 </div>
             </div>
             {% endif %}
@@ -179,7 +189,7 @@
         {% endif %}
         {% if all_personas %}
         <details class="personas-all-list">
-            <summary>全{{ all_personas|length }}人格一覧</summary>
+            <summary>蜈ｨ{{ all_personas|length }}莠ｺ譬ｼ荳隕ｧ</summary>
             <ul class="personas-all-ul">
                 {% for p in all_personas %}
                 <li class="personas-all-item"><img src="{{ p.image_url }}" alt="" class="personas-all-avatar" loading="lazy"> {{ p.name }}</li>
@@ -192,7 +202,7 @@
 
     {% if paper_graph and paper_graph.related_tags %}
     <section class="vote-section">
-        <h2 class="vote-question">🧩 ナレッジグラフ（論文）</h2>
+        <h2 class="vote-question">ｧｩ 繝翫Ξ繝・ず繧ｰ繝ｩ繝包ｼ郁ｫ匁枚・・/h2>
         <p class="article-text">{{ paper_graph.timeline_message|default('')|e }}</p>
         <div class="tag-list">
             {% for t in paper_graph.related_tags %}
@@ -204,7 +214,7 @@
 
     {% if vote_data %}
     <section class="vote-section" id="vote-section">
-        <h2 class="vote-question">📝 クイズ: {{ vote_data.question|default('')|e }}</h2>
+        <h2 class="vote-question">統 繧ｯ繧､繧ｺ: {{ vote_data.question|default('')|e }}</h2>
         <div class="vote-options" id="vote-options">
             {% for opt in vote_data.options %}
             <button type="button" class="vote-btn" data-vote="{{ opt.id|default('')|e }}">
@@ -216,23 +226,23 @@
         </div>
         <p id="vote-quiz-result" class="article-text" style="display:none; margin-top:0.6rem;"></p>
         <p id="vote-quiz-rate" class="article-text" style="margin-top:0.35rem; color: var(--color-text-muted);"></p>
-        <button type="button" id="vote-quiz-next" class="vote-quiz-next-btn" style="display:none;">次の記事へ →</button>
+        <button type="button" id="vote-quiz-next" class="vote-quiz-next-btn" style="display:none;">谺｡縺ｮ險倅ｺ九∈ 竊・/button>
     </section>
     {% endif %}
 
     <section class="article-navigation">
         {% if related_articles %}
         <div class="article-nav-section">
-            <h3 class="article-nav-title">📰 関連記事</h3>
+            <h3 class="article-nav-title">堂 髢｢騾｣險倅ｺ・/h3>
             <div class="news-grid nav-grid">
                 {% for rel in related_articles[:6] %}
                 <article class="news-card news-card-sm">
-                    <a href="/topic/{{ rel.id }}" class="news-card-link">
+                    <a href="{{ article_url(rel) }}" class="news-card-link">
                         <div class="news-card-body">
                             <span class="news-card-category-inline">{{ rel.category }}</span>
                             <h3 class="news-title">{{ rel.title }}</h3>
                             <p class="article-nav-teaser">{{ (rel.summary or '')[:72] }}{% if (rel.summary or '')|length > 72 %}...{% endif %}</p>
-                            <span class="article-nav-cta">続きを読む →</span>
+                            <span class="article-nav-cta">邯壹″繧定ｪｭ繧 竊・/span>
                         </div>
                     </a>
                 </article>
@@ -241,19 +251,19 @@
         </div>
         {% endif %}
 
-        {# 同カテゴリ／最新／AIおすすめは内容が被りやすいので、上から優先順位で1つだけ表示する（縦に同じ見た目のブロックが何段も続くのを避ける） #}
+        {# 蜷後き繝・ざ繝ｪ・乗怙譁ｰ・就I縺翫☆縺吶ａ縺ｯ蜀・ｮｹ縺瑚｢ｫ繧翫ｄ縺吶＞縺ｮ縺ｧ縲∽ｸ翫°繧牙━蜈磯・ｽ阪〒1縺､縺縺題｡ｨ遉ｺ縺吶ｋ・育ｸｦ縺ｫ蜷後§隕九◆逶ｮ縺ｮ繝悶Ο繝・け縺御ｽ墓ｮｵ繧らｶ壹￥縺ｮ繧帝∩縺代ｋ・・#}
         {% if same_category_articles %}
         <div class="article-nav-section">
-            <h3 class="article-nav-title">🏷 {{ article.category }}の記事</h3>
+            <h3 class="article-nav-title">捷 {{ article.category }}縺ｮ險倅ｺ・/h3>
             <div class="news-grid nav-grid">
                 {% for rel in same_category_articles[:4] %}
                 <article class="news-card news-card-sm">
-                    <a href="/topic/{{ rel.id }}" class="news-card-link">
+                    <a href="{{ article_url(rel) }}" class="news-card-link">
                         <div class="news-card-body">
                             <span class="news-card-category-inline">{{ rel.category }}</span>
                             <h3 class="news-title">{{ rel.title }}</h3>
                             <p class="article-nav-teaser">{{ (rel.summary or '')[:72] }}{% if (rel.summary or '')|length > 72 %}...{% endif %}</p>
-                            <span class="article-nav-cta">続きを読む →</span>
+                            <span class="article-nav-cta">邯壹″繧定ｪｭ繧 竊・/span>
                         </div>
                     </a>
                 </article>
@@ -262,16 +272,16 @@
         </div>
         {% elif latest_articles %}
         <div class="article-nav-section">
-            <h3 class="article-nav-title">🕒 最新の記事</h3>
+            <h3 class="article-nav-title">葡 譛譁ｰ縺ｮ險倅ｺ・/h3>
             <div class="news-grid nav-grid">
                 {% for rel in latest_articles[:5] %}
                 <article class="news-card news-card-sm">
-                    <a href="/topic/{{ rel.id }}" class="news-card-link">
+                    <a href="{{ article_url(rel) }}" class="news-card-link">
                         <div class="news-card-body">
                             <span class="news-card-category-inline">{{ rel.category }}</span>
                             <h3 class="news-title">{{ rel.title }}</h3>
                             <p class="article-nav-teaser">{{ (rel.summary or '')[:72] }}{% if (rel.summary or '')|length > 72 %}...{% endif %}</p>
-                            <span class="article-nav-cta">続きを読む →</span>
+                            <span class="article-nav-cta">邯壹″繧定ｪｭ繧 竊・/span>
                         </div>
                     </a>
                 </article>
@@ -280,16 +290,16 @@
         </div>
         {% elif ai_recommended %}
         <div class="article-nav-section">
-            <h3 class="article-nav-title">🤖 AIおすすめ</h3>
+            <h3 class="article-nav-title">､・AI縺翫☆縺吶ａ</h3>
             <div class="news-grid nav-grid">
                 {% for rel in ai_recommended[:3] %}
                 <article class="news-card news-card-sm">
-                    <a href="/topic/{{ rel.id }}" class="news-card-link">
+                    <a href="{{ article_url(rel) }}" class="news-card-link">
                         <div class="news-card-body">
                             <span class="news-card-category-inline">{{ rel.category }}</span>
                             <h3 class="news-title">{{ rel.title }}</h3>
                             <p class="article-nav-teaser">{{ (rel.summary or '')[:72] }}{% if (rel.summary or '')|length > 72 %}...{% endif %}</p>
-                            <span class="article-nav-cta">続きを読む →</span>
+                            <span class="article-nav-cta">邯壹″繧定ｪｭ繧 竊・/span>
                         </div>
                     </a>
                 </article>
@@ -298,21 +308,48 @@
         </div>
         {% endif %}
 
-        <nav class="next-article-nav" aria-label="続けて読む">
+        <div class="article-cta-strip">
+            <a href="/personas" class="article-cta-item article-cta-item--personas">
+                <span class="article-cta-icon" aria-hidden="true">糖</span>
+                <span class="article-cta-text">
+                    <strong>14莠ｺ縺ｮ蛛我ｺｺ繧定ｦ九ｋ</strong>
+                    <span>繝悶ャ繝繝ｻ繝九・繝√ぉ繝ｻ繝繝ｴ繧｣繝ｳ繝≫ｦ</span>
+                </span>
+                <span class="article-cta-arrow" aria-hidden="true">竊・/span>
+            </a>
+            <a href="/ai" class="article-cta-item article-cta-item--ai">
+                <span class="article-cta-icon" aria-hidden="true">竜・・/span>
+                <span class="article-cta-text">
+                    <strong>謗ｨ縺励く繝｣繝ｩ縺ｫ謚慕･ｨ</strong>
+                    <span>縺ゅ↑縺溘・謗ｨ縺怜♂莠ｺAI縺ｯ・・/span>
+                </span>
+                <span class="article-cta-arrow" aria-hidden="true">竊・/span>
+            </a>
+            <a href="https://lin.ee/rQgfdIR?utm_source=chiripo_ai&utm_medium=article_cta&utm_campaign=line_cta" class="article-cta-item article-cta-item--line" target="_blank" rel="noopener noreferrer">
+                <span class="article-cta-icon" aria-hidden="true">町</span>
+                <span class="article-cta-text">
+                    <strong>蜈ｬ蠑臭INE縺ｧ逶ｸ隲・/strong>
+                    <span>蛛我ｺｺAI縺ｸ縺ｮ謔ｩ縺ｿ逶ｸ隲・・縺薙■繧・/span>
+                </span>
+                <span class="article-cta-arrow" aria-hidden="true">竊・/span>
+            </a>
+        </div>
+
+        <nav class="next-article-nav" aria-label="邯壹￠縺ｦ隱ｭ繧">
             {% if prev_article %}
-            <a href="/topic/{{ prev_article.id }}" class="next-article-link next-article-prev">← 前の記事</a>
+            <a href="{{ article_url(prev_article) }}" class="next-article-link next-article-prev">竊・蜑阪・險倅ｺ・/a>
             {% endif %}
             {% if next_article %}
-            <a href="/topic/{{ next_article.id }}" class="next-article-link next-article-next">次の記事へ →</a>
+            <a href="{{ article_url(next_article) }}" class="next-article-link next-article-next">谺｡縺ｮ險倅ｺ九∈ 竊・/a>
             {% endif %}
         </nav>
     </section>
 </article>
 
-<button type="button" class="back-to-top" id="article-back-to-top" aria-label="ページ先頭へ戻る">↑</button>
+<button type="button" class="back-to-top" id="article-back-to-top" aria-label="繝壹・繧ｸ蜈磯ｭ縺ｸ謌ｻ繧・>竊・/button>
 
 <div id="midorman-float" class="midorman-float" aria-live="polite" hidden>
-    <img src="{{ midorman_image_url|default('/static/site-imgs/ロゴ.png') }}" alt="" class="midorman-float-avatar-img" loading="lazy">
+    <img src="{{ midorman_image_url|default('/static/site-imgs/繝ｭ繧ｴ.png') }}" alt="" class="midorman-float-avatar-img" loading="lazy">
     <div class="midorman-float-inner">
         <p class="midorman-float-text" id="midorman-float-text"></p>
     </div>
@@ -356,16 +393,16 @@ document.addEventListener('DOMContentLoaded', function() {
     var copyBtn = document.getElementById('btn-copy-share');
     if (copyBtn) {
         copyBtn.addEventListener('click', function() {
-            var text = 'AI要約: ' + ({{ copy_blurb|default("")|tojson|safe }}) + '\n' + window.location.href;
+            var text = 'AI隕∫ｴ・ ' + ({{ copy_blurb|default("")|tojson|safe }}) + '\n' + window.location.href;
             function done() {
-                copyBtn.textContent = '✅ コピー済み';
-                if (window.announceToScreenReader) window.announceToScreenReader('リンクをクリップボードにコピーしました');
-                if (window.showSiteToast) window.showSiteToast('コピーしました');
-                setTimeout(function() { copyBtn.textContent = '🔗'; copyBtn.setAttribute('aria-label', 'タイトルとURLをクリップボードにコピー'); }, 1600);
+                copyBtn.textContent = '笨・繧ｳ繝斐・貂医∩';
+                if (window.announceToScreenReader) window.announceToScreenReader('繝ｪ繝ｳ繧ｯ繧偵け繝ｪ繝・・繝懊・繝峨↓繧ｳ繝斐・縺励∪縺励◆');
+                if (window.showSiteToast) window.showSiteToast('繧ｳ繝斐・縺励∪縺励◆');
+                setTimeout(function() { copyBtn.textContent = '迫'; copyBtn.setAttribute('aria-label', '繧ｿ繧､繝医Ν縺ｨURL繧偵け繝ｪ繝・・繝懊・繝峨↓繧ｳ繝斐・'); }, 1600);
             }
             function fail() {
-                if (window.showSiteToast) window.showSiteToast('コピーできませんでした。ブラウザの権限をご確認ください。', true);
-                if (window.announceToScreenReader) window.announceToScreenReader('コピーに失敗しました');
+                if (window.showSiteToast) window.showSiteToast('繧ｳ繝斐・縺ｧ縺阪∪縺帙ｓ縺ｧ縺励◆縲ゅヶ繝ｩ繧ｦ繧ｶ縺ｮ讓ｩ髯舌ｒ縺皮｢ｺ隱阪￥縺縺輔＞縲・, true);
+                if (window.announceToScreenReader) window.announceToScreenReader('繧ｳ繝斐・縺ｫ螟ｱ謨励＠縺ｾ縺励◆');
             }
             if (navigator.clipboard && navigator.clipboard.writeText) {
                 navigator.clipboard.writeText(text).then(done).catch(fail);
@@ -375,7 +412,7 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // Read mode switch（タブパターン・アクセシビリティ）
+    // Read mode switch・医ち繝悶ヱ繧ｿ繝ｼ繝ｳ繝ｻ繧｢繧ｯ繧ｻ繧ｷ繝薙Μ繝・ぅ・・
     var modeBtns = document.querySelectorAll('.read-mode-btn');
     var shortContent = document.getElementById('article-short-content');
     var deepContent = document.getElementById('article-deep-content');
@@ -407,7 +444,15 @@ document.addEventListener('DOMContentLoaded', function() {
 
     modeBtns.forEach(function(btn) {
         btn.addEventListener('click', function() {
-            applyReadMode(this.getAttribute('data-mode') || 'short');
+            var mode = this.getAttribute('data-mode') || 'short';
+            applyReadMode(mode);
+            if (mode === 'deep' && window.gtag) {
+                gtag('event', 'article_read_deep', {
+                    event_category: 'engagement',
+                    article_id: articleId,
+                    page_path: window.location.pathname
+                });
+            }
         });
     });
 
@@ -449,6 +494,7 @@ document.addEventListener('DOMContentLoaded', function() {
     } catch (e) {}
 
     var progressEl = document.getElementById('article-read-progress');
+    var _readComplete50 = false, _readComplete90 = false;
     function updateReadProgress() {
         if (!progressEl) return;
         var doc = document.documentElement;
@@ -458,6 +504,22 @@ document.addEventListener('DOMContentLoaded', function() {
         var pct = Math.min(1, scroll / max);
         progressEl.value = pct;
         progressEl.setAttribute('aria-valuetext', Math.round(pct * 100) + '%');
+        if (!_readComplete50 && pct >= 0.5 && window.gtag) {
+            _readComplete50 = true;
+            gtag('event', 'article_read_50pct', {
+                event_category: 'engagement',
+                article_id: articleId,
+                page_path: window.location.pathname
+            });
+        }
+        if (!_readComplete90 && pct >= 0.9 && window.gtag) {
+            _readComplete90 = true;
+            gtag('event', 'article_read_complete', {
+                event_category: 'engagement',
+                article_id: articleId,
+                page_path: window.location.pathname
+            });
+        }
     }
     window.addEventListener('scroll', updateReadProgress, { passive: true });
     window.addEventListener('resize', updateReadProgress);
@@ -486,9 +548,9 @@ document.addEventListener('DOMContentLoaded', function() {
         var isSaved = saved.some(function(a) { return a.id === articleId; });
         if (isSaved) {
             saveBtn.classList.add('is-saved');
-            saveBtn.textContent = '★';
-            saveBtn.setAttribute('title', '保存済み');
-            saveBtn.setAttribute('aria-label', '保存済み。タップで保存解除');
+            saveBtn.textContent = '笘・;
+            saveBtn.setAttribute('title', '菫晏ｭ俶ｸ医∩');
+            saveBtn.setAttribute('aria-label', '菫晏ｭ俶ｸ医∩縲ゅち繝・・縺ｧ菫晏ｭ倩ｧ｣髯､');
         }
         saveBtn.addEventListener('click', function() {
             var saved = JSON.parse(localStorage.getItem('saved_articles') || '[]');
@@ -496,17 +558,17 @@ document.addEventListener('DOMContentLoaded', function() {
             if (idx >= 0) {
                 saved.splice(idx, 1);
                 this.classList.remove('is-saved');
-                this.textContent = '⭐';
-                this.setAttribute('title', '保存');
-                this.setAttribute('aria-label', 'この記事を保存');
-                if (window.announceToScreenReader) window.announceToScreenReader('保存を解除しました');
+                this.textContent = '箝・;
+                this.setAttribute('title', '菫晏ｭ・);
+                this.setAttribute('aria-label', '縺薙・險倅ｺ九ｒ菫晏ｭ・);
+                if (window.announceToScreenReader) window.announceToScreenReader('菫晏ｭ倥ｒ隗｣髯､縺励∪縺励◆');
             } else {
                 saved.push({ id: articleId, title: this.dataset.title, summary: this.dataset.summary });
                 this.classList.add('is-saved');
-                this.textContent = '★';
-                this.setAttribute('title', '保存済み');
-                this.setAttribute('aria-label', '保存済み。タップで保存解除');
-                if (window.announceToScreenReader) window.announceToScreenReader('記事を保存しました');
+                this.textContent = '笘・;
+                this.setAttribute('title', '菫晏ｭ俶ｸ医∩');
+                this.setAttribute('aria-label', '菫晏ｭ俶ｸ医∩縲ゅち繝・・縺ｧ菫晏ｭ倩ｧ｣髯､');
+                if (window.announceToScreenReader) window.announceToScreenReader('險倅ｺ九ｒ菫晏ｭ倥＠縺ｾ縺励◆');
                 if (window.gtag) gtag('event', 'article_save', {
                     event_category: 'engagement',
                     article_id: articleId,
@@ -517,7 +579,7 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // Quiz (旧 vote_data をクイズ用途で利用)
+    // Quiz (譌ｧ vote_data 繧偵け繧､繧ｺ逕ｨ騾斐〒蛻ｩ逕ｨ)
     var voteSection = document.getElementById('vote-section');
     if (voteSection) {
         var voteBtns = voteSection.querySelectorAll('.vote-btn');
@@ -528,10 +590,10 @@ document.addEventListener('DOMContentLoaded', function() {
         var keyTermNote = {{ (vote_data.key_term_note|default("", true) if vote_data else "")|tojson|safe }};
         function buildQuizMessage(isCorrect, aid) {
             var parts = [];
-            parts.push(isCorrect ? '正解です。' : ('不正解です。正解は「' + (aid || '') + '」です。'));
+            parts.push(isCorrect ? '豁｣隗｣縺ｧ縺吶・ : ('荳肴ｭ｣隗｣縺ｧ縺吶よｭ｣隗｣縺ｯ縲・ + (aid || '') + '縲阪〒縺吶・));
             if (explainText) parts.push(explainText);
-            if (learningPoint) parts.push('学習ポイント: ' + learningPoint);
-            if (keyTerm && keyTermNote) parts.push('用語「' + keyTerm + '」: ' + keyTermNote);
+            if (learningPoint) parts.push('蟄ｦ鄙偵・繧､繝ｳ繝・ ' + learningPoint);
+            if (keyTerm && keyTermNote) parts.push('逕ｨ隱槭・ + keyTerm + '縲・ ' + keyTermNote);
             return parts.join('\n\n');
         }
         var resultEl = document.getElementById('vote-quiz-result');
@@ -546,7 +608,7 @@ document.addEventListener('DOMContentLoaded', function() {
             var total = Number(stats.total || 0);
             var correct = Number(stats.correct || 0);
             var rate = total > 0 ? Math.round((correct / total) * 100) : 0;
-            rateEl.textContent = '正答率: ' + rate + '%（' + correct + '/' + total + '）';
+            rateEl.textContent = '豁｣遲皮紫: ' + rate + '%・・ + correct + '/' + total + '・・;
         }
 
         function updateVoteDisplay() {
@@ -585,7 +647,15 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
                 updateVoteDisplay();
                 updateRateDisplay();
-                // 次の記事へのボタンを提示（自動遷移はせず、ユーザー操作に委ねる）
+                if (window.gtag) {
+                    gtag('event', 'quiz_answered', {
+                        event_category: 'engagement',
+                        event_label: vid === answerId ? 'correct' : 'incorrect',
+                        article_id: articleId,
+                        page_path: window.location.pathname
+                    });
+                }
+                // 谺｡縺ｮ險倅ｺ九∈縺ｮ繝懊ち繝ｳ繧呈署遉ｺ・郁・蜍暮・遘ｻ縺ｯ縺帙★縲√Θ繝ｼ繧ｶ繝ｼ謫堺ｽ懊↓蟋斐・繧具ｼ・
                 var nextBtn = document.getElementById('vote-quiz-next');
                 if (nextBtn) {
                     var candidates = Array.prototype.slice.call(
@@ -605,7 +675,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function initMidormanFloat(container) {
-        // 1分で理解では吹き出しを出さない（deep表示中のみ）
+        // 1蛻・〒逅・ｧ｣縺ｧ縺ｯ蜷ｹ縺榊・縺励ｒ蜃ｺ縺輔↑縺・ｼ・eep陦ｨ遉ｺ荳ｭ縺ｮ縺ｿ・・
         if (deepContent && deepContent.hidden) return;
         var floatEl = document.getElementById('midorman-float');
         var floatText = document.getElementById('midorman-float-text');
@@ -634,13 +704,58 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     var contentEl = document.getElementById('article-inline-content');
-    // 初期表示は short のため、ここでは吹き出し初期化しない
+    // 蛻晄悄陦ｨ遉ｺ縺ｯ short 縺ｮ縺溘ａ縲√％縺薙〒縺ｯ蜷ｹ縺榊・縺怜・譛溷喧縺励↑縺・
 
     function setPersonaContent(card, content, opinion) {
         content.dataset.loaded = 'true';
-        content.innerHTML = opinion
-            ? '<p class="persona-opinion">' + escapeHtml(opinion).replace(/\n/g, '<br>') + '</p>'
-            : '<p class="persona-error">取得できませんでした</p>';
+        if (!opinion) {
+            content.innerHTML = '<p class="persona-error">返信できませんでした。</p>';
+            return;
+        }
+        var html = '';
+        try {
+            var parsed = JSON.parse(opinion);
+            if (parsed && (parsed.short || parsed.body)) {
+                // short は常時表示、body はクリックで展開\uff08アコーディオン\uff09
+                var shortHtml = parsed.short
+                    ? '<p class="persona-short">' + escapeHtml(parsed.short) + '</p>'
+                    : '';
+                var bodyHtml = parsed.body
+                    ? '<div class="persona-body-wrap" hidden>'
+                      + '<p class="persona-body">' + escapeHtml(parsed.body).replace(/\n/g, '<br>') + '</p>'
+                      + '</div>'
+                    : '';
+                var toggleHtml = (parsed.body)
+                    ? '<button type="button" class="persona-expand-btn" aria-expanded="false">'
+                      + '続きを読む ▼</button>'
+                    : '';
+                html = shortHtml + toggleHtml + bodyHtml;
+            } else {
+                html = '<p class="persona-opinion">' + escapeHtml(opinion).replace(/\n/g, '<br>') + '</p>';
+            }
+        } catch(e) {
+            html = '<p class="persona-opinion">' + escapeHtml(opinion).replace(/\n/g, '<br>') + '</p>';
+        }
+        content.innerHTML = html;
+
+        // アコーディオントグル振る舞い
+        var toggleBtn = content.querySelector('.persona-expand-btn');
+        var bodyWrap = content.querySelector('.persona-body-wrap');
+        if (toggleBtn && bodyWrap) {
+            toggleBtn.addEventListener('click', function() {
+                var expanded = toggleBtn.getAttribute('aria-expanded') === 'true';
+                if (expanded) {
+                    bodyWrap.hidden = true;
+                    toggleBtn.setAttribute('aria-expanded', 'false');
+                    toggleBtn.innerHTML = '続きを読む ▼';
+                } else {
+                    bodyWrap.hidden = false;
+                    toggleBtn.setAttribute('aria-expanded', 'true');
+                    toggleBtn.innerHTML = '閉じる ▲';
+                }
+            });
+        }
+
         if (opinion) addPersonaShareBtn(card, content, opinion);
     }
 
@@ -649,21 +764,29 @@ document.addEventListener('DOMContentLoaded', function() {
         var titleEl = document.querySelector('.article-title');
         var articleTitle = titleEl ? titleEl.textContent.trim() : document.title;
         var url = window.location.href;
-        var hashtags = '#知リポAI';
+        var hashtags = '#遏･繝ｪ繝戡I';
 
-        // X(Twitter)は280字制限・URLはどんな長さでも23字として数えられる
+        // X(Twitter)縺ｯ280蟄怜宛髯舌・URL縺ｯ縺ｩ繧薙↑髟ｷ縺輔〒繧・3蟄励→縺励※謨ｰ縺医ｉ繧後ｋ
         var TWEET_LIMIT = 280;
         var URL_WEIGHT = 23;
-        // 「ニュース＋偉人コメント」は本文100字前後が伸びやすい目安
+        // 縲後ル繝･繝ｼ繧ｹ・句♂莠ｺ繧ｳ繝｡繝ｳ繝医阪・譛ｬ譁・00蟄怜燕蠕後′莨ｸ縺ｳ繧・☆縺・岼螳・
         var TARGET_CORE = 100;
 
-        var title = articleTitle.length > 60 ? articleTitle.slice(0, 57) + '…' : articleTitle;
-        var head = title + '\n\n【' + name + 'の一言】\n「';
-        var tail = '」\n\n' + hashtags + '\n';
+        var title = articleTitle.length > 60 ? articleTitle.slice(0, 57) + '窶ｦ' : articleTitle;
+        var head = title + '\n\n縲・ + name + '縺ｮ荳險縲曾n縲・;
+        var tail = '縲構n\n' + hashtags + '\n';
         var hardBudget = TWEET_LIMIT - URL_WEIGHT - tail.length - head.length;
         var targetBudget = TARGET_CORE - head.length;
         var available = Math.max(10, Math.min(targetBudget, hardBudget));
-        var comment = opinion.length > available ? opinion.slice(0, available - 1) + '…' : opinion;
+        // JSON形式の場合はshort+bodyを結合してシェアテキストを生成
+        var plainOpinion = opinion;
+        try {
+            var _parsed = JSON.parse(opinion);
+            if (_parsed && (_parsed.short || _parsed.body)) {
+                plainOpinion = [_parsed.short, _parsed.body].filter(Boolean).join('　');
+            }
+        } catch(e) {}
+        var comment = plainOpinion.length > available ? plainOpinion.slice(0, available - 1) + '' : opinion;
         var shareText = head + comment + tail + url;
         var xUrl = 'https://twitter.com/intent/tweet?text=' + encodeURIComponent(shareText);
 
@@ -679,16 +802,16 @@ document.addEventListener('DOMContentLoaded', function() {
         var copyBtn = document.createElement('button');
         copyBtn.type = 'button';
         copyBtn.className = 'persona-share-btn';
-        copyBtn.innerHTML = '🔗';
-        copyBtn.title = 'このコメントをクリップボードにコピー';
-        copyBtn.setAttribute('aria-label', 'コメントをコピー');
+        copyBtn.innerHTML = '迫';
+        copyBtn.title = '縺薙・繧ｳ繝｡繝ｳ繝医ｒ繧ｯ繝ｪ繝・・繝懊・繝峨↓繧ｳ繝斐・';
+        copyBtn.setAttribute('aria-label', '繧ｳ繝｡繝ｳ繝医ｒ繧ｳ繝斐・');
         copyBtn.addEventListener('click', function(e) {
             e.stopPropagation();
             if (navigator.clipboard && navigator.clipboard.writeText) {
                 navigator.clipboard.writeText(shareText).then(function() {
-                    copyBtn.innerHTML = '✅';
-                    if (window.showSiteToast) window.showSiteToast(name + 'のコメントをコピーしました');
-                    setTimeout(function() { copyBtn.innerHTML = '🔗'; }, 1800);
+                    copyBtn.innerHTML = '笨・;
+                    if (window.showSiteToast) window.showSiteToast(name + '縺ｮ繧ｳ繝｡繝ｳ繝医ｒ繧ｳ繝斐・縺励∪縺励◆');
+                    setTimeout(function() { copyBtn.innerHTML = '迫'; }, 1800);
                 });
             }
         });
@@ -698,8 +821,8 @@ document.addEventListener('DOMContentLoaded', function() {
         xBtn.target = '_blank';
         xBtn.rel = 'noopener noreferrer';
         xBtn.className = 'persona-share-btn persona-share-btn--x';
-        xBtn.innerHTML = '𝕏 ポスト';
-        xBtn.title = 'Xにポストする';
+        xBtn.innerHTML = '撫 繝昴せ繝・;
+        xBtn.title = 'X縺ｫ繝昴せ繝医☆繧・;
 
         bar.appendChild(xBtn);
         bar.appendChild(copyBtn);
@@ -723,7 +846,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (!data.blocks || data.blocks.length === 0) {
                     el.innerHTML = '<p>' + escapeHtml(el.dataset.fallback || '') + '</p>';
                 } else {
-                    var navLabels = { facts: 'ニュース', background: '背景', impact: '影響範囲', prediction: '予測', caution: '注意' };
+                    var navLabels = { facts: '繝九Η繝ｼ繧ｹ', background: '閭梧勹', impact: '蠖ｱ髻ｿ遽・峇', prediction: '莠域ｸｬ', caution: '豕ｨ諢・ };
                     var isNavigator = data.blocks[0].type === 'navigator_section';
                     var textParts = [];
                     var floatItems = [];
@@ -748,7 +871,7 @@ document.addEventListener('DOMContentLoaded', function() {
                                 });
                             } else if (b.type === 'explain') {
                                 var c = (b.content || '').trim();
-                                if (c) floatItems.push({ label: 'ミドルマン', body: escapeHtml(c).replace(/\n/g, '<br>') });
+                                if (c) floatItems.push({ label: '繝溘ラ繝ｫ繝槭Φ', body: escapeHtml(c).replace(/\n/g, '<br>') });
                             }
                         });
                     }
@@ -775,12 +898,12 @@ document.addEventListener('DOMContentLoaded', function() {
             .catch(function() {
                 var el = document.getElementById('article-inline-content');
                 if (el) el.innerHTML = '<p>' + escapeHtml(el.dataset.fallback || '') + '</p>';
-                if (window.showSiteToast) window.showSiteToast('解説の読み込みに失敗しました。キャッシュ表示に切り替えました。', true);
-                if (window.announceToScreenReader) window.announceToScreenReader('解説の読み込みに失敗しました');
+                if (window.showSiteToast) window.showSiteToast('隗｣隱ｬ縺ｮ隱ｭ縺ｿ霎ｼ縺ｿ縺ｫ螟ｱ謨励＠縺ｾ縺励◆縲ゅく繝｣繝・す繝･陦ｨ遉ｺ縺ｫ蛻・ｊ譖ｿ縺医∪縺励◆縲・, true);
+                if (window.announceToScreenReader) window.announceToScreenReader('隗｣隱ｬ縺ｮ隱ｭ縺ｿ霎ｼ縺ｿ縺ｫ螟ｱ謨励＠縺ｾ縺励◆');
             });
     }
 
-    // Persona toggle（スポットライト1人目は常時展開のため対象外）
+    // Persona toggle・医せ繝昴ャ繝医Λ繧､繝・莠ｺ逶ｮ縺ｯ蟶ｸ譎ょｱ暮幕縺ｮ縺溘ａ蟇ｾ雎｡螟厄ｼ・
     document.querySelectorAll('.persona-card').forEach(function(card) {
         var btn = card.querySelector('.persona-trigger');
         if (!btn) return;
@@ -789,7 +912,7 @@ document.addEventListener('DOMContentLoaded', function() {
             var isOpen = btn.getAttribute('aria-expanded') === 'true';
             content.hidden = isOpen;
             btn.setAttribute('aria-expanded', isOpen ? 'false' : 'true');
-            btn.querySelector('.persona-arrow').textContent = isOpen ? '▶' : '▼';
+            btn.querySelector('.persona-arrow').textContent = isOpen ? '笆ｶ' : '笆ｼ';
         });
     });
 });

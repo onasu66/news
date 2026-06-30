@@ -9,6 +9,7 @@ httpx==0.26.0
 beautifulsoup4==4.12.3
 html2text>=2024.2.26
 readability-lxml==0.8.1
+googlenewsdecoder>=0.1.7
 google-generativeai>=0.8.0
 openai>=1.55.0
 apscheduler==3.10.4

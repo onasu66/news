@@ -220,6 +220,20 @@ def load_curated_articles(path: Optional[Path] = None) -> list[NewsItem]:
         title = (entry.get("title") or "").strip()
         if not title or not url:
             continue
+        try:
+            from app.services.google_news_url import resolve_google_news_url
+            from app.services.paywall_domains import is_paywalled_url, paywall_domain_label
+
+            url = resolve_google_news_url(url)
+            if is_paywalled_url(url):
+                logger.info(
+                    "有料メディアのため候補除外: %s (%s)",
+                    title[:50],
+                    paywall_domain_label(url) or url[:60],
+                )
+                continue
+        except Exception:
+            pass
         # 重複 URL（履歴・今回リスト内）はスキップ
         if url in history or url in seen_urls:
             logger.debug("重複スキップ: %s", url)
@@ -246,7 +260,7 @@ def load_curated_articles(path: Optional[Path] = None) -> list[NewsItem]:
 
         # reason（選定理由）を優先し、なければ summary にフォールバック
         reason = (entry.get("reason") or "").strip()
-        summary = (entry.get("summary") or "").strip()
+        summary = (entry.get("summary") or "").strip() or reason
         # reason方式では summary チェックをスキップ（本文フェッチで判断する）
         # 旧形式互換: summary のみの場合は最低80字チェック
         if not reason and len(summary) < 80:

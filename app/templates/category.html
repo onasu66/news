@@ -1,0 +1,103 @@
+{% extends "base.html" %}
+{% block title %}{{ cat_info.title }}{% endblock %}
+{% block meta_description %}{{ cat_info.desc }}{% endblock %}
+{% block meta_keywords %}<meta name="keywords" content="{{ cat_info.keywords }},遏･繝ｪ繝戡I,AI隗｣隱ｬ,蛛我ｺｺAI">{% endblock %}
+{% block meta_extra %}
+    <link rel="canonical" href="{{ category_url }}">
+    <meta name="robots" content="index,follow">
+    <meta property="og:type" content="website">
+    <meta property="og:title" content="{{ cat_info.title }}">
+    <meta property="og:description" content="{{ cat_info.desc }}">
+    <meta property="og:url" content="{{ category_url }}">
+    <meta property="og:site_name" content="遏･繝ｪ繝戡I">
+{% endblock %}
+
+{% block content %}
+<section class="site-hero site-hero--compact">
+    <div class="site-hero-inner">
+        <h1 class="site-hero-title">{{ cat_info.h1 }}</h1>
+    </div>
+</section>
+
+<div class="category-hub-layout">
+    <div class="content-main">
+
+        <nav class="article-breadcrumb" aria-label="繝代Φ縺上★" style="padding: 0.6rem 0 0.2rem;">
+            <ol itemscope itemtype="https://schema.org/BreadcrumbList" style="display:flex;gap:0.4rem;list-style:none;padding:0;margin:0;font-size:0.8rem;color:var(--color-text-muted);">
+                <li itemprop="itemListElement" itemscope itemtype="https://schema.org/ListItem">
+                    <a itemprop="item" href="/"><span itemprop="name">繝帙・繝</span></a>
+                    <meta itemprop="position" content="1">
+                </li>
+                <li aria-hidden="true">窶ｺ</li>
+                <li itemprop="itemListElement" itemscope itemtype="https://schema.org/ListItem">
+                    <a itemprop="item" href="/news"><span itemprop="name">繝九Η繝ｼ繧ｹ荳隕ｧ</span></a>
+                    <meta itemprop="position" content="2">
+                </li>
+                <li aria-hidden="true">窶ｺ</li>
+                <li itemprop="itemListElement" itemscope itemtype="https://schema.org/ListItem">
+                    <span itemprop="name" aria-current="page">{{ cat_info.label }}</span>
+                    <meta itemprop="position" content="3">
+                </li>
+            </ol>
+        </nav>
+
+        <p class="category-hub-desc">{{ cat_info.hero_desc }}</p>
+
+        {% if articles %}
+        <div class="news-grid" id="category-grid">
+            {% for item in articles %}
+            <article class="news-card animate-fade-in">
+                <a href="{{ article_url(item) }}" class="news-card-link">
+                    <div class="news-card-body">
+                        <div class="news-card-meta">
+                            <span class="news-card-source">{{ item.source }}</span>
+                            <span class="news-card-time">{{ item.published.strftime('%m/%d %H:%M') if item.published else '' }}</span>
+                        </div>
+                        <h2 class="news-title">{{ item.title }}</h2>
+                        {% set _sum = item.summary or '' %}
+                        <p class="news-summary-line">{{ _sum[:80] }}{% if _sum|length > 80 %}...{% endif %}</p>
+                    </div>
+                    <div class="news-card-image">
+                        <img src="{{ item.image_url or '/static/og/card-default.jpg' }}" alt="{{ item.title }}" loading="lazy" decoding="async" onerror="this.onerror=null;this.src='/static/og/card-default.jpg'">
+                        <span class="news-card-category">{{ item.category }}</span>
+                    </div>
+                </a>
+            </article>
+            {% endfor %}
+        </div>
+        {% else %}
+        <p class="empty-msg">縺薙・繧ｫ繝・ざ繝ｪ縺ｮ險倅ｺ九・縺ｾ縺縺ゅｊ縺ｾ縺帙ｓ縲・/p>
+        {% endif %}
+    </div>
+
+    <aside class="sidebar">
+        <div class="trends-box">
+            <h2 class="sidebar-title">唐 莉悶・繧ｫ繝・ざ繝ｪ</h2>
+            <ul class="trends-list">
+                {% for other_slug, other_info in other_categories.items() %}
+                <li>
+                    <a href="/topics/{{ other_slug }}" class="trend-link-internal">
+                        {{ other_info.h1 }}
+                    </a>
+                </li>
+                {% endfor %}
+            </ul>
+        </div>
+        <div class="trends-box" style="margin-top:1rem;">
+            <h2 class="sidebar-title">迫 髢｢騾｣繝壹・繧ｸ</h2>
+            <ul class="trends-list">
+                <li><a href="/news" class="trend-link-internal">堂 蜈ｨ繝九Η繝ｼ繧ｹ荳隕ｧ</a></li>
+                <li><a href="/personas" class="trend-link-internal">糖 14莠ｺ縺ｮ蛛我ｺｺAI繧定ｦ九ｋ</a></li>
+                <li><a href="/ai" class="trend-link-internal">竜・・謗ｨ縺怜♂莠ｺAI縺ｫ謚慕･ｨ</a></li>
+            </ul>
+        </div>
+    </aside>
+</div>
+
+<section class="seo-coverage-section">
+    <div class="seo-coverage-inner">
+        <h2 class="seo-coverage-title">{{ cat_info.label }}縺ｮ譛譁ｰ諠・ｱ繧貞♂莠ｺAI縺瑚ｧ｣隱ｬ</h2>
+        <p class="seo-coverage-desc">{{ cat_info.hero_desc }} 險倅ｺ九・豈取律閾ｪ蜍墓峩譁ｰ縲ゅヶ繝・ム繝ｻ繝九・繝√ぉ繝ｻ郢皮伐菫｡髟ｷ繝ｻ繧｢繧､繝ｳ繧ｷ繝･繧ｿ繧､繝ｳ縺ｪ縺ｩ14莠ｺ縺ｮ蛛我ｺｺAI縺後◎繧後◇繧後・隕也せ縺ｧ隗｣隱ｬ縺励∪縺吶・/p>
+    </div>
+</section>
+{% endblock %}

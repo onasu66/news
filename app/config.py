@@ -61,9 +61,9 @@ class Settings:
     MIDDLEMAN_PROVIDER: str = os.getenv("MIDDLEMAN_PROVIDER", "claude_first").strip().lower()
     # MIDDLEMAN_PROVIDER=openai のときに使うモデル（未設定なら OPENAI_MODEL）
     MIDDLEMAN_OPENAI_MODEL: str = os.getenv("MIDDLEMAN_OPENAI_MODEL", "gpt-4o-mini").strip()
-    # ペルソナコメント。未設定時は AI_PROVIDER に従う
+    # ペルソナコメントは OpenAI（または PERSONA_PROVIDER 指定）のみ。Claude CLI はリサーチ専用。
     _persona_provider_env = os.getenv("PERSONA_PROVIDER", "").strip().lower()
-    PERSONA_PROVIDER: str = _persona_provider_env or os.getenv("AI_PROVIDER", "openai").strip().lower()
+    PERSONA_PROVIDER: str = _persona_provider_env or "openai"
     # 互換のため残す（ペルソナの保存後 Claude は行わない）
     PERSONA_CLAUDE_AFTER_SAVE: str = os.getenv("PERSONA_CLAUDE_AFTER_SAVE", "true").strip().lower()
     # 記事化時のタイトル生成を有効化するか

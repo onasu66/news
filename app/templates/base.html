@@ -61,7 +61,7 @@
             <p>知リポAI — 最新ニュースをAIが解説する、知的ニュースレポート</p>
             <div class="footer-line-wrap">
                 <p class="footer-line-label">ご意見・追加リクエストはLINEから</p>
-                <a href="https://lin.ee/rQgfdIR"><img src="https://scdn.line-apps.com/n/line_add_friends/btn/ja.png" alt="友だち追加" height="36" border="0"></a>
+                <a href="https://lin.ee/rQgfdIR?utm_source=chiripo_ai&utm_medium=footer&utm_campaign=line_cta"><img src="https://scdn.line-apps.com/n/line_add_friends/btn/ja.png" alt="友だち追加" height="36" border="0"></a>
             </div>
             <div class="tiny-links"><a href="/personas">14キャラクター</a> · <a href="/about">運営者情報</a> · <a href="/privacy">プライバシーポリシー</a> · <a href="/authors">著者</a></div>
         </div>
@@ -223,6 +223,20 @@
                 event_category: 'persona',
                 event_label: card ? card.getAttribute('data-persona-id') : '',
                 page_path: window.location.pathname
+            });
+        }
+        var shareXBtn = e.target.closest('.persona-share-btn--x');
+        if (shareXBtn) {
+            gtag('event', 'share_x', {
+                event_category: 'share',
+                event_label: window.location.pathname
+            });
+        }
+        var lineCtaBtn = e.target.closest('.cta-line-btn, a[href*="lin.ee"]');
+        if (lineCtaBtn && !e.target.closest('footer')) {
+            gtag('event', 'line_add_friend_cta', {
+                event_category: 'engagement',
+                event_label: window.location.pathname
             });
         }
     });

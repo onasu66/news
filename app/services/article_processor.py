@@ -66,6 +66,21 @@ def process_rss_to_site_article(item: NewsItem, force: bool = False) -> bool:
     if not force and get_cached(item.id):
         return False  # 既にAI処理済み（force でなければスキップ）
 
+    # 有料紙は本文が取れないため、翻訳・タイトル生成 API を使う前に弾く
+    if (item.category or "").strip() != "研究・論文":
+        try:
+            from app.services.paywall_domains import is_paywalled_url, paywall_domain_label
+
+            if is_paywalled_url(item.link or ""):
+                logger.warning(
+                    "有料メディアのため記事化スキップ: %s (%s)",
+                    (item.title or "")[:60],
+                    paywall_domain_label(item.link or "") or item.link,
+                )
+                return False
+        except Exception:
+            pass
+
     # --- タイトル・要約を日本語に（APIは1回＋必要時のみタイトル1回に抑える）---
     need_translate = is_foreign_article(item.source, item.title, item.summary or "")
     if not need_translate and item.title and not text_mainly_japanese(item.title):

@@ -48,6 +48,7 @@ from app.services.ai_service import (
     explain_article_long_with_bubbles,
     expand_navigator_to_article,
     get_persona_opinion,
+    get_all_persona_opinions_batch,
 )
 from app.services.explanation_cache import get_cached, save_cache
 from app.services.article_content_quality import is_generated_article_sufficient, is_navigator_sufficient
@@ -272,9 +273,20 @@ def generate_all_explanations(
         fut_blocks = ex.submit(do_blocks)
         blocks = fut_blocks.result()
 
-        # ペルソナ: PERSONA_PROVIDER に従う（順に生成し先のコメントを渡して重複を避ける）
+        # ペルソナ: まず3人まとめてバッチ生成（1回のAPI呼び出しでトークン節約）
+        # バッチ失敗 or 特定人物が短すぎた場合のみ個別呼び出しにフォールバック
+        batch_results = get_all_persona_opinions_batch(
+            title, persona_source, display_persona_ids
+        )
         generated_comments: list[str] = []
         for slot_idx, pid in enumerate(display_persona_ids):
+            batch_comment = batch_results[slot_idx] if slot_idx < len(batch_results) else ""
+            if batch_comment:
+                personas_3[slot_idx] = batch_comment
+                generated_comments.append(batch_comment)
+                continue
+            # フォールバック: 個別呼び出し
+            logger.info("ペルソナ%d個別フォールバック (pid=%d)", slot_idx, pid)
             _wait_between_gemini_personas(slot_idx)
             try:
                 comment = (
