@@ -348,8 +348,15 @@ def _rank_by_trending(items: list[NewsItem], trend_keywords: list[str]) -> list[
     }
 
     def score(x):
+        import re as _re
         text = f"{x.title} {x.summary}"
-        trend = sum(1 for kw in trend_keywords if kw in text)
+        trend = 0
+        for kw in trend_keywords:
+            tokens = [t for t in _re.split(r"\s+", kw.strip()) if len(t) >= 2]
+            if kw in text:
+                trend += 2  # フレーズ完全一致
+            else:
+                trend += sum(1 for t in tokens if t in text)  # トークン個別一致
         weight = SOURCE_WEIGHT.get(x.source, 1.0)
         return (trend * 10 + weight, x.published)
 

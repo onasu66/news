@@ -30,25 +30,61 @@ LOW_VALUE_TITLE_PATTERNS = re.compile(
 )
 
 HIGH_VALUE_KEYWORDS = {
+    # 政治・経済・社会制度
     "政策", "法案", "経済", "規制", "金利", "インフレ", "GDP", "予算", "制裁",
     "半導体", "AI", "量子", "脱炭素", "再生可能エネルギー", "外交", "安全保障",
     "サミット", "条約", "改革", "選挙", "判決", "裁判", "汚職", "調査",
+    # 健康・科学
     "体重", "筋肉", "老化", "健康", "運動", "栄養", "睡眠", "予防",
+    # 災害・緊急事態（これらは検索急増しやすい高価値ニュース）
+    "地震", "噴火", "津波", "台風", "洪水", "土砂崩れ", "大雨", "警報", "避難",
+    "震度", "マグニチュード", "活火山", "火山", "富士山", "南海トラフ",
+    "原発", "放射線", "停電", "断水", "被害", "救助", "行方不明",
+    # 英語
     "policy", "regulation", "economy", "inflation", "legislation", "sanctions",
     "semiconductor", "quantum", "climate", "diplomacy", "summit", "reform",
     "election", "ruling", "investigation",
     "muscle", "aging", "protein", "exercise", "diet", "health", "longevity",
+    "earthquake", "eruption", "tsunami", "typhoon", "flood", "disaster", "evacuation",
 }
 
 QUESTION_WORDS = ["何", "とは", "いつ", "どうして", "なぜ", "どう", "どこ", "誰"]
 
 
-def lightweight_filter(title: str, summary: str, category: str) -> bool:
+def _trend_token_match(text: str, trend_keywords: list[str]) -> int:
+    """トレンドキーワードを単語に分割してテキストに何個マッチするか返す。
+    フレーズ一致(例:「富士山 地震」→ 'text' に '富士山' と '地震' が両方あるか)に対応。"""
+    count = 0
+    for kw in trend_keywords:
+        tokens = [t for t in re.split(r"\s+", kw.strip()) if len(t) >= 2]
+        if not tokens:
+            continue
+        # フレーズ全体が完全一致 → 2点
+        if kw in text:
+            count += 2
+        # 各トークンが個別に含まれている → 1点/トークン
+        else:
+            count += sum(1 for t in tokens if t in text)
+    return count
+
+
+def lightweight_filter(
+    title: str,
+    summary: str,
+    category: str,
+    trend_keywords: list[str] | None = None,
+) -> bool:
     """低価値記事なら False を返す。残すべきなら True。
-    研究・論文はLOW_VALUE_TITLE_PATTERNS（results/score等）を適用しない。学術論文では一般的な語のため。"""
+    研究・論文はLOW_VALUE_TITLE_PATTERNS（results/score等）を適用しない。学術論文では一般的な語のため。
+    trend_keywords: トレンドに強くマッチする記事はカテゴリフィルタをバイパスする。"""
     text = f"{title} {summary}"
     if len(text.strip()) < MIN_CONTENT_LENGTH:
         return False
+
+    # トレンドに2トークン以上マッチ → 強制通過（カテゴリ・パターン不問）
+    if trend_keywords and _trend_token_match(text, trend_keywords) >= 2:
+        return True
+
     if category != "研究・論文":
         if LOW_VALUE_TITLE_PATTERNS.search(title):
             if not any(kw in text for kw in HIGH_VALUE_KEYWORDS):
@@ -154,7 +190,18 @@ def score_article(title: str, summary: str, category: str,
 
     trend_bonus = 0
     if trend_keywords:
-        trend_bonus = sum(5 for kw in trend_keywords if kw.lower() in text.lower())
+        text_lower = text.lower()
+        for kw in trend_keywords:
+            tokens = [t for t in re.split(r"\s+", kw.strip()) if len(t) >= 2]
+            if not tokens:
+                continue
+            # フレーズ完全一致: +10（非常に強いシグナル）
+            if kw.lower() in text_lower:
+                trend_bonus += 10
+            else:
+                # トークン個別マッチ: +4/トークン（「富士山」「地震」それぞれが記事に含まれる場合）
+                token_hits = sum(1 for t in tokens if t.lower() in text_lower)
+                trend_bonus += token_hits * 4
 
     recency_bonus = 0.0
     if published is not None:
@@ -184,7 +231,7 @@ def rank_and_filter_articles(
     """
     filtered = [
         item for item in items
-        if lightweight_filter(item.title, item.summary, item.category)
+        if lightweight_filter(item.title, item.summary, item.category, trend_keywords)
     ]
     logger.info("軽量フィルタ: %d → %d件", len(items), len(filtered))
 

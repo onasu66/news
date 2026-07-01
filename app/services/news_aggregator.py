@@ -259,14 +259,19 @@ def _detect_paper_filter(domain: str, title: str, summary: str) -> str:
 
 
 def _score_article_by_trends(item: NewsItem, trend_keywords: list[str]) -> int:
-    """記事がトレンドキーワード（Google・X急上昇）に何件マッチするか"""
+    """記事がトレンドキーワード（Google・X急上昇）に何件マッチするか。
+    フレーズ完全一致=2点、トークン個別一致=1点/トークンで計算。"""
     if not trend_keywords:
         return 0
+    import re as _re
     text = f"{item.title} {item.summary}"
     score = 0
     for kw in trend_keywords:
+        tokens = [t for t in _re.split(r"\s+", kw.strip()) if len(t) >= 2]
         if kw in text:
-            score += 1
+            score += 2  # フレーズ完全一致
+        else:
+            score += sum(1 for t in tokens if t in text)  # トークン個別一致
     return score
 
 
