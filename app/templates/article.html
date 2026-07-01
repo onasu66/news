@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 {% block title %}{{ article.title }}{% if article.category == '遐皮ｩｶ繝ｻ隲匁枚' %} 繧但I縺後ｏ縺九ｊ繧・☆縺剰ｧ｣隱ｬ{% else %} 窶・AI縺瑚ｧ｣隱ｬ{% endif %} | 遏･繝ｪ繝戡I{% endblock %}
-{% block meta_description %}{% if meta_description %}{{ meta_description|e }}{% elif article.summary %}{{ article.summary[:120]|e }}窶ｦ蛛我ｺｺAI縺瑚レ譎ｯ繝ｻ蠖ｱ髻ｿ繝ｻ繝昴う繝ｳ繝医ｒ繧上°繧翫ｄ縺吶￥隗｣隱ｬ縲・% else %}{{ article.title|e }} 窶・遏･繝ｪ繝戡I縺梧怙譁ｰ繝九Η繝ｼ繧ｹ繝ｻ隲匁枚繧偵ｏ縺九ｊ繧・☆縺剰ｧ｣隱ｬ縺励∪縺吶・% endif %}{% endblock %}
+{% block meta_description %}{% if meta_description %}{{ meta_description|e }}{% elif article.summary %}{{ article.summary[:120]|e }}窶ｦ蛛我ｺｺAI縺瑚レ譎ｯ繝ｻ蠖ｱ髻ｿ繝ｻ繝昴う繝ｳ繝医ｒ繧上°繧翫ｄ縺吶￥隗｣隱ｬ縲・{% else %}{{ article.title|e }} 窶・遏･繝ｪ繝戡I縺梧怙譁ｰ繝九Η繝ｼ繧ｹ繝ｻ隲匁枚繧偵ｏ縺九ｊ繧・☆縺剰ｧ｣隱ｬ縺励∪縺吶・{% endif %}{% endblock %}
 {% block meta_keywords %}
     {% if article.category == '遐皮ｩｶ繝ｻ隲匁枚' %}
     <meta name="keywords" content="{{ article.title }},{{ article.title }} 繧上°繧翫ｄ縺吶￥,{{ article.title }} 隗｣隱ｬ,{{ article.title }} AI隗｣隱ｬ,{{ article.source }},隲匁枚隗｣隱ｬ,AI隲匁枚,隲匁枚隕∫ｴБI,讖滓｢ｰ蟄ｦ鄙定ｫ匁枚,豺ｱ螻､蟄ｦ鄙定ｫ匁枚,LLM隲匁枚,逕滓・AI隲匁枚,arXiv譌･譛ｬ隱・闍ｱ隱櫁ｫ匁枚譌･譛ｬ隱・遐皮ｩｶ隗｣隱ｬ,AI遐皮ｩｶ繧上°繧翫ｄ縺吶￥,遏･繝ｪ繝戡I">
