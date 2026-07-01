@@ -1,42 +1,42 @@
 {% extends "base.html" %}
-{% block title %}AI論文をわかりめE��く解説  EarXiv・Nature・Science最新論文 | 知リポAI{% endblock %}
-{% block meta_description %}AI論文・研究論文をわかりめE��く日本語で解説。arXiv・Nature・Scienceから最新論文を毎日収集し、機械学習�ELLM・深層学習論文の要紁E�E解説を提供。論文検索・AI最新研究の惁E��収集に、E{% endblock %}
-{% block meta_keywords %}<meta name="keywords" content="AI論文,論文解説,論文要約AI,AI論文わかりやすく,arXiv日本誁EarXiv解説,英語論文日本誁E論文翻訳AI,機械学習論文,機械学習論文解説,深層学習論文,LLM論文,大規模言語モチE��論文,生�EAI論文,ChatGPT論文,GPT論文解説,自然言語�E琁E��文,強化学習論文,画像生成AI論文,Vision Transformer,マルチモーダルAI論文,拡散モチE��論文,Nature論文日本誁EScience論文解説,AI最新研究,研究論文まとめEAI研究わかりやすく,知リポAI">{% endblock %}
+{% block title %}AI論文をわかりやすく解説  EarXiv・Nature・Science最新論文 | 知リポAI{% endblock %}
+{% block meta_description %}AI論文・研究論文をわかりやすく日本語で解説。arXiv・Nature・Scienceから最新論文を毎日収集し、機械学習・LLM・深層学習論文の要約解説を提供。論文検索・AI最新研究の情報収集に。{% endblock %}
+{% block meta_keywords %}<meta name="keywords" content="AI論文,論文解説,論文要約AI,AI論文わかりやすく,arXiv日本語arXiv解説,英語論文日本語論文翻訳AI,機械学習論文,機械学習論文解説,深層学習論文,LLM論文,大規模言語モデル論文,生成AI論文,ChatGPT論文,GPT論文解説,自然言語処理論文,強化学習論文,画像生成AI論文,Vision Transformer,マルチモーダルAI論文,拡散モデル論文,Nature論文日本語Science論文解説,AI最新研究,研究論文まとめAI研究わかりやすく,知リポAI">{% endblock %}
 {% block meta_extra %}
-    {# トップ（論文�E�E canonical は `/` 固定。page>1 は noindex #}
+    {# トップ（論文ページ）E canonical は `/` 固定。page>1 は noindex #}
     <link rel="canonical" href="{{ site_url }}/">
     {% set page_param = request.query_params.get('page') %}
     {% if page_param and page_param != '1' %}
     <meta name="robots" content="noindex,follow">
     {% endif %}
     <meta property="og:type" content="website">
-    <meta property="og:title" content="AI論文をわかりめE��く解説  EarXiv・Nature最新論文 | 知リポAI">
-    <meta property="og:description" content="arXiv・Nature・Scienceの最新AI論文を毎日収集し、偉人AIが日本語でわかりやすく解説。機械学習�ELLM・深層学習�E論文要紁E��、E>
+    <meta property="og:title" content="AI論文をわかりやすく解説  EarXiv・Nature最新論文 | 知リポAI">
+    <meta property="og:description" content="arXiv・Nature・Scienceの最新AI論文を毎日収集し、偉人AIが日本語でわかりやすく解説。機械学習・LLM・深層学習の論文要約。>
     <meta property="og:image" content="{{ site_url }}/static/og/og-research.jpg">
     <meta property="og:url" content="{{ site_url }}/">
     <meta property="og:site_name" content="知リポAI">
     <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:title" content="AI論文をわかりめE��く解説  EarXiv・Nature最新論文 | 知リポAI">
-    <meta name="twitter:description" content="arXiv・Nature・Scienceの最新AI論文を毎日収集し、偉人AIが日本語でわかりやすく解説、E>
+    <meta name="twitter:title" content="AI論文をわかりやすく解説  EarXiv・Nature最新論文 | 知リポAI">
+    <meta name="twitter:description" content="arXiv・Nature・Scienceの最新AI論文を毎日収集し、偉人AIが日本語でわかりやすく解説。>
     <meta name="twitter:image" content="{{ site_url }}/static/og/og-research.jpg">
 {% endblock %}
 {% block content %}
 <section class="site-hero">
     <div class="site-hero-inner">
         <span class="site-hero-eyebrow">📚 AI論文アーカイチE/span>
-        <h1 class="site-hero-title">偉人AIがAI論文・研究論文をわかりめE��く解説</h1>
-        <p class="site-hero-desc">arXiv・Nature・Scienceから最新のAI論文・研究論文を毎日収集。ブチE��・アインシュタイン・ニ�Eチェなど偉人AIが、E��解な機械学習�ELLM論文を、E刁E��琁E��」できる日本語解説に変換します、E/p>
+        <h1 class="site-hero-title">偉人AIがAI論文・研究論文をわかりやすく解説</h1>
+        <p class="site-hero-desc">arXiv・Nature・Scienceから最新のAI論文・研究論文を毎日収集。ブッダ・アインシュタイン・ニーチェなど偉人AIが、難解な機械学習・LLM論文をわかりやすい日本語解説に変換します。</p>
     </div>
 </section>
 <div class="page-layout page-layout--papers">
     <div class="content-main">
-        <div class="page-switch" role="navigation" aria-label="ペ�Eジ刁E��">
+        <div class="page-switch" role="navigation" aria-label="ページ切り替え">
             <a href="/" class="page-switch-link is-active" aria-current="page">論文</a>
             <a href="/news" class="page-switch-link">ニュース</a>
         </div>
         {% if featured %}
-        <section class="home-featured-section" aria-label="話題�Eニュース">
-            <h2 class="home-section-title">🔥 話題�Eニュース</h2>
+        <section class="home-featured-section" aria-label="話題のニュース">
+            <h2 class="home-section-title">🔥 話題のニュース</h2>
             <article class="home-featured-card persona-p{{ featured.persona_id }}">
                 <div class="home-featured-body">
                     <span class="home-featured-source">{{ featured.source }}</span>
@@ -69,7 +69,7 @@
                     </div>
                     <p class="home-consult-answer">{{ latest_consultation.answer }}</p>
                 </div>
-                <a href="/consultation" class="home-featured-cta">相諁E��を見る ↁE/a>
+                <a href="/consultation" class="home-featured-cta">相談を見る →/a>
             </article>
         </section>
         {% endif %}
@@ -88,7 +88,7 @@
 
         <div class="news-grid" id="papers-grid">
             {% if not has_papers %}
-            <p class="empty-msg">論文の記事がまだありません。RSS取り込み後に表示されます、E/p>
+            <p class="empty-msg">論文の記事がまだありません。RSS取り込み後に表示されます。/p>
             {% else %}
             {% for item in all_papers %}
             <article class="news-card animate-fade-in" data-category="{{ item.paper_domain or '総合科学' }}">
@@ -113,19 +113,19 @@
 
         {% if has_papers %}
         <section class="papers-about-section">
-            <h2 class="papers-about-title">AI論文・研究論文の解説につぁE��</h2>
+            <h2 class="papers-about-title">AI論文・研究論文の解説について</h2>
             <div class="papers-about-grid">
                 <div class="papers-about-item">
-                    <h3 class="papers-about-item-title">📄 対応してぁE��論文・ソース</h3>
-                    <p class="papers-about-item-desc">arXiv�E�Es.AI・cs.LG・cs.CL・cs.CV�E�、Nature、Science、BMJ Open、PLOS ONE、Frontiers など主要な一次ソースから毎日収集。機械学習�ELLM・深層学習�E医学・物琁E��の最新研究論文を幁E��E��カバ�Eします、E/p>
+                    <h3 class="papers-about-item-title">📄 対応している論文・ソース</h3>
+                    <p class="papers-about-item-desc">arXiv（cs.AI・cs.LG・cs.CL・cs.CV）、Nature、Science、BMJ Open、PLOS ONE、Frontiers など主要な一次ソースから毎日収集。機械学習・LLM・深層学習・医学・物理の最新研究論文を幅広くカバーします。</p>
                 </div>
                 <div class="papers-about-item">
                     <h3 class="papers-about-item-title">🧠 わかりやすく解説する方況E/h3>
-                    <p class="papers-about-item-desc">、E刁E��琁E��」では論文の要点めEつのポイントに整琁E��、E刁E��深掘り」ではブッダ・アインシュタイン・ニ�Eチェなど偉人AIがそれぞれ�E視点で解説します。難解な英語論文も日本語でわかりやすく読めます、E/p>
+                    <p class="papers-about-item-desc">「サクッと理解」では論文の要点を5つのポイントに整理。「深掘り」ではブッダ・アインシュタイン・ニーチェなど偉人AIがそれぞれの視点で解説します。難解な英語論文も日本語でわかりやすく読めます。</p>
                 </div>
                 <div class="papers-about-item">
                     <h3 class="papers-about-item-title">🔗 一次ソースの確誁E/h3>
-                    <p class="papers-about-item-desc">吁E��文ペ�Eジには arXiv・Nature・DOI への直接リンクを掲載、EI解説はあくまで補助惁E��であり、研究・学習�E業務利用の際�E忁E��原論文をご確認ください、E/p>
+                    <p class="papers-about-item-desc">各論文ページには arXiv・Nature・DOI への直接リンクを掲載。AI解説はあくまで補助情報であり、研究・学習・業務利用の際は必ず原論文をご確認ください。/p>
                 </div>
             </div>
         </section>
@@ -135,7 +135,7 @@
             <p>読み込み中...</p>
         </div>
         <div id="papers-load-error" class="infinite-load-error" role="alert">
-            <p>論文一覧の読み込みに失敗しました、E/p>
+            <p>論文一覧の読み込みに失敗しました。/p>
             <button type="button" class="infinite-retry-btn" id="papers-retry">もう一度試ぁE/button>
         </div>
         <div id="papers-feed-announcer" class="visually-hidden" aria-live="polite" aria-atomic="true"></div>
@@ -150,19 +150,19 @@
 <section class="seo-coverage-section">
     <div class="seo-coverage-inner">
         <h2 class="seo-coverage-title">対応AI論文・研究論文ジャンル</h2>
-        <p class="seo-coverage-desc">arXiv・Nature・Science・BMJなど一次ソースから毎日収集。機械学習�E深層学習�ELLMから画像生成AI・自然言語�E琁E��で、英語論文を偉人AIが日本語でわかりやすく解説・要紁E��ます、E/p>
+        <p class="seo-coverage-desc">arXiv・Nature・Science・BMJなど一次ソースから毎日収集。機械学習・深層学習・LLMから画像生成AI・自然言語処理で、英語論文を偉人AIが日本語でわかりやすく解説・要約します。/p>
         <ul class="seo-tag-list">
-            <li>機械学習！Eachine Learning�E�論文</li>
-            <li>深層学習！Eeep Learning�E�論文</li>
-            <li>LLM・大規模言語モチE��論文</li>
-            <li>生�EAI・拡散モチE��論文</li>
-            <li>自然言語�E琁E��ELP�E�論文</li>
+            <li>機械学習（Machine Learning）論文</li>
+            <li>深層学習（Deep Learning）論文</li>
+            <li>LLM・大規模言語モデル論文</li>
+            <li>生成AI・拡散モデル論文</li>
+            <li>自然言語処理（NLP）論文</li>
             <li>コンピュータビジョン・画像認識論文</li>
-            <li>強化学習！Eeinforcement Learning�E�論文</li>
+            <li>強化学習（Reinforcement Learning）論文</li>
             <li>マルチモーダルAI論文</li>
             <li>ロボティクス・AI制御論文</li>
-            <li>AIアライメント�EAI安�E性論文</li>
-            <li>arXiv最新論文�E�Es.AI / cs.LG / cs.CL / cs.CV�E�E/li>
+            <li>AIアライメント・AI安全性論文</li>
+            <li>arXiv最新論文（cs.AI / cs.LG / cs.CL / cs.CV）</li>
             <li>Nature・Science・BMJ研究論文</li>
         </ul>
     </div>

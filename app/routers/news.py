@@ -158,17 +158,21 @@ def _public_html_cache_headers() -> dict[str, str]:
 _NEWS_TAB_CATEGORY_SET = frozenset({"国内", "国際", "テクノロジー", "政治・社会", "スポーツ", "エンタメ"})
 _NEWS_TAB_OTHER = "その他"
 
-# RSS の MD5 16hex / 手動 manual- / curated cc-。これに合わない id は DB に触れず 404（クローラーのゴミURL対策）。
+# RSS の MD5 16hex / 手動 manual- / curated cc- / スラッグ（日本語+ハイフン+英数字）。
+# スラッグURLは article_url_path() が生成する形式（タイトル-suffix6文字）
 _TOPIC_ID_PLAUSIBLE = re.compile(
-    r"^(?:[0-9a-f]{16}|manual-[0-9a-f]{8,40}|cc-[0-9a-f]{12,20})$"
+    r"^(?:[0-9a-f]{16}|manual-[0-9a-f]{8,40}|cc-[0-9a-f]{12,20}|dg-[0-9a-f]{12,20}|gn-[0-9a-f]{12,20}|.{2,80})$"
 )
 
 
 def _topic_id_plausible(topic_id: str) -> bool:
     t = (topic_id or "").strip()
-    if not t or len(t) > 72:
+    if not t or len(t) > 120:
         return False
-    return bool(_TOPIC_ID_PLAUSIBLE.fullmatch(t))
+    # 明らかに不正なパターンは弾く（パストラバーサル等）
+    if ".." in t or "/" in t or "\\" in t or "\x00" in t:
+        return False
+    return True
 
 
 _BOT_UA_KEYWORDS = (
@@ -2307,7 +2311,11 @@ async def topic_detail(request: Request, topic_id: str):
     if cached_ids and isinstance(cached_personas, list) and len(cached_personas) == 3:
         display_persona_ids = cached_ids[:3]
         display_personas = [{**PERSONAS[i], "image_url": _persona_image_url(PERSONAS[i].get("name"))} for i in display_persona_ids]
-        personas_data = [str(x) if x is not None else "" for x in cached_personas[:3]]
+        personas_data = [
+            json.dumps(x, ensure_ascii=False) if isinstance(x, (dict, list))
+            else (str(x) if x is not None else "")
+            for x in cached_personas[:3]
+        ]
     else:
         raw_personas = cached.get("personas", []) if cached else []
         all_personas_data = raw_personas if isinstance(raw_personas, list) else []
@@ -2317,14 +2325,20 @@ async def topic_detail(request: Request, topic_id: str):
         display_indices = _rnd.sample(range(n_p), min(3, n_p)) if n_p else []
         display_personas = [{**PERSONAS[i], "image_url": _persona_image_url(PERSONAS[i].get("name"))} for i in display_indices]
         personas_data = [
-            str(all_personas_data[i]) if i < len(all_personas_data) and all_personas_data[i] is not None else ""
+            json.dumps(all_personas_data[i], ensure_ascii=False) if i < len(all_personas_data) and isinstance(all_personas_data[i], (dict, list))
+            else (str(all_personas_data[i]) if i < len(all_personas_data) and all_personas_data[i] is not None else "")
             for i in display_indices
         ]
         display_persona_ids = display_indices
     # Firestore の Decimal 等で Jinja |tojson が落ちるのを防ぐ＋型崩れを正規化
+    # dict の場合は json.dumps で変換（str() は Python式シングルクォートになりJS JSON.parseが失敗する）
     ps_wrapped = _json_safe_for_template(personas_data)
     if isinstance(ps_wrapped, list):
-        personas_data = [str(x) if x is not None else "" for x in ps_wrapped]
+        personas_data = [
+            json.dumps(x, ensure_ascii=False) if isinstance(x, (dict, list))
+            else (str(x) if x is not None else "")
+            for x in ps_wrapped
+        ]
     quick_understand = _sanitize_quick_understand_for_page(cached.get("quick_understand") if cached else None)
     # 投票クイズ・論文ナレッジグラフ/クイズは当面非表示（キャッシュにあっても出さない）
     vote_data = None

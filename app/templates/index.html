@@ -1,20 +1,20 @@
 {% extends "base.html" %}
-{% block title %}AIニュースまとめE E最新惁E��を人工知能が解説 | 知リポAI{% endblock %}
-{% block meta_description %}国冁E���E最新ニュースをAIが解説してまとめ、EHK・BBC・Reuters・TechCrunchなど信頼メチE��アの惁E��を、偉人AIが背景・ポイント�E影響をわかりめE��く解説。人工知能・チE��ノロジー・国際ニュースの最新惁E��を毎日更新、E{% endblock %}
-{% block meta_keywords %}<meta name="keywords" content="AIニュース,AI最新ニュース,生�EAIニュース,ChatGPTニュース,OpenAIニュース,GeminiAIニュース,LLMニュース,AIニュースまとめE人工知能最新惁E��,AI最新惁E��,チE��ノロジーニュース,チE��ノロジー最新惁E��,AI最新動向,AI規制ニュース,国冁E��ュースAI解説,国際ニュースAI解説,ニュース解説AI,科学ニュース解説,人工知能ニュース日本誁E知リポAI">{% endblock %}
+{% block title %}AIニュースまとめ — 最新情報を人工知能が解説 | 知リポAI{% endblock %}
+{% block meta_description %}国内外最新ニュースをAIが解説してまとめ。NHK・BBC・Reuters・TechCrunchなど信頼メディアの情報を、偉人AIが背景・ポイントと影響をわかりやすく解説。人工知能・テクノロジー・国際ニュースの最新情報を毎日更新。{% endblock %}
+{% block meta_keywords %}<meta name="keywords" content="AIニュース,AI最新ニュース,生成AIニュース,ChatGPTニュース,OpenAIニュース,GeminiAIニュース,LLMニュース,AIニュースまとめ,人工知能最新情報,AI最新情報,テクノロジーニュース,テクノロジー最新情報,AI最新動向,AI規制ニュース,国内外ニュースAI解説,国際ニュースAI解説,ニュース解説AI,科学ニュース解説,人工知能ニュース日本語,知リポAI">{% endblock %}
 {% block meta_extra %}
-    {# キーワード付きURLは重褁E��なりやすいので正規URLへ統一 + noindex 寁E�� #}
+    {# キーワード付きURLは重複になりやすいので正規URLへ統一 + noindex 対策 #}
     <link rel="canonical" href="{{ site_url }}/news">
     {% if search_keyword %}
     <meta name="robots" content="noindex,follow">
     {% endif %}
     <meta property="og:type" content="website">
-    <meta property="og:title" content="AIニュースまとめE E最新惁E��を人工知能が解説 | 知リポAI">
-    <meta property="og:description" content="NHK・BBC・Reuters等�E最新ニュースを偉人AIが解説。人工知能・チE��ノロジー・国際ニュースの最新惁E��を毎日更新、E>
+    <meta property="og:title" content="AIニュースまとめ — 最新情報を人工知能が解説 | 知リポAI">
+    <meta property="og:description" content="NHK・BBC・Reuters等の最新ニュースを偉人AIが解説。人工知能・テクノロジー・国際ニュースの最新情報を毎日更新。>
     <meta property="og:image" content="{{ og_image|default(site_url + '/static/og/og-tech.jpg') }}">
     <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:title" content="AIニュースまとめE E最新惁E��を人工知能が解説 | 知リポAI">
-    <meta name="twitter:description" content="NHK・BBC・Reuters等�E最新ニュースを偉人AIが解説。生成AI・ChatGPT・国際ニュースを毎日更新、E>
+    <meta name="twitter:title" content="AIニュースまとめ — 最新情報を人工知能が解説 | 知リポAI">
+    <meta name="twitter:description" content="NHK・BBC・Reuters等の最新ニュースを偉人AIが解説。生成AI・ChatGPT・国際ニュースを毎日更新。>
     <meta name="twitter:image" content="{{ og_image|default(site_url + '/static/og/og-tech.jpg') }}">
     <meta property="og:url" content="{{ site_url }}/news">
     <meta property="og:site_name" content="知リポAI">
@@ -24,19 +24,19 @@
 {% if not search_keyword %}
 <section class="site-hero site-hero--compact">
     <div class="site-hero-inner">
-        <h1 class="site-hero-title">AIニュースまとめE E偉人AIが解説</h1>
+        <h1 class="site-hero-title">AIニュースまとめ — 偉人AIが解説</h1>
     </div>
 </section>
 {% endif %}
 <div class="page-layout page-layout--news">
     <div class="content-main">
-        <div class="page-switch" role="navigation" aria-label="ペ�Eジ刁E��">
+        <div class="page-switch" role="navigation" aria-label="ページ切り替え">
             <a href="/" class="page-switch-link">論文</a>
             <a href="/news" class="page-switch-link is-active" aria-current="page">ニュース</a>
         </div>
         {% if featured_items and not search_keyword %}
-        <section class="home-featured-section" aria-label="話題�Eニュース">
-            <h2 class="home-section-title">🔥 話題�Eニュース</h2>
+        <section class="home-featured-section" aria-label="話題のニュース">
+            <h2 class="home-section-title">🔥 話題のニュース</h2>
             <div class="home-carousel-wrap">
                 <div class="home-carousel" id="featured-carousel" role="list">
                     {% for item in featured_items %}
@@ -85,7 +85,7 @@
                             </div>
                             <p class="home-consult-answer">{{ c.answer }}</p>
                         </div>
-                        <a href="/ai#past-consultations" class="home-featured-cta home-consult-card-link">相諁E��を見る ↁE/a>
+                        <a href="/ai#past-consultations" class="home-featured-cta home-consult-card-link">相談を見る →/a>
                     </article>
                     {% endfor %}
                 </div>
@@ -106,7 +106,7 @@
 
         {% if search_keyword %}
         <div class="search-result-header">
-            <p class="search-keyword-msg">「{{ search_keyword }}」�E関連記亁E/p>
+            <p class="search-keyword-msg">「{{ search_keyword }}」の関連記事/p>
             <a href="/news" class="search-clear">ÁEクリア</a>
         </div>
         {% endif %}
@@ -148,7 +148,7 @@
             <p>読み込み中...</p>
         </div>
         <div id="infinite-load-error" class="infinite-load-error" role="alert">
-            <p>記事一覧の読み込みに失敗しました、E/p>
+            <p>記事一覧の読み込みに失敗しました。/p>
             <button type="button" class="infinite-retry-btn" id="infinite-retry">もう一度試ぁE/button>
         </div>
         <div id="news-feed-announcer" class="visually-hidden" aria-live="polite" aria-atomic="true"></div>
@@ -159,19 +159,19 @@
 
     <aside class="sidebar">
         <div class="trends-box">
-            <h2 class="sidebar-title">📂 カチE��リで探ぁE/h2>
+            <h2 class="sidebar-title">📂 カテゴリリで探ぁE/h2>
             <ul class="trends-list">
                 <li><a href="/topics/ai" class="trend-link-internal">🔬 AI論文・研究</a></li>
-                <li><a href="/topics/tech" class="trend-link-internal">💡 チE��ノロジー</a></li>
+                <li><a href="/topics/tech" class="trend-link-internal">💡 テクノロジー</a></li>
                 <li><a href="/topics/science" class="trend-link-internal">🔭 科学</a></li>
                 <li><a href="/topics/world" class="trend-link-internal">🌍 国際ニュース</a></li>
-                <li><a href="/topics/social" class="trend-link-internal">📊 社会�E経渁E/a></li>
-                <li><a href="/topics/sports" class="trend-link-internal">⚽ スポ�EチE/a></li>
+                <li><a href="/topics/social" class="trend-link-internal">📊 社会・経済/a></li>
+                <li><a href="/topics/sports" class="trend-link-internal">⚽ スポーツ/a></li>
                 <li><a href="/topics/entertainment" class="trend-link-internal">🎬 エンタメ</a></li>
             </ul>
         </div>
         <div class="trends-box" style="margin-top:1rem;">
-            <h2 class="sidebar-title"><span class="icon-fire">📈</span> ぁE��検索されてぁE��</h2>
+            <h2 class="sidebar-title"><span class="icon-fire">📈</span> いま検索されています</h2>
             <ul class="trends-list">
                 {% for t in trends %}
                 <li>
@@ -190,19 +190,19 @@
 
 <section class="seo-coverage-section">
     <div class="seo-coverage-inner">
-        <h2 class="seo-coverage-title">知リポAIがカバ�Eするニュースジャンル</h2>
-        <p class="seo-coverage-desc">国冁E���E最新AIニュース・チE��ノロジーニュースを毎日5回更新。生成AI・ChatGPT・OpenAI・Geminiなど最新人工知能ニュースから、政治・社会�E国際ニュースまで、偉人AIがわかりめE��く解説します、E/p>
+        <h2 class="seo-coverage-title">知リポAIがカバーするニュースジャンル</h2>
+        <p class="seo-coverage-desc">国内外の最新AIニュース・テクノロジーニュースを毎日5回更新。生成AI・ChatGPT・OpenAI・Geminiなど最新人工知能ニュースから、政治・社会・国際ニュースまで、偉人AIがわかりやすく解説します。/p>
         <ul class="seo-tag-list">
-            <li>生�EAI・ChatGPT最新ニュース</li>
+            <li>生成AI・ChatGPT最新ニュース</li>
             <li>OpenAI・Anthropic・Google最新動向</li>
-            <li>LLM�E�大規模言語モチE���E�ニュース</li>
+            <li>LLM（大規模言語モデル）ニュース</li>
             <li>AI規制・政策ニュース</li>
-            <li>チE��ノロジー・科学最新惁E��</li>
-            <li>国冁E��新ニュースAI解説</li>
+            <li>テクノロジー・科学最新情報</li>
+            <li>国内外新ニュースAI解説</li>
             <li>国際ニュース日本語解説</li>
-            <li>経済�Eビジネスニュース</li>
+            <li>経済・ビジネスニュース</li>
             <li>政治・社会ニュース解説</li>
-            <li>スポ�EチE�Eエンタメニュース</li>
+            <li>スポーツ・エンタメニュース</li>
         </ul>
     </div>
 </section>
@@ -243,7 +243,7 @@
     initCarousel('consult-carousel');
 })();
 (function() {
-    // Genre tab filtering�E�Enews-grid 冁E�Eみ。他�Eージの .news-card と干渉しなぁE��E
+    // Genre tab filtering: #news-grid のみ。他ページの .news-card と干渉しない
     var grid = document.getElementById('news-grid');
     function gridCards() {
         return grid ? grid.querySelectorAll('.news-card') : [];

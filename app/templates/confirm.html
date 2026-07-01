@@ -4,7 +4,7 @@
 {% block content %}
 <div class="confirm-page">
     <h1 class="confirm-title">確認用</h1>
-    <p class="confirm-desc">RSSの最新記事を1件取り込み、OpenAIの動作や記事表示を確認できます。直近�E記事�Eここから削除できます、E/p>
+    <p class="confirm-desc">RSSの最新記事を1件取り込み、OpenAIの動作や記事表示を確認できます。直近の記事はここから削除できます。/p>
 
     <div class="confirm-actions">
         <button type="button" id="btn-import-one" class="btn-add-article">最新記事を1件取り込む</button>
@@ -12,19 +12,19 @@
     </div>
 
     <section class="confirm-list-section">
-        <h2 class="confirm-list-title">直近�E記事！E{ recent_articles|length }}件�E�E/h2>
+        <h2 class="confirm-list-title">直近の記事！E{ recent_articles|length }}件）E/h2>
         {% if recent_articles %}
         <ul class="confirm-article-list" id="confirm-article-list">
             {% for item in recent_articles %}
             <li class="confirm-article-item" data-article-id="{{ item.id }}">
                 <a href="{{ article_url(item) }}" class="confirm-article-link">{{ item.title[:60] }}{% if item.title|length > 60 %}...{% endif %}</a>
                 <span class="confirm-article-meta">{{ item.source }} · {{ item.category }}</span>
-                <button type="button" class="btn-delete-article" data-article-id="{{ item.id }}" title="こ�E記事を削除">削除</button>
+                <button type="button" class="btn-delete-article" data-article-id="{{ item.id }}" title="この記事を削除">削除</button>
             </li>
             {% endfor %}
         </ul>
         {% else %}
-        <p class="confirm-empty">記事がありません。「最新記事を1件取り込む」で取り込んでください、E/p>
+        <p class="confirm-empty">記事がありません。「最新記事を1件取り込む」で取り込んでください。/p>
         {% endif %}
     </section>
 </div>
@@ -80,7 +80,7 @@
     document.querySelectorAll('.btn-delete-article').forEach(function(btn) {
         btn.addEventListener('click', function() {
             var id = this.getAttribute('data-article-id');
-            if (!id || !confirm('こ�E記事を削除しますか�E�E)) return;
+            if (!id || !confirm('この記事を削除しますか？E)) return;
             var row = this.closest('.confirm-article-item');
             this.disabled = true;
             this.textContent = '削除中...';

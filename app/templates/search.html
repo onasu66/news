@@ -5,14 +5,14 @@
     <meta name="robots" content="noindex,follow">
     <meta property="og:type" content="website">
     <meta property="og:title" content="探ぁE E論文・ニュースを横断検索 | 知リポAI">
-    <meta property="og:description" content="キーワードを絁E��合わせて、AI論文めEIニュースも横断検索できます、E>
+    <meta property="og:description" content="キーワードを組み合わせて、AI論文めEIニュースも横断検索できます。>
     <meta property="og:url" content="{{ site_url }}/search">
     <meta property="og:site_name" content="知リポAI">
 {% endblock %}
 {% block content %}
 <section class="page-header">
     <h1 class="page-title">🔍 探ぁE/h1>
-    <p class="page-desc">キーワードを絁E��合わせて、論文もニュースも横断検索できます、E/p>
+    <p class="page-desc">キーワードを組み合わせて、論文もニュースも横断検索できます。/p>
 </section>
 <div class="search-page-wrap">
 <div class="search-box search-box--rich">
@@ -28,7 +28,7 @@
     </div>
 </div>
 {% if query %}
-<p class="search-result-count search-result-count--rich">「{{ query }}」�E検索結果: {{ results|length }}件</p>
+<p class="search-result-count search-result-count--rich">「{{ query }}」の検索結果: {{ results|length }}件</p>
 {% endif %}
 <div class="news-grid" id="news-grid">
     {% for item in results %}
@@ -48,7 +48,7 @@
     {% endfor %}
 </div>
 {% if query and not results %}
-<p class="empty-msg">該当記事が見つかりませんでした。キーワードを短くするか、別の語でお試しください、E/p>
+<p class="empty-msg">該当記事が見つかりませんでした。キーワードを短くするか、別の語でお試しください。/p>
 {% endif %}
 </div>
 {% endblock %}

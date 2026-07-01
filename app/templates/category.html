@@ -25,7 +25,7 @@
         <nav class="article-breadcrumb" aria-label="パンくず" style="padding: 0.6rem 0 0.2rem;">
             <ol itemscope itemtype="https://schema.org/BreadcrumbList" style="display:flex;gap:0.4rem;list-style:none;padding:0;margin:0;font-size:0.8rem;color:var(--color-text-muted);">
                 <li itemprop="itemListElement" itemscope itemtype="https://schema.org/ListItem">
-                    <a itemprop="item" href="/"><span itemprop="name">ホ�Eム</span></a>
+                    <a itemprop="item" href="/"><span itemprop="name">ホーム</span></a>
                     <meta itemprop="position" content="1">
                 </li>
                 <li aria-hidden="true">›</li>
@@ -66,13 +66,13 @@
             {% endfor %}
         </div>
         {% else %}
-        <p class="empty-msg">こ�EカチE��リの記事�Eまだありません、E/p>
+        <p class="empty-msg">このカテゴリの記事はまだありません。/p>
         {% endif %}
     </div>
 
     <aside class="sidebar">
         <div class="trends-box">
-            <h2 class="sidebar-title">📂 他�EカチE��リ</h2>
+            <h2 class="sidebar-title">📂 他のカテゴリ</h2>
             <ul class="trends-list">
                 {% for other_slug, other_info in other_categories.items() %}
                 <li>
@@ -84,11 +84,11 @@
             </ul>
         </div>
         <div class="trends-box" style="margin-top:1rem;">
-            <h2 class="sidebar-title">🔗 関連ペ�Eジ</h2>
+            <h2 class="sidebar-title">🔗 関連ページ</h2>
             <ul class="trends-list">
                 <li><a href="/news" class="trend-link-internal">📰 全ニュース一覧</a></li>
                 <li><a href="/personas" class="trend-link-internal">📜 14人の偉人AIを見る</a></li>
-                <li><a href="/ai" class="trend-link-internal">🗳�E�E推し偉人AIに投票</a></li>
+                <li><a href="/ai" class="trend-link-internal">🗳️ 推し偉人AIに投票</a></li>
             </ul>
         </div>
     </aside>
@@ -96,8 +96,8 @@
 
 <section class="seo-coverage-section">
     <div class="seo-coverage-inner">
-        <h2 class="seo-coverage-title">{{ cat_info.label }}の最新惁E��を偉人AIが解説</h2>
-        <p class="seo-coverage-desc">{{ cat_info.hero_desc }} 記事�E毎日自動更新。ブチE��・ニ�Eチェ・織田信長・アインシュタインなど14人の偉人AIがそれぞれ�E視点で解説します、E/p>
+        <h2 class="seo-coverage-title">{{ cat_info.label }}の最新情報を偉人AIが解説</h2>
+        <p class="seo-coverage-desc">{{ cat_info.hero_desc }} 記事は毎日自動更新。ブッダ・ニーチェ・織田信長・アインシュタインなど14人の偉人AIがそれぞれの視点で解説します。/p>
     </div>
 </section>
 {% endblock %}
