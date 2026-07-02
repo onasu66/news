@@ -418,6 +418,20 @@ def _persona_image_url(name: str | None) -> str:
     return PERSONA_IMAGE_MAP.get((name or "").strip(), "/static/site-imgs/ロゴ.png")
 
 
+def _persona_display_comment(raw: str) -> str:
+    """persona opinion 文字列を表示用テキストに変換。
+    JSON形式（{"short": ..., "body": ...}）ならshortを優先して返す。"""
+    s = (raw or "").strip()
+    if s.startswith("{"):
+        try:
+            obj = json.loads(s)
+            if isinstance(obj, dict):
+                return str(obj.get("short") or obj.get("body") or "").strip()
+        except Exception:
+            pass
+    return s
+
+
 def _get_featured_items_with_persona(news_list: list, max_items: int = 3) -> list[dict]:
     """解説つき記事から話題記事+偉人コメントを最大 max_items 件取得する。"""
     from app.services.explanation_cache import get_cached
@@ -439,14 +453,14 @@ def _get_featured_items_with_persona(news_list: list, max_items: int = 3) -> lis
                 isinstance(cached_personas, list) and len(cached_personas) == 3:
             try:
                 persona_id = int(display_ids[0])
-                comment = str(cached_personas[0]) if cached_personas[0] else ""
+                comment = _persona_display_comment(str(cached_personas[0])) if cached_personas[0] else ""
             except Exception:
                 pass
         elif isinstance(cached_personas, list):
             for pid, c in enumerate(cached_personas):
                 if c and 0 <= pid < len(PERSONAS):
                     persona_id = pid
-                    comment = str(c)
+                    comment = _persona_display_comment(str(c))
                     break
         if persona_id is None or not (0 <= persona_id < len(PERSONAS)):
             continue
@@ -2290,7 +2304,7 @@ async def topic_detail(request: Request, topic_id: str):
     if not og_image or is_placeholder_image(og_image):
         from app.services.image_assets import category_og_path
         og_image = f"{site_url}{category_og_path(getattr(item, 'category', None))}"
-    cached = get_cached(topic_id)
+    cached = get_cached(item.id)
     blocks = _sanitize_blocks(cached["blocks"]) if cached and cached.get("blocks") else []
     def _normalize_persona_ids(ids) -> list[int]:
         if not isinstance(ids, list):
@@ -2372,7 +2386,7 @@ async def topic_detail(request: Request, topic_id: str):
         all_news = []
     next_article = prev_article = None
     for i, a in enumerate(all_news):
-        if a.id == topic_id:
+        if a.id == item.id:
             if i + 1 < len(all_news):
                 next_article = all_news[i + 1]
             if i > 0:
@@ -2386,9 +2400,9 @@ async def topic_detail(request: Request, topic_id: str):
         pick_same_category_articles,
     )
 
-    pool = [a for a in all_news if a.id != topic_id]
+    pool = [a for a in all_news if a.id != item.id]
     related = pick_related_articles(item, pool, limit=6)
-    exclude_ids = {topic_id, *(getattr(a, "id", "") for a in related)}
+    exclude_ids = {item.id, *(getattr(a, "id", "") for a in related)}
     same_category_articles = pick_same_category_articles(item, pool, exclude_ids, limit=4)
     exclude_ids |= {getattr(a, "id", "") for a in same_category_articles}
     latest_articles = pick_latest_articles(item, pool, exclude_ids, limit=5)
@@ -2460,7 +2474,7 @@ async def topic_detail(request: Request, topic_id: str):
             "display_persona_ids": display_persona_ids,
             "all_personas": all_personas_enriched,
             "site_url": site_url,
-            "article_url": article_url,
+            "canonical_url": article_url,
             "og_image": og_image,
             "blocks": blocks,
             "personas_data": personas_data,

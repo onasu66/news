@@ -148,7 +148,18 @@
       "PowerShell(New-Item *)",
       "PowerShell(Get-Content D:\\\\app\\\\newsite\\\\curated_articles.json -Raw | ConvertFrom-Json | Select-Object -First 3 | ForEach-Object { $_.date_published + \" | \" + $_.title })",
       "PowerShell(\\(Get-Item D:\\\\app\\\\newsite\\\\curated_articles.json\\).LastWriteTime)",
-      "PowerShell(Get-ScheduledTask *)"
+      "PowerShell(Get-ScheduledTask *)",
+      "Bash(python3 -c ' *)",
+      "Bash(py -c \"print\\(1\\)\")",
+      "Bash(py *)",
+      "Bash(xargs -I{} wc -l {})",
+      "Bash(grep -iE '\\\\.\\(js|css\\)$')",
+      "Bash(where node *)",
+      "Bash(node --check .scratch/extracted_0.js)",
+      "Bash(grep -oP 'ssrPersonas = \\\\[.{0,400}' .scratch/article_ok.html)",
+      "Bash(grep -oP 'ssrPersonas = \\\\[.{0,600}' .scratch/shortbody_article.html)",
+      "Bash(grep -oP 'ssrPersonas = \\\\[.{0,700}' .scratch/shortbody_article2.html)",
+      "Bash(taskkill //F //IM python.exe)"
     ]
   }
 }

@@ -4,15 +4,15 @@
 {% block content %}
 <div class="confirm-page">
     <h1 class="confirm-title">確認用</h1>
-    <p class="confirm-desc">RSSの最新記事を1件取り込み、OpenAIの動作や記事表示を確認できます。直近の記事はここから削除できます。/p>
+    <p class="confirm-desc">RSSの最新記事を1件取り込み、OpenAIの動作や記事表示を確認できます。直近の記事はここから削除できます。</p>
 
     <div class="confirm-actions">
         <button type="button" id="btn-import-one" class="btn-add-article">最新記事を1件取り込む</button>
-        <a href="/" class="confirm-back">ↁEトップへ</a>
+        <a href="/" class="confirm-back">←トップへ</a>
     </div>
 
     <section class="confirm-list-section">
-        <h2 class="confirm-list-title">直近の記事！E{ recent_articles|length }}件）E/h2>
+        <h2 class="confirm-list-title">直近の記事（{{ recent_articles|length }}件）</h2>
         {% if recent_articles %}
         <ul class="confirm-article-list" id="confirm-article-list">
             {% for item in recent_articles %}
@@ -24,7 +24,7 @@
             {% endfor %}
         </ul>
         {% else %}
-        <p class="confirm-empty">記事がありません。「最新記事を1件取り込む」で取り込んでください。/p>
+        <p class="confirm-empty">記事がありません。「最新記事を1件取り込む」で取り込んでください。</p>
         {% endif %}
     </section>
 </div>
@@ -80,7 +80,7 @@
     document.querySelectorAll('.btn-delete-article').forEach(function(btn) {
         btn.addEventListener('click', function() {
             var id = this.getAttribute('data-article-id');
-            if (!id || !confirm('この記事を削除しますか？E)) return;
+            if (!id || !confirm('この記事を削除しますか？')) return;
             var row = this.closest('.confirm-article-item');
             this.disabled = true;
             this.textContent = '削除中...';

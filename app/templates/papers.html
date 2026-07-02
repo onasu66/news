@@ -1,29 +1,29 @@
 {% extends "base.html" %}
-{% block title %}AI論文をわかりやすく解説  EarXiv・Nature・Science最新論文 | 知リポAI{% endblock %}
+{% block title %}AI論文をわかりやすく解説 — arXiv・Nature・Science最新論文 | 知リポAI{% endblock %}
 {% block meta_description %}AI論文・研究論文をわかりやすく日本語で解説。arXiv・Nature・Scienceから最新論文を毎日収集し、機械学習・LLM・深層学習論文の要約解説を提供。論文検索・AI最新研究の情報収集に。{% endblock %}
 {% block meta_keywords %}<meta name="keywords" content="AI論文,論文解説,論文要約AI,AI論文わかりやすく,arXiv日本語arXiv解説,英語論文日本語論文翻訳AI,機械学習論文,機械学習論文解説,深層学習論文,LLM論文,大規模言語モデル論文,生成AI論文,ChatGPT論文,GPT論文解説,自然言語処理論文,強化学習論文,画像生成AI論文,Vision Transformer,マルチモーダルAI論文,拡散モデル論文,Nature論文日本語Science論文解説,AI最新研究,研究論文まとめAI研究わかりやすく,知リポAI">{% endblock %}
 {% block meta_extra %}
-    {# トップ（論文ページ）E canonical は `/` 固定。page>1 は noindex #}
+    {# トップ（論文ページ）の canonical は `/` 固定。page>1 は noindex #}
     <link rel="canonical" href="{{ site_url }}/">
     {% set page_param = request.query_params.get('page') %}
     {% if page_param and page_param != '1' %}
     <meta name="robots" content="noindex,follow">
     {% endif %}
     <meta property="og:type" content="website">
-    <meta property="og:title" content="AI論文をわかりやすく解説  EarXiv・Nature最新論文 | 知リポAI">
-    <meta property="og:description" content="arXiv・Nature・Scienceの最新AI論文を毎日収集し、偉人AIが日本語でわかりやすく解説。機械学習・LLM・深層学習の論文要約。>
+    <meta property="og:title" content="AI論文をわかりやすく解説 — arXiv・Nature最新論文 | 知リポAI">
+    <meta property="og:description" content="arXiv・Nature・Scienceの最新AI論文を毎日収集し、偉人AIが日本語でわかりやすく解説。機械学習・LLM・深層学習の論文要約。">
     <meta property="og:image" content="{{ site_url }}/static/og/og-research.jpg">
     <meta property="og:url" content="{{ site_url }}/">
     <meta property="og:site_name" content="知リポAI">
     <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:title" content="AI論文をわかりやすく解説  EarXiv・Nature最新論文 | 知リポAI">
-    <meta name="twitter:description" content="arXiv・Nature・Scienceの最新AI論文を毎日収集し、偉人AIが日本語でわかりやすく解説。>
+    <meta name="twitter:title" content="AI論文をわかりやすく解説 — arXiv・Nature最新論文 | 知リポAI">
+    <meta name="twitter:description" content="arXiv・Nature・Scienceの最新AI論文を毎日収集し、偉人AIが日本語でわかりやすく解説。">
     <meta name="twitter:image" content="{{ site_url }}/static/og/og-research.jpg">
 {% endblock %}
 {% block content %}
 <section class="site-hero">
     <div class="site-hero-inner">
-        <span class="site-hero-eyebrow">📚 AI論文アーカイチE/span>
+        <span class="site-hero-eyebrow">📚 AI論文アーカイブ</span>
         <h1 class="site-hero-title">偉人AIがAI論文・研究論文をわかりやすく解説</h1>
         <p class="site-hero-desc">arXiv・Nature・Scienceから最新のAI論文・研究論文を毎日収集。ブッダ・アインシュタイン・ニーチェなど偉人AIが、難解な機械学習・LLM論文をわかりやすい日本語解説に変換します。</p>
     </div>
@@ -48,15 +48,15 @@
                             <p class="home-featured-persona-comment">{{ featured.persona_comment }}</p>
                         </div>
                     </div>
-                    <a href="{{ article_url(featured) }}" class="home-featured-cta">記事を読む ↁE/a>
+                    <a href="{{ article_url(featured) }}" class="home-featured-cta">記事を読む →</a>
                 </div>
             </article>
         </section>
         {% endif %}
 
         {% if latest_consultation %}
-        <section class="home-consult-section" aria-label="今日の相諁E>
-            <h2 class="home-section-title">💬 今日の相諁E/h2>
+        <section class="home-consult-section" aria-label="今日の相談">
+            <h2 class="home-section-title">💬 今日の相談</h2>
             <article class="home-consult-card persona-p{{ latest_consultation.persona_id }}">
                 <blockquote class="home-consult-question">{{ latest_consultation.question }}</blockquote>
                 <div class="home-consult-answer-wrap">
@@ -69,7 +69,7 @@
                     </div>
                     <p class="home-consult-answer">{{ latest_consultation.answer }}</p>
                 </div>
-                <a href="/consultation" class="home-featured-cta">相談を見る →/a>
+                <a href="/consultation" class="home-featured-cta">相談を見る →</a>
             </article>
         </section>
         {% endif %}
@@ -88,7 +88,7 @@
 
         <div class="news-grid" id="papers-grid">
             {% if not has_papers %}
-            <p class="empty-msg">論文の記事がまだありません。RSS取り込み後に表示されます。/p>
+            <p class="empty-msg">論文の記事がまだありません。RSS取り込み後に表示されます。</p>
             {% else %}
             {% for item in all_papers %}
             <article class="news-card animate-fade-in" data-category="{{ item.paper_domain or '総合科学' }}">
@@ -120,12 +120,12 @@
                     <p class="papers-about-item-desc">arXiv（cs.AI・cs.LG・cs.CL・cs.CV）、Nature、Science、BMJ Open、PLOS ONE、Frontiers など主要な一次ソースから毎日収集。機械学習・LLM・深層学習・医学・物理の最新研究論文を幅広くカバーします。</p>
                 </div>
                 <div class="papers-about-item">
-                    <h3 class="papers-about-item-title">🧠 わかりやすく解説する方況E/h3>
+                    <h3 class="papers-about-item-title">🧠 わかりやすく解説する方法</h3>
                     <p class="papers-about-item-desc">「サクッと理解」では論文の要点を5つのポイントに整理。「深掘り」ではブッダ・アインシュタイン・ニーチェなど偉人AIがそれぞれの視点で解説します。難解な英語論文も日本語でわかりやすく読めます。</p>
                 </div>
                 <div class="papers-about-item">
-                    <h3 class="papers-about-item-title">🔗 一次ソースの確誁E/h3>
-                    <p class="papers-about-item-desc">各論文ページには arXiv・Nature・DOI への直接リンクを掲載。AI解説はあくまで補助情報であり、研究・学習・業務利用の際は必ず原論文をご確認ください。/p>
+                    <h3 class="papers-about-item-title">🔗 一次ソースの確認</h3>
+                    <p class="papers-about-item-desc">各論文ページには arXiv・Nature・DOI への直接リンクを掲載。AI解説はあくまで補助情報であり、研究・学習・業務利用の際は必ず原論文をご確認ください。</p>
                 </div>
             </div>
         </section>
@@ -135,8 +135,8 @@
             <p>読み込み中...</p>
         </div>
         <div id="papers-load-error" class="infinite-load-error" role="alert">
-            <p>論文一覧の読み込みに失敗しました。/p>
-            <button type="button" class="infinite-retry-btn" id="papers-retry">もう一度試ぁE/button>
+            <p>論文一覧の読み込みに失敗しました。</p>
+            <button type="button" class="infinite-retry-btn" id="papers-retry">もう一度試す</button>
         </div>
         <div id="papers-feed-announcer" class="visually-hidden" aria-live="polite" aria-atomic="true"></div>
         <div id="papers-end" class="infinite-end" style="display:none;">
@@ -150,7 +150,7 @@
 <section class="seo-coverage-section">
     <div class="seo-coverage-inner">
         <h2 class="seo-coverage-title">対応AI論文・研究論文ジャンル</h2>
-        <p class="seo-coverage-desc">arXiv・Nature・Science・BMJなど一次ソースから毎日収集。機械学習・深層学習・LLMから画像生成AI・自然言語処理で、英語論文を偉人AIが日本語でわかりやすく解説・要約します。/p>
+        <p class="seo-coverage-desc">arXiv・Nature・Science・BMJなど一次ソースから毎日収集。機械学習・深層学習・LLMから画像生成AI・自然言語処理で、英語論文を偉人AIが日本語でわかりやすく解説・要約します。</p>
         <ul class="seo-tag-list">
             <li>機械学習（Machine Learning）論文</li>
             <li>深層学習（Deep Learning）論文</li>

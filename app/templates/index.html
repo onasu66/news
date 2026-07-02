@@ -10,11 +10,11 @@
     {% endif %}
     <meta property="og:type" content="website">
     <meta property="og:title" content="AIニュースまとめ — 最新情報を人工知能が解説 | 知リポAI">
-    <meta property="og:description" content="NHK・BBC・Reuters等の最新ニュースを偉人AIが解説。人工知能・テクノロジー・国際ニュースの最新情報を毎日更新。>
+    <meta property="og:description" content="NHK・BBC・Reuters等の最新ニュースを偉人AIが解説。人工知能・テクノロジー・国際ニュースの最新情報を毎日更新。">
     <meta property="og:image" content="{{ og_image|default(site_url + '/static/og/og-tech.jpg') }}">
     <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:title" content="AIニュースまとめ — 最新情報を人工知能が解説 | 知リポAI">
-    <meta name="twitter:description" content="NHK・BBC・Reuters等の最新ニュースを偉人AIが解説。生成AI・ChatGPT・国際ニュースを毎日更新。>
+    <meta name="twitter:description" content="NHK・BBC・Reuters等の最新ニュースを偉人AIが解説。生成AI・ChatGPT・国際ニュースを毎日更新。">
     <meta name="twitter:image" content="{{ og_image|default(site_url + '/static/og/og-tech.jpg') }}">
     <meta property="og:url" content="{{ site_url }}/news">
     <meta property="og:site_name" content="知リポAI">
@@ -51,7 +51,7 @@
                                     <p class="home-featured-persona-comment">{{ item.persona_comment }}</p>
                                 </div>
                             </div>
-                            <a href="{{ article_url(item) }}" class="home-featured-cta">記事を読む ↁE/a>
+                            <a href="{{ article_url(item) }}" class="home-featured-cta">記事を読む →</a>
                         </div>
                     </article>
                     {% endfor %}
@@ -68,8 +68,8 @@
         {% endif %}
 
         {% if latest_consultations and not search_keyword %}
-        <section class="home-consult-section" aria-label="今日の相諁E>
-            <h2 class="home-section-title">💬 今日の相諁E/h2>
+        <section class="home-consult-section" aria-label="今日の相談">
+            <h2 class="home-section-title">💬 今日の相談</h2>
             <div class="home-carousel-wrap">
                 <div class="home-carousel" id="consult-carousel" role="list">
                     {% for c in latest_consultations %}
@@ -85,7 +85,7 @@
                             </div>
                             <p class="home-consult-answer">{{ c.answer }}</p>
                         </div>
-                        <a href="/ai#past-consultations" class="home-featured-cta home-consult-card-link">相談を見る →/a>
+                        <a href="/ai#past-consultations" class="home-featured-cta home-consult-card-link">相談を見る →</a>
                     </article>
                     {% endfor %}
                 </div>
@@ -106,8 +106,8 @@
 
         {% if search_keyword %}
         <div class="search-result-header">
-            <p class="search-keyword-msg">「{{ search_keyword }}」の関連記事/p>
-            <a href="/news" class="search-clear">ÁEクリア</a>
+            <p class="search-keyword-msg">「{{ search_keyword }}」の関連記事</p>
+            <a href="/news" class="search-clear">✕ クリア</a>
         </div>
         {% endif %}
 
@@ -148,8 +148,8 @@
             <p>読み込み中...</p>
         </div>
         <div id="infinite-load-error" class="infinite-load-error" role="alert">
-            <p>記事一覧の読み込みに失敗しました。/p>
-            <button type="button" class="infinite-retry-btn" id="infinite-retry">もう一度試ぁE/button>
+            <p>記事一覧の読み込みに失敗しました。</p>
+            <button type="button" class="infinite-retry-btn" id="infinite-retry">もう一度試す</button>
         </div>
         <div id="news-feed-announcer" class="visually-hidden" aria-live="polite" aria-atomic="true"></div>
         <div id="infinite-end" class="infinite-end" style="display:none;">
@@ -159,14 +159,14 @@
 
     <aside class="sidebar">
         <div class="trends-box">
-            <h2 class="sidebar-title">📂 カテゴリリで探ぁE/h2>
+            <h2 class="sidebar-title">📂 カテゴリで探す</h2>
             <ul class="trends-list">
                 <li><a href="/topics/ai" class="trend-link-internal">🔬 AI論文・研究</a></li>
                 <li><a href="/topics/tech" class="trend-link-internal">💡 テクノロジー</a></li>
                 <li><a href="/topics/science" class="trend-link-internal">🔭 科学</a></li>
                 <li><a href="/topics/world" class="trend-link-internal">🌍 国際ニュース</a></li>
-                <li><a href="/topics/social" class="trend-link-internal">📊 社会・経済/a></li>
-                <li><a href="/topics/sports" class="trend-link-internal">⚽ スポーツ/a></li>
+                <li><a href="/topics/social" class="trend-link-internal">📊 社会・経済</a></li>
+                <li><a href="/topics/sports" class="trend-link-internal">⚽ スポーツ</a></li>
                 <li><a href="/topics/entertainment" class="trend-link-internal">🎬 エンタメ</a></li>
             </ul>
         </div>
@@ -191,7 +191,7 @@
 <section class="seo-coverage-section">
     <div class="seo-coverage-inner">
         <h2 class="seo-coverage-title">知リポAIがカバーするニュースジャンル</h2>
-        <p class="seo-coverage-desc">国内外の最新AIニュース・テクノロジーニュースを毎日5回更新。生成AI・ChatGPT・OpenAI・Geminiなど最新人工知能ニュースから、政治・社会・国際ニュースまで、偉人AIがわかりやすく解説します。/p>
+        <p class="seo-coverage-desc">国内外の最新AIニュース・テクノロジーニュースを毎日5回更新。生成AI・ChatGPT・OpenAI・Geminiなど最新人工知能ニュースから、政治・社会・国際ニュースまで、偉人AIがわかりやすく解説します。</p>
         <ul class="seo-tag-list">
             <li>生成AI・ChatGPT最新ニュース</li>
             <li>OpenAI・Anthropic・Google最新動向</li>
