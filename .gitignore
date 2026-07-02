@@ -10,6 +10,9 @@ data/
 # VS Code ローカル履歴（.env のコピーが含まれるため除外）
 .history/
 
+# ペルソナ直近コメントの永続化（ランタイム生成）
+persona_recent_comments.json
+
 # Python キャッシュ
 __pycache__/
 *.pyc
