@@ -49,6 +49,8 @@ from app.services.ai_service import (
     expand_navigator_to_article,
     get_persona_opinion,
     get_all_persona_opinions_batch,
+    build_persona_batch_prompt,
+    parse_persona_batch_raw,
 )
 from app.services.explanation_cache import get_cached, save_cache
 from app.services.article_content_quality import is_generated_article_sufficient, is_navigator_sufficient
@@ -175,6 +177,34 @@ def _generate_blocks_via_claude(navigator_blocks: list, title: str) -> list[dict
     return []
 
 
+# ── Claude CLI を使ったペルソナ3人分バッチ生成 ─────────────────────────────────
+
+def _generate_personas_via_claude(title: str, content: str, persona_ids: list[int]) -> list[str]:
+    """Claude CLI で3人分のペルソナコメントを1回の呼び出しでまとめて生成する。
+    失敗・CLI未導入時は空リスト → 呼び出し元が Gemini/OpenAI バッチにフォールバックする。"""
+    try:
+        from app.services.claude_researcher import run_claude_text_gen, is_claude_available
+        if not is_claude_available():
+            return []
+    except Exception:
+        return []
+
+    built = build_persona_batch_prompt(title, content, persona_ids)
+    if not built:
+        return []
+    system_prompt, user_prompt, personas_data = built
+    prompt = f"{system_prompt}\n\n{user_prompt}"
+
+    raw = run_claude_text_gen(prompt, timeout=180, usage_kind="persona_batch")
+    if not raw:
+        return []
+
+    results = parse_persona_batch_raw(raw, personas_data)
+    if any(results):
+        logger.info("Claude ペルソナ生成成功: %d/%d 件", sum(1 for r in results if r), len(results))
+    return results
+
+
 # ─────────────────────────────────────────────────────────────────────────────
 
 def _navigator_summary(navigator_blocks: list) -> str:
@@ -273,11 +303,13 @@ def generate_all_explanations(
         fut_blocks = ex.submit(do_blocks)
         blocks = fut_blocks.result()
 
-        # ペルソナ: まず3人まとめてバッチ生成（1回のAPI呼び出しでトークン節約）
-        # バッチ失敗 or 特定人物が短すぎた場合のみ個別呼び出しにフォールバック
-        batch_results = get_all_persona_opinions_batch(
-            title, persona_source, display_persona_ids
-        )
+        # ペルソナ: まず3人まとめてバッチ生成（呼び出し回数を最小化するため Claude CLI → Gemini/OpenAI の順）
+        # 全滅 or 特定人物が短すぎた場合のみ個別呼び出しにフォールバック
+        batch_results = _generate_personas_via_claude(title, persona_source, display_persona_ids)
+        if not any(batch_results):
+            batch_results = get_all_persona_opinions_batch(
+                title, persona_source, display_persona_ids
+            )
         generated_comments: list[str] = []
         for slot_idx, pid in enumerate(display_persona_ids):
             batch_comment = batch_results[slot_idx] if slot_idx < len(batch_results) else ""

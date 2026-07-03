@@ -391,12 +391,31 @@ body::after {
     border-color: rgba(71, 85, 105, 0.35);
     box-shadow: none;
 }
-.page-layout--papers,
+/* 論文ページ＝クールな青（アカデミック）、ニュースページ＝暖色の赤橙（速報感）で
+   一目でどちらを読んでいるか分かるようにする。--page-accent は各ページ内の
+   タブ・バッジ等で参照する。 */
+.page-layout--papers {
+    --page-accent: #2563eb;
+    --page-accent-hover: #1d4ed8;
+    --page-accent-soft: #dbeafe;
+    background: linear-gradient(180deg, rgba(219, 234, 254, 0.85), rgba(238, 242, 255, 0.5));
+}
 .page-layout--news {
+    --page-accent: #dc2626;
+    --page-accent-hover: #b91c1c;
+    --page-accent-soft: #fee2e2;
     background: linear-gradient(180deg, rgba(255, 247, 237, 0.92), rgba(254, 226, 226, 0.55));
 }
-:root[data-theme="dark"] .page-layout--papers,
+:root[data-theme="dark"] .page-layout--papers {
+    --page-accent: #60a5fa;
+    --page-accent-hover: #93c5fd;
+    --page-accent-soft: rgba(96, 165, 250, 0.18);
+    background: linear-gradient(180deg, rgba(30, 58, 138, 0.4), rgba(17, 24, 39, 0.72));
+}
 :root[data-theme="dark"] .page-layout--news {
+    --page-accent: #f87171;
+    --page-accent-hover: #fca5a5;
+    --page-accent-soft: rgba(248, 113, 113, 0.18);
     background: linear-gradient(180deg, rgba(69, 26, 3, 0.42), rgba(17, 24, 39, 0.72));
 }
 
@@ -784,23 +803,11 @@ body::after {
 .about-link:hover { text-decoration: underline; }
 /* site hero (トップ・論文ページ／ニュースページ共通) */
 .site-hero {
-    position: relative;
-    overflow: hidden;
-    background: linear-gradient(135deg, var(--color-primary) 0%, #312e81 55%, #4338ca 100%);
-    color: #fff;
-    padding: 1rem 1.25rem;
+    padding: 0.9rem 1.25rem 0.6rem;
     text-align: left;
-}
-.site-hero::before {
-    content: "";
-    position: absolute;
-    inset: 0;
-    background: radial-gradient(circle at 100% 0%, rgba(165, 180, 252, 0.35), transparent 55%);
-    pointer-events: none;
+    border-bottom: 1px solid var(--color-border-light);
 }
 .site-hero-inner {
-    position: relative;
-    z-index: 1;
     max-width: 720px;
     margin: 0;
     display: flex;
@@ -815,20 +822,57 @@ body::after {
     margin: 0;
     padding: 0.2rem 0.65rem;
     border-radius: 999px;
-    background: rgba(255, 255, 255, 0.12);
-    border: 1px solid rgba(255, 255, 255, 0.28);
+    background: var(--color-bg-elevated);
+    border: 1px solid var(--color-border-light);
     font-size: 0.68rem;
     font-weight: 700;
     letter-spacing: 0.04em;
-    color: rgba(255, 255, 255, 0.92);
+    color: var(--color-primary);
     flex-shrink: 0;
+}
+/* 論文/ニュースで見出し帯の色を変え、開いた瞬間にどちらのページか分かるようにする */
+.site-hero--papers {
+    border-bottom-color: #bfdbfe;
+    background: linear-gradient(180deg, rgba(219, 234, 254, 0.55), transparent);
+}
+.site-hero--papers .site-hero-eyebrow {
+    color: #1d4ed8;
+    border-color: #bfdbfe;
+    background: #eff6ff;
+}
+.site-hero--news {
+    border-bottom-color: #fecaca;
+    background: linear-gradient(180deg, rgba(254, 226, 226, 0.55), transparent);
+}
+.site-hero--news .site-hero-eyebrow {
+    color: #b91c1c;
+    border-color: #fecaca;
+    background: #fef2f2;
+}
+:root[data-theme="dark"] .site-hero--papers {
+    border-bottom-color: rgba(96, 165, 250, 0.3);
+    background: linear-gradient(180deg, rgba(30, 58, 138, 0.35), transparent);
+}
+:root[data-theme="dark"] .site-hero--papers .site-hero-eyebrow {
+    color: #93c5fd;
+    border-color: rgba(96, 165, 250, 0.35);
+    background: rgba(30, 58, 138, 0.3);
+}
+:root[data-theme="dark"] .site-hero--news {
+    border-bottom-color: rgba(248, 113, 113, 0.3);
+    background: linear-gradient(180deg, rgba(69, 26, 3, 0.4), transparent);
+}
+:root[data-theme="dark"] .site-hero--news .site-hero-eyebrow {
+    color: #fca5a5;
+    border-color: rgba(248, 113, 113, 0.35);
+    background: rgba(69, 26, 3, 0.35);
 }
 .site-hero-title {
     margin: 0;
     font-size: clamp(1rem, 2.4vw, 1.25rem);
     font-weight: 800;
     line-height: 1.4;
-    color: #fff;
+    color: var(--color-text);
     flex: 1 1 auto;
 }
 .site-hero-desc {
@@ -836,7 +880,7 @@ body::after {
     width: 100%;
     font-size: 0.8rem;
     line-height: 1.6;
-    color: rgba(255, 255, 255, 0.78);
+    color: var(--color-text-secondary);
     display: -webkit-box;
     -webkit-box-orient: vertical;
     -webkit-line-clamp: 2;
@@ -844,10 +888,10 @@ body::after {
     overflow: hidden;
 }
 .site-hero--compact {
-    padding: 0.55rem 1.25rem;
+    padding: 0.5rem 1.25rem 0.4rem;
 }
 .site-hero--compact .site-hero-inner {
-    gap: 0;
+    gap: 0.3rem 0.6rem;
 }
 .site-hero--compact .site-hero-title {
     font-size: clamp(0.85rem, 2vw, 1.05rem);
@@ -1781,6 +1825,56 @@ body::after {
     pointer-events: none;
 }
 
+.midorman-float[hidden] {
+    display: none;
+}
+
+.midorman-float-close {
+    pointer-events: auto;
+    flex-shrink: 0;
+    align-self: flex-start;
+    width: 20px;
+    height: 20px;
+    border: none;
+    border-radius: 999px;
+    background: rgba(0, 0, 0, 0.08);
+    color: #57534e;
+    font-size: 0.75rem;
+    line-height: 1;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-left: 0.4rem;
+}
+.midorman-float-close:hover {
+    background: rgba(0, 0, 0, 0.16);
+}
+
+/* 折りたたみ（アコーディオン）状態: キャラのアイコンだけを右下に残す */
+.midorman-float.is-collapsed {
+    padding: 0;
+    background: none;
+    border: none;
+    box-shadow: none;
+    left: auto;
+    right: 1rem;
+    max-width: none;
+    width: fit-content;
+    justify-content: flex-end;
+}
+.midorman-float.is-collapsed .midorman-float-inner,
+.midorman-float.is-collapsed .midorman-float-close {
+    display: none;
+}
+.midorman-float.is-collapsed .midorman-float-avatar-img {
+    pointer-events: auto;
+    cursor: pointer;
+    width: 48px;
+    height: 48px;
+    box-shadow: 0 4px 14px rgba(0,0,0,0.28);
+}
+
 .midorman-float-inner {
     background: linear-gradient(180deg, #fffbeb 0%, #fef3c7 98%);
     border: 2px solid #f59e0b;
@@ -1812,7 +1906,7 @@ body::after {
     .midorman-float {
         left: 0.875rem;
         right: 0.875rem;
-        bottom: max(1rem, env(safe-area-inset-bottom));
+        bottom: calc(8rem + env(safe-area-inset-bottom, 0px));
         max-width: none;
     }
 
@@ -3613,7 +3707,14 @@ body::after {
     font-size: 0.58rem;
     font-weight: 600;
     padding: 0.1rem 0.4rem;
+    /* ↓ 論文=青 / ニュース=赤橙のバッジ色は下の .page-layout--papers/--news で上書き */
     border-radius: 4px;
+}
+.page-layout--papers .news-card-category {
+    background: rgba(37, 99, 235, 0.82);
+}
+.page-layout--news .news-card-category {
+    background: rgba(220, 38, 38, 0.82);
 }
 .news-card-body {
     padding: 0;
@@ -3660,17 +3761,10 @@ body::after {
     border-radius: 6px;
 }
 
-/* ===== GENRE TABS (Googleニュース風の下線タブ。ヘッダー直下に固定) ===== */
+/* ===== GENRE TABS (Googleニュース風の下線タブ。ヘッダー直下に固定) =====
+   一旦非表示（ジャンル絞り込みタブは表示しない方針） */
 .genre-tabs-wrap {
-    margin: 0 -0.1rem 1rem;
-    position: sticky;
-    top: var(--header-h);
-    z-index: 90;
-    background: rgba(248, 250, 252, 0.92);
-    backdrop-filter: blur(8px);
-    -webkit-backdrop-filter: blur(8px);
-    border-bottom: 1px solid var(--color-border-light);
-    padding: 0 0.1rem;
+    display: none;
 }
 .genre-tabs-scroll {
     display: flex;
@@ -3866,7 +3960,7 @@ body::after {
 .page-switch {
     display: inline-flex;
     gap: 0.45rem;
-    margin: 0 0 0.9rem;
+    margin: 0 0 0.65rem;
     padding: 0.25rem;
     border: 1px solid var(--color-border-light);
     border-radius: 999px;
@@ -3889,6 +3983,22 @@ body::after {
 .page-switch-link[aria-current="page"] {
     background: var(--color-accent);
     color: #fff;
+}
+.page-layout--papers .page-switch-link.is-active,
+.page-layout--papers .page-switch-link[aria-current="page"] {
+    background: var(--page-accent);
+}
+.page-layout--papers .page-switch-link:hover {
+    color: var(--page-accent);
+    background: var(--page-accent-soft);
+}
+.page-layout--news .page-switch-link.is-active,
+.page-layout--news .page-switch-link[aria-current="page"] {
+    background: var(--page-accent);
+}
+.page-layout--news .page-switch-link:hover {
+    color: var(--page-accent);
+    background: var(--page-accent-soft);
 }
 
 /* ===== PAGE HEADERS ===== */
@@ -4683,12 +4793,10 @@ body::after {
 
 /* 3つのポイント（1分で理解） */
 .three-points-card {
-    background: var(--color-card);
-    border-radius: 18px;
-    padding: 1.1rem 1rem 0.85rem;
+    padding: 0.9rem 0;
     margin: 0 0 1rem;
-    border: 1px solid var(--color-border-light);
-    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
+    border-top: 1px solid var(--color-border-light);
+    border-bottom: 1px solid var(--color-border-light);
 }
 .three-points-card-head {
     display: flex;
@@ -4741,9 +4849,7 @@ body::after {
     font-weight: 500;
 }
 :root[data-theme="dark"] .three-points-card {
-    background: #1e1e1e;
     border-color: #333;
-    box-shadow: none;
 }
 :root[data-theme="dark"] .three-points-q--red { color: #ff5252; }
 :root[data-theme="dark"] .three-points-q--orange { color: #ffb74d; }
@@ -4847,7 +4953,7 @@ body::after {
     .footer-line-label { color: #64748b; }
 
     .midorman-float {
-        bottom: 4.5rem;
+        bottom: calc(8rem + env(safe-area-inset-bottom, 0px));
         right: 0.5rem;
         left: 0.5rem;
         max-width: none;
@@ -4869,7 +4975,7 @@ body::after {
     font-size: 1rem;
     font-weight: 700;
     color: var(--color-text-secondary);
-    margin: 1.5rem 0 0.75rem;
+    margin: 1rem 0 0.6rem;
     letter-spacing: 0.02em;
 }
 
@@ -4936,7 +5042,7 @@ body::after {
 }
 
 .home-featured-body {
-    padding: 1.25rem;
+    padding: 1rem 1.1rem;
 }
 
 .home-featured-source {
@@ -4951,7 +5057,7 @@ body::after {
     font-size: 1.1rem;
     font-weight: 700;
     line-height: 1.5;
-    margin: 0.4rem 0 1rem;
+    margin: 0.35rem 0 0.75rem;
     color: var(--color-text);
 }
 .home-featured-title a {
@@ -4960,44 +5066,54 @@ body::after {
 }
 .home-featured-title a:hover { text-decoration: underline; }
 
-.home-featured-persona {
-    display: flex;
-    gap: 0.75rem;
-    align-items: flex-start;
-    padding: 0.75rem 0 0;
-    margin-bottom: 1rem;
+/* 偉人コメント（話題のニュース／相談 共通コンポーネント） */
+.persona-comment {
+    padding: 0.6rem 0 0;
+    margin-bottom: 0.75rem;
     border-top: 1px dashed var(--color-border-light);
 }
 
-.home-featured-persona-img {
+.persona-comment-header {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    margin-bottom: 0.6rem;
+}
+
+.persona-comment-avatar {
     width: 40px;
     height: 40px;
     border-radius: 50%;
     object-fit: cover;
     border: 2px solid var(--pc, var(--color-accent));
+    background: var(--color-bg-subtle);
     flex-shrink: 0;
 }
 
-.home-featured-persona-body {
-    flex: 1;
-    min-width: 0;
-    border-left: 2px solid var(--pc, var(--color-accent));
-    padding-left: 0.75rem;
-}
-
-.home-featured-persona-name {
+.persona-comment-name {
     font-size: 0.85rem;
     font-weight: 700;
     color: var(--color-text);
-    display: block;
-    margin-bottom: 0.35rem;
 }
 
-.home-featured-persona-comment {
+.persona-comment-label {
+    font-size: 0.78rem;
+    font-weight: 500;
+    color: var(--color-text-muted);
+    margin-left: 0.2rem;
+}
+
+.persona-comment-text {
     font-size: 0.92rem;
     line-height: 1.7;
     color: var(--color-text-secondary);
     margin: 0;
+    white-space: pre-wrap;
+    border-left: 2px solid var(--pc, var(--color-accent));
+    padding-left: 0.75rem;
+}
+
+.persona-comment-text--clamp {
     display: -webkit-box;
     -webkit-box-orient: vertical;
     -webkit-line-clamp: 4;
@@ -5029,7 +5145,7 @@ body::after {
     border: 1px solid var(--color-border-light);
     border-radius: var(--radius-lg);
     box-shadow: var(--shadow-md);
-    padding: 1.25rem;
+    padding: 1rem 1.1rem;
     border-left: 4px solid var(--pc, var(--color-accent));
     position: relative;
     cursor: pointer;
@@ -5053,47 +5169,6 @@ body::after {
     margin: 0 0 1rem;
     padding-left: 0.875rem;
     border-left: 3px solid var(--color-accent);
-}
-
-.home-consult-answer-wrap {
-    background: var(--color-bg-subtle);
-    border-radius: var(--radius);
-    padding: 0.875rem;
-    margin-bottom: 1rem;
-}
-
-.home-consult-persona-header {
-    display: flex;
-    align-items: center;
-    gap: 0.6rem;
-    margin-bottom: 0.6rem;
-}
-
-.home-consult-persona-img {
-    width: 40px;
-    height: 40px;
-    border-radius: 50%;
-    object-fit: cover;
-    border: 2px solid var(--pc, var(--color-accent));
-    flex-shrink: 0;
-}
-
-.home-consult-persona-name {
-    font-size: 0.88rem;
-    font-weight: 700;
-    color: var(--color-text);
-}
-
-.home-consult-answer {
-    font-size: 0.88rem;
-    line-height: 1.75;
-    color: var(--color-text-secondary);
-    margin: 0;
-    display: -webkit-box;
-    -webkit-box-orient: vertical;
-    -webkit-line-clamp: 3;
-    line-clamp: 3;
-    overflow: hidden;
 }
 
 /* ========== 偉人への相談室 ========== */
@@ -5156,50 +5231,6 @@ body::after {
 
 .consultation-answer-wrap {
     padding: 1.25rem;
-}
-
-.consultation-persona-header {
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-    margin-bottom: 0.875rem;
-}
-
-.consultation-persona-img {
-    width: 48px;
-    height: 48px;
-    border-radius: 50%;
-    object-fit: cover;
-    border: 2px solid var(--pc, var(--color-accent));
-    background: var(--color-bg-subtle);
-    flex-shrink: 0;
-}
-
-.consultation-persona-emoji {
-    font-size: 1.1rem;
-    margin-right: 0.2rem;
-}
-
-.consultation-persona-name {
-    font-weight: 700;
-    font-size: 1rem;
-    color: var(--color-text);
-}
-
-.consultation-persona-label {
-    font-size: 0.82rem;
-    color: var(--color-text-muted);
-    margin-left: 0.25rem;
-}
-
-.consultation-answer {
-    font-size: 0.95rem;
-    line-height: 1.8;
-    color: var(--color-text);
-    margin: 0 0 0.75rem;
-    white-space: pre-wrap;
-    border-left: 2px solid var(--pc, var(--color-accent));
-    padding-left: 0.75rem;
 }
 
 .consultation-date {
@@ -5864,9 +5895,10 @@ body::after {
 }
 
 .article-text {
-    font-size: clamp(0.92rem, 2.5vw, 1rem);
-    line-height: 1.85;
+    font-size: 0.92rem;
+    line-height: 1.55;
     color: var(--color-text);
+    font-weight: 500;
 }
 
 /* breadcrumb を細く */

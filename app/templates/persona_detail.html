@@ -80,7 +80,7 @@
                 </blockquote>
             </div>
             <div class="consultation-answer-wrap">
-                <p class="consultation-answer">{{ c.answer }}</p>
+                <p class="persona-comment-text">{{ c.answer }}</p>
                 <time class="consultation-date" datetime="{{ c.published_at }}">
                     {{ (c.published_at[:10] if c.published_at is string else c.published_at.strftime('%Y-%m-%d')) if c.published_at else '' }}
                 </time>

@@ -420,13 +420,15 @@ def _persona_image_url(name: str | None) -> str:
 
 def _persona_display_comment(raw: str) -> str:
     """persona opinion 文字列を表示用テキストに変換。
-    JSON形式（{"short": ..., "body": ...}）ならshortを優先して返す。"""
+    新形式はプレーン文字列。旧JSON形式（{"comment"} / {"short","body"}）も救済する。"""
     s = (raw or "").strip()
     if s.startswith("{"):
         try:
             obj = json.loads(s)
             if isinstance(obj, dict):
-                return str(obj.get("short") or obj.get("body") or "").strip()
+                return str(
+                    obj.get("comment") or obj.get("short") or obj.get("body") or ""
+                ).strip()
         except Exception:
             pass
     return s

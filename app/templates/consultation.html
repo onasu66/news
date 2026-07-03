@@ -35,20 +35,18 @@
             </div>
 
             <div class="consultation-answer-wrap">
-                <div class="consultation-persona-header">
-                    <img
-                        src="/static/char-imgs/{{ c.persona_name }}.png"
-                        alt="{{ c.persona_name }}"
-                        class="consultation-persona-img"
-                        onerror="this.src='/static/site-imgs/ロゴ.png'"
-                    >
-                    <div>
-                        <span class="consultation-persona-emoji">{{ c.persona_emoji }}</span>
-                        <span class="consultation-persona-name">{{ c.persona_name }}</span>
-                        <span class="consultation-persona-label">より</span>
+                <div class="persona-comment">
+                    <div class="persona-comment-header">
+                        <img
+                            src="/static/char-imgs/{{ c.persona_name }}.png"
+                            alt="{{ c.persona_name }}"
+                            class="persona-comment-avatar"
+                            onerror="this.src='/static/site-imgs/ロゴ.png'"
+                        >
+                        <span class="persona-comment-name">{{ c.persona_emoji }} {{ c.persona_name }}<span class="persona-comment-label">より</span></span>
                     </div>
+                    <p class="persona-comment-text">{{ c.answer }}</p>
                 </div>
-                <p class="consultation-answer">{{ c.answer }}</p>
                 <time class="consultation-date" datetime="{{ c.published_at }}">
                     {{ (c.published_at[:10] if c.published_at is string else c.published_at.strftime('%Y-%m-%d')) if c.published_at else '' }}
                 </time>

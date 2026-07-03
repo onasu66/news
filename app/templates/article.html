@@ -353,6 +353,7 @@
     <div class="midorman-float-inner">
         <p class="midorman-float-text" id="midorman-float-text"></p>
     </div>
+    <button type="button" class="midorman-float-close" id="midorman-float-close" aria-expanded="true" aria-label="解説を閉じる">×</button>
 </div>
 {% endblock %}
 
@@ -679,6 +680,8 @@ document.addEventListener('DOMContentLoaded', function() {
         if (deepContent && deepContent.hidden) return;
         var floatEl = document.getElementById('midorman-float');
         var floatText = document.getElementById('midorman-float-text');
+        var floatClose = document.getElementById('midorman-float-close');
+        var floatAvatar = floatEl.querySelector('.midorman-float-avatar-img');
         if (!floatEl || !floatText) return;
         var dataEl = container.querySelector('.midorman-float-data');
         if (!dataEl) return;
@@ -688,6 +691,36 @@ document.addEventListener('DOMContentLoaded', function() {
         var paras = container.querySelectorAll('.article-text[data-para]');
         if (paras.length === 0) return;
         var currentIdx = -1;
+        floatEl.classList.remove('is-collapsed');
+        function collapseFloat() {
+            floatEl.classList.add('is-collapsed');
+            if (floatClose) {
+                floatClose.setAttribute('aria-expanded', 'false');
+                floatClose.setAttribute('aria-label', '解説を開く');
+            }
+        }
+        function expandFloat() {
+            floatEl.classList.remove('is-collapsed');
+            if (floatClose) {
+                floatClose.setAttribute('aria-expanded', 'true');
+                floatClose.setAttribute('aria-label', '解説を閉じる');
+            }
+        }
+        if (floatClose) {
+            floatClose.textContent = '×';
+            floatClose.setAttribute('aria-expanded', 'true');
+            floatClose.setAttribute('aria-label', '解説を閉じる');
+            if (!floatClose.dataset.bound) {
+                floatClose.dataset.bound = 'true';
+                floatClose.addEventListener('click', collapseFloat);
+            }
+        }
+        if (floatAvatar && !floatAvatar.dataset.bound) {
+            floatAvatar.dataset.bound = 'true';
+            floatAvatar.addEventListener('click', function() {
+                if (floatEl.classList.contains('is-collapsed')) expandFloat();
+            });
+        }
         var observer = new IntersectionObserver(function(entries) {
             entries.forEach(function(entry) {
                 if (!entry.isIntersecting) return;
@@ -706,50 +739,62 @@ document.addEventListener('DOMContentLoaded', function() {
     var contentEl = document.getElementById('article-inline-content');
     // 初期表示は short のため、ここでは吹き出し初期化しない
 
+    // opinion（プレーン文字列 / {"comment":...} / 旧 {"short","body"}）を全文テキストへ正規化
+    function personaFullText(opinion) {
+        var full = '';
+        try {
+            var parsed = JSON.parse(opinion);
+            if (parsed) {
+                if (parsed.comment) {
+                    full = String(parsed.comment);
+                } else if (parsed.short || parsed.body) {
+                    full = [parsed.short, parsed.body].filter(Boolean).join('');
+                }
+            }
+        } catch(e) {}
+        return full || opinion;
+    }
+
+    // 冒頭だけ見せて「続きを読む」で全文展開する（ai_service.PERSONA_PREVIEW_LEN と揃える）
+    var PERSONA_PREVIEW_LEN = 60;
+
     function setPersonaContent(card, content, opinion) {
         content.dataset.loaded = 'true';
         if (!opinion) {
             content.innerHTML = '<p class="persona-error">返信できませんでした。</p>';
             return;
         }
+        // 全文を生成しておき、冒頭だけプレビュー表示。文の途中で切って続きを気にならせる。
+        var full = personaFullText(opinion);
         var html = '';
-        try {
-            var parsed = JSON.parse(opinion);
-            if (parsed && (parsed.short || parsed.body)) {
-                // short は常時表示、body はクリックで展開\uff08アコーディオン\uff09
-                var shortHtml = parsed.short
-                    ? '<p class="persona-short">' + escapeHtml(parsed.short) + '</p>'
-                    : '';
-                var bodyHtml = parsed.body
-                    ? '<div class="persona-body-wrap" hidden>'
-                      + '<p class="persona-body">' + escapeHtml(parsed.body).replace(/\n/g, '<br>') + '</p>'
-                      + '</div>'
-                    : '';
-                var toggleHtml = (parsed.body)
-                    ? '<button type="button" class="persona-expand-btn" aria-expanded="false">'
-                      + '続きを読む ▼</button>'
-                    : '';
-                html = shortHtml + toggleHtml + bodyHtml;
-            } else {
-                html = '<p class="persona-opinion">' + escapeHtml(opinion).replace(/\n/g, '<br>') + '</p>';
-            }
-        } catch(e) {
-            html = '<p class="persona-opinion">' + escapeHtml(opinion).replace(/\n/g, '<br>') + '</p>';
+        if (full.length <= PERSONA_PREVIEW_LEN + 20) {
+            // 展開する価値のない長さなら全文表示
+            html = '<p class="persona-short">' + escapeHtml(full).replace(/\n/g, '<br>') + '</p>';
+        } else {
+            var preview = full.slice(0, PERSONA_PREVIEW_LEN) + '…';
+            html = '<p class="persona-short persona-preview">' + escapeHtml(preview) + '</p>'
+                 + '<button type="button" class="persona-expand-btn" aria-expanded="false">続きを読む ▼</button>'
+                 + '<div class="persona-body-wrap" hidden>'
+                 + '<p class="persona-body">' + escapeHtml(full).replace(/\n/g, '<br>') + '</p>'
+                 + '</div>';
         }
         content.innerHTML = html;
 
-        // アコーディオントグル振る舞い
+        // 展開時はプレビューを隠して全文へ差し替えるトグル
         var toggleBtn = content.querySelector('.persona-expand-btn');
         var bodyWrap = content.querySelector('.persona-body-wrap');
+        var previewEl = content.querySelector('.persona-preview');
         if (toggleBtn && bodyWrap) {
             toggleBtn.addEventListener('click', function() {
                 var expanded = toggleBtn.getAttribute('aria-expanded') === 'true';
                 if (expanded) {
                     bodyWrap.hidden = true;
+                    if (previewEl) previewEl.hidden = false;
                     toggleBtn.setAttribute('aria-expanded', 'false');
                     toggleBtn.innerHTML = '続きを読む ▼';
                 } else {
                     bodyWrap.hidden = false;
+                    if (previewEl) previewEl.hidden = true;
                     toggleBtn.setAttribute('aria-expanded', 'true');
                     toggleBtn.innerHTML = '閉じる ▲';
                 }
@@ -778,15 +823,9 @@ document.addEventListener('DOMContentLoaded', function() {
         var hardBudget = TWEET_LIMIT - URL_WEIGHT - tail.length - head.length;
         var targetBudget = TARGET_CORE - head.length;
         var available = Math.max(10, Math.min(targetBudget, hardBudget));
-        // JSON形式の場合はshort+bodyを結合してシェアテキストを生成
-        var plainOpinion = opinion;
-        try {
-            var _parsed = JSON.parse(opinion);
-            if (_parsed && (_parsed.short || _parsed.body)) {
-                plainOpinion = [_parsed.short, _parsed.body].filter(Boolean).join('　');
-            }
-        } catch(e) {}
-        var comment = plainOpinion.length > available ? plainOpinion.slice(0, available - 1) + '…' : opinion;
+        // 形式を問わず全文テキストからシェア文を生成
+        var plainOpinion = personaFullText(opinion);
+        var comment = plainOpinion.length > available ? plainOpinion.slice(0, available - 1) + '…' : plainOpinion;
         var shareText = head + comment + tail + url;
         var xUrl = 'https://twitter.com/intent/tweet?text=' + encodeURIComponent(shareText);
 

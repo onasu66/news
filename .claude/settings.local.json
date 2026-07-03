@@ -159,7 +159,21 @@
       "Bash(grep -oP 'ssrPersonas = \\\\[.{0,400}' .scratch/article_ok.html)",
       "Bash(grep -oP 'ssrPersonas = \\\\[.{0,600}' .scratch/shortbody_article.html)",
       "Bash(grep -oP 'ssrPersonas = \\\\[.{0,700}' .scratch/shortbody_article2.html)",
-      "Bash(taskkill //F //IM python.exe)"
+      "Bash(taskkill //F //IM python.exe)",
+      "PowerShell(Tee-Object *)",
+      "PowerShell(cd D:\\\\app\\\\newsite; python -m uvicorn main:app --port 8791 --host 127.0.0.1 > $env:TEMP\\\\uvicorn_out.log 2>&1)",
+      "PowerShell(Start-Sleep -Seconds 6; try { $r = Invoke-WebRequest -Uri \"http://127.0.0.1:8791/news\" -UseBasicParsing -TimeoutSec 15; \"STATUS: $\\($r.StatusCode\\)\"; $r.Content.Length } catch { \"ERROR: $\\($_.Exception.Message\\)\" })",
+      "PowerShell(try { $r = Invoke-WebRequest -Uri \"http://127.0.0.1:8791/\" -UseBasicParsing -TimeoutSec 15; \"STATUS: $\\($r.StatusCode\\)\"; \\($r.Content -match 'site-hero--papers'\\); \\($r.Content -match 'page-layout--papers'\\) } catch { \"ERROR: $\\($_.Exception.Message\\)\" })",
+      "PowerShell(try { $r = Invoke-WebRequest -Uri \"http://127.0.0.1:8791/news\" -UseBasicParsing -TimeoutSec 15; \\($r.Content -match 'site-hero--news'\\); \\($r.Content -match 'page-layout--news'\\) } catch { \"ERROR: $\\($_.Exception.Message\\)\" })",
+      "PowerShell(cd D:\\\\app\\\\newsite; python -m uvicorn main:app --port 8791 --host 127.0.0.1 > $env:TEMP\\\\uvicorn_out2.log 2>&1)",
+      "PowerShell(Get-CimInstance *)",
+      "PowerShell(cd D:\\\\app\\\\newsite; python -m uvicorn main:app --port 8791 --host 127.0.0.1 > $env:TEMP\\\\uvicorn_out3.log 2>&1)",
+      "PowerShell(python \"C:\\\\Users\\\\User\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\D--app-newsite\\\\a8ce15d2-03d8-4827-add0-8330e01ce765\\\\scratchpad\\\\patch_article.py\")",
+      "PowerShell(python -m py_compile app\\\\services\\\\ai_service.py app\\\\routers\\\\news.py app\\\\services\\\\ai_batch_service.py; if \\($?\\) { 'compile OK' })",
+      "PowerShell(python \"C:\\\\Users\\\\User\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\D--app-newsite\\\\a8ce15d2-03d8-4827-add0-8330e01ce765\\\\scratchpad\\\\test_persona.py\")",
+      "PowerShell($envFile = 'D:\\\\app\\\\newsite\\\\.env'; if \\(Test-Path $envFile\\) { Get-Content $envFile -Encoding utf8 | Where-Object { $_ -match '^\\(GEMINI_API_KEY|PERSONA_PROVIDER|PERSONA_GEMINI_MODEL|OPENAI_PERSONA_COMMENT_MODEL|AI_PROVIDER|OPENAI_MODEL\\)=' } | ForEach-Object { $k,$v = $_ -split '=',2; if \\($k -eq 'GEMINI_API_KEY'\\) { \"$k=\\(set: $\\($v.Length\\) chars\\)\" } else { $_ } } } else { 'no .env' })",
+      "PowerShell(python -m py_compile app\\\\services\\\\ai_service.py; if \\($?\\) { 'compile OK' })",
+      "PowerShell(python -m py_compile app\\\\services\\\\ai_batch_service.py; if \\($?\\) { 'compile OK' })"
     ]
   }
 }

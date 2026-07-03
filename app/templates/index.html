@@ -22,8 +22,9 @@
 
 {% block content %}
 {% if not search_keyword %}
-<section class="site-hero site-hero--compact">
+<section class="site-hero site-hero--compact site-hero--news">
     <div class="site-hero-inner">
+        <span class="site-hero-eyebrow">📰 AIニュースアーカイブ</span>
         <h1 class="site-hero-title">AIニュースまとめ — 偉人AIが解説</h1>
     </div>
 </section>
@@ -44,12 +45,12 @@
                         <div class="home-featured-body">
                             <span class="home-featured-source">{{ item.source }}</span>
                             <h3 class="home-featured-title"><a href="{{ article_url(item) }}">{{ item.title }}</a></h3>
-                            <div class="home-featured-persona">
-                                <img src="{{ item.persona_image_url }}" alt="{{ item.persona_name }}" class="home-featured-persona-img">
-                                <div class="home-featured-persona-body">
-                                    <span class="home-featured-persona-name">{{ item.persona_emoji }} {{ item.persona_name }}</span>
-                                    <p class="home-featured-persona-comment">{{ item.persona_comment }}</p>
+                            <div class="persona-comment">
+                                <div class="persona-comment-header">
+                                    <img src="{{ item.persona_image_url }}" alt="{{ item.persona_name }}" class="persona-comment-avatar">
+                                    <span class="persona-comment-name">{{ item.persona_emoji }} {{ item.persona_name }}</span>
                                 </div>
+                                <p class="persona-comment-text persona-comment-text--clamp">{{ item.persona_comment }}</p>
                             </div>
                             <a href="{{ article_url(item) }}" class="home-featured-cta">記事を読む →</a>
                         </div>
@@ -75,15 +76,15 @@
                     {% for c in latest_consultations %}
                     <article class="home-consult-card persona-p{{ c.persona_id }}" role="listitem">
                         <blockquote class="home-consult-question">{{ c.question }}</blockquote>
-                        <div class="home-consult-answer-wrap">
-                            <div class="home-consult-persona-header">
+                        <div class="persona-comment">
+                            <div class="persona-comment-header">
                                 <img src="/static/char-imgs/{{ c.persona_name }}.png"
                                      alt="{{ c.persona_name }}"
-                                     class="home-consult-persona-img"
+                                     class="persona-comment-avatar"
                                      onerror="this.src='/static/site-imgs/ロゴ.png'">
-                                <span class="home-consult-persona-name">{{ c.persona_emoji }} {{ c.persona_name }}</span>
+                                <span class="persona-comment-name">{{ c.persona_emoji }} {{ c.persona_name }}</span>
                             </div>
-                            <p class="home-consult-answer">{{ c.answer }}</p>
+                            <p class="persona-comment-text persona-comment-text--clamp">{{ c.answer }}</p>
                         </div>
                         <a href="/ai#past-consultations" class="home-featured-cta home-consult-card-link">相談を見る →</a>
                     </article>
