@@ -124,13 +124,17 @@ def slugify_title(title: str, max_len: int = 55) -> str:
 def article_url_path(article) -> str:
     """記事オブジェクトからSEOフレンドリーなURLパス（/topic/...）を生成。
     タイトルが取れればスラッグ、なければ元のIDをそのまま使う。"""
-    article_id = getattr(article, 'id', '') or ''
-    title = getattr(article, 'title', '') or ''
+    if isinstance(article, dict):
+        article_id = str(article.get("id") or "")
+        title = str(article.get("title") or "")
+    else:
+        article_id = getattr(article, 'id', '') or ''
+        title = getattr(article, 'title', '') or ''
     slug = slugify_title(title)
     if slug:
         # ユニーク性確保のため末尾にIDの後ろ6文字を付与
         suffix = article_id[-6:] if len(article_id) >= 6 else article_id
-        return f"/topic/{slug}-{suffix}"
+        return f"/topic/{slug}-{suffix}" if suffix else f"/topic/{slug}"
     return f"/topic/{article_id}"
 
 
@@ -2270,18 +2274,26 @@ def _editorial_take_from_blocks(blocks: list) -> str:
         text = re.sub(r"\s+", " ", text).strip()
         return text[:max_len].rstrip("、。 ") if len(text) > max_len else text.rstrip("、。 ")
 
-    def _sentence(value: str) -> str:
-        text = _clean(value)
+    def _compact_sentence(value: str, max_len: int = 90) -> str:
+        text = _clean(value, 320)
         if not text:
             return ""
-        return text if text.endswith(("。", "！", "？")) else f"{text}。"
+        text = re.sub(r"^(実際、|つまり、|これって、|要するに、)", "", text).strip()
+        parts = re.split(r"(?<=[。！？])", text)
+        text = next((p.strip() for p in parts if p.strip()), text)
+        return _clean(text, max_len)
+
+    def _is_term_explain(value: str) -> bool:
+        text = value or ""
+        markers = ("っていうのは", "とは、", "とは ", "というのは", "のことです")
+        return any(marker in text for marker in markers)
 
     is_navigator = safe[0].get("type") == "navigator_section"
     if is_navigator:
         by_section: dict[str, str] = {}
         for b in safe:
             section = str(b.get("section") or "")
-            body = _clean(str(b.get("content") or ""))
+            body = _compact_sentence(str(b.get("content") or ""), 100)
             if section and body:
                 by_section[section] = body
         core = by_section.get("impact") or by_section.get("background") or by_section.get("facts") or ""
@@ -2290,22 +2302,26 @@ def _editorial_take_from_blocks(blocks: list) -> str:
         text_items: list[str] = []
         explain_items: list[str] = []
         for b in safe:
-            body = _clean(str(b.get("content") or ""))
+            raw_body = str(b.get("content") or "")
+            body = _compact_sentence(raw_body, 100)
             if not body:
                 continue
             if b.get("type") == "text":
                 text_items.append(body)
-            elif b.get("type") == "explain":
+            elif b.get("type") == "explain" and not _is_term_explain(raw_body):
                 explain_items.append(body)
         core = text_items[1] if len(text_items) > 1 else (text_items[0] if text_items else "")
-        next_point = explain_items[-1] if explain_items else (text_items[2] if len(text_items) > 2 else "")
+        next_point = text_items[2] if len(text_items) > 2 else (explain_items[-1] if explain_items else "")
 
     if not core:
         return ""
     if next_point and next_point != core:
-        text = _clean(f"このニュースの本質は、{_sentence(core)}次に見るべきポイントは、{_sentence(next_point)}", 260)
+        text = f"要するに、{_compact_sentence(core, 95)}。次に見るべきポイントは、{_compact_sentence(next_point, 70)}。"
     else:
-        text = _clean(f"このニュースの本質は、{_sentence(core)}", 220)
+        text = f"要するに、{_compact_sentence(core, 120)}。"
+    text = re.sub(r"。+", "。", text)
+    text = re.sub(r"。。", "。", text)
+    text = _clean(text, 190)
     return text if text.endswith(("。", "！", "？")) else f"{text}。"
 
 
