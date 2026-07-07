@@ -925,7 +925,7 @@ async def sitemap_news_xml(request: Request):
     ]
     for article in recent[:1000]:
         title = (getattr(article, "title", "") or "").strip().replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
-        loc = f"{site_url}{article_url_path(article)}"
+        loc = f"{site_url}{article_url_path(article)}".replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
         pub_date = _pub_iso(article)
         lines += [
             "  <url>",
@@ -2522,7 +2522,7 @@ async def article_detail(request: Request, article_id: str):
     if not item:
         raise HTTPException(status_code=404, detail="記事が見つかりません")
     from fastapi.responses import RedirectResponse
-    return RedirectResponse(url=f"/topic/{article_id}", status_code=301)
+    return RedirectResponse(url=article_url_path(item), status_code=301)
 
 
 def _sanitize_blocks(blocks: list) -> list:

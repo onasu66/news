@@ -7,11 +7,32 @@ import json
 import logging
 import random
 import re
+import threading
 from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor
 
 logger = logging.getLogger(__name__)
 from app.config import settings
+
+# 同一 article_id への同時アクセスでフル生成が二重に走らないようにする per-article ロック。
+# キャッシュ済みなら誰もロックに触れないため、通常運用でのオーバーヘッドはほぼゼロ。
+_article_gen_locks: dict[str, threading.Lock] = {}
+_article_gen_locks_guard = threading.Lock()
+
+
+def _acquire_article_gen_lock(article_id: str) -> threading.Lock:
+    with _article_gen_locks_guard:
+        lock = _article_gen_locks.setdefault(article_id, threading.Lock())
+    lock.acquire()
+    return lock
+
+
+def _release_article_gen_lock(article_id: str, lock: threading.Lock) -> None:
+    lock.release()
+    with _article_gen_locks_guard:
+        # 待機者がいなければレジストリから外し、辞書の肥大化を防ぐ
+        if _article_gen_locks.get(article_id) is lock and not lock.locked():
+            _article_gen_locks.pop(article_id, None)
 
 
 def _wait_between_gemini_personas(slot_idx: int) -> None:
@@ -249,6 +270,29 @@ def generate_all_explanations(
     if cached:
         return cached
 
+    # 同一記事への同時リクエストでフル生成が二重に走らないようロック。
+    # 待機中に他スレッドが生成・保存を終えている場合があるため、取得後にキャッシュを再チェックする。
+    lock = _acquire_article_gen_lock(article_id)
+    try:
+        cached = get_cached(article_id)
+        if cached:
+            return cached
+        return _generate_all_explanations_locked(
+            article_id, title, content, category, persist_cache=persist_cache
+        )
+    finally:
+        _release_article_gen_lock(article_id, lock)
+
+
+def _generate_all_explanations_locked(
+    article_id: str,
+    title: str,
+    content: str,
+    category: str | None,
+    *,
+    persist_cache: bool,
+) -> dict:
+    """generate_all_explanations の本体。呼び出し元で per-article ロックを保持した状態で呼ぶこと。"""
     # 1) 理解は1回だけ：理解ナビゲーター（事実・背景・影響・予測・注意）
     is_paper = category == "研究・論文"
     navigator_blocks = explain_article_as_navigator(title, content, is_paper=is_paper)

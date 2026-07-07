@@ -1,128 +1,20 @@
 [
   {
-    "title": "Yahoo!ニュースがコメント欄を生成AIで要約する新機能提供",
-    "url": "https://topics.smt.docomo.ne.jp/amp/article/k_tai/trend/k_tai-2121100",
-    "reason": "コメント欄の炎上対策として生成AI要約を試験導入、誹謗中傷抑止策の先行事例として注目度が高い",
-    "source": "ｄメニューニュース",
+    "title": "サムスン利益18倍見通し、AI半導体相場の試金石に",
+    "url": "https://finance.yahoo.co.jp/news/detail/f547adb92a1d6145b23be1caedaaf638016445c7",
+    "reason": "サムスン株価が検索で浮上。AI半導体需要の強さと相場の持続性を、決算前の視点で落ち着いて読み解ける。",
+    "source": "Yahoo!ファイナンス",
     "category": "テクノロジー",
-    "published": "2026-06-30T03:49:00",
+    "published": "2026-07-06T08:26:00",
     "image_url": null
   },
   {
-    "title": "米セブン-イレブン、スニーカー配色模倣でナイキを提訴",
-    "url": "https://news.yahoo.co.jp/articles/2d5f89fa1b5195ff2276010f25ef89c7ffab802a",
-    "reason": "自社カラーを模倣されたと大手コンビニがナイキを提訴、ブランド保護と知財訴訟の最新事例として関心が高い",
-    "source": "Yahoo!ニュース",
-    "category": "国際",
-    "published": "2026-07-03T01:04:58",
-    "image_url": null
-  },
-  {
-    "title": "男子バレー日本代表、石川祐希が歴代最高得点データを記録",
-    "url": "https://news.yahoo.co.jp/articles/a814a30aecc96b372356cd53a1a4774ddf9d2a21",
-    "reason": "ネーションズリーグで日本代表の得点力が歴代トップ2を記録、SNS上でも話題のスポーツデータニュース",
-    "source": "Yahoo!ニュース",
-    "category": "スポーツ",
-    "published": "2026-07-03T05:10:21",
-    "image_url": null
-  },
-  {
-    "title": "JAL機が関西空港にダイバート、機材不具合で滑走路一時閉鎖",
-    "url": "https://newsdig.tbs.co.jp/articles/mbs/2778256?display=1",
-    "reason": "運航中のJAL機が機材不具合で緊急着陸、空港滑走路が一時閉鎖となった速報性の高い事故ニュース",
-    "source": "TBS NEWS DIG",
-    "category": "国内",
-    "published": "2026-07-03T04:08:00",
-    "image_url": null
-  },
-  {
-    "title": "ポケモン30周年、ポケセン限定「でかける」グッズ7月4日発売",
-    "url": "https://news.yahoo.co.jp/articles/78b3251b2d2f45c8bcdfd49ba4bb65d2b30e09af",
-    "reason": "ポケモン30周年を記念した新グッズ展開、ファンの間でSNS上の関心が高いコンテンツ企画ニュース",
-    "source": "Yahoo!ニュース",
-    "category": "エンタメ",
-    "published": "2026-06-26T05:57:00",
-    "image_url": null
-  },
-  {
-    "title": "人気ライバー発のアイドル、デビュー2カ月で第1子妊娠を発表",
-    "url": "https://www.nikkansports.com/entertainment/news/202607020000163.html",
-    "reason": "デビュー直後の妊娠発表が意外性から話題に、結婚11年・不妊治療の経緯も含め注目度の高い芸能ニュース",
-    "source": "日刊スポーツ",
-    "category": "エンタメ",
-    "published": "2026-07-02T00:03:59",
-    "image_url": null
-  },
-  {
-    "title": "サンリオ「はぴだんぶい」とサブウェイが初コラボ商品発売",
-    "url": "https://news.mynavi.jp/article/20260703-4657796/",
-    "reason": "人気キャラクターと飲食チェーンの初コラボが夏の新商品として登場、SNSでの拡散が見込まれる企画",
-    "source": "マイナビニュース",
-    "category": "エンタメ",
-    "published": "2026-07-03T02:59:42",
-    "image_url": null
-  },
-  {
-    "title": "鷲頭美央副知事が7月末退任、後任は総務省出身の40代男性",
-    "url": "https://tver.jp/episodes/epqxrgjqax",
-    "reason": "県政初の女性副知事が退任、ふるさと納税制度創設に携わった実績から地方政治の話題として注目",
-    "source": "TVer",
-    "category": "政治・社会",
-    "published": "2026-07-02T13:11:34",
-    "image_url": null
-  },
-  {
-    "title": "LLMエージェントの誤動作を来歴分析で防ぐ安全性研究",
-    "url": "https://arxiv.org/abs/2607.01236",
-    "reason": "強力なツールを操作するAIエージェントの逸脱行動を検知する新手法、AI安全性の実用面で重要な知見",
-    "source": "arXiv cs.CL",
-    "category": "研究・論文",
-    "published": "2026-07-03T04:00:00",
-    "image_url": null
-  },
-  {
-    "title": "推論LLMのKVキャッシュをスライディング窓で圧縮する高速化手法「Kara」",
-    "url": "https://arxiv.org/abs/2607.01237",
-    "reason": "長い思考過程を生成する推論モデルのメモリ肥大化を解決、実運用コスト削減に直結する技術",
-    "source": "arXiv cs.CL",
-    "category": "研究・論文",
-    "published": "2026-07-03T04:00:00",
-    "image_url": null
-  },
-  {
-    "title": "脳波信号から精神的ストレスを検出する新手法「I2RiMA」",
-    "url": "https://arxiv.org/abs/2607.01279",
-    "reason": "個人差の大きい脳波データから汎用的にストレスを検出、ウェアラブル健康管理への応用が期待される",
-    "source": "arXiv cs.LG",
-    "category": "研究・論文",
-    "published": "2026-07-03T04:00:00",
-    "image_url": null
-  },
-  {
-    "title": "巨大ガス惑星の質量放出で誕生した「膨張型ホットネプチューン」を発見",
-    "url": "https://arxiv.org/abs/2607.01315",
-    "reason": "形成理論で説明が難しい系外惑星の起源を解明、太陽系外惑星研究に新知見をもたらす発見",
-    "source": "arXiv astro-ph",
-    "category": "研究・論文",
-    "published": "2026-07-03T04:00:00",
-    "image_url": null
-  },
-  {
-    "title": "中国、若手研究者向け名門助成金を拡充し競争緩和を狙う",
-    "url": "https://www.nature.com/articles/d41586-026-01989-5",
-    "reason": "研究費獲得競争の激化に対応する中国の科学政策、若手研究者支援のあり方を考える材料になる",
+    "title": "大学のAI検出ソフトは不正をどこまで見抜けるか",
+    "url": "https://www.nature.com/articles/d41586-026-01358-2",
+    "reason": "大学で導入が進むAI文章検出の精度を検証。誤判定や教育現場への影響を、生成AI時代の実務課題として読める。",
     "source": "Nature",
     "category": "研究・論文",
-    "published": "2026-07-03T16:44:14.644549",
-    "image_url": null
-  },
-  {
-    "title": "南極で検出された高エネルギー中性子の起源銀河「Shadow Blaster」を特定",
-    "url": "https://www.nature.com/articles/d41586-026-02034-1",
-    "reason": "宇宙線バーストを大量に生む銀河が中性子の発生源と判明、素粒子・宇宙物理学の重要な発見",
-    "source": "Nature",
-    "category": "研究・論文",
-    "published": "2026-07-03T16:44:14.644549",
+    "published": "2026-07-07T09:16:35.892035",
     "image_url": null
   }
 ]

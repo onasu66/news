@@ -489,11 +489,31 @@ def run_claude_text_gen(prompt: str, timeout: int = 120, usage_kind: str = "text
                 shell=False,
             )
             if proc.returncode != 0:
+                stdout_tail = (proc.stdout or "")[:300]
+                stderr_tail = (proc.stderr or "")[:300]
                 logger.warning(
-                    "run_claude_text_gen 失敗 code=%d stderr=%s",
+                    "run_claude_text_gen 失敗 code=%d stdout=%s stderr=%s",
                     proc.returncode,
-                    (proc.stderr or "")[:300],
+                    stdout_tail,
+                    stderr_tail,
                 )
+                if _looks_like_claude_usage_limit(proc.stdout or "", proc.stderr or ""):
+                    fallback = _invoke_codex_exec(
+                        usage_kind,
+                        full_prompt,
+                        timeout,
+                        output_file=out_file,
+                    )
+                    if fallback:
+                        out = fallback.strip()
+                        _record_usage(
+                            f"{usage_kind}_codex_fallback",
+                            prompt=full_prompt,
+                            output=out,
+                            elapsed_sec=time.perf_counter() - started,
+                            ok=True,
+                        )
+                        return out
                 _record_usage(
                     usage_kind,
                     prompt=full_prompt,
@@ -598,6 +618,192 @@ def _find_claude_cmd() -> str | None:
         if found:
             return found
     return None
+
+
+def _npm_codex_cmd_paths() -> list[Path]:
+    """Windows で Node 経由の Codex npm シム候補（Claude と同じ prefix を優先）。"""
+    out: list[Path] = []
+    for prefix in (Path(r"D:\app\npm-global"),):
+        p = prefix / "codex.cmd"
+        if p.is_file():
+            out.append(p)
+    for key in ("APPDATA", "LOCALAPPDATA"):
+        root = os.environ.get(key, "").strip()
+        if root:
+            p = Path(root) / "npm" / "codex.cmd"
+            if p.is_file():
+                out.append(p)
+    return out
+
+
+def _find_codex_cmd() -> str | None:
+    override = os.environ.get("CODEX_CLI_CMD", "").strip()
+    if override:
+        o = Path(override)
+        if o.is_file():
+            return str(o.resolve())
+        w = shutil.which(override)
+        if w:
+            return w
+
+    if sys.platform == "win32":
+        for p in _npm_codex_cmd_paths():
+            return str(p.resolve())
+        found_cmd = shutil.which("codex.cmd")
+        if found_cmd:
+            return found_cmd
+
+    for candidate in ("codex", "codex.cmd"):
+        found = shutil.which(candidate)
+        if found:
+            return found
+    return None
+
+
+def _looks_like_claude_usage_limit(stdout: str, stderr: str) -> bool:
+    text = f"{stdout}\n{stderr}".lower()
+    markers = (
+        "usage limit",
+        "usage_limit",
+        "weekly limit",
+        "hit your weekly limit",
+        "monthly limit",
+        "daily limit",
+        "rate limit",
+        "rate_limit",
+        "quota",
+        "overloaded",
+        "too many requests",
+        "429",
+        "limit exceeded",
+        "exceeded your current quota",
+        "credit balance",
+        "insufficient credits",
+        "claude ai usage limit reached",
+    )
+    return any(marker in text for marker in markers)
+
+
+def _build_codex_exec_cmd(
+    cmd_path: str,
+    output_file: Path | None = None,
+    last_message_file: Path | None = None,
+) -> list[str]:
+    base = [
+        "exec",
+        "--sandbox", "workspace-write",
+    ]
+    if output_file is not None:
+        base.extend(["--add-dir", str(output_file.parent)])
+    if last_message_file is not None:
+        base.extend(["--output-last-message", str(last_message_file)])
+    if sys.platform == "win32" and cmd_path.lower().endswith(".cmd"):
+        return ["cmd", "/c", cmd_path] + base
+    return [cmd_path] + base
+
+
+def _read_text_file_safe(path: Path, *, fallback: str = "") -> str:
+    """Codex/Claude が書いた直後の temp ファイルは Windows でロックされることがある。"""
+    for attempt in range(3):
+        try:
+            return path.read_text(encoding="utf-8-sig").strip()
+        except PermissionError:
+            if attempt < 2:
+                time.sleep(0.3)
+            else:
+                logger.warning("output file read permission denied: %s", path)
+        except OSError as e:
+            logger.warning("output file read failed (%s): %s", path, e)
+            break
+    return fallback
+
+
+def _invoke_codex_exec(
+    label: str,
+    prompt: str,
+    timeout: int,
+    output_file: Path | None = None,
+) -> str | None:
+    cmd_path = _find_codex_cmd()
+    if not cmd_path:
+        logger.error("[%s] Claude usage limit detected, but codex command was not found", label)
+        return None
+
+    last_message_file: Path | None = None
+    try:
+        last_message_dir = PROJECT_ROOT / ".tmp_codex_fallback"
+        last_message_dir.mkdir(exist_ok=True)
+        last_message_file = last_message_dir / f"last-{os.getpid()}-{int(time.time() * 1000)}.txt"
+    except Exception:
+        last_message_file = None
+
+    cmd = _build_codex_exec_cmd(
+        cmd_path,
+        output_file=output_file,
+        last_message_file=last_message_file,
+    )
+    logger.warning("[%s] Claude usage limit detected; retrying same prompt with Codex CLI", label)
+    codex_prompt = (
+        f"{prompt}\n\n"
+        "Codex fallback instruction: if the original prompt asks you to write a file, "
+        "also return the complete requested output as your final message. "
+        "For JSON tasks, return only valid JSON with no Markdown fences or explanation."
+    )
+
+    try:
+        proc = subprocess.run(
+            cmd,
+            input=codex_prompt.encode("utf-8"),
+            capture_output=True,
+            timeout=timeout,
+            cwd=str(PROJECT_ROOT),
+            env=_subprocess_env(),
+            shell=False,
+        )
+    except subprocess.TimeoutExpired:
+        logger.error("[%s] Codex CLI timeout (%d sec)", label, timeout)
+        return None
+    except Exception as e:
+        logger.error("[%s] Codex CLI error: %s", label, e)
+        return None
+
+    stdout = _decode_cli_bytes(proc.stdout or b"")
+    stderr = _decode_cli_bytes(proc.stderr or b"")
+    if proc.returncode != 0:
+        logger.error(
+            "[%s] Codex CLI failed code=%d stdout=%s stderr=%s",
+            label,
+            proc.returncode,
+            stdout[:500],
+            stderr[:500],
+        )
+        return None
+
+    raw = stdout.strip()
+    if output_file is not None and output_file.exists():
+        file_raw = _read_text_file_safe(output_file, fallback=raw)
+        if file_raw:
+            raw = file_raw
+    if last_message_file is not None and last_message_file.exists():
+        last_raw = _read_text_file_safe(last_message_file, fallback="")
+        if last_raw and (not raw or not raw.lstrip().startswith(("{", "["))):
+            raw = last_raw
+    if last_message_file is not None:
+        try:
+            last_message_file.unlink(missing_ok=True)
+            last_message_file.parent.rmdir()
+        except Exception:
+            pass
+    return raw or None
+
+
+def _decode_cli_bytes(b: bytes) -> str:
+    for enc in ("utf-8", "cp932", "latin-1"):
+        try:
+            return b.decode(enc)
+        except UnicodeDecodeError:
+            continue
+    return b.decode("utf-8", errors="replace")
 
 
 def _find_python312_plus() -> str | None:
@@ -770,6 +976,12 @@ def _invoke_claude_research_session(
                 proc_stdout[:500],
                 proc_stderr[:500],
             )
+            if _looks_like_claude_usage_limit(proc_stdout, proc_stderr):
+                raw = _invoke_codex_exec(label, prompt, timeout, output_file=output_file)
+                if raw:
+                    if raw.startswith("```"):
+                        raw = "\n".join(l for l in raw.splitlines() if not l.startswith("```")).strip()
+                    return raw
             return None
 
         raw = ""
@@ -1217,6 +1429,18 @@ def run_claude_research_v2(
                         "Claude 選定 v2 失敗 code=%d stdout=%s stderr=%s",
                         proc.returncode, stdout[:300], stderr[:300],
                     )
+                    if _looks_like_claude_usage_limit(stdout, stderr):
+                        codex_raw = _invoke_codex_exec(
+                            "curation_v2",
+                            curation_prompt,
+                            timeout,
+                            output_file=out_file,
+                        )
+                        if codex_raw:
+                            raw = codex_raw
+                            elapsed = time.perf_counter() - cl_started
+                            _record_usage("curation_v2_codex_fallback", prompt="[codex]", output=raw, elapsed_sec=elapsed, ok=True)
+                            logger.info("Codex curation v2 succeeded (%.1f sec)", elapsed)
                 else:
                     claude_raw = ""
                     if out_file.exists():
