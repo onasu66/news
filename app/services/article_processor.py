@@ -244,6 +244,48 @@ def _rewrite_news_title(title: str, summary: str = "", category: str = "") -> st
                 return chunk[:cut].rstrip("、・ ") + "…"
         return chunk + "…"
 
+    def _looks_search_friendly(s: str) -> bool:
+        markers = (
+            "とは",
+            "なぜ",
+            "何か",
+            "仕組み",
+            "理由",
+            "影響",
+            "課題",
+            "今後",
+            "解説",
+            "わかる",
+            "わかった",
+        )
+        return any(marker in s for marker in markers)
+
+    def _search_friendly_fallback(s: str) -> str:
+        base = " ".join((s or "").split()).strip("「」\"'。、")
+        if not base:
+            return ""
+        if _looks_search_friendly(base):
+            if "解説" not in base and len(base) <= 36:
+                return _shorten(f"{base}を解説")
+            return _shorten(base)
+
+        is_paper_fallback = (category or "").strip() == "研究・論文"
+        suffixes = (
+            ("とは？研究結果と影響を解説", 19),
+            ("とは？仕組みと影響を解説", 17),
+            ("とは？要点を解説", 10),
+        ) if is_paper_fallback else (
+            ("とは？仕組みと影響を解説", 17),
+            ("とは？理由と今後を解説", 15),
+            ("とは？要点を解説", 10),
+        )
+        for suffix, reserve in suffixes:
+            head = base[: max(12, 42 - reserve)].rstrip("、・ ")
+            candidate = f"{head}{suffix}"
+            if len(candidate) <= 42:
+                return candidate
+        return _shorten(f"{base}とは？要点を解説")
+
     # AI が使える場合は「編集者リライト」を1回だけ試す
     try:
         from app.config import settings
@@ -266,13 +308,14 @@ def _rewrite_news_title(title: str, summary: str = "", category: str = "") -> st
 - ユーザーが検索しそうな語（固有名詞・企業名・地名・数字・イベント名）を前半に置く
 - 「えっ、そうなの？」と思わせる意外性・驚きがあれば積極的に表現する
 - 具体的な数字や固有名詞があればタイトルに含める（「約3割」「〇〇社」「〇〇歳」など）
-- 「○○が○○する理由」「○○でわかった○○」「○○の意外な○○」など知的好奇心を刺激する構造を使う
+- 原則として検索されやすい解説型にする。「○○とは？仕組みと影響を解説」「○○の理由と今後を解説」「○○でわかった○○とは」のような構造を優先
+- 「とは」「仕組み」「理由」「影響」「今後」「解説」のうち少なくとも1語を自然に含める
 - 煽り・デマ誘導は禁止（「衝撃」「悲報」「暴露」「真相」「ヤバい」など）
 - 28〜42文字程度。長い場合は重要キーワードを残して短く
 - 自然な日本語。キーワードの羅列や【】は使わない
 - 出力はタイトル1行のみ（引用符や説明不要）"""
             if is_paper:
-                system_prompt += "\n- 論文は研究対象・主要な数値・実用的な発見が伝わる見出し（「○○が○○に効果」「○○でわかった○○」「○○が○○を変える」形式が理想）"
+                system_prompt += "\n- 論文は研究対象・主要な数値・実用的な発見が伝わる見出し。「○○とは？研究結果と影響を解説」「○○でわかった○○とは」を優先"
             if _needs_intro_style:
                 system_prompt += "\n- この記事は概念説明・背景解説向き。「○○とは何か」「○○の仕組みと影響」などの解説型タイトルが最適"
 
@@ -298,11 +341,11 @@ def _rewrite_news_title(title: str, summary: str = "", category: str = "") -> st
             )
             out = (resp.choices[0].message.content or "").strip().strip("「」\"'")
             if out and text_mainly_japanese(out):
-                return _shorten(out)
+                return _search_friendly_fallback(out)
     except Exception:
         pass
 
-    return _shorten(t)
+    return _search_friendly_fallback(t)
 
 
 def _select_diverse_batch(
@@ -806,5 +849,4 @@ def process_random_rss_articles(rss_items: list[NewsItem], count: int = 3) -> in
             _log_save(item.id, item.title, False, error=str(e), source="rss_random")
         _wait_between_gemini_articles(idx, len(to_process))
     return n
-
 
