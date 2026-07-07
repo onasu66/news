@@ -2259,6 +2259,56 @@ def _blocks_to_html(blocks: list) -> str:
     return "".join(out)
 
 
+def _editorial_take_from_blocks(blocks: list) -> str:
+    """既存のAI解説ブロックから、ミドルマンの「編集部の見立て」用テキストを作る。"""
+    safe = [b for b in (blocks or []) if isinstance(b, dict)]
+    if not safe:
+        return ""
+
+    def _clean(value: str, max_len: int = 220) -> str:
+        text = sanitize_display_text(value or "")
+        text = re.sub(r"\s+", " ", text).strip()
+        return text[:max_len].rstrip("、。 ") if len(text) > max_len else text.rstrip("、。 ")
+
+    def _sentence(value: str) -> str:
+        text = _clean(value)
+        if not text:
+            return ""
+        return text if text.endswith(("。", "！", "？")) else f"{text}。"
+
+    is_navigator = safe[0].get("type") == "navigator_section"
+    if is_navigator:
+        by_section: dict[str, str] = {}
+        for b in safe:
+            section = str(b.get("section") or "")
+            body = _clean(str(b.get("content") or ""))
+            if section and body:
+                by_section[section] = body
+        core = by_section.get("impact") or by_section.get("background") or by_section.get("facts") or ""
+        next_point = by_section.get("prediction") or by_section.get("caution") or ""
+    else:
+        text_items: list[str] = []
+        explain_items: list[str] = []
+        for b in safe:
+            body = _clean(str(b.get("content") or ""))
+            if not body:
+                continue
+            if b.get("type") == "text":
+                text_items.append(body)
+            elif b.get("type") == "explain":
+                explain_items.append(body)
+        core = text_items[1] if len(text_items) > 1 else (text_items[0] if text_items else "")
+        next_point = explain_items[-1] if explain_items else (text_items[2] if len(text_items) > 2 else "")
+
+    if not core:
+        return ""
+    if next_point and next_point != core:
+        text = _clean(f"このニュースの本質は、{_sentence(core)}次に見るべきポイントは、{_sentence(next_point)}", 260)
+    else:
+        text = _clean(f"このニュースの本質は、{_sentence(core)}", 220)
+    return text if text.endswith(("。", "！", "？")) else f"{text}。"
+
+
 @router.get("/topic/{topic_id}", response_class=HTMLResponse)
 async def topic_detail(request: Request, topic_id: str):
     """トピック詳細（URL: /topic/○○）・AI解説・SEO向け本文"""
@@ -2362,6 +2412,7 @@ async def topic_detail(request: Request, topic_id: str):
     paper_quiz = None
     deep_insights = None
     body_html = _blocks_to_html(blocks) if blocks else ""
+    editorial_take = _editorial_take_from_blocks(blocks)
     short_summary = _build_short_summary(quick_understand, item.summary)
     show_quick_points = _quick_points_non_empty(quick_understand)
     article_lead_html = (
@@ -2481,6 +2532,7 @@ async def topic_detail(request: Request, topic_id: str):
             "blocks": blocks,
             "personas_data": personas_data,
             "body_html": body_html,
+            "editorial_take": editorial_take,
             "short_summary": short_summary,
             "article_lead_html": article_lead_html,
             "show_quick_points": show_quick_points,

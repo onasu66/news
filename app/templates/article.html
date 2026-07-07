@@ -134,6 +134,18 @@
                     {% endif %}
                 </div>
                 {% endif %}
+                {% if editorial_take %}
+                <section class="editorial-take-card" aria-label="編集部の見立て">
+                    <div class="editorial-take-head">
+                        <img src="{{ midorman_image_url }}" alt="" class="editorial-take-avatar" loading="lazy">
+                        <div>
+                            <p class="editorial-take-kicker">ミドルマンが整理</p>
+                            <h2 class="editorial-take-title">編集部の見立て</h2>
+                        </div>
+                    </div>
+                    <p class="editorial-take-body">{{ editorial_take|e }}</p>
+                </section>
+                {% endif %}
             </div>
             <div id="article-deep-content" class="article-read-content" role="tabpanel" aria-labelledby="tab-mode-deep" tabindex="-1" hidden>
                 <h3 class="article-fixed-section-title">✅ AI解説</h3>
