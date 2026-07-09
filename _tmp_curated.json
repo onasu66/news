@@ -1,0 +1,141 @@
+{
+  "news": [
+    {
+      "title": "貯金3万円で87歳が職探し「年金だけでは暮らせない」現実",
+      "url": "https://news.ntv.co.jp/category/society/66b335e8ba43420d942bf923f462799b",
+      "reason": "年金支給額が引き上げられても物価高の勢いには追いつかず、87歳で職を探す高齢者の生活苦がSNSで話題になっている",
+      "source": "日テレNEWS NNN",
+      "category": "国内",
+      "published": "2026-06-20T07:00:00",
+      "image_url": null
+    },
+    {
+      "title": "歴史的円安で1ドル162円70銭、家計負担は年1.5万円増か",
+      "url": "https://www.fnn.jp/articles/-/1068650",
+      "reason": "40年ぶりの歴史的な円安水準を受けて為替介入への警戒が強まっており、家計への負担増が広く注目されている",
+      "source": "FNNプライムオンライン",
+      "category": "国内",
+      "published": "2026-07-01T07:45:00",
+      "image_url": null
+    },
+    {
+      "title": "「タイミーさん」直前キャンセル巡り全国初の集団訴訟始まる",
+      "url": "https://www.bengo4.com/c_5/n_20598/",
+      "reason": "単発バイト仲介サービスを巡る労働問題が全国初の集団訴訟という形で可視化され、ギグワーク全体への関心が高まっている",
+      "source": "bengo4.com",
+      "category": "政治・社会",
+      "published": "2026-07-02T04:12:00",
+      "image_url": null
+    },
+    {
+      "title": "キオクシア株が一時12%安、AI半導体マネー流出の連想売り",
+      "url": "https://finance.biggo.jp/news/6f9a2fb6-108b-4a53-a7c2-26fe4eac42aa",
+      "reason": "AI関連半導体株からの資金流出が国内銘柄にも波及し、キオクシア株が急落するなど市場に警戒感が広がっている",
+      "source": "BigGo ファイナンス",
+      "category": "テクノロジー",
+      "published": "2026-07-02T02:57:00",
+      "image_url": null
+    },
+    {
+      "title": "京大でさえ理系女子枠が定員割れする「2035年の崖」の予兆",
+      "url": "https://news.yahoo.co.jp/articles/7cfccb39e597d71568fa774d1153998f1838b3cd?page=2",
+      "reason": "私立大学の6割が定員割れという「2035年の崖」が迫るなか、難関大学である京大の異変にも注目が集まっている",
+      "source": "Yahoo!ニュース",
+      "category": "政治・社会",
+      "published": "2026-07-01T01:15:38",
+      "image_url": null
+    },
+    {
+      "title": "本田圭佑「僕を1年試してほしい」代表監督に名乗りSNSで反響",
+      "url": "https://www.nikkansports.com/soccer/worldcup2026/news/202607020000527.html",
+      "reason": "サッカー日本代表の次期監督人事を巡り、本田圭佑本人が名乗りを上げる投稿をSNSに公開し大きな話題になっている",
+      "source": "日刊スポーツ",
+      "category": "スポーツ",
+      "published": "2026-07-02T04:34:57",
+      "image_url": null
+    },
+    {
+      "title": "参政党・神谷代表「維新を落とす」定数削減巡り全面対決の構え",
+      "url": "https://news.yahoo.co.jp/articles/414cd29e7eb5776e51de37eccfc65d4fea088bb5",
+      "reason": "衆院定数削減法案を巡り与野党の対立が激化しており、参政党代表の発言が今後の国会運営に影響しかねない状況",
+      "source": "Yahoo!ニュース",
+      "category": "政治・社会",
+      "published": "2026-07-01T12:55:42",
+      "image_url": null
+    },
+    {
+      "title": "「7月5日滅亡説」はなぜ拡散？地震多発とデマ拡散の真相を検証",
+      "url": "https://www.zakzak.co.jp/article/20260701-62JY7L2YLRFMZMLEQI2KRZQ3L4/",
+      "reason": "SNSで拡散する「7月5日滅亡説」という終末デマの背景を専門家が検証しており、情報リテラシーの観点からも関心が高い",
+      "source": "zakⅡ",
+      "category": "国内",
+      "published": "2026-07-02T06:43:22",
+      "image_url": null
+    },
+    {
+      "title": "ウォール街が金（ゴールド）の強気予想を撤回、13年ぶり急落の裏側",
+      "url": "https://www.businessinsider.jp/article/2606-gold-price-today-forecast-outlook-etf-interest-rates-sell-off-/",
+      "reason": "世界的な金価格の急落を受けてウォール街の大手金融機関が強気予想を撤回するなど、国際的な資金の流れの変化を示している",
+      "source": "Business Insider Japan",
+      "category": "国際",
+      "published": "2026-06-29T07:00:00",
+      "image_url": null
+    }
+  ],
+  "papers": [
+    {
+      "title": "AIに「人格」はあるのか？LLM個体性問題を哲学的に検証",
+      "url": "https://arxiv.org/abs/2607.00006",
+      "reason": "LLMに人格や自己同一性はあるのかという問いを哲学的な枠組みで検証する研究で、AIの心の哲学に関心が高い層に響く内容",
+      "source": "arXiv cs.CL",
+      "category": "研究・論文",
+      "published": "2026-07-02T04:00:00",
+      "image_url": null
+    },
+    {
+      "title": "GRPOとDAPOは同じ数式だった？LLM強化学習手法の統一理論",
+      "url": "https://arxiv.org/abs/2607.00152",
+      "reason": "LLMの推論能力を鍛える複数の強化学習手法が、実は数学的に同一の操作だったと示す興味深い理論的発見をまとめた論文",
+      "source": "arXiv cs.LG",
+      "category": "研究・論文",
+      "published": "2026-07-02T04:00:00",
+      "image_url": null
+    },
+    {
+      "title": "LLMの「脳内地図」を可視化するNeuroCogMapが登場",
+      "url": "https://arxiv.org/abs/2607.00397",
+      "reason": "大規模言語モデル内部の認知的な構造を脳科学的なアプローチで可視化し解明する新手法NeuroCogMapを提案する研究",
+      "source": "arXiv q-bio",
+      "category": "研究・論文",
+      "published": "2026-07-02T04:00:00",
+      "image_url": null
+    },
+    {
+      "title": "光ファイバーでホーキング放射を再現、量子重力理論の検証前進",
+      "url": "https://www.nature.com/articles/s41586-026-10720-3",
+      "reason": "検証が難しいブラックホールのホーキング放射を、光ファイバーを使った光学アナログ実験で観測した画期的な物理学の成果",
+      "source": "Nature",
+      "category": "研究・論文",
+      "published": "2026-07-02T16:36:39.608663",
+      "image_url": null
+    },
+    {
+      "title": "AIが酵母細胞を丸ごと再現する「仮想酵母」研究がNatureに掲載",
+      "url": "https://www.nature.com/articles/s41586-026-10574-9",
+      "reason": "AI駆動の仮想細胞モデルで酵母の生命現象をまるごとシミュレーションする野心的な取り組みがNatureに掲載された",
+      "source": "Nature",
+      "category": "研究・論文",
+      "published": "2026-07-02T16:36:39.608663",
+      "image_url": null
+    },
+    {
+      "title": "猛暑がメンタルに与える影響をウェアラブル端末で毎日追跡調査",
+      "url": "http://bmjopen.bmj.com/cgi/content/short/16/7/e109062?rss=1",
+      "reason": "気温上昇と精神的健康の関連を、スマートウォッチなどウェアラブル端末で日常的に計測する新しい調査手法を採用した研究",
+      "source": "BMJ Open",
+      "category": "研究・論文",
+      "published": "2026-07-02T16:36:39.735932",
+      "image_url": null
+    }
+  ]
+}

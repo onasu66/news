@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>NFC Music</title>
+    <meta name="description" content="Card-based NFC music player" />
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <main class="shell">
+      <section class="player" aria-live="polite">
+        <div class="visual" id="cover" aria-hidden="true">
+          <div class="disc">
+            <span></span>
+          </div>
+        </div>
+
+        <div class="meta">
+          <div class="eyebrow">
+            <span id="edition">CARD</span>
+            <span id="mood">private</span>
+          </div>
+          <h1 id="title">Loading</h1>
+          <p class="artist" id="artist">Please wait</p>
+          <p class="description" id="description"></p>
+        </div>
+
+        <div class="transport">
+          <button class="play" id="playButton" type="button" aria-label="Play">
+            <span id="playIcon">Play</span>
+          </button>
+          <div class="timeline">
+            <div class="time-row">
+              <span id="currentTime">0:00</span>
+              <span id="duration">0:00</span>
+            </div>
+            <input
+              id="seek"
+              type="range"
+              min="0"
+              max="1000"
+              value="0"
+              aria-label="Seek"
+            />
+          </div>
+        </div>
+
+        <audio id="audio" preload="metadata"></audio>
+
+        <nav class="cards" aria-label="Demo cards">
+          <a href="/?card=card001">001</a>
+          <a href="/?card=card002">002</a>
+          <a href="/?card=card003">003</a>
+        </nav>
+      </section>
+    </main>
+
+    <script src="/app.js" type="module"></script>
+  </body>
+</html>

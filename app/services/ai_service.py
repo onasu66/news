@@ -1705,6 +1705,13 @@ def build_persona_batch_prompt(
 
 上の3人分のコメントをJSONで出力せよ。"""
 
+    user_prompt += """
+
+あわせて editorial_take を必ず出してください。
+editorial_take はニュースの要約ではなく、「このニュースで誰にどんな影響がありそうか」「短期的に何を見るべきか」を120〜220字で自然に説明してください。
+あおらず、断定しすぎず、難しい言葉を避けてください。
+"""
+
     return system_prompt, user_prompt, personas_data
 
 
@@ -1812,14 +1819,24 @@ def get_all_persona_opinions_batch(
         return []
 
 
-def parse_persona_batch_raw(raw: str, personas_data: list[dict]) -> list[str]:
+def _clean_editorial_take(text: str) -> str:
+    text = re.sub(r"\s+", " ", (text or "").strip())
+    text = text.strip("「」\"' ")
+    if not text:
+        return ""
+    if len(text) > 260:
+        text = text[:260].rstrip("、。,. ") + "。"
+    return text
+
+
+def parse_persona_batch_payload(raw: str, personas_data: list[dict]) -> dict:
     """c0/c1/c2 形式のJSON文字列から comment 配列を取り出す（API再送なしの軽量版）。
     Claude CLI 経由など、失敗時のリトライ用クライアントを持たない呼び出し元向け。
     要件を満たさないエントリは空文字にし、呼び出し元の個別フォールバックへ委ねる。"""
     n = len(personas_data)
     text = (raw or "").strip()
     if not text:
-        return [""] * n
+        return {"personas": [""] * n, "editorial_take": ""}
     if "```" in text:
         text = "\n".join(ln for ln in text.splitlines() if not ln.strip().startswith("```")).strip()
     if not text.startswith("{"):
@@ -1829,7 +1846,7 @@ def parse_persona_batch_raw(raw: str, personas_data: list[dict]) -> list[str]:
     try:
         data = json.loads(text)
     except Exception:
-        return [""] * n
+        return {"personas": [""] * n, "editorial_take": ""}
 
     results: list[str] = []
     for idx in range(n):
@@ -1851,7 +1868,16 @@ def parse_persona_batch_raw(raw: str, personas_data: list[dict]) -> list[str]:
             results.append(c_text)
         else:
             results.append("")
-    return results
+    return {
+        "personas": results,
+        "editorial_take": _clean_editorial_take(str(data.get("editorial_take") or "")),
+    }
+
+
+def parse_persona_batch_raw(raw: str, personas_data: list[dict]) -> list[str]:
+    payload = parse_persona_batch_payload(raw, personas_data)
+    personas = payload.get("personas")
+    return personas if isinstance(personas, list) else []
 
 
 # 記事ジャンル分類で使う候補（news_aggregator.CATEGORY_ORDER と一致させる）

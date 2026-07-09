@@ -189,9 +189,11 @@ def neon_init_schema():
                     paper_graph TEXT,
                     paper_quiz TEXT,
                     deep_insights TEXT,
+                    editorial_take TEXT,
                     created_at TIMESTAMPTZ DEFAULT NOW()
                 )
             """)
+            cur.execute("ALTER TABLE explanations ADD COLUMN IF NOT EXISTS editorial_take TEXT")
             cur.execute("CREATE INDEX IF NOT EXISTS idx_articles_added_at ON articles(added_at DESC)")
             cur.execute("CREATE INDEX IF NOT EXISTS idx_articles_cat_expl ON articles(category, has_explanation, published DESC)")
             cur.execute("""
@@ -481,17 +483,28 @@ def _is_bad_fallback_cache(blocks: list) -> bool:
 def neon_get_cached(article_id: str) -> Optional[dict]:
     with _conn("get_cached") as conn:
         with conn.cursor() as cur:
-            cur.execute(
-                "SELECT inline_blocks, personas, display_persona_ids, "
-                "quick_understand, vote_data, paper_graph, paper_quiz, deep_insights "
-                "FROM explanations WHERE article_id = %s",
-                (article_id,),
-            )
+            try:
+                cur.execute(
+                    "SELECT inline_blocks, personas, display_persona_ids, "
+                    "quick_understand, vote_data, paper_graph, paper_quiz, deep_insights, editorial_take "
+                    "FROM explanations WHERE article_id = %s",
+                    (article_id,),
+                )
+            except Exception:
+                conn.rollback()
+                cur.execute(
+                    "SELECT inline_blocks, personas, display_persona_ids, "
+                    "quick_understand, vote_data, paper_graph, paper_quiz, deep_insights "
+                    "FROM explanations WHERE article_id = %s",
+                    (article_id,),
+                )
             row = cur.fetchone()
     if not row:
         return None
     cols = ["inline_blocks", "personas", "display_persona_ids",
             "quick_understand", "vote_data", "paper_graph", "paper_quiz", "deep_insights"]
+    if len(row) > len(cols):
+        cols.append("editorial_take")
     d = dict(zip(cols, row))
 
     try:
@@ -528,6 +541,7 @@ def neon_get_cached(article_id: str) -> Optional[dict]:
             result[key] = json.loads(raw) if isinstance(raw, str) else raw
         except Exception:
             pass
+    result["editorial_take"] = str(d.get("editorial_take") or "")
 
     return result
 
@@ -543,6 +557,7 @@ def neon_save_cache(
     paper_graph: dict | None = None,
     paper_quiz: dict | None = None,
     deep_insights: dict | None = None,
+    editorial_take: str | None = None,
 ):
     _PERSONAS_COUNT = 14
     if display_persona_ids is not None and len(display_persona_ids) == 3 and len(personas) == 3:
@@ -563,8 +578,8 @@ def neon_save_cache(
                 """
                 INSERT INTO explanations
                     (article_id, inline_blocks, personas, display_persona_ids,
-                     quick_understand, vote_data, paper_graph, paper_quiz, deep_insights, created_at)
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, NOW())
+                     quick_understand, vote_data, paper_graph, paper_quiz, deep_insights, editorial_take, created_at)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, NOW())
                 ON CONFLICT (article_id) DO UPDATE SET
                     inline_blocks = EXCLUDED.inline_blocks,
                     personas = EXCLUDED.personas,
@@ -574,6 +589,7 @@ def neon_save_cache(
                     paper_graph = EXCLUDED.paper_graph,
                     paper_quiz = EXCLUDED.paper_quiz,
                     deep_insights = EXCLUDED.deep_insights,
+                    editorial_take = EXCLUDED.editorial_take,
                     created_at = NOW()
                 """,
                 (
@@ -586,6 +602,7 @@ def neon_save_cache(
                     _j(paper_graph),
                     _j(paper_quiz),
                     _j(deep_insights),
+                    str(editorial_take or ""),
                 ),
             )
             cur.execute(

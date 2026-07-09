@@ -1,20 +1,137 @@
 [
   {
-    "title": "サムスン利益18倍見通し、AI半導体相場の試金石に",
-    "url": "https://finance.yahoo.co.jp/news/detail/f547adb92a1d6145b23be1caedaaf638016445c7",
-    "reason": "サムスン株価が検索で浮上。AI半導体需要の強さと相場の持続性を、決算前の視点で落ち着いて読み解ける。",
-    "source": "Yahoo!ファイナンス",
-    "category": "テクノロジー",
-    "published": "2026-07-06T08:26:00",
+    "title": "金商法移行で暗号資産ビジネスはどう変わる？規制の最前線",
+    "url": "https://news.yahoo.co.jp/articles/3dbd7766ea917a09a2eec61ce7b2d3a8b2915fb0",
+    "reason": "金融庁の規制移行で暗号資産業界に大きな変化。IVS2026での議論から今後の実務対応を読み解く",
+    "source": "Yahoo!ニュース",
+    "category": "政治・社会",
+    "published": "2026-07-08T12:17:13",
     "image_url": null
   },
   {
-    "title": "大学のAI検出ソフトは不正をどこまで見抜けるか",
-    "url": "https://www.nature.com/articles/d41586-026-01358-2",
-    "reason": "大学で導入が進むAI文章検出の精度を検証。誤判定や教育現場への影響を、生成AI時代の実務課題として読める。",
+    "title": "米政治家はなぜ暗号資産を持つのか ビットコインがワシントン動かす",
+    "url": "https://news.yahoo.co.jp/articles/91a1d56ad6336a0297c2d3d708529b1a4c8ab477",
+    "reason": "米国政界でビットコイン保有が広がる動きを解説。国際的な暗号資産と政治の接近が話題に",
+    "source": "Yahoo!ニュース",
+    "category": "国際",
+    "published": "2026-07-08T22:55:21",
+    "image_url": null
+  },
+  {
+    "title": "九州・中国・近畿で梅雨明け 熱中症警戒アラートに台風9号接近",
+    "url": "https://news.yahoo.co.jp/articles/61edc37c321865e46181fcf7b305106595ef7a65",
+    "reason": "梅雨明けと猛暑、台風接近が重なり通勤朝の注意喚起として重要。今日の行動に直結する速報",
+    "source": "Yahoo!ニュース",
+    "category": "国内",
+    "published": "2026-07-08T03:17:07",
+    "image_url": null
+  },
+  {
+    "title": "サム・アルトマン、OpenAI上場に急ブレーキ 中国製AIが猛追",
+    "url": "https://www.businessinsider.jp/article/2606-news-sam-altman-just-pumped-the-brakes-on-openais-ipo/",
+    "reason": "OpenAI上場計画の減速とスペースX失速、中国AI台頭という業界地図の変化を伝える注目記事",
+    "source": "Business Insider Japan",
+    "category": "テクノロジー",
+    "published": "2026-06-29T07:00:00",
+    "image_url": null
+  },
+  {
+    "title": "横田真悠ら「上海ハニー」熱唱 花王エッセンシャル新CM公開",
+    "url": "https://www.oricon.co.jp/news/2466143/",
+    "reason": "人気女優4人が出演する新CMが話題に。SNSでの反響も大きい朝の軽めの話題として最適",
+    "source": "オリコンニュース",
+    "category": "エンタメ",
+    "published": "2026-07-08T15:00:00",
+    "image_url": null
+  },
+  {
+    "title": "内田有紀、再婚後初の公の場 25年ぶり連ドラ主演への思い語る",
+    "url": "https://www.nikkansports.com/entertainment/photonews/photonews_nsInc_202607070001477-1.html",
+    "reason": "再婚後初の公の場での発言が注目。25年ぶりの連ドラ主演という節目のニュースで関心度が高い",
+    "source": "日刊スポーツ",
+    "category": "エンタメ",
+    "published": "2026-07-07T02:30:00",
+    "image_url": null
+  },
+  {
+    "title": "フィリーズ・ウィーラー、球宴新ルールに怒り「くだらない」",
+    "url": "https://topics.smt.docomo.ne.jp/article/sponichi/sports/sponichi-spngoo-20260709-0109",
+    "reason": "オールスター選出漏れへの不満発言が波紋。MLBファンの間で議論を呼んでいる速報",
+    "source": "ｄメニューニュース",
+    "category": "スポーツ",
+    "published": "2026-07-08T20:07:31",
+    "image_url": null
+  },
+  {
+    "title": "パイレーツ打者が3本塁打10打点 スキーンズは10登板ぶり白星",
+    "url": "https://news.yahoo.co.jp/expert/articles/a32761f9a8003de20e5f4ca79a7561168fd41ac1",
+    "reason": "6試合無得点だった打者が一気に爆発。MLB専門家解説付きで見応えのある試合結果",
+    "source": "Yahoo!ニュース",
+    "category": "スポーツ",
+    "published": "2026-07-08T07:18:42",
+    "image_url": null
+  },
+  {
+    "title": "50歳コスプレイヤー、白髪活かすグレイヘアに変貌し話題",
+    "url": "https://hint-pot.jp/archives/331218/3",
+    "reason": "年齢を重ねても挑戦する生き方が共感を呼ぶ。朝の読者に前向きな気持ちを届ける話題",
+    "source": "Hint-Pot | ヒントポット",
+    "category": "エンタメ",
+    "published": "2026-07-06T06:01:24",
+    "image_url": null
+  },
+  {
+    "title": "人型ロボットが手術を実施 現実的な運用可能性を実証",
+    "url": "https://www.nature.com/articles/s41586-026-10796-x",
+    "reason": "ヒューマノイドロボットが実際の外科手技を遂行できるか体系的に評価。医療ロボット実用化への一歩",
     "source": "Nature",
     "category": "研究・論文",
-    "published": "2026-07-07T09:16:35.892035",
+    "published": "2026-07-09T08:40:19.692388",
+    "image_url": null
+  },
+  {
+    "title": "核弾頭を宇宙から検知？ 軌道上センサーの新構想",
+    "url": "https://www.nature.com/articles/d41586-026-02141-z",
+    "reason": "靴箱サイズの検出衛星が核弾頭特有の信号を捉える可能性。安全保障と宇宙技術の融合が注目点",
+    "source": "Nature",
+    "category": "研究・論文",
+    "published": "2026-07-09T08:40:19.692388",
+    "image_url": null
+  },
+  {
+    "title": "エピトープ編集で非遺伝毒性の細胞移植を実現する新手法",
+    "url": "https://www.nature.com/articles/s41586-026-10737-8",
+    "reason": "抗体ベースで移植前処置を行う新技術。従来より安全な骨髄移植への応用が期待される研究",
+    "source": "Nature",
+    "category": "研究・論文",
+    "published": "2026-07-09T08:40:19.692388",
+    "image_url": null
+  },
+  {
+    "title": "LLMの「イエスノー」回答の偏りは質問順序と言い回しが原因",
+    "url": "https://arxiv.org/abs/2607.05552",
+    "reason": "AIの道徳判断のように見える回答の揺れが実は文言依存であることを実証。AI評価の信頼性に一石",
+    "source": "arXiv cs.CL",
+    "category": "研究・論文",
+    "published": "2026-07-08T04:00:00",
+    "image_url": null
+  },
+  {
+    "title": "集団の「統計力学的パーソナリティ」を数理モデルで解明",
+    "url": "https://arxiv.org/abs/2607.05597",
+    "reason": "組織心理学に最大エントロピー模型を応用した新しい理論的枠組み。集団行動の理解に新視点",
+    "source": "arXiv q-bio",
+    "category": "研究・論文",
+    "published": "2026-07-08T04:00:00",
+    "image_url": null
+  },
+  {
+    "title": "認知症患者の脳内結合の増加と減少パターンを画像解析で解明",
+    "url": "https://arxiv.org/abs/2607.05654",
+    "reason": "脳画像技術の進歩により認知症に伴う脳内接続変化を詳細に分析。早期診断への応用が期待",
+    "source": "arXiv q-bio",
+    "category": "研究・論文",
+    "published": "2026-07-08T04:00:00",
     "image_url": null
   }
 ]

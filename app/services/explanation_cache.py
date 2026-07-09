@@ -186,6 +186,7 @@ def get_cached(article_id: str) -> Optional[dict]:
         result["paper_graph"] = extra.get("paper_graph", {})
         result["paper_quiz"] = extra.get("paper_quiz", {})
         result["deep_insights"] = extra.get("deep_insights", {})
+        result["editorial_take"] = extra.get("editorial_take", "")
     return result
 
 
@@ -247,6 +248,7 @@ def get_cached_many(article_ids: list[str]) -> dict[str, dict]:
                         result["paper_graph"] = extra.get("paper_graph", {})
                         result["paper_quiz"] = extra.get("paper_quiz", {})
                         result["deep_insights"] = extra.get("deep_insights", {})
+                        result["editorial_take"] = extra.get("editorial_take", "")
                     out[str(row["article_id"])] = result
                 except Exception:
                     continue
@@ -323,6 +325,7 @@ def save_cache(
     paper_graph: dict | None = None,
     paper_quiz: dict | None = None,
     deep_insights: dict | None = None,
+    editorial_take: str | None = None,
 ):
     """キャッシュに保存。display_persona_ids あり時は personas は3件のみ。"""
     global _ids_cache
@@ -338,6 +341,7 @@ def save_cache(
             paper_graph=paper_graph,
             paper_quiz=paper_quiz,
             deep_insights=deep_insights,
+            editorial_take=editorial_take,
         )
         _ids_cache = None
         with _explanation_cache_lock:
@@ -408,5 +412,7 @@ def save_cache(
         extra["paper_quiz"] = paper_quiz
     if deep_insights:
         extra["deep_insights"] = deep_insights
+    if editorial_take:
+        extra["editorial_take"] = editorial_take
     if extra:
         _save_extra(article_id, extra)

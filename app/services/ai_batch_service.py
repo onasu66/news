@@ -71,7 +71,7 @@ from app.services.ai_service import (
     get_persona_opinion,
     get_all_persona_opinions_batch,
     build_persona_batch_prompt,
-    parse_persona_batch_raw,
+    parse_persona_batch_payload,
 )
 from app.services.explanation_cache import get_cached, save_cache
 from app.services.article_content_quality import is_generated_article_sufficient, is_navigator_sufficient
@@ -169,7 +169,7 @@ def _generate_blocks_via_claude(navigator_blocks: list, title: str) -> list[dict
     try:
         from app.services.claude_researcher import run_claude_text_gen, is_claude_available
         if not is_claude_available():
-            return []
+            return {"personas": [], "editorial_take": ""}
     except Exception:
         return []
 
@@ -200,7 +200,7 @@ def _generate_blocks_via_claude(navigator_blocks: list, title: str) -> list[dict
 
 # ── Claude CLI を使ったペルソナ3人分バッチ生成 ─────────────────────────────────
 
-def _generate_personas_via_claude(title: str, content: str, persona_ids: list[int]) -> list[str]:
+def _generate_personas_via_claude(title: str, content: str, persona_ids: list[int]) -> dict:
     """Claude CLI で3人分のペルソナコメントを1回の呼び出しでまとめて生成する。
     失敗・CLI未導入時は空リスト → 呼び出し元が Gemini/OpenAI バッチにフォールバックする。"""
     try:
@@ -208,22 +208,23 @@ def _generate_personas_via_claude(title: str, content: str, persona_ids: list[in
         if not is_claude_available():
             return []
     except Exception:
-        return []
+        return {"personas": [], "editorial_take": ""}
 
     built = build_persona_batch_prompt(title, content, persona_ids)
     if not built:
-        return []
+        return {"personas": [], "editorial_take": ""}
     system_prompt, user_prompt, personas_data = built
     prompt = f"{system_prompt}\n\n{user_prompt}"
 
     raw = run_claude_text_gen(prompt, timeout=180, usage_kind="persona_batch")
     if not raw:
-        return []
+        return {"personas": [], "editorial_take": ""}
 
-    results = parse_persona_batch_raw(raw, personas_data)
+    payload = parse_persona_batch_payload(raw, personas_data)
+    results = payload.get("personas") if isinstance(payload.get("personas"), list) else []
     if any(results):
         logger.info("Claude ペルソナ生成成功: %d/%d 件", sum(1 for r in results if r), len(results))
-    return results
+    return {"personas": results, "editorial_take": str(payload.get("editorial_take") or "")}
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -307,6 +308,7 @@ def _generate_all_explanations_locked(
             "paper_graph": {},
             "paper_quiz": {},
             "deep_insights": {},
+            "editorial_take": "",
         }
     summary_text = _navigator_summary(navigator_blocks)
     quick_understand = _quick_understand_from_navigator(navigator_blocks)
@@ -342,6 +344,7 @@ def _generate_all_explanations_locked(
     paper_graph: dict = {}
     paper_quiz: dict = {}
     deep_insights: dict = {}
+    editorial_take = ""
 
     with ThreadPoolExecutor(max_workers=4) as ex:
         fut_blocks = ex.submit(do_blocks)
@@ -349,7 +352,9 @@ def _generate_all_explanations_locked(
 
         # ペルソナ: まず3人まとめてバッチ生成（呼び出し回数を最小化するため Claude CLI → Gemini/OpenAI の順）
         # 全滅 or 特定人物が短すぎた場合のみ個別呼び出しにフォールバック
-        batch_results = _generate_personas_via_claude(title, persona_source, display_persona_ids)
+        batch_payload = _generate_personas_via_claude(title, persona_source, display_persona_ids)
+        batch_results = batch_payload.get("personas") if isinstance(batch_payload, dict) else []
+        editorial_take = str(batch_payload.get("editorial_take") or "") if isinstance(batch_payload, dict) else ""
         if not any(batch_results):
             batch_results = get_all_persona_opinions_batch(
                 title, persona_source, display_persona_ids
@@ -389,6 +394,7 @@ def _generate_all_explanations_locked(
         "paper_graph": paper_graph,
         "paper_quiz": paper_quiz,
         "deep_insights": deep_insights,
+        "editorial_take": editorial_take,
     }
     if not persist_cache:
         result["navigator_summary"] = summary_text
@@ -401,5 +407,6 @@ def _generate_all_explanations_locked(
             paper_graph=paper_graph,
             paper_quiz=paper_quiz,
             deep_insights=deep_insights,
+            editorial_take=editorial_take,
         )
     return result

@@ -173,7 +173,10 @@
       "PowerShell(python \"C:\\\\Users\\\\User\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\D--app-newsite\\\\a8ce15d2-03d8-4827-add0-8330e01ce765\\\\scratchpad\\\\test_persona.py\")",
       "PowerShell($envFile = 'D:\\\\app\\\\newsite\\\\.env'; if \\(Test-Path $envFile\\) { Get-Content $envFile -Encoding utf8 | Where-Object { $_ -match '^\\(GEMINI_API_KEY|PERSONA_PROVIDER|PERSONA_GEMINI_MODEL|OPENAI_PERSONA_COMMENT_MODEL|AI_PROVIDER|OPENAI_MODEL\\)=' } | ForEach-Object { $k,$v = $_ -split '=',2; if \\($k -eq 'GEMINI_API_KEY'\\) { \"$k=\\(set: $\\($v.Length\\) chars\\)\" } else { $_ } } } else { 'no .env' })",
       "PowerShell(python -m py_compile app\\\\services\\\\ai_service.py; if \\($?\\) { 'compile OK' })",
-      "PowerShell(python -m py_compile app\\\\services\\\\ai_batch_service.py; if \\($?\\) { 'compile OK' })"
+      "PowerShell(python -m py_compile app\\\\services\\\\ai_batch_service.py; if \\($?\\) { 'compile OK' })",
+      "PowerShell(git show 774b905:app/static/css/style.css > \"$env:TEMP\\\\style_before.css\" 2>$null; git diff 774b905 HEAD -- app/static/css/style.css | Select-String -Pattern \"persona-comment-avatar|persona-avatar|home-featured-card|home-featured-img\" -Context 3,3)",
+      "PowerShell(python \"C:\\\\Users\\\\User\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\D--app-newsite\\\\a8ce15d2-03d8-4827-add0-8330e01ce765\\\\scratchpad\\\\test_gen_lock.py\")",
+      "PowerShell(Invoke-RestMethod -Uri \"http://localhost:8001/api/debug/articles-status\" -Method Get | ConvertTo-Json)"
     ]
   }
 }

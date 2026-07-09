@@ -1,7 +1,7 @@
 """OpenAI / Gemini API 互換（max_completion_tokens / temperature）"""
 import logging
 
-from app.utils.llm_client import use_gemini
+from app.utils.llm_client import assert_allowed_openai_model, use_gemini
 
 logger = logging.getLogger(__name__)
 
@@ -23,7 +23,7 @@ def create_with_retry(client, max_tokens_val: int, *, gemini_task: str | None = 
             raise RuntimeError("OPENAI_API_KEY が設定されていません")
         oai = OpenAI(api_key=settings.OPENAI_API_KEY)
         kwargs = _clean_kwargs(create_kwargs)
-        kwargs["model"] = str(explicit_model)
+        kwargs["model"] = assert_allowed_openai_model(str(explicit_model))
         logger.info("OpenAI 直接呼び出し: model=%s task=%s", explicit_model, gemini_task or "-")
         return _openai_create_with_retry(oai, max_tokens_val, **kwargs)
 
@@ -81,6 +81,7 @@ def create_with_retry(client, max_tokens_val: int, *, gemini_task: str | None = 
 
 
 def _openai_create_with_retry(client, max_tokens_val: int, **kwargs):
+    kwargs["model"] = assert_allowed_openai_model(kwargs.get("model"))
     try:
         return client.chat.completions.create(
             **kwargs,

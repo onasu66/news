@@ -2428,7 +2428,7 @@ async def topic_detail(request: Request, topic_id: str):
     paper_quiz = None
     deep_insights = None
     body_html = _blocks_to_html(blocks) if blocks else ""
-    editorial_take = _editorial_take_from_blocks(blocks)
+    editorial_take = str((cached or {}).get("editorial_take") or "").strip() or _editorial_take_from_blocks(blocks)
     short_summary = _build_short_summary(quick_understand, item.summary)
     show_quick_points = _quick_points_non_empty(quick_understand)
     article_lead_html = (
@@ -2808,6 +2808,7 @@ def _do_create_manual_article_sync(title: str, summary: str, link: str = "", sou
         paper_graph=data.get("paper_graph"),
         paper_quiz=data.get("paper_quiz"),
         deep_insights=data.get("deep_insights"),
+        editorial_take=data.get("editorial_take"),
     )
     NewsAggregator.get_news(force_refresh=not is_rss_and_ai_disabled())
     try:

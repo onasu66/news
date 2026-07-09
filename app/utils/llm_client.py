@@ -10,6 +10,11 @@ from typing import Any, Literal
 
 logger = logging.getLogger(__name__)
 
+ALLOWED_OPENAI_MODELS = frozenset({
+    "gpt-4o-mini",
+    "gpt-4o-mini-2024-07-18",
+})
+
 GeminiTask = Literal[
     "article",
     "middleman",
@@ -98,19 +103,20 @@ def resolve_persona_model(explicit: str | None = None) -> str:
     from app.config import settings
 
     if explicit and str(explicit).strip():
-        return str(explicit).strip()
+        m = str(explicit).strip()
+        return assert_allowed_openai_model(m) if m.startswith("gpt-") else m
     prov = persona_provider()
     openai_named = (getattr(settings, "OPENAI_PERSONA_COMMENT_MODEL", "") or "").strip()
     gemini_named = (getattr(settings, "PERSONA_GEMINI_MODEL", "") or "").strip()
     if use_gemini(prov):
         if openai_named.startswith("gpt-"):
-            return openai_named
+            return assert_allowed_openai_model(openai_named)
         if gemini_named.startswith("gemini-"):
             return gemini_named
         if openai_named.startswith("gemini-"):
             return openai_named
         return resolve_model(None, provider=prov, task="persona")
-    return openai_named or settings.OPENAI_MODEL
+    return assert_allowed_openai_model(openai_named or settings.OPENAI_MODEL)
 
 
 def use_gemini(provider: str | None = None) -> bool:
@@ -143,6 +149,14 @@ def openai_fallback_enabled() -> bool:
     return True
 
 
+def assert_allowed_openai_model(model: str | None) -> str:
+    """Allow only the OpenAI models this app is expected to spend on."""
+    m = (model or "").strip()
+    if m not in ALLOWED_OPENAI_MODELS:
+        raise RuntimeError(f"OpenAI model is not allowed: {m or '(empty)'}")
+    return m
+
+
 def openai_fallback_model(*, task: str | None = None) -> str:
     from app.config import settings
 
@@ -151,8 +165,10 @@ def openai_fallback_model(*, task: str | None = None) -> str:
     if gemini_task_tier(task) == "quality" or t == "navigator":
         q = (getattr(settings, "OPENAI_FALLBACK_QUALITY_MODEL", "") or "").strip()
         if q:
-            return q
-    return (getattr(settings, "OPENAI_FALLBACK_MODEL", "") or "gpt-4o-mini").strip()
+            return assert_allowed_openai_model(q)
+    return assert_allowed_openai_model(
+        (getattr(settings, "OPENAI_FALLBACK_MODEL", "") or "gpt-4o-mini").strip()
+    )
 
 
 def _parse_model_list(raw: str, *, fallback: str) -> list[str]:
@@ -290,8 +306,8 @@ def resolve_model(model: str | None = None, *, provider: str | None = None, task
         tier = gemini_task_tier(task)
         return pick_gemini_model(tier=tier)
     if model:
-        return str(model)
-    return settings.OPENAI_MODEL
+        return assert_allowed_openai_model(str(model))
+    return assert_allowed_openai_model(settings.OPENAI_MODEL)
 
 
 def get_chat_client(*, provider: str | None = None):
@@ -398,7 +414,7 @@ def _openai_fallback_generate(
 
     if not openai_fallback_enabled():
         raise RuntimeError("OpenAI フォールバック無効")
-    model = openai_fallback_model(task=task)
+    model = assert_allowed_openai_model(openai_fallback_model(task=task))
     client = OpenAI(api_key=settings.OPENAI_API_KEY)
     kwargs: dict[str, Any] = {
         "model": model,
