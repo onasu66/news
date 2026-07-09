@@ -776,8 +776,10 @@ async def robots_txt(request: Request):
         f"Disallow: /saved\n"
         f"Disallow: /?keyword=\n"
         f"Disallow: /news?keyword=\n\n"
+        f"Sitemap: {site_url}/sitemap-index.xml\n"
         f"Sitemap: {site_url}/sitemap.xml\n"
         f"Sitemap: {site_url}/sitemap-news.xml\n\n"
+        f"RSS: {site_url}/feed.xml\n\n"
         f"{ai_sections}"
     )
     return Response(content=body, media_type="text/plain; charset=utf-8")
@@ -835,6 +837,93 @@ async def indexnow_key_file(key_filename: str):
     if not key or key_filename != key:
         raise HTTPException(status_code=404, detail="Not Found")
     return Response(content=key + "\n", media_type="text/plain; charset=utf-8")
+
+
+@router.get("/sitemap-index.xml")
+async def sitemap_index_xml(request: Request):
+    """Parent sitemap for Search Console and Bing Webmaster Tools."""
+    from html import escape as _xml_escape
+
+    site_url = _get_site_url(request).rstrip("/")
+    today = datetime.now().date().isoformat()
+    lines = [
+        '<?xml version="1.0" encoding="UTF-8"?>',
+        '<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">',
+        f"  <sitemap><loc>{_xml_escape(site_url + '/sitemap.xml', quote=True)}</loc><lastmod>{today}</lastmod></sitemap>",
+        f"  <sitemap><loc>{_xml_escape(site_url + '/sitemap-news.xml', quote=True)}</loc><lastmod>{today}</lastmod></sitemap>",
+        "</sitemapindex>",
+    ]
+    return Response(content="\n".join(lines), media_type="application/xml; charset=utf-8")
+
+
+def _latest_articles_for_feed(limit: int = 50) -> list:
+    articles = list(getattr(NewsAggregator, "_news_cache", []) or [])
+    if not articles:
+        try:
+            NewsAggregator.sync_list_cache_from_db(force=False)
+        except Exception:
+            pass
+        articles = list(getattr(NewsAggregator, "_news_cache", []) or [])
+    return articles[:limit]
+
+
+def _feed_pubdate(article=None) -> str:
+    from datetime import timezone
+    from email.utils import format_datetime
+
+    dt = getattr(article, "added_at", None) or getattr(article, "published", None) if article else None
+    if dt and hasattr(dt, "tzinfo"):
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=timezone.utc)
+        return format_datetime(dt)
+    return format_datetime(datetime.now(timezone.utc))
+
+
+@router.get("/feed.xml")
+async def feed_xml(request: Request):
+    """Latest article RSS feed for crawlers and subscribers."""
+    from html import escape as _xml_escape
+
+    site_url = _get_site_url(request).rstrip("/")
+    articles = _latest_articles_for_feed()
+    channel_date = _feed_pubdate(articles[0]) if articles else _feed_pubdate()
+    lines = [
+        '<?xml version="1.0" encoding="UTF-8"?>',
+        '<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">',
+        "  <channel>",
+        f"    <title>{_xml_escape(SITE_JSONLD_TITLE, quote=True)}</title>",
+        f"    <link>{_xml_escape(site_url + '/news', quote=True)}</link>",
+        f"    <description>{_xml_escape(SITE_JSONLD_DESCRIPTION, quote=True)}</description>",
+        "    <language>ja</language>",
+        f"    <lastBuildDate>{_xml_escape(channel_date, quote=True)}</lastBuildDate>",
+        f"    <atom:link href=\"{_xml_escape(site_url + '/feed.xml', quote=True)}\" rel=\"self\" type=\"application/rss+xml\" />",
+    ]
+    for article in articles:
+        link = f"{site_url}{article_url_path(article)}"
+        title = str(getattr(article, "title", "") or "").strip()
+        summary = str(getattr(article, "summary", "") or "").strip()
+        source = str(getattr(article, "source", "") or "").strip()
+        category = str(getattr(article, "category", "") or "").strip()
+        lines.extend([
+            "    <item>",
+            f"      <title>{_xml_escape(title, quote=True)}</title>",
+            f"      <link>{_xml_escape(link, quote=True)}</link>",
+            f"      <guid isPermaLink=\"true\">{_xml_escape(link, quote=True)}</guid>",
+            f"      <description>{_xml_escape(summary[:600], quote=True)}</description>",
+            f"      <pubDate>{_xml_escape(_feed_pubdate(article), quote=True)}</pubDate>",
+        ])
+        if category:
+            lines.append(f"      <category>{_xml_escape(category, quote=True)}</category>")
+        if source:
+            lines.append(f"      <source url=\"{_xml_escape(link, quote=True)}\">{_xml_escape(source, quote=True)}</source>")
+        lines.append("    </item>")
+    lines.extend(["  </channel>", "</rss>"])
+    return Response(content="\n".join(lines), media_type="application/rss+xml; charset=utf-8")
+
+
+@router.get("/rss.xml")
+async def rss_xml(request: Request):
+    return await feed_xml(request)
 
 
 @router.get("/sitemap.xml")

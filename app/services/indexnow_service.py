@@ -36,6 +36,15 @@ def topic_absolute_url(article_id: str) -> str | None:
     aid = (article_id or "").strip()
     if not base or not aid:
         return None
+    try:
+        from app.routers.news import article_url_path
+        from app.services.news_aggregator import NewsAggregator
+
+        article = NewsAggregator.get_article(aid)
+        if article:
+            return f"{base}{article_url_path(article)}"
+    except Exception:
+        pass
     return f"{base}/topic/{aid}"
 
 
