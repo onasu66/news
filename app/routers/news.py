@@ -2405,9 +2405,9 @@ def _editorial_take_from_blocks(blocks: list) -> str:
     if not core:
         return ""
     if next_point and next_point != core:
-        text = f"要するに、{_compact_sentence(core, 95)}。次に見るべきポイントは、{_compact_sentence(next_point, 70)}。"
+        text = f"この先は、{_compact_sentence(core, 95)}流れになりそうです。今後は、{_compact_sentence(next_point, 70)}点が焦点になります。"
     else:
-        text = f"要するに、{_compact_sentence(core, 120)}。"
+        text = f"この先は、{_compact_sentence(core, 120)}流れになりそうです。"
     text = re.sub(r"。+", "。", text)
     text = re.sub(r"。。", "。", text)
     text = _clean(text, 190)
