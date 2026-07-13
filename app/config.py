@@ -104,7 +104,7 @@ class Settings:
     # 完全な本文がこれ以上あれば要約が短くても可
     ARTICLE_MIN_BODY_CHARS: int = int(os.getenv("ARTICLE_MIN_BODY_CHARS", "200"))
     # 生成後: ミドルマン text ブロック合計の最低文字数（3分読了の目安）
-    ARTICLE_MIN_GENERATED_TEXT_CHARS: int = int(os.getenv("ARTICLE_MIN_GENERATED_TEXT_CHARS", "900"))
+    ARTICLE_MIN_GENERATED_TEXT_CHARS: int = int(os.getenv("ARTICLE_MIN_GENERATED_TEXT_CHARS", "600"))
     ARTICLE_MIN_JA_RATIO: float = float(os.getenv("ARTICLE_MIN_JA_RATIO", "0.35"))
     ARTICLE_MIN_EXPLAIN_COUNT: int = int(os.getenv("ARTICLE_MIN_EXPLAIN_COUNT", "3"))
     ARTICLE_MIN_NAVIGATOR_CHARS: int = int(os.getenv("ARTICLE_MIN_NAVIGATOR_CHARS", "500"))

@@ -795,7 +795,7 @@ async def llms_txt(request: Request):
 
 ## サイト概要
 
-知リポAI（チリポAI）は、ブッダ・ニーチェ・織田信長・アインシュタインなど歴史的偉人AIが、最新のAI論文・科学論文・国内外ニュースを解説するサービスです。arXiv・Nature・Science・NHK・BBC・Reutersなどから毎日収集し、「1分で理解」「3分で深掘り」の2段階で解説します。
+知リポAI（チリポAI）は、ブッダ・ニーチェ・織田信長・アインシュタインなど歴史的偉人AIが、最新のAI論文・科学論文・国内外ニュースを解説するサービスです。arXiv・Nature・Science・NHK・BBC・Reutersなどから毎日収集し、「1分で理解」「詳しく読む」の2段階で解説します。
 
 ## 主要ページ
 
@@ -2353,65 +2353,9 @@ def _blocks_to_html(blocks: list) -> str:
 
 
 def _editorial_take_from_blocks(blocks: list) -> str:
-    """既存のAI解説ブロックから、ミドルマンの「編集部の見立て」用テキストを作る。"""
-    safe = [b for b in (blocks or []) if isinstance(b, dict)]
-    if not safe:
-        return ""
-
-    def _clean(value: str, max_len: int = 220) -> str:
-        text = sanitize_display_text(value or "")
-        text = re.sub(r"\s+", " ", text).strip()
-        return text[:max_len].rstrip("、。 ") if len(text) > max_len else text.rstrip("、。 ")
-
-    def _compact_sentence(value: str, max_len: int = 90) -> str:
-        text = _clean(value, 320)
-        if not text:
-            return ""
-        text = re.sub(r"^(実際、|つまり、|これって、|要するに、)", "", text).strip()
-        parts = re.split(r"(?<=[。！？])", text)
-        text = next((p.strip() for p in parts if p.strip()), text)
-        return _clean(text, max_len)
-
-    def _is_term_explain(value: str) -> bool:
-        text = value or ""
-        markers = ("っていうのは", "とは、", "とは ", "というのは", "のことです")
-        return any(marker in text for marker in markers)
-
-    is_navigator = safe[0].get("type") == "navigator_section"
-    if is_navigator:
-        by_section: dict[str, str] = {}
-        for b in safe:
-            section = str(b.get("section") or "")
-            body = _compact_sentence(str(b.get("content") or ""), 100)
-            if section and body:
-                by_section[section] = body
-        core = by_section.get("impact") or by_section.get("background") or by_section.get("facts") or ""
-        next_point = by_section.get("prediction") or by_section.get("caution") or ""
-    else:
-        text_items: list[str] = []
-        explain_items: list[str] = []
-        for b in safe:
-            raw_body = str(b.get("content") or "")
-            body = _compact_sentence(raw_body, 100)
-            if not body:
-                continue
-            if b.get("type") == "text":
-                text_items.append(body)
-            elif b.get("type") == "explain" and not _is_term_explain(raw_body):
-                explain_items.append(body)
-        core = text_items[1] if len(text_items) > 1 else (text_items[0] if text_items else "")
-        next_point = text_items[2] if len(text_items) > 2 else (explain_items[-1] if explain_items else "")
-
-    if not core:
-        return ""
-    if next_point and next_point != core:
-        text = f"この先は、{_compact_sentence(core, 95)}流れになりそうです。今後は、{_compact_sentence(next_point, 70)}点が焦点になります。"
-    else:
-        text = f"この先は、{_compact_sentence(core, 120)}流れになりそうです。"
-    text = re.sub(r"。+", "。", text)
-    text = re.sub(r"。。", "。", text)
-    text = _clean(text, 190)
-    return text if text.endswith(("。", "！", "？")) else f"{text}。"
+    """旧フォールバック。本文抜き出しは日本語が崩れやすいため表示しない。"""
+    _ = blocks
+    return ""
 
 
 @router.get("/topic/{topic_id}", response_class=HTMLResponse)

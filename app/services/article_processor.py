@@ -154,7 +154,7 @@ def process_rss_to_site_article(item: NewsItem, force: bool = False) -> bool:
         return False
 
     if body_clean:
-        # 英語本文は日本語に翻訳してから反映（約3分で読める分量になるようAIで調整）
+        # 英語本文は日本語に翻訳してから反映（言い換えで水増しせず、情報密度を優先してAIで調整）
         if is_foreign_article(item.source, item.title, body_clean):
             from app.services.translate_service import translate_article_body
             body_clean = translate_article_body(body_clean)
@@ -196,6 +196,7 @@ def process_rss_to_site_article(item: NewsItem, force: bool = False) -> bool:
         paper_graph=data.get("paper_graph"),
         paper_quiz=data.get("paper_quiz"),
         deep_insights=data.get("deep_insights"),
+        editorial_take=data.get("editorial_take"),
     )
     # IndexNow（Bing 等）・Render キャッシュ通知
     try:
@@ -392,6 +393,7 @@ def _rank_by_trending(items: list[NewsItem], trend_keywords: list[str]) -> list[
 
     def score(x):
         import re as _re
+        from .keyword_scorer import seo_potential_score
         text = f"{x.title} {x.summary}"
         trend = 0
         for kw in trend_keywords:
@@ -401,7 +403,8 @@ def _rank_by_trending(items: list[NewsItem], trend_keywords: list[str]) -> list[
             else:
                 trend += sum(1 for t in tokens if t in text)  # トークン個別一致
         weight = SOURCE_WEIGHT.get(x.source, 1.0)
-        return (trend * 10 + weight, x.published)
+        seo = seo_potential_score(x.title, x.summary, x.category)
+        return (trend * 10 + seo * 1.5 + weight, x.published)
 
     return sorted(items, key=score, reverse=True)
 
@@ -849,4 +852,3 @@ def process_random_rss_articles(rss_items: list[NewsItem], count: int = 3) -> in
             _log_save(item.id, item.title, False, error=str(e), source="rss_random")
         _wait_between_gemini_articles(idx, len(to_process))
     return n
-

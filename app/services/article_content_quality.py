@@ -42,7 +42,7 @@ def _settings_int(name: str, default: int) -> int:
 
 
 def min_generated_text_chars() -> int:
-    return _settings_int("ARTICLE_MIN_GENERATED_TEXT_CHARS", 900)
+    return _settings_int("ARTICLE_MIN_GENERATED_TEXT_CHARS", 600)
 
 
 def build_source_text(title: str, summary: str, body: str | None) -> str:

@@ -70,6 +70,7 @@ from app.services.ai_service import (
     expand_navigator_to_article,
     get_persona_opinion,
     get_all_persona_opinions_batch,
+    generate_editorial_take_fallback,
     build_persona_batch_prompt,
     parse_persona_batch_payload,
 )
@@ -359,6 +360,8 @@ def _generate_all_explanations_locked(
             batch_results = get_all_persona_opinions_batch(
                 title, persona_source, display_persona_ids
             )
+        if not editorial_take:
+            editorial_take = generate_editorial_take_fallback(title, persona_source)
         generated_comments: list[str] = []
         for slot_idx, pid in enumerate(display_persona_ids):
             batch_comment = batch_results[slot_idx] if slot_idx < len(batch_results) else ""

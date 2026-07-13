@@ -50,6 +50,45 @@ HIGH_VALUE_KEYWORDS = {
 
 QUESTION_WORDS = ["何", "とは", "いつ", "どうして", "なぜ", "どう", "どこ", "誰"]
 
+SEARCH_INTENT_TERMS = (
+    "とは", "なぜ", "理由", "影響", "今後", "いつ", "どこ", "誰", "何",
+    "プロフィール", "経歴", "成績", "年俸", "移籍", "結婚", "身長", "年齢",
+    "比較", "過去", "データ", "ランキング", "サービス", "使い方",
+)
+
+COMPARISON_TERMS = (
+    "前年", "昨季", "過去", "比較", "平均", "ランキング", "推移", "変化",
+    "最多", "初", "連続", "率", "倍", "％", "%", "位", "試合", "本塁打", "打率",
+)
+
+
+def seo_potential_score(title: str, summary: str, category: str = "") -> float:
+    """Search-oriented score: named entity, numbers, comparison material, and query intent."""
+    text = f"{title or ''} {summary or ''}"
+    if not text.strip():
+        return 0.0
+
+    score = 0.0
+    lower = text.lower()
+
+    # Search demand is often tied to named people, teams, companies, services, or products.
+    katakana_entities = re.findall(r"[ァ-ヴー]{3,}", text)
+    latin_entities = re.findall(r"\b[A-Z][A-Za-z0-9&.+-]{2,}\b", text)
+    kanji_entities = re.findall(r"[一-龥]{2,6}", text)
+    score += min(8, len(set(katakana_entities + latin_entities)) * 2)
+    score += min(4, len(set(kanji_entities)) * 0.5)
+
+    # Articles with concrete numbers can be expanded with real comparison rather than paraphrase.
+    numbers = re.findall(r"\d+(?:\.\d+)?", text)
+    score += min(8, len(numbers) * 1.5)
+
+    score += sum(2 for term in SEARCH_INTENT_TERMS if term.lower() in lower)
+    score += sum(1.5 for term in COMPARISON_TERMS if term.lower() in lower)
+
+    if len(summary or "") >= 220:
+        score += 3
+    return score
+
 
 def _trend_token_match(text: str, trend_keywords: list[str]) -> int:
     """トレンドキーワードを単語に分割してテキストに何個マッチするか返す。
@@ -87,10 +126,10 @@ def lightweight_filter(
 
     if category != "研究・論文":
         if LOW_VALUE_TITLE_PATTERNS.search(title):
-            if not any(kw in text for kw in HIGH_VALUE_KEYWORDS):
+            if not any(kw in text for kw in HIGH_VALUE_KEYWORDS) and seo_potential_score(title, summary, category) < 14:
                 return False
         if category in LOW_VALUE_CATEGORIES:
-            if not any(kw in text for kw in HIGH_VALUE_KEYWORDS):
+            if not any(kw in text for kw in HIGH_VALUE_KEYWORDS) and seo_potential_score(title, summary, category) < 16:
                 return False
     return True
 
@@ -187,6 +226,7 @@ def score_article(title: str, summary: str, category: str,
 
     text = f"{title} {summary}"
     hv_bonus = sum(1 for kw in HIGH_VALUE_KEYWORDS if kw in text)  # 軽め（1キーワード=+1点）
+    seo_bonus = seo_potential_score(title, summary, category) * 1.5
 
     trend_bonus = 0
     if trend_keywords:
@@ -217,7 +257,7 @@ def score_article(title: str, summary: str, category: str,
         except Exception:
             pass
 
-    return ac_score + hv_bonus + trend_bonus + recency_bonus
+    return ac_score + hv_bonus + seo_bonus + trend_bonus + recency_bonus
 
 
 def rank_and_filter_articles(
