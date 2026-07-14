@@ -1642,6 +1642,7 @@ def build_persona_batch_prompt(
     title: str,
     content: str,
     persona_ids: list[int],
+    category: str | None = None,
 ) -> tuple[str, str, list[dict]] | None:
     """ペルソナ3人分バッチ生成用の (system_prompt, user_prompt, personas_data) を組み立てる。
     Claude CLI / Gemini / OpenAI いずれの呼び出し元からも共有する。
@@ -1730,12 +1731,32 @@ def build_persona_batch_prompt(
     user_prompt += """
 
 あわせて editorial_take を必ず出してください。
-editorial_take はニュースの要約ではなく、読者が「へー、そういう見方があるのか」と感じる編集部の見立てとして120〜220字で自然に説明してください。
+editorial_take はニュースの要約ではなく、読者が「へー、そういう見方があるのか」と感じる短い先読みとして120〜220字で自然に説明してください。
 必ず3文で書いてください。
 1文目: 一見すると何のニュースに見えるか、しかし本当の見どころは何か。
 2文目: その見方を支える背景・過去の似た流れ・業界の力学を短く説明。記事内または一般に確実なサービス名・企業名があれば、具体例として1つまで出してよい。
 3文目: 「もしこの流れが進めば、何が当たり前になり、何の役割が変わるのか」を想像させる一文にする。
 あおらず、断定しすぎず、難しい言葉を避けてください。過去事例やサービス名を作り話で補わないでください。「要するに」「つまり」は使わないでください。
+"""
+
+    if (category or "").strip() == "研究・論文":
+        user_prompt += """
+
+重要: editorial_take は上のニュース向け指示ではなく、次の「この論文の読みどころ」指示を優先してください。
+論文の要約ではなく、読者が「何が新しいのか」「どこまで信じてよいのか」「次に何が起きそうか」を判断できる短い解説にしてください。
+必ず3文・120～220字で書いてください。
+1文目: この論文が明らかにした新規性、または従来と違う見方。
+2文目: 実験条件、比較対象、データ、限界のうち本文にある根拠から見た信頼度。
+3文目: 実用化や次の研究への影響、まだ検証が必要な点。
+入力にない数値、企業名、過去研究、サービス名は作らないでください。「要するに」「つまり」は使わないでください。
+"""
+    else:
+        user_prompt += """
+
+重要: editorial_take は「このニュースの先読み」として書いてください。
+要約ではなく、この出来事が進むと誰の行動・市場・制度・サービスが変わりそうかを想像できる内容にしてください。
+本文に根拠がある場合だけ、具体的な企業名・サービス名・過去の似た流れを1つまで例に出して構いません。
+作り話の固有名詞や数字は出さず、断定ではなく見立てとして書いてください。「要するに」「つまり」は使わないでください。
 """
 
     return system_prompt, user_prompt, personas_data
@@ -1746,6 +1767,7 @@ def get_all_persona_opinions_batch(
     content: str,
     persona_ids: list[int],
     model: str | None = None,
+    category: str | None = None,
 ) -> list[str]:
     """3人分のペルソナコメントを1回のAPI呼び出しで生成する（トークン節約版）。
 
@@ -1759,7 +1781,7 @@ def get_all_persona_opinions_batch(
     if not is_ai_configured(provider=persona_provider()):
         return []
 
-    built = build_persona_batch_prompt(title, content, persona_ids)
+    built = build_persona_batch_prompt(title, content, persona_ids, category=category)
     if not built:
         return []
     system_prompt, user_prompt, personas_data = built
@@ -1906,11 +1928,29 @@ def parse_persona_batch_raw(raw: str, personas_data: list[dict]) -> list[str]:
     return personas if isinstance(personas, list) else []
 
 
-def generate_editorial_take_fallback(title: str, content: str, model: str | None = None) -> str:
+def generate_editorial_take_fallback(
+    title: str,
+    content: str,
+    model: str | None = None,
+    category: str | None = None,
+) -> str:
     """Claudeが見立てを返さない場合に、Gemini/OpenAIで短く生成する。"""
     source = (content or "").strip()
     if not (title or source):
         return ""
+    if (category or "").strip() == "研究・論文":
+        kind_instruction = (
+            "今回はニュースではなく論文です。見出しは「この論文の読みどころ」です。"
+            "論文の要約ではなく、新規性、根拠の強さ、限界、次に起きそうな研究・実用化の影響を3文で書いてください。"
+            "入力にない数値、企業名、過去研究、サービス名は作らないでください。"
+        )
+    else:
+        kind_instruction = (
+            "今回は「このニュースの先読み」です。要約ではなく、この出来事が進むと誰の行動・市場・制度・サービスが"
+            "どう変わりそうかを、本文にある根拠から3文で書いてください。本文に根拠がある場合だけ、"
+            "具体的な企業名・サービス名・過去の似た流れを1つまで例に出して構いません。"
+        )
+    source_for_prompt = f"{kind_instruction}\n\n{source}"
 
     prov = persona_provider()
     if not is_ai_configured(provider=prov):
@@ -1936,7 +1976,7 @@ def generate_editorial_take_fallback(title: str, content: str, model: str | None
                 {
                     "role": "user",
                     "content": (
-                        "以下の記事について、編集部の見立てを120〜220字・必ず3文で書いてください。\n"
+                        "以下の記事について、短い先読みを120〜220字・必ず3文で書いてください。\n"
                         "1文目: 一見すると何のニュースに見えるか、しかし本当の見どころは何か。\n"
                         "2文目: その見方を支える背景・過去の似た流れ・業界の力学を短く説明。記事内または一般に確実なサービス名・企業名があれば、具体例として1つまで出してよい。\n"
                         "3文目: 「もしこの流れが進めば、何が当たり前になり、何の役割が変わるのか」を想像させる一文にする。\n\n"
@@ -1948,7 +1988,7 @@ def generate_editorial_take_fallback(title: str, content: str, model: str | None
                         "- 「要するに」「つまり」は使わない\n"
                         "- 見出し、箇条書き、JSONは不要。本文のみ。\n\n"
                         f"記事タイトル:\n{(title or '').strip()[:300]}\n\n"
-                        f"記事内容:\n{source[:2500]}"
+                        f"記事内容:\n{source_for_prompt[:3000]}"
                     ),
                 },
             ],

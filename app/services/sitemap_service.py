@@ -66,7 +66,7 @@ def _setting_int(name: str, default: int, min_value: int, max_value: int) -> int
     return max(min_value, min(max_value, value))
 
 
-_SITEMAP_ARTICLE_LIMIT = _setting_int("SITEMAP_ARTICLE_LIMIT", 250, 50, 1000)
+_SITEMAP_ARTICLE_LIMIT = _setting_int("SITEMAP_ARTICLE_LIMIT", 1000, 50, 1000)
 _SITEMAP_MIN_TEXT_LENGTH = _setting_int("SITEMAP_MIN_TEXT_LENGTH", 180, 80, 600)
 
 

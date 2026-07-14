@@ -2,6 +2,8 @@
 import logging
 import re
 from datetime import datetime
+from difflib import SequenceMatcher
+from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 from .rss_service import NewsItem, sanitize_display_text, JST
 from .translate_service import is_foreign_article, translate_and_rewrite, translate_title_to_japanese, text_mainly_japanese
 from .ai_batch_service import generate_all_explanations, upgrade_personas_with_claude_if_configured
@@ -43,6 +45,122 @@ def _normalize_title_for_dedup(title: str) -> str:
     return re.sub(r"[^\w\u3040-\u9fff\u30a0-\u30ff\u4e00-\u9fff\s]", "", t).strip()
 
 
+_URL_TRACKING_PARAMS = {
+    "utm_source",
+    "utm_medium",
+    "utm_campaign",
+    "utm_term",
+    "utm_content",
+    "utm_id",
+    "fbclid",
+    "gclid",
+    "yclid",
+    "mc_cid",
+    "mc_eid",
+    "ref",
+    "ref_src",
+    "source",
+    "rss",
+}
+
+
+def _normalize_url_for_dedup(url: str) -> str:
+    """同一URL判定用。計測クエリ・fragment・末尾スラッシュ差分を吸収する。"""
+    raw = (url or "").strip()
+    if not raw or raw == "#":
+        return ""
+    try:
+        parts = urlsplit(raw)
+    except Exception:
+        return raw.rstrip("/")
+    scheme = (parts.scheme or "https").lower()
+    netloc = parts.netloc.lower()
+    if netloc.startswith("www."):
+        netloc = netloc[4:]
+    path = re.sub(r"/+$", "", parts.path or "/")
+    query_items = [
+        (k, v)
+        for k, v in parse_qsl(parts.query, keep_blank_values=False)
+        if k.lower() not in _URL_TRACKING_PARAMS and not k.lower().startswith("utm_")
+    ]
+    query = urlencode(sorted(query_items), doseq=True)
+    return urlunsplit((scheme, netloc, path, query, ""))
+
+
+def _title_similarity(a: str, b: str) -> float:
+    na = _normalize_title_for_dedup(a)
+    nb = _normalize_title_for_dedup(b)
+    if not na or not nb:
+        return 0.0
+    if na == nb:
+        return 1.0
+    shorter, longer = sorted((na, nb), key=len)
+    if len(shorter) >= 18 and shorter in longer:
+        return 0.96
+    return SequenceMatcher(None, na, nb).ratio()
+
+
+def _is_duplicate_against_existing(item: NewsItem, existing_articles: list[NewsItem]) -> bool:
+    """既存記事に同一URLまたはかなり近い見出しがあれば重複扱いにする。"""
+    item_url = _normalize_url_for_dedup(getattr(item, "link", "") or "")
+    item_title = getattr(item, "title", "") or ""
+    item_cat = (getattr(item, "category", "") or "").strip()
+    for existing in existing_articles or []:
+        if getattr(existing, "id", "") == getattr(item, "id", ""):
+            continue
+        existing_url = _normalize_url_for_dedup(getattr(existing, "link", "") or "")
+        if item_url and existing_url and item_url == existing_url:
+            logger.info("重複スキップ(URL一致): %s", item_title[:80])
+            return True
+        existing_cat = (getattr(existing, "category", "") or "").strip()
+        if item_cat and existing_cat and item_cat != existing_cat:
+            continue
+        if _title_similarity(item_title, getattr(existing, "title", "") or "") >= 0.92:
+            logger.info("重複スキップ(タイトル類似): %s", item_title[:80])
+            return True
+    return False
+
+
+_SOFT_NEWS_CATEGORIES = {"スポーツ", "エンタメ"}
+
+
+def _is_soft_news_category(item: NewsItem) -> bool:
+    return (getattr(item, "category", "") or "").strip() in _SOFT_NEWS_CATEGORIES
+
+
+def _soft_news_limit(max_per_run: int) -> int:
+    """スポーツ・エンタメ合計の上限。検索需要は拾うが、サイト全体の偏りを抑える。"""
+    try:
+        from app.config import settings
+
+        configured = max(0, int(getattr(settings, "NEWS_SOFT_CATEGORY_MAX_PER_RUN", 2) or 2))
+        ratio = max(0.0, min(1.0, float(getattr(settings, "NEWS_SOFT_CATEGORY_MAX_RATIO", 0.25) or 0.25)))
+    except Exception:
+        configured = 2
+        ratio = 0.25
+    ratio_limit = max(1, int(max_per_run * ratio)) if max_per_run > 0 else 0
+    return max(0, min(configured, ratio_limit))
+
+
+def _cap_soft_news(items: list[NewsItem], max_per_run: int) -> list[NewsItem]:
+    limit = _soft_news_limit(max_per_run)
+    if limit <= 0:
+        return [x for x in items if not _is_soft_news_category(x)]
+    soft_count = 0
+    out: list[NewsItem] = []
+    deferred: list[NewsItem] = []
+    for item in items:
+        if _is_soft_news_category(item):
+            if soft_count < limit:
+                out.append(item)
+                soft_count += 1
+            else:
+                deferred.append(item)
+        else:
+            out.append(item)
+    return out + deferred
+
+
 def _extract_display_summary(blocks: list) -> str:
     """AIブロックから一覧用の要約を抽出（理解ナビゲーターの事実 or 最初のtextブロック）"""
     for b in blocks:
@@ -65,6 +183,11 @@ def process_rss_to_site_article(item: NewsItem, force: bool = False) -> bool:
     """
     if not force and get_cached(item.id):
         return False  # 既にAI処理済み（force でなければスキップ）
+    try:
+        if _is_duplicate_against_existing(item, load_all()):
+            return False
+    except Exception:
+        pass
 
     # 有料紙は本文が取れないため、翻訳・タイトル生成 API を使う前に弾く
     if (item.category or "").strip() != "研究・論文":
@@ -557,12 +680,13 @@ def process_new_rss_articles(
     news_candidates = [x for x in base_candidates if x.category != "研究・論文"]
 
     # 既存掲載記事の正規化タイトル（同じ内容は1本だけにするため）。渡されていれば load_all() しない
+    existing_items_for_dedup = list(existing_articles) if existing_articles is not None else load_all()
     existing_norm = set()
     if existing_articles is not None:
-        for a in existing_articles:
+        for a in existing_items_for_dedup:
             existing_norm.add(_normalize_title_for_dedup(a.title))
     else:
-        for a in load_all():
+        for a in existing_items_for_dedup:
             existing_norm.add(_normalize_title_for_dedup(a.title))
 
     # 候補内で正規化タイトルが重複しているものはスコア上位1件だけ残す
@@ -571,6 +695,8 @@ def process_new_rss_articles(
         out: list[NewsItem] = []
         for item in items:
             norm = _normalize_title_for_dedup(item.title)
+            if _is_duplicate_against_existing(item, existing_items_for_dedup):
+                continue
             if norm in existing_norm:
                 continue
             if norm in seen_norm:
@@ -722,9 +848,14 @@ def process_new_rss_articles(
                     max_per_category=2,
                 )
                 news_picks.extend(extra)
-            news_picks = news_picks[:remaining_slots]
+            news_picks = _cap_soft_news(news_picks, max_per_run)[:remaining_slots]
         else:
-            news_picks = _select_diverse_batch(non_papers, remaining_slots, max_per_source=2, max_per_category=2)
+            news_picks = _select_diverse_batch(
+                _cap_soft_news(non_papers, max_per_run),
+                remaining_slots,
+                max_per_source=2,
+                max_per_category=2,
+            )
 
     primary_picks = paper_picks + news_picks
 
@@ -750,6 +881,8 @@ def process_new_rss_articles(
 
     count = 0
     attempts = 0
+    soft_news_count = 0
+    soft_news_limit = _soft_news_limit(max_per_run)
     from .news_aggregator import NewsAggregator
 
     NewsAggregator.begin_bulk_update()
@@ -758,12 +891,23 @@ def process_new_rss_articles(
             if count >= max_per_run:
                 break
             attempts += 1
+            if _is_soft_news_category(item) and soft_news_count >= soft_news_limit:
+                _log_save(
+                    item.id,
+                    item.title,
+                    False,
+                    error="スポーツ・エンタメ枠上限",
+                    source="rss_seed",
+                )
+                continue
             try:
                 ok = process_rss_to_site_article(item, force=force)
                 if not ok and not force:
                     ok = process_rss_to_site_article(item, force=True)
                 if ok:
                     count += 1
+                    if _is_soft_news_category(item):
+                        soft_news_count += 1
                     _log_save(item.id, item.title, True, source="rss_seed")
                 else:
                     _log_save(
@@ -827,11 +971,14 @@ def process_random_rss_articles(rss_items: list[NewsItem], count: int = 3) -> in
     if not candidates:
         return 0
 
-    existing_norm = {_normalize_title_for_dedup(a.title) for a in load_all()}
+    existing_items = load_all()
+    existing_norm = {_normalize_title_for_dedup(a.title) for a in existing_items}
     seen_norm = set()
     deduped: list[NewsItem] = []
     for item in candidates:
         norm = _normalize_title_for_dedup(item.title)
+        if _is_duplicate_against_existing(item, existing_items):
+            continue
         if norm in existing_norm or norm in seen_norm:
             continue
         seen_norm.add(norm)

@@ -87,6 +87,9 @@ class Settings:
     RSS_MAX_TOTAL_PAPERS_PER_RUN: int = int(os.getenv("RSS_MAX_TOTAL_PAPERS_PER_RUN", "32"))
     # 1バッチあたり「一般ニュース」に最低確保する枠（論文だけで max_per_run を埋めない）
     RSS_MIN_NEWS_SLOTS_PER_RUN: int = int(os.getenv("RSS_MIN_NEWS_SLOTS_PER_RUN", "5"))
+    # スポーツ・エンタメは検索需要が強く偏りやすいため、1回の取り込みでの合計上限を設ける
+    NEWS_SOFT_CATEGORY_MAX_PER_RUN: int = int(os.getenv("NEWS_SOFT_CATEGORY_MAX_PER_RUN", "2"))
+    NEWS_SOFT_CATEGORY_MAX_RATIO: float = float(os.getenv("NEWS_SOFT_CATEGORY_MAX_RATIO", "0.25"))
     # 一般ニュースRSS: この時間より古い published のエントリは候補から除外（フィードの日付表記に依存）
     RSS_NEWS_MAX_AGE_HOURS: int = int(os.getenv("RSS_NEWS_MAX_AGE_HOURS", "48"))
     # RSS 各フィードから読むエントリ上限・マージ後の候補プール上限
@@ -121,6 +124,9 @@ class Settings:
     PAPERS_SITE_LIST_CACHE_TTL_SEC: int = int(os.getenv("PAPERS_SITE_LIST_CACHE_TTL_SEC", "86400"))
     # get_news 等で並べる最大件数（既定は実質無制限に近い）
     NEWS_LIST_DISPLAY_MAX: int = int(os.getenv("NEWS_LIST_DISPLAY_MAX", "500000"))
+    # sitemap.xml に載せる記事URLの上限。Google標準は1ファイル50,000URLだが、現状は品質優先で1000件に絞る。
+    SITEMAP_ARTICLE_LIMIT: int = int(os.getenv("SITEMAP_ARTICLE_LIMIT", "1000"))
+    SITEMAP_MIN_TEXT_LENGTH: int = int(os.getenv("SITEMAP_MIN_TEXT_LENGTH", "180"))
     # 旧 Firestore メタ検知（互換のみ。未使用なら 0）
     NEWS_META_FP_POLL_SEC: float = float(os.getenv("NEWS_META_FP_POLL_SEC", "0"))
     # sync_list_cache で _news_cache が空のとき、差分復元に使う最大件数（全件 load_all 回避用）

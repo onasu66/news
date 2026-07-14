@@ -2563,6 +2563,12 @@ async def topic_detail(request: Request, topic_id: str):
     _article_cat = (getattr(item, "category", None) or "").strip()
     mobile_nav_papers_highlight = _article_cat == "研究・論文"
     mobile_nav_news_highlight = not mobile_nav_papers_highlight
+    if mobile_nav_papers_highlight:
+        editorial_take_kicker = "ミドルマンが精査"
+        editorial_take_title = "この論文の読みどころ"
+    else:
+        editorial_take_kicker = "ミドルマンが整理"
+        editorial_take_title = "このニュースの先読み"
     all_personas_enriched = [{**p, "image_url": _persona_image_url(p.get("name"))} for p in PERSONAS]
 
     _ph = _public_html_cache_headers()
@@ -2582,6 +2588,8 @@ async def topic_detail(request: Request, topic_id: str):
             "personas_data": personas_data,
             "body_html": body_html,
             "editorial_take": editorial_take,
+            "editorial_take_kicker": editorial_take_kicker,
+            "editorial_take_title": editorial_take_title,
             "short_summary": short_summary,
             "article_lead_html": article_lead_html,
             "show_quick_points": show_quick_points,

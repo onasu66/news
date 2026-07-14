@@ -201,7 +201,12 @@ def _generate_blocks_via_claude(navigator_blocks: list, title: str) -> list[dict
 
 # ── Claude CLI を使ったペルソナ3人分バッチ生成 ─────────────────────────────────
 
-def _generate_personas_via_claude(title: str, content: str, persona_ids: list[int]) -> dict:
+def _generate_personas_via_claude(
+    title: str,
+    content: str,
+    persona_ids: list[int],
+    category: str | None = None,
+) -> dict:
     """Claude CLI で3人分のペルソナコメントを1回の呼び出しでまとめて生成する。
     失敗・CLI未導入時は空リスト → 呼び出し元が Gemini/OpenAI バッチにフォールバックする。"""
     try:
@@ -211,7 +216,7 @@ def _generate_personas_via_claude(title: str, content: str, persona_ids: list[in
     except Exception:
         return {"personas": [], "editorial_take": ""}
 
-    built = build_persona_batch_prompt(title, content, persona_ids)
+    built = build_persona_batch_prompt(title, content, persona_ids, category=category)
     if not built:
         return {"personas": [], "editorial_take": ""}
     system_prompt, user_prompt, personas_data = built
@@ -353,15 +358,15 @@ def _generate_all_explanations_locked(
 
         # ペルソナ: まず3人まとめてバッチ生成（呼び出し回数を最小化するため Claude CLI → Gemini/OpenAI の順）
         # 全滅 or 特定人物が短すぎた場合のみ個別呼び出しにフォールバック
-        batch_payload = _generate_personas_via_claude(title, persona_source, display_persona_ids)
+        batch_payload = _generate_personas_via_claude(title, persona_source, display_persona_ids, category=category)
         batch_results = batch_payload.get("personas") if isinstance(batch_payload, dict) else []
         editorial_take = str(batch_payload.get("editorial_take") or "") if isinstance(batch_payload, dict) else ""
         if not any(batch_results):
             batch_results = get_all_persona_opinions_batch(
-                title, persona_source, display_persona_ids
+                title, persona_source, display_persona_ids, category=category
             )
         if not editorial_take:
-            editorial_take = generate_editorial_take_fallback(title, persona_source)
+            editorial_take = generate_editorial_take_fallback(title, persona_source, category=category)
         generated_comments: list[str] = []
         for slot_idx, pid in enumerate(display_persona_ids):
             batch_comment = batch_results[slot_idx] if slot_idx < len(batch_results) else ""

@@ -312,7 +312,23 @@ def process_curated_articles(path: Optional[Path] = None, max_per_run: int = 30)
     # reason方式では summary の事前チェックをスキップ（本文フェッチ後に quality check する）
     # reason を持つアイテムは summary が空でも通す
     pre_filtered: list = []
+    existing_articles = []
+    try:
+        from .article_cache import load_all
+
+        existing_articles = load_all()
+    except Exception:
+        existing_articles = []
+
     for item in uncached:
+        try:
+            from .article_processor import _is_duplicate_against_existing
+
+            if _is_duplicate_against_existing(item, existing_articles):
+                _log_save(item.id, item.title, False, error="重複記事(pre-check)", source="curated")
+                continue
+        except Exception:
+            pass
         has_reason = bool(getattr(item, "_reason", ""))
         if has_reason:
             pre_filtered.append(item)
