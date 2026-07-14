@@ -938,6 +938,10 @@ async def sitemap_xml(request: Request):
     site_url = _get_site_url(request)
     articles = list(getattr(NewsAggregator, "_news_cache", []) or [])
     if not articles:
+        xml = read_sitemap_snapshot()
+        if xml:
+            logger.info("sitemap.xml: メモリキャッシュ空のためスナップショットを優先返却")
+            return Response(content=xml, media_type="application/xml; charset=utf-8")
         try:
             NewsAggregator.sync_list_cache_from_db(force=False)
         except Exception as e:

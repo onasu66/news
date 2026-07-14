@@ -334,6 +334,7 @@ class NewsAggregator:
     _trends_last_updated: Optional[datetime] = None
     _db_backoff_until: Optional[datetime] = None
     _last_processed_count: int = 0
+    _last_db_sync_marker: str | None = None
     # 論文一覧の DB クエリ結果をメモリにキャッシュ
     _papers_cache: Optional[tuple[list, dict]] = None  # (papers_by_category, pagination)
     _papers_cache_page: int = 0
@@ -358,14 +359,39 @@ class NewsAggregator:
         return mins * 60
 
     @classmethod
+    def _latest_cache_article_state(cls) -> tuple[Optional[datetime], str]:
+        latest_item = None
+        latest_dt = None
+        for item in cls._news_cache or []:
+            dt = getattr(item, "added_at", None) or getattr(item, "published", None)
+            if dt and getattr(dt, "tzinfo", None) is not None:
+                dt = dt.replace(tzinfo=None)
+            if not latest_dt or (dt and dt > latest_dt):
+                latest_dt = dt
+                latest_item = item
+        marker = ""
+        if latest_item is not None:
+            marker = f"{getattr(latest_item, 'id', '')}:{latest_dt.isoformat() if latest_dt else ''}"
+        return latest_dt, marker
+
+    @classmethod
+    def _mark_list_cache_synced(cls) -> None:
+        _, marker = cls._latest_cache_article_state()
+        cls._last_db_sync_marker = marker or None
+
+    @classmethod
     def _list_cache_is_stale(cls) -> bool:
-        """メモリ一覧が DB 同期から一定時間経過したら True。"""
+        """最新記事の取得・反映から一定時間後に、1回だけ DB 同期対象にする。"""
         interval = cls._list_cache_sync_interval_sec()
         if interval <= 0:
             return False
         if not cls._news_cache or not cls._last_updated:
             return True
-        return (datetime.now() - cls._last_updated).total_seconds() >= interval
+        latest_dt, marker = cls._latest_cache_article_state()
+        if marker and cls._last_db_sync_marker == marker:
+            return False
+        base_dt = latest_dt or cls._last_updated
+        return (datetime.now() - base_dt).total_seconds() >= interval
 
     @classmethod
     def _maybe_sync_stale_list_cache(cls) -> None:
@@ -431,6 +457,7 @@ class NewsAggregator:
             if all_items and not force_refresh:
                 cls._news_cache = sorted(all_items[:PAGE_DISPLAY_LIMIT], key=lambda x: x.added_at or x.published or datetime.min, reverse=True)
                 cls._last_updated = datetime.now()
+                cls._mark_list_cache_synced()
                 cls._db_backoff_until = None
                 try:
                     cls._last_processed_count = len(get_cached_article_ids())
@@ -475,6 +502,7 @@ class NewsAggregator:
                 reverse=True,
             )
             cls._last_updated = datetime.now()
+            cls._mark_list_cache_synced()
             cls._db_backoff_until = None
             try:
                 cls._last_processed_count = len(get_cached_article_ids())
@@ -511,6 +539,7 @@ class NewsAggregator:
             return
         cls._news_cache = sorted(all_items, key=lambda x: x.added_at or x.published or datetime.min, reverse=True)[:PAGE_DISPLAY_LIMIT]
         cls._last_updated = datetime.now()
+        cls._mark_list_cache_synced()
         cls._db_backoff_until = None
         try:
             cls._last_processed_count = len(get_cached_article_ids())

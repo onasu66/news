@@ -336,6 +336,10 @@ def neon_load_by_id(article_id: str):
 def neon_load_all() -> list:
     """全件読み込み。Neon の一時切断に備え数回まで再試行する。"""
     cols = ["id", "title", "link", "summary", "published", "source", "category", "image_url", "added_at"]
+    try:
+        cap = max(50, min(int(getattr(settings, "NEON_ARTICLES_LIST_LIMIT", 1200) or 1200), 5000))
+    except Exception:
+        cap = 1200
     last_exc: BaseException | None = None
     for attempt in range(3):
         try:
@@ -343,7 +347,9 @@ def neon_load_all() -> list:
                 with conn.cursor() as cur:
                     cur.execute(
                         "SELECT id, title, link, summary, published, source, category, image_url, added_at "
-                        "FROM articles ORDER BY added_at DESC NULLS LAST, published DESC NULLS LAST"
+                        "FROM articles ORDER BY added_at DESC NULLS LAST, published DESC NULLS LAST "
+                        "LIMIT %s",
+                        (cap,),
                     )
                     rows = cur.fetchall()
             return [_row_to_news_item(dict(zip(cols, r))) for r in rows]

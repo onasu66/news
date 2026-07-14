@@ -137,6 +137,8 @@ class Settings:
     EXPLANATION_MEMORY_CACHE_MAX: int = int(os.getenv("EXPLANATION_MEMORY_CACHE_MAX", "10000"))
     # SQLite の load_all 上限
     SQLITE_ARTICLES_LIST_LIMIT: int = int(os.getenv("SQLITE_ARTICLES_LIST_LIMIT", "100000"))
+    # Neon の load_all 上限。公開ページのキャッシュ同期で全記事を毎回転送しないための安全弁。
+    NEON_ARTICLES_LIST_LIMIT: int = int(os.getenv("NEON_ARTICLES_LIST_LIMIT", "800"))
     # Full-Text RSS 使用時に本文をどれだけ優先するか（0.0〜1.0）
     FULLTEXT_BODY_PRIORITY: float = float(os.getenv("FULLTEXT_BODY_PRIORITY", "0.85"))
     # FiveFilters Full-Text RSS のベースURL（未設定なら通常のRSSをそのまま取得）
