@@ -680,29 +680,67 @@ def neon_get_cached_article_ids_ordered() -> list:
     raise RuntimeError("neon_get_cached_article_ids_ordered: unreachable")
 
 
+def _related_tags_from_raw(raw, max_tags_per_article: int) -> list | None:
+    """paper_graph 由来の値から related_tags を最大 N 件取り出す。取れなければ None。"""
+    try:
+        val = json.loads(raw) if isinstance(raw, str) else raw
+    except Exception:
+        return None
+    # paper_graph 全体（dict）で渡された場合と、related_tags 配列だけの場合の両方に対応
+    if isinstance(val, dict):
+        val = val.get("related_tags", [])
+    if not isinstance(val, list):
+        return None
+    return [str(t).strip() for t in val if str(t).strip()][:max_tags_per_article]
+
+
 def neon_get_related_tags_bulk(article_ids: list, *, max_tags_per_article: int = 3) -> dict:
+    """
+    論文カードの関連タグ（最大 N 件）だけを取得する。
+
+    paper_graph は記事あたり数 KB になり得るが、ここで必要なのは related_tags だけ。
+    列全体を転送すると Neon の data transfer を無駄に消費するため、DB 側で
+    related_tags 配列のみを抜き出す。paper_graph は TEXT 列なので jsonb へ
+    キャストできない行が混ざる可能性があり、その場合は従来の全体取得へ退避する。
+    """
     if not article_ids:
         return {}
-    with _conn("get_related_tags_bulk") as conn:
+    ids = list(article_ids)
+    results: dict = {}
+    try:
+        with _conn("get_related_tags_bulk") as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    "SELECT article_id, "
+                    "jsonb_path_query_first(paper_graph::jsonb, '$.related_tags')::text "
+                    "FROM explanations "
+                    "WHERE article_id = ANY(%s) "
+                    "AND paper_graph IS NOT NULL AND paper_graph <> ''",
+                    (ids,),
+                )
+                rows = cur.fetchall()
+        for article_id, tags_raw in rows:
+            tags = _related_tags_from_raw(tags_raw, max_tags_per_article)
+            if tags is not None:
+                results[article_id] = tags
+        return results
+    except Exception as e:
+        logger.warning(
+            "neon_get_related_tags_bulk: related_tags の抽出に失敗（paper_graph 全体取得にフォールバック）: %s",
+            e,
+        )
+
+    with _conn("get_related_tags_bulk_fallback") as conn:
         with conn.cursor() as cur:
             cur.execute(
                 "SELECT article_id, paper_graph FROM explanations WHERE article_id = ANY(%s)",
-                (list(article_ids),),
+                (ids,),
             )
             rows = cur.fetchall()
-    results = {}
     for article_id, pg_raw in rows:
-        try:
-            pg = json.loads(pg_raw) if isinstance(pg_raw, str) else pg_raw
-            if not isinstance(pg, dict):
-                continue
-            raw_tags = pg.get("related_tags", [])
-            if not isinstance(raw_tags, list):
-                continue
-            tags = [str(t).strip() for t in raw_tags if str(t).strip()][:max_tags_per_article]
+        tags = _related_tags_from_raw(pg_raw, max_tags_per_article)
+        if tags is not None:
             results[article_id] = tags
-        except Exception:
-            continue
     return results
 
 

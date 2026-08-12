@@ -29,13 +29,15 @@ services:
       - key: SITE_URL
         value: "https://tiripo-ai.site"
       # 公開HTMLのブラウザ/CDNキャッシュ秒（/topic, /, /news）。Neon負荷削減。0 で無効。
-      # - key: PUBLIC_HTML_CACHE_MAX_AGE_SEC
-      #   value: "120"
+      # bot 巡回がそのまま DB 往復にならないよう有効化。
+      - key: PUBLIC_HTML_CACHE_MAX_AGE_SEC
+        value: "120"
       # - key: NEWS_REFRESH_INTERVAL
       #   value: "240"
       # 無料枠向けの省エネ推奨値（必要に応じて有効化）
-      # - key: NEWS_LIST_CACHE_SYNC_MINUTES
-      #   value: "180"
+      # 一覧キャッシュの DB 再同期。既定 30 分（=48回/日の全件ロード）は転送量を食うため 180 分へ。
+      - key: NEWS_LIST_CACHE_SYNC_MINUTES
+        value: "180"
       # - key: RSS_MIN_ADDED_PER_REFRESH
       #   value: "5"
       # - key: RSS_REFRESH_MAX_LOOPS
