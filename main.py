@@ -479,7 +479,17 @@ async def debug_storage():
     db_url = (getattr(settings, "DATABASE_URL", "") or "").strip()
     try:
         from app.services.neon_store import use_neon
+        from app.services.turso_store import use_turso
 
+        if use_turso():
+            import os
+
+            turso_url = (os.getenv("TURSO_DATABASE_URL", "") or "").strip()
+            return {
+                "storage": "turso",
+                "database_url_preview": (turso_url[:40] + "...") if turso_url else "",
+                "message": "Turso (libSQL) を使用しています。",
+            }
         if use_neon():
             return {
                 "storage": "neon",
@@ -503,8 +513,12 @@ async def debug_articles_status():
     from app.services.explanation_cache import get_cached_article_ids
     try:
         from app.services.neon_store import use_neon
+        from app.services.turso_store import use_turso
 
-        storage = "neon" if use_neon() else "sqlite"
+        if use_turso():
+            storage = "turso"
+        else:
+            storage = "neon" if use_neon() else "sqlite"
     except Exception:
         storage = "sqlite"
     all_articles = []

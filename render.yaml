@@ -13,7 +13,13 @@ services:
       - key: PYTHON_VERSION
         # Render は PYTHON_VERSION を「完全なバージョン」で指定する必要があります
         value: "3.11.7"
-      # 永続ストレージは Neon: DATABASE_URL（推奨）。未設定ならコンテナ内 SQLite（再起動で消える）
+      # 永続ストレージ。TURSO_DATABASE_URL があれば Turso (libSQL) を優先し、
+      # 無ければ DATABASE_URL の Neon Postgres、どちらも無ければコンテナ内 SQLite（再起動で消える）。
+      # 値は Render ダッシュボードの Environment で設定する（sync: false）。
+      - key: TURSO_DATABASE_URL
+        sync: false
+      - key: TURSO_AUTH_TOKEN
+        sync: false
       # - key: DATABASE_URL
       #   sync: false
       # 以下は任意。Render ダッシュボードの Environment で設定

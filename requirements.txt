@@ -14,5 +14,7 @@ google-generativeai>=0.8.0
 openai>=1.55.0
 apscheduler==3.10.4
 pyyaml>=6.0
+# Turso (libSQL) 接続。HTTP 経由の純 Python 実装のため Render でのネイティブビルド不要。
+turso_serverless>=0.1.0
 
 # NOTE: Render build時の依存解決のためのダミー更新（実体の依存追加なし）

@@ -28,7 +28,26 @@ def _get_database_url() -> str:
     return _DATABASE_URL
 
 
+def _use_turso() -> bool:
+    """Turso が設定されていれば Postgres より優先する。"""
+    try:
+        from .turso_store import use_turso
+
+        return use_turso()
+    except Exception:
+        return False
+
+
 def use_neon() -> bool:
+    """
+    「リモート DB（Neon Postgres もしくは Turso）を使うか」を返す。
+
+    呼び出し側は保存先が Postgres か SQLite かではなく「ローカル SQLite ファイルに
+    フォールバックすべきか」を判定するためにこの関数を使っているため、Turso 設定時も
+    True を返す。実際の保存先はモジュール末尾の委譲テーブルで切り替わる。
+    """
+    if _use_turso():
+        return True
     url = _get_database_url()
     if not url:
         logger.debug("use_neon: DATABASE_URL が未設定のため Neon を使用しません")
@@ -1100,3 +1119,75 @@ def neon_metrics_categories() -> list:
             )
             rows = cur.fetchall()
     return [{"category": r[0], "count": r[1]} for r in rows]
+
+
+# ---------------------------------------------------------------------------
+# Turso 委譲
+#
+# TURSO_DATABASE_URL が設定されている場合、以下の関数は turso_store の同名
+# （neon_ プレフィックスを除いた名前）へ委譲する。呼び出し側は neon_store の
+# インターフェースをそのまま使い続けられる。判定は呼び出しごとに行うため、
+# 環境変数の設定タイミングに依存しない。
+# ---------------------------------------------------------------------------
+
+_TURSO_DELEGATES = {
+    "neon_init_schema": "init_schema",
+    "neon_load_by_id": "load_by_id",
+    "neon_load_all": "load_all",
+    "neon_load_all_papers_for_site_list": "load_all_papers_for_site_list",
+    "neon_save_article": "save_article",
+    "neon_save_articles_batch": "save_articles_batch",
+    "neon_delete_article": "delete_article",
+    "neon_query_papers_page": "query_papers_page",
+    "neon_query_news_page": "query_news_page",
+    "neon_get_cached": "get_cached",
+    "neon_save_cache": "save_cache",
+    "neon_delete_cache": "delete_cache",
+    "neon_get_cached_article_ids": "get_cached_article_ids",
+    "neon_get_cached_article_ids_ordered": "get_cached_article_ids_ordered",
+    "neon_get_related_tags_bulk": "get_related_tags_bulk",
+    "neon_ai_daily_get": "ai_daily_get",
+    "neon_ai_daily_save": "ai_daily_save",
+    "neon_persona_vote_increment": "persona_vote_increment",
+    "neon_persona_vote_get_all": "persona_vote_get_all",
+    "neon_policy_topic_upsert": "policy_topic_upsert",
+    "neon_policy_proposals_save": "policy_proposals_save",
+    "neon_policy_proposals_get": "policy_proposals_get",
+    "neon_policy_topics_get_active": "policy_topics_get_active",
+    "neon_policy_vote_increment": "policy_vote_increment",
+    "neon_policy_vote_counts_get": "policy_vote_counts_get",
+    "neon_metrics_upsert": "metrics_upsert",
+    "neon_metrics_query": "metrics_query",
+    "neon_metrics_search": "metrics_search",
+    "neon_metrics_categories": "metrics_categories",
+    "reset_neon_connection_pool": "reset_connection",
+}
+
+
+def _make_turso_delegate(pg_func, turso_name: str):
+    import functools
+
+    @functools.wraps(pg_func)
+    def wrapper(*args, **kwargs):
+        if _use_turso():
+            try:
+                from . import turso_store
+            except Exception as e:
+                logger.warning("turso_store の import に失敗、Postgres 実装を使用: %s", e)
+            else:
+                fn = getattr(turso_store, turso_name, None)
+                if fn is not None:
+                    return fn(*args, **kwargs)
+                logger.warning(
+                    "turso_store に %s が未実装のため Postgres 実装を使用します", turso_name
+                )
+        return pg_func(*args, **kwargs)
+
+    return wrapper
+
+
+for _pg_name, _turso_name in _TURSO_DELEGATES.items():
+    _orig = globals().get(_pg_name)
+    if callable(_orig):
+        globals()[_pg_name] = _make_turso_delegate(_orig, _turso_name)
+del _pg_name, _turso_name, _orig

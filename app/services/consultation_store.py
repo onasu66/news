@@ -15,6 +15,14 @@ def _use_neon() -> bool:
         return False
 
 
+def _use_turso() -> bool:
+    try:
+        from .turso_store import use_turso
+        return use_turso()
+    except Exception:
+        return False
+
+
 def _get_sqlite_conn():
     _DB_PATH.parent.mkdir(parents=True, exist_ok=True)
     conn = sqlite3.connect(str(_DB_PATH))
@@ -51,6 +59,14 @@ def save_consultation(
 ) -> str:
     cid = str(uuid.uuid4())[:8]
     now = datetime.now()
+    if _use_turso():
+        from .turso_store import consultation_save
+
+        consultation_save(
+            cid, question, source, source_user, persona_id, persona_name,
+            persona_emoji, answer, now,
+        )
+        return cid
     if _use_neon():
         from .neon_store import _conn
         with _conn("save_consultation") as conn:
@@ -75,6 +91,10 @@ def save_consultation(
 
 
 def get_consultations(limit: int = 30) -> list[dict]:
+    if _use_turso():
+        from .turso_store import consultations_get
+
+        return consultations_get(limit)
     if _use_neon():
         from .neon_store import _conn
         with _conn("get_consultations") as conn:
