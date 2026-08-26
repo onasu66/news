@@ -143,8 +143,11 @@ class Settings:
     FULLTEXT_BODY_PRIORITY: float = float(os.getenv("FULLTEXT_BODY_PRIORITY", "0.85"))
     # FiveFilters Full-Text RSS のベースURL（未設定なら通常のRSSをそのまま取得）
     FULLTEXT_RSS_BASE_URL: str = os.getenv("FULLTEXT_RSS_BASE_URL", "").rstrip("/")
-    # Neon Postgres 接続文字列（設定されていれば SQLite より優先）
+    # Neon Postgres 接続文字列（Turso 未設定時に使用）
     DATABASE_URL: str = os.getenv("DATABASE_URL", "").strip()
+    # Turso (libSQL) — 設定時は Neon より優先
+    TURSO_DATABASE_URL: str = os.getenv("TURSO_DATABASE_URL", "").strip()
+    TURSO_AUTH_TOKEN: str = os.getenv("TURSO_AUTH_TOKEN", "").strip()
     # 管理者用シークレット（手動記事追加・管理画面）。未設定なら管理機能は利用不可
     ADMIN_SECRET: str = os.getenv("ADMIN_SECRET", "").strip()
     # 本番キャッシュ更新通知専用（ローカル Cron 等 → SITE_URL の /api/admin/cache/refresh）。

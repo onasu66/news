@@ -235,12 +235,20 @@ async def lifespan(app: FastAPI):
     if rss_ai_disabled:
         logger.info("RSS取得・AI要約は無効です（DISABLE_RSS_AND_AI=true）。表示はキャッシュのみ。")
 
-    # ストレージ: Neon があれば Postgres、なければローカル SQLite
+    # ストレージ: Turso > Neon > ローカル SQLite
     try:
         from app.services.neon_store import use_neon, neon_init_schema
+        from app.services.turso_store import use_turso
 
         db_url = os.environ.get("DATABASE_URL", "").strip()
-        if use_neon():
+        turso_url = (getattr(settings, "TURSO_DATABASE_URL", "") or os.environ.get("TURSO_DATABASE_URL", "")).strip()
+        if use_turso():
+            try:
+                neon_init_schema()
+            except Exception as e:
+                logger.warning("Turso スキーマ初期化でエラー: %s", e)
+            logger.info("ストレージ: Turso libSQL（%s...）", turso_url[:48])
+        elif use_neon():
             try:
                 neon_init_schema()
             except Exception as e:
@@ -250,17 +258,18 @@ async def lifespan(app: FastAPI):
             if db_url:
                 logger.warning("ストレージ: DATABASE_URL はありますが psycopg2 が使えないため SQLite にフォールバックしています")
             else:
-                logger.info("ストレージ: DATABASE_URL 未設定 → ローカル SQLite（data/articles.db）を使用します")
+                logger.info("ストレージ: DATABASE_URL / Turso 未設定 → ローカル SQLite（data/articles.db）を使用します")
     except Exception as e:
         logger.warning("ストレージ確認でエラー: %s", e)
 
     if os.environ.get("RENDER", "").strip().lower() == "true":
         try:
             from app.services.neon_store import use_neon as _un
+            from app.services.turso_store import use_turso as _ut
 
-            if not _un():
+            if not _ut() and not _un():
                 logger.error(
-                    "Render 本番では DATABASE_URL（Neon の接続文字列）と psycopg2-binary の利用を推奨します。"
+                    "Render 本番では TURSO_DATABASE_URL+TURSO_AUTH_TOKEN、または DATABASE_URL（Neon）の設定を推奨します。"
                 )
         except Exception as e:
             logger.warning("Render ストレージ確認でエラー: %s", e)
@@ -473,14 +482,22 @@ async def debug_neon_status():
 
 @app.get("/api/debug/storage")
 async def debug_storage():
-    """Neon Postgres または SQLite のどちらを使っているか確認する。"""
+    """Turso / Neon / SQLite のどれを使っているか確認する。"""
     from app.config import settings
 
     db_url = (getattr(settings, "DATABASE_URL", "") or "").strip()
+    turso_url = (getattr(settings, "TURSO_DATABASE_URL", "") or "").strip()
     try:
-        from app.services.neon_store import use_neon
+        from app.services.turso_store import use_turso
+        from app.services.neon_store import use_neon, use_postgres_neon
 
-        if use_neon():
+        if use_turso():
+            return {
+                "storage": "turso",
+                "turso_url_preview": (turso_url[:48] + "...") if turso_url else "",
+                "message": "Turso (libSQL) を使用しています。",
+            }
+        if use_postgres_neon() or use_neon():
             return {
                 "storage": "neon",
                 "database_url_preview": (db_url[:40] + "...") if db_url else "",
@@ -491,7 +508,8 @@ async def debug_storage():
     return {
         "storage": "sqlite",
         "database_url_set": bool(db_url),
-        "message": "DATABASE_URL が未設定か Neon が無効のため SQLite（data/*.db）を使用しています。",
+        "turso_set": bool(turso_url),
+        "message": "クラウドDB未設定のため SQLite（data/*.db）を使用しています。",
     }
 
 
@@ -502,9 +520,15 @@ async def debug_articles_status():
     from app.services.article_cache import load_all
     from app.services.explanation_cache import get_cached_article_ids
     try:
-        from app.services.neon_store import use_neon
+        from app.services.turso_store import use_turso
+        from app.services.neon_store import use_neon, use_postgres_neon
 
-        storage = "neon" if use_neon() else "sqlite"
+        if use_turso():
+            storage = "turso"
+        elif use_postgres_neon() or use_neon():
+            storage = "neon"
+        else:
+            storage = "sqlite"
     except Exception:
         storage = "sqlite"
     all_articles = []

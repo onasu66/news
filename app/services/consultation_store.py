@@ -51,17 +51,37 @@ def save_consultation(
 ) -> str:
     cid = str(uuid.uuid4())[:8]
     now = datetime.now()
+    try:
+        from .turso_store import use_turso, turso_save_consultation
+
+        if use_turso():
+            turso_save_consultation(
+                cid,
+                question,
+                source,
+                source_user,
+                persona_id,
+                persona_name,
+                persona_emoji,
+                answer,
+                now.isoformat(),
+            )
+            return cid
+    except Exception:
+        pass
     if _use_neon():
-        from .neon_store import _conn
-        with _conn("save_consultation") as conn:
-            with conn.cursor() as cur:
-                cur.execute(
-                    """INSERT INTO consultations
-                       (id, question, source, source_user, persona_id, persona_name, persona_emoji, answer, published_at)
-                       VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)""",
-                    (cid, question, source, source_user, persona_id, persona_name, persona_emoji, answer, now),
-                )
-        return cid
+        from .neon_store import _conn, use_postgres_neon
+
+        if use_postgres_neon():
+            with _conn("save_consultation") as conn:
+                with conn.cursor() as cur:
+                    cur.execute(
+                        """INSERT INTO consultations
+                           (id, question, source, source_user, persona_id, persona_name, persona_emoji, answer, published_at)
+                           VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)""",
+                        (cid, question, source, source_user, persona_id, persona_name, persona_emoji, answer, now),
+                    )
+            return cid
     _init_sqlite()
     with _get_sqlite_conn() as conn:
         conn.execute(
@@ -75,17 +95,26 @@ def save_consultation(
 
 
 def get_consultations(limit: int = 30) -> list[dict]:
+    try:
+        from .turso_store import use_turso, turso_get_consultations
+
+        if use_turso():
+            return turso_get_consultations(limit=limit)
+    except Exception:
+        pass
     if _use_neon():
-        from .neon_store import _conn
-        with _conn("get_consultations") as conn:
-            with conn.cursor() as cur:
-                cur.execute(
-                    "SELECT id, question, source, source_user, persona_id, persona_name, persona_emoji, answer, published_at "
-                    "FROM consultations ORDER BY published_at DESC LIMIT %s",
-                    (limit,),
-                )
-                cols = [d[0] for d in cur.description]
-                return [dict(zip(cols, row)) for row in cur.fetchall()]
+        from .neon_store import _conn, use_postgres_neon
+
+        if use_postgres_neon():
+            with _conn("get_consultations") as conn:
+                with conn.cursor() as cur:
+                    cur.execute(
+                        "SELECT id, question, source, source_user, persona_id, persona_name, persona_emoji, answer, published_at "
+                        "FROM consultations ORDER BY published_at DESC LIMIT %s",
+                        (limit,),
+                    )
+                    cols = [d[0] for d in cur.description]
+                    return [dict(zip(cols, row)) for row in cur.fetchall()]
     _init_sqlite()
     with _get_sqlite_conn() as conn:
         rows = conn.execute(

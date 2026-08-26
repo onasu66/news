@@ -29,6 +29,15 @@ def _get_database_url() -> str:
 
 
 def use_neon() -> bool:
+    """クラウドDBが有効か（後方互換名）。Turso 優先、なければ Neon。"""
+    try:
+        from .turso_store import use_turso
+
+        if use_turso():
+            logger.debug("use_neon: True (Turso 優先)")
+            return True
+    except Exception:
+        pass
     url = _get_database_url()
     if not url:
         logger.debug("use_neon: DATABASE_URL が未設定のため Neon を使用しません")
@@ -39,6 +48,26 @@ def use_neon() -> bool:
         return True
     except Exception as e:
         logger.warning("use_neon: psycopg2 import 失敗 (%s: %s) → Neon を使用しません", type(e).__name__, e)
+        return False
+
+
+def use_postgres_neon() -> bool:
+    """本物の Neon Postgres だけが有効なとき True（Turso 使用中は False）。"""
+    try:
+        from .turso_store import use_turso
+
+        if use_turso():
+            return False
+    except Exception:
+        pass
+    url = _get_database_url()
+    if not url:
+        return False
+    try:
+        import psycopg2  # noqa: F401
+
+        return True
+    except Exception:
         return False
 
 
@@ -87,6 +116,14 @@ def _is_transient_neon_error(exc: BaseException) -> bool:
 
 def reset_neon_connection_pool() -> None:
     """壊れた／アイドル切断済みの接続が残ったプールを捨て、次回から作り直す。"""
+    try:
+        from .turso_store import use_turso, reset_turso_connection
+
+        if use_turso():
+            reset_turso_connection()
+            return
+    except Exception:
+        pass
     _reset_pool()
 
 
@@ -162,6 +199,14 @@ def _conn(op: str = "unknown"):
 
 def neon_init_schema():
     """テーブル・インデックスを作成（冪等）。起動時に呼ぶ。"""
+    try:
+        from .turso_store import use_turso, turso_init_schema
+
+        if use_turso():
+            turso_init_schema()
+            return
+    except Exception:
+        pass
     with _conn("init_schema") as conn:
         with conn.cursor() as cur:
             cur.execute("""
@@ -1062,3 +1107,38 @@ def neon_metrics_categories() -> list:
             )
             rows = cur.fetchall()
     return [{"category": r[0], "count": r[1]} for r in rows]
+
+
+def _install_turso_shims() -> None:
+    """neon_* 公開関数を Turso 実装へ委譲できるようにする。"""
+    import functools
+
+    try:
+        from . import turso_store
+    except Exception:
+        return
+
+    g = globals()
+    for name, obj in list(g.items()):
+        if not name.startswith("neon_") or not callable(obj):
+            continue
+        if name in ("neon_init_schema",):
+            # 上で明示的に分岐済み
+            continue
+        turso_name = "turso_" + name[len("neon_") :]
+        if not hasattr(turso_store, turso_name):
+            continue
+
+        def _make(neon_fn, tname):
+            @functools.wraps(neon_fn)
+            def wrapper(*args, **kwargs):
+                if turso_store.use_turso():
+                    return getattr(turso_store, tname)(*args, **kwargs)
+                return neon_fn(*args, **kwargs)
+
+            return wrapper
+
+        g[name] = _make(obj, turso_name)
+
+
+_install_turso_shims()
