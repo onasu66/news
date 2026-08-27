@@ -33,19 +33,33 @@ def _creds() -> tuple[str, str]:
     except Exception:
         _URL = (os.getenv("TURSO_DATABASE_URL", "") or "").strip()
         _TOKEN = (os.getenv("TURSO_AUTH_TOKEN", "") or "").strip()
+    # settings が空でも os.environ を再確認（Render 注入タイミング対策）
+    if not _URL:
+        _URL = (os.getenv("TURSO_DATABASE_URL", "") or "").strip()
+    if not _TOKEN:
+        _TOKEN = (os.getenv("TURSO_AUTH_TOKEN", "") or "").strip()
     return _URL, _TOKEN
 
 
-def use_turso() -> bool:
+def turso_credentials_configured() -> bool:
+    """Turso の URL/TOKEN が環境に入っているか（libsql の import 成否は問わない）。"""
     url, token = _creds()
-    if not url or not token:
+    return bool(url and token)
+
+
+def use_turso() -> bool:
+    if not turso_credentials_configured():
         return False
     try:
         import libsql  # noqa: F401
 
         return True
     except Exception as e:
-        logger.warning("use_turso: libsql import 失敗 (%s)", e)
+        logger.error(
+            "use_turso: TURSO_* は設定済みだが libsql の import に失敗しました (%s)。"
+            " Neon へフォールバックしません。requirements.txt の libsql を確認してください。",
+            e,
+        )
         return False
 
 

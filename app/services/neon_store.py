@@ -31,11 +31,17 @@ def _get_database_url() -> str:
 def use_neon() -> bool:
     """クラウドDBが有効か（後方互換名）。Turso 優先、なければ Neon。"""
     try:
-        from .turso_store import use_turso
+        from .turso_store import use_turso, turso_credentials_configured
 
         if use_turso():
             logger.debug("use_neon: True (Turso 優先)")
             return True
+        # Turso 認証情報があるのに libsql が使えない場合は Neon に落とさない
+        if turso_credentials_configured():
+            logger.error(
+                "use_neon: TURSO_* 設定ありだが Turso 利用不可のため Neon を使いません"
+            )
+            return False
     except Exception:
         pass
     url = _get_database_url()
@@ -52,11 +58,11 @@ def use_neon() -> bool:
 
 
 def use_postgres_neon() -> bool:
-    """本物の Neon Postgres だけが有効なとき True（Turso 使用中は False）。"""
+    """本物の Neon Postgres だけが有効なとき True（Turso 使用中 / 設定中は False）。"""
     try:
-        from .turso_store import use_turso
+        from .turso_store import use_turso, turso_credentials_configured
 
-        if use_turso():
+        if use_turso() or turso_credentials_configured():
             return False
     except Exception:
         pass
@@ -73,6 +79,17 @@ def use_postgres_neon() -> bool:
 
 def _get_pool():
     global _pool
+    try:
+        from .turso_store import turso_credentials_configured
+
+        if turso_credentials_configured():
+            raise RuntimeError(
+                "TURSO_* が設定されているため Neon Postgres プールは使いません"
+            )
+    except RuntimeError:
+        raise
+    except Exception:
+        pass
     if _pool is not None:
         return _pool
     with _pool_lock:

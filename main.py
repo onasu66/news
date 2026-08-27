@@ -248,17 +248,26 @@ async def lifespan(app: FastAPI):
             except Exception as e:
                 logger.warning("Turso スキーマ初期化でエラー: %s", e)
             logger.info("ストレージ: Turso libSQL（%s...）", turso_url[:48])
-        elif use_neon():
-            try:
-                neon_init_schema()
-            except Exception as e:
-                logger.warning("Neon スキーマ初期化でエラー: %s", e)
-            logger.info("ストレージ: Neon Postgres（DATABASE_URL 先頭40文字: %s...）", db_url[:40])
         else:
-            if db_url:
-                logger.warning("ストレージ: DATABASE_URL はありますが psycopg2 が使えないため SQLite にフォールバックしています")
+            # Render でよくある: TURSO_* 未設定のまま DATABASE_URL(Neon) だけ残っている
+            from app.services.turso_store import turso_credentials_configured
+
+            if not turso_credentials_configured():
+                logger.warning(
+                    "TURSO_DATABASE_URL / TURSO_AUTH_TOKEN が未設定です。"
+                    " Render Environment に両方を追加して再デプロイしてください。"
+                )
+            if use_neon():
+                try:
+                    neon_init_schema()
+                except Exception as e:
+                    logger.warning("Neon スキーマ初期化でエラー: %s", e)
+                logger.info("ストレージ: Neon Postgres（DATABASE_URL 先頭40文字: %s...）", db_url[:40])
             else:
-                logger.info("ストレージ: DATABASE_URL / Turso 未設定 → ローカル SQLite（data/articles.db）を使用します")
+                if db_url:
+                    logger.warning("ストレージ: DATABASE_URL はありますが psycopg2 が使えないため SQLite にフォールバックしています")
+                else:
+                    logger.info("ストレージ: DATABASE_URL / Turso 未設定 → ローカル SQLite（data/articles.db）を使用します")
     except Exception as e:
         logger.warning("ストレージ確認でエラー: %s", e)
 
