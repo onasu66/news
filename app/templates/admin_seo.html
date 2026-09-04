@@ -1,0 +1,204 @@
+{% extends "base.html" %}
+{% block title %}SEO監視・キーワード - 知リポAI{% endblock %}
+{% block meta_extra %}
+<meta name="robots" content="noindex,nofollow">
+{% endblock %}
+{% block content %}
+<div class="admin-manual-wrap admin-seo-wrap">
+    <h1>SEO監視・キーワード</h1>
+    <p class="admin-desc">
+        狙いKW（YAML）・自動ブースト・Search Console実績の貼り付けをここで確認・操作できます。
+        記事本文の自動リライトはしません。新記事は最適化ジョブ（1日2回／手動実行）で候補→条件付きで auto_boost に入ります。
+    </p>
+    <p class="admin-nav-links">
+        <a href="/admin">手動記事追加</a> |
+        <a href="/admin/logout">ログアウト</a>
+    </p>
+
+    <section class="admin-seo-section">
+        <h2>ヘルス</h2>
+        <ul class="admin-seo-health">
+            <li>最終実行: <strong>{{ seo.last_run_at or '未実行' }}</strong></li>
+            <li>sitemap: <strong>{% if seo.health.sitemap_ok %}OK ({{ seo.health.url_count }} URLs){% else %}NG — {{ seo.health.sitemap_error or '不明' }}{% endif %}</strong></li>
+            <li>IndexNow: <strong>{% if seo.health.indexnow_enabled %}有効{% elif seo.health.indexnow_configured %}キーあり・無効{% else %}未設定{% endif %}</strong></li>
+            <li>直近記事数（最終ジョブ）: <strong>{{ seo.health.recent_articles if seo.health.recent_articles is defined else '-' }}</strong></li>
+        </ul>
+        <button type="button" class="admin-seo-btn" id="btn-run-seo">今すぐ最適化を実行</button>
+        <span id="run-status" class="admin-seo-status"></span>
+    </section>
+
+    <section class="admin-seo-section">
+        <h2>固定の狙いキーワード（YAML）</h2>
+        <p class="admin-desc">編集ファイル: <code>{{ seo.yaml_path }}</code></p>
+        <div class="admin-seo-tags">
+            {% for kw in seo.target_high_value %}
+            <span class="admin-seo-tag">{{ kw }}</span>
+            {% else %}
+            <span class="admin-desc">なし</span>
+            {% endfor %}
+        </div>
+    </section>
+
+    <section class="admin-seo-section">
+        <h2>手動昇格（固定扱い）</h2>
+        <div class="admin-seo-tags" id="promoted-list">
+            {% for kw in seo.promoted %}
+            <span class="admin-seo-tag admin-seo-tag--promoted">
+                {{ kw }}
+                <button type="button" data-unpromote="{{ kw|e }}">×</button>
+            </span>
+            {% else %}
+            <span class="admin-desc">なし</span>
+            {% endfor %}
+        </div>
+    </section>
+
+    <section class="admin-seo-section">
+        <h2>自動ブースト（いま効いている）</h2>
+        <table class="admin-seo-table">
+            <thead><tr><th>キーワード</th><th>hits</th><th>sources</th><th>操作</th></tr></thead>
+            <tbody>
+            {% for item in seo.auto_boost %}
+            <tr>
+                <td>{{ item.keyword }}</td>
+                <td>{{ item.hits }}</td>
+                <td>{{ (item.sources or [])|join(', ') }}</td>
+                <td>
+                    <button type="button" class="admin-seo-mini" data-promote="{{ item.keyword|e }}">固定昇格</button>
+                    <button type="button" class="admin-seo-mini" data-block="{{ item.keyword|e }}">除外</button>
+                </td>
+            </tr>
+            {% else %}
+            <tr><td colspan="4">まだありません。「今すぐ最適化」を実行してください。</td></tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </section>
+
+    <section class="admin-seo-section">
+        <h2>直近の候補</h2>
+        <table class="admin-seo-table">
+            <thead><tr><th>キーワード</th><th>hits</th><th>採用</th><th>理由</th><th>操作</th></tr></thead>
+            <tbody>
+            {% for c in seo.last_candidates[:40] %}
+            <tr>
+                <td>{{ c.keyword }}</td>
+                <td>{{ c.hits }}</td>
+                <td>{% if c.eligible %}○{% else %}×{% endif %}</td>
+                <td>{{ c.reason }}</td>
+                <td>
+                    <button type="button" class="admin-seo-mini" data-promote="{{ c.keyword|e }}">固定昇格</button>
+                    <button type="button" class="admin-seo-mini" data-block="{{ c.keyword|e }}">除外</button>
+                </td>
+            </tr>
+            {% else %}
+            <tr><td colspan="5">候補なし</td></tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </section>
+
+    <section class="admin-seo-section">
+        <h2>実績キーワード（Search Console 貼り付け）</h2>
+        <p class="admin-desc">1行1クエリ、または TSV/CSV（query, clicks, impressions, ctr, position）。</p>
+        <textarea id="perf-text" rows="8" placeholder="例:&#10;AI 論文 解説&#9;12&#9;400&#9;3.0&#9;8.2&#10;生成AI ニュース"></textarea>
+        <button type="button" class="admin-seo-btn" id="btn-save-perf">実績を保存</button>
+        <p class="admin-desc">登録済み: {{ seo.performance|length }} 件</p>
+        {% if seo.performance %}
+        <table class="admin-seo-table">
+            <thead><tr><th>クエリ</th><th>clicks</th><th>imps</th><th>pos</th></tr></thead>
+            <tbody>
+            {% for p in seo.performance[:30] %}
+            <tr>
+                <td>{{ p.query }}</td>
+                <td>{{ p.clicks }}</td>
+                <td>{{ p.impressions }}</td>
+                <td>{{ p.position }}</td>
+            </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+        {% endif %}
+    </section>
+
+    <section class="admin-seo-section">
+        <h2>最適化ログ</h2>
+        <ul class="admin-seo-log">
+            {% for row in seo.optimization_log[:40] %}
+            <li><code>{{ row.at }}</code> {{ row.action }} {% if row.keyword %}「{{ row.keyword }}」{% endif %} {{ row.detail }}</li>
+            {% else %}
+            <li>ログなし</li>
+            {% endfor %}
+        </ul>
+    </section>
+</div>
+<style>
+.admin-seo-wrap { max-width: 960px; }
+.admin-seo-section { margin: 1.75rem 0; padding-top: 1rem; border-top: 1px solid #ddd; }
+.admin-seo-section h2 { font-size: 1.15rem; margin-bottom: 0.5rem; }
+.admin-seo-tags { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+.admin-seo-tag { background: #eef2f6; padding: 0.25rem 0.55rem; border-radius: 4px; font-size: 0.85rem; }
+.admin-seo-tag--promoted { background: #e6f4ea; }
+.admin-seo-tag button { border: 0; background: transparent; cursor: pointer; margin-left: 0.2rem; }
+.admin-seo-table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+.admin-seo-table th, .admin-seo-table td { border-bottom: 1px solid #eee; padding: 0.4rem 0.35rem; text-align: left; vertical-align: top; }
+.admin-seo-btn { margin-top: 0.5rem; padding: 0.5rem 1rem; cursor: pointer; }
+.admin-seo-mini { font-size: 0.75rem; margin-right: 0.25rem; cursor: pointer; }
+.admin-seo-status { margin-left: 0.75rem; font-size: 0.9rem; }
+.admin-seo-log { font-size: 0.85rem; max-height: 280px; overflow: auto; }
+.admin-seo-health { line-height: 1.7; }
+#perf-text { width: 100%; font-family: ui-monospace, monospace; font-size: 0.85rem; }
+.admin-nav-links { margin-bottom: 1rem; }
+</style>
+{% endblock %}
+{% block scripts %}
+<script>
+function postJson(url, body) {
+  return fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body || {})
+  }).then(function(r) { return r.json().then(function(d) { return { ok: r.ok, data: d }; }); });
+}
+document.getElementById('btn-run-seo').addEventListener('click', function() {
+  var st = document.getElementById('run-status');
+  var btn = this;
+  btn.disabled = true;
+  st.textContent = '実行中…';
+  postJson('/api/admin/seo/run', {}).then(function(res) {
+    btn.disabled = false;
+    if (res.ok) {
+      st.textContent = '完了（auto_boost=' + (res.data.auto_boost || 0) + '）';
+      setTimeout(function() { location.reload(); }, 600);
+    } else {
+      st.textContent = '失敗';
+    }
+  }).catch(function() {
+    btn.disabled = false;
+    st.textContent = '通信エラー';
+  });
+});
+document.getElementById('btn-save-perf').addEventListener('click', function() {
+  var text = document.getElementById('perf-text').value;
+  postJson('/api/admin/seo/performance', { text: text }).then(function(res) {
+    if (res.ok) location.reload();
+    else alert('保存に失敗しました');
+  });
+});
+document.addEventListener('click', function(e) {
+  var t = e.target;
+  if (!t || !t.getAttribute) return;
+  var promote = t.getAttribute('data-promote');
+  var block = t.getAttribute('data-block');
+  var unpromote = t.getAttribute('data-unpromote');
+  if (promote) {
+    postJson('/api/admin/seo/promote', { keyword: promote }).then(function() { location.reload(); });
+  } else if (block) {
+    if (!confirm('「' + block + '」を除外しますか？')) return;
+    postJson('/api/admin/seo/block', { keyword: block }).then(function() { location.reload(); });
+  } else if (unpromote) {
+    postJson('/api/admin/seo/unpromote', { keyword: unpromote }).then(function() { location.reload(); });
+  }
+});
+</script>
+{% endblock %}

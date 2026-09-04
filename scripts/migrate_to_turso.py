@@ -39,34 +39,50 @@ def main() -> int:
     articles = []
     explanations = {}
 
-    # --- Neon 試行 ---
+    # --- Neon 試行（TURSO_* があっても DATABASE_URL へ直接接続）---
+    # use_postgres_neon() / _conn は Turso 設定時に Neon を拒否するため、移行専用に直結する。
     neon_ok = False
     try:
-        from app.services.neon_store import use_postgres_neon, _conn
+        import os
 
-        if use_postgres_neon():
-            print("Neon から読み込み中...")
-            with _conn("migrate_read") as conn:
-                with conn.cursor() as cur:
+        import psycopg2
+        import psycopg2.extras
+
+        neon_url = os.getenv("DATABASE_URL", "").strip()
+        if not neon_url:
+            try:
+                from app.config import settings
+
+                neon_url = (getattr(settings, "DATABASE_URL", "") or "").strip()
+            except Exception:
+                neon_url = ""
+
+        if neon_url:
+            print("Neon から読み込み中（直接接続）...")
+            conn = psycopg2.connect(neon_url, connect_timeout=30)
+            try:
+                with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
                     cur.execute(
                         "SELECT id, title, link, summary, published, source, category, image_url, added_at "
                         "FROM articles"
                     )
-                    cols = [d[0] for d in cur.description]
-                    for row in cur.fetchall():
-                        articles.append(dict(zip(cols, row)))
+                    articles = [dict(r) for r in cur.fetchall()]
                     cur.execute(
                         "SELECT article_id, inline_blocks, personas, display_persona_ids, "
                         "quick_understand, vote_data, paper_graph, paper_quiz, deep_insights, editorial_take "
                         "FROM explanations"
                     )
-                    ecols = [d[0] for d in cur.description]
-                    for row in cur.fetchall():
-                        explanations[row[0]] = dict(zip(ecols, row))
+                    explanations = {r["article_id"]: dict(r) for r in cur.fetchall()}
+            finally:
+                conn.close()
             neon_ok = True
             print(f"Neon: articles={len(articles)} explanations={len(explanations)}")
+        else:
+            print("DATABASE_URL 未設定のため Neon スキップ")
     except Exception as e:
         print(f"Neon 読み込み不可（想定どおりの場合あり）: {e}")
+        articles = []
+        explanations = {}
 
     # --- ローカル SQLite フォールバック ---
     if not neon_ok:

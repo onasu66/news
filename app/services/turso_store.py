@@ -171,6 +171,15 @@ def turso_init_schema() -> None:
         )
         conn.execute(
             """
+            CREATE TABLE IF NOT EXISTS seo_state (
+                id TEXT PRIMARY KEY CHECK (id = 'latest'),
+                payload TEXT NOT NULL,
+                updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+            )
+            """
+        )
+        conn.execute(
+            """
             CREATE TABLE IF NOT EXISTS persona_vote_counts (
                 persona_id INTEGER PRIMARY KEY,
                 vote_count INTEGER DEFAULT 0,

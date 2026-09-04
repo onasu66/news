@@ -844,16 +844,24 @@ async def sitemap_index_xml(request: Request):
     """Parent sitemap for Search Console and Bing Webmaster Tools."""
     from html import escape as _xml_escape
 
-    site_url = _get_site_url(request).rstrip("/")
-    today = datetime.now().date().isoformat()
-    lines = [
-        '<?xml version="1.0" encoding="UTF-8"?>',
-        '<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">',
-        f"  <sitemap><loc>{_xml_escape(site_url + '/sitemap.xml', quote=True)}</loc><lastmod>{today}</lastmod></sitemap>",
-        f"  <sitemap><loc>{_xml_escape(site_url + '/sitemap-news.xml', quote=True)}</loc><lastmod>{today}</lastmod></sitemap>",
-        "</sitemapindex>",
-    ]
-    return Response(content="\n".join(lines), media_type="application/xml; charset=utf-8")
+    try:
+        site_url = _get_site_url(request).rstrip("/")
+        today = datetime.now().date().isoformat()
+        lines = [
+            '<?xml version="1.0" encoding="UTF-8"?>',
+            '<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">',
+            f"  <sitemap><loc>{_xml_escape(site_url + '/sitemap.xml', quote=True)}</loc><lastmod>{today}</lastmod></sitemap>",
+            f"  <sitemap><loc>{_xml_escape(site_url + '/sitemap-news.xml', quote=True)}</loc><lastmod>{today}</lastmod></sitemap>",
+            "</sitemapindex>",
+        ]
+        return Response(content="\n".join(lines), media_type="application/xml; charset=utf-8")
+    except Exception as e:
+        logger.exception("sitemap-index.xml 生成失敗: %s", e)
+        fallback = (
+            '<?xml version="1.0" encoding="UTF-8"?>\n'
+            '<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"></sitemapindex>'
+        )
+        return Response(content=fallback, media_type="application/xml; charset=utf-8")
 
 
 def _latest_articles_for_feed(limit: int = 50) -> list:
@@ -932,52 +940,64 @@ async def sitemap_xml(request: Request):
 
     常にメモリキャッシュ（_news_cache）から生成する。古い data/sitemap.xml をそのまま返さない。
     キャッシュが空のときだけ DB 同期を試し、それでも無ければスナップショット／静的URLへフォールバック。
+    例外時も 500 にせず最小 sitemap を返す。
     """
     from app.services.sitemap_service import read_sitemap_snapshot, render_sitemap
 
-    site_url = _get_site_url(request)
-    articles = list(getattr(NewsAggregator, "_news_cache", []) or [])
-    if not articles:
+    try:
+        site_url = _get_site_url(request)
+        articles = list(getattr(NewsAggregator, "_news_cache", []) or [])
+        if not articles:
+            xml = read_sitemap_snapshot()
+            if xml:
+                logger.info("sitemap.xml: メモリキャッシュ空のためスナップショットを優先返却")
+                return Response(content=xml, media_type="application/xml; charset=utf-8")
+            try:
+                NewsAggregator.sync_list_cache_from_db(force=False)
+            except Exception as e:
+                logger.warning("sitemap.xml: 一覧キャッシュ同期に失敗: %s", e)
+            articles = list(getattr(NewsAggregator, "_news_cache", []) or [])
+
+        if articles and site_url:
+            try:
+                xml = render_sitemap(site_url, articles)
+                if xml:
+                    logger.debug("sitemap.xml: %d 件の /topic/ を返します", len(articles))
+                    return Response(content=xml, media_type="application/xml; charset=utf-8")
+            except Exception as e:
+                logger.warning("sitemap.xml: render 失敗、フォールバックへ: %s", e)
+
         xml = read_sitemap_snapshot()
         if xml:
-            logger.info("sitemap.xml: メモリキャッシュ空のためスナップショットを優先返却")
-            return Response(content=xml, media_type="application/xml; charset=utf-8")
-        try:
-            NewsAggregator.sync_list_cache_from_db(force=False)
-        except Exception as e:
-            logger.warning("sitemap.xml: 一覧キャッシュ同期に失敗: %s", e)
-        articles = list(getattr(NewsAggregator, "_news_cache", []) or [])
-
-    if articles and site_url:
-        xml = render_sitemap(site_url, articles)
-        if xml:
-            logger.debug("sitemap.xml: %d 件の /topic/ を返します", len(articles))
+            logger.info("sitemap.xml: キャッシュ空のためスナップショットをフォールバック返却")
             return Response(content=xml, media_type="application/xml; charset=utf-8")
 
-    xml = read_sitemap_snapshot()
-    if xml:
-        logger.info("sitemap.xml: キャッシュ空のためスナップショットをフォールバック返却")
-        return Response(content=xml, media_type="application/xml; charset=utf-8")
-
-    today = datetime.now().date().isoformat()
-    category_lines = [
-        f"  <url><loc>{site_url}/topics/{slug}</loc><lastmod>{today}</lastmod><changefreq>hourly</changefreq><priority>0.8</priority></url>"
-        for slug in CATEGORY_PAGES
-    ]
-    lines = [
-        '<?xml version="1.0" encoding="UTF-8"?>',
-        '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">',
-        f"  <url><loc>{site_url}/</loc><lastmod>{today}</lastmod><changefreq>hourly</changefreq><priority>1.0</priority></url>",
-        f"  <url><loc>{site_url}/news</loc><lastmod>{today}</lastmod><changefreq>hourly</changefreq><priority>1.0</priority></url>",
-        f"  <url><loc>{site_url}/trend</loc><lastmod>{today}</lastmod><changefreq>hourly</changefreq><priority>0.8</priority></url>",
-        f"  <url><loc>{site_url}/search</loc><lastmod>{today}</lastmod><changefreq>daily</changefreq><priority>0.7</priority></url>",
-        f"  <url><loc>{site_url}/ai</loc><lastmod>{today}</lastmod><changefreq>daily</changefreq><priority>0.6</priority></url>",
-        f"  <url><loc>{site_url}/about</loc><lastmod>{today}</lastmod><changefreq>monthly</changefreq><priority>0.5</priority></url>",
-        f"  <url><loc>{site_url}/personas</loc><lastmod>{today}</lastmod><changefreq>monthly</changefreq><priority>0.5</priority></url>",
-        *category_lines,
-        "</urlset>",
-    ]
-    return Response(content="\n".join(lines), media_type="application/xml; charset=utf-8")
+        today = datetime.now().date().isoformat()
+        category_lines = [
+            f"  <url><loc>{site_url}/topics/{slug}</loc><lastmod>{today}</lastmod><changefreq>hourly</changefreq><priority>0.8</priority></url>"
+            for slug in CATEGORY_PAGES
+        ]
+        lines = [
+            '<?xml version="1.0" encoding="UTF-8"?>',
+            '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">',
+            f"  <url><loc>{site_url}/</loc><lastmod>{today}</lastmod><changefreq>hourly</changefreq><priority>1.0</priority></url>",
+            f"  <url><loc>{site_url}/news</loc><lastmod>{today}</lastmod><changefreq>hourly</changefreq><priority>1.0</priority></url>",
+            f"  <url><loc>{site_url}/trend</loc><lastmod>{today}</lastmod><changefreq>hourly</changefreq><priority>0.8</priority></url>",
+            f"  <url><loc>{site_url}/search</loc><lastmod>{today}</lastmod><changefreq>daily</changefreq><priority>0.7</priority></url>",
+            f"  <url><loc>{site_url}/ai</loc><lastmod>{today}</lastmod><changefreq>daily</changefreq><priority>0.6</priority></url>",
+            f"  <url><loc>{site_url}/about</loc><lastmod>{today}</lastmod><changefreq>monthly</changefreq><priority>0.5</priority></url>",
+            f"  <url><loc>{site_url}/personas</loc><lastmod>{today}</lastmod><changefreq>monthly</changefreq><priority>0.5</priority></url>",
+            *category_lines,
+            "</urlset>",
+        ]
+        return Response(content="\n".join(lines), media_type="application/xml; charset=utf-8")
+    except Exception as e:
+        logger.exception("sitemap.xml 生成失敗: %s", e)
+        fallback = (
+            '<?xml version="1.0" encoding="UTF-8"?>\n'
+            '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"></urlset>'
+        )
+        return Response(content=fallback, media_type="application/xml; charset=utf-8")
 
 
 @router.get("/sitemap-news.xml")
@@ -985,60 +1005,69 @@ async def sitemap_news_xml(request: Request):
     """Google ニュース用 sitemap-news.xml。直近48時間の記事のみ収録。"""
     from datetime import timedelta, timezone
 
-    site_url = _get_site_url(request)
-    articles = list(getattr(NewsAggregator, "_news_cache", []) or [])
-    if not articles:
-        try:
-            NewsAggregator.sync_list_cache_from_db(force=False)
-        except Exception:
-            pass
+    try:
+        site_url = _get_site_url(request)
         articles = list(getattr(NewsAggregator, "_news_cache", []) or [])
+        if not articles:
+            try:
+                NewsAggregator.sync_list_cache_from_db(force=False)
+            except Exception:
+                pass
+            articles = list(getattr(NewsAggregator, "_news_cache", []) or [])
 
-    cutoff = datetime.now(timezone.utc) - timedelta(hours=48)
+        cutoff = datetime.now(timezone.utc) - timedelta(hours=48)
 
-    def _pub_dt(article):
-        for attr in ("added_at", "published"):
-            dt = getattr(article, attr, None)
-            if not dt:
-                continue
-            if hasattr(dt, "tzinfo") and dt.tzinfo is None:
-                from zoneinfo import ZoneInfo as _ZI
-                dt = dt.replace(tzinfo=_ZI("Asia/Tokyo"))
-            return dt
-        return None
+        def _pub_dt(article):
+            for attr in ("added_at", "published"):
+                dt = getattr(article, attr, None)
+                if not dt:
+                    continue
+                if hasattr(dt, "tzinfo") and dt.tzinfo is None:
+                    from zoneinfo import ZoneInfo as _ZI
+                    dt = dt.replace(tzinfo=_ZI("Asia/Tokyo"))
+                return dt
+            return None
 
-    def _pub_iso(article) -> str:
-        dt = _pub_dt(article)
-        if dt and hasattr(dt, "isoformat"):
-            return dt.isoformat()
-        return datetime.now(timezone.utc).isoformat()
+        def _pub_iso(article) -> str:
+            dt = _pub_dt(article)
+            if dt and hasattr(dt, "isoformat"):
+                return dt.isoformat()
+            return datetime.now(timezone.utc).isoformat()
 
-    recent = [a for a in articles if (_pub_dt(a) or cutoff) >= cutoff]
+        recent = [a for a in articles if (_pub_dt(a) or cutoff) >= cutoff]
 
-    lines = [
-        '<?xml version="1.0" encoding="UTF-8"?>',
-        '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"',
-        '        xmlns:news="http://www.google.com/schemas/sitemap-news/0.9">',
-    ]
-    for article in recent[:1000]:
-        title = (getattr(article, "title", "") or "").strip().replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
-        loc = f"{site_url}{article_url_path(article)}".replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
-        pub_date = _pub_iso(article)
-        lines += [
-            "  <url>",
-            f"    <loc>{loc}</loc>",
-            "    <news:news>",
-            "      <news:publication>",
-            "        <news:name>知リポAI</news:name>",
-            "        <news:language>ja</news:language>",
-            "      </news:publication>",
-            f"      <news:publication_date>{pub_date}</news:publication_date>",
-            f"      <news:title>{title}</news:title>",
-            "    </news:news>",
-            "  </url>",
+        lines = [
+            '<?xml version="1.0" encoding="UTF-8"?>',
+            '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"',
+            '        xmlns:news="http://www.google.com/schemas/sitemap-news/0.9">',
         ]
-    lines.append("</urlset>")
-    return Response(content="\n".join(lines), media_type="application/xml; charset=utf-8")
+        for article in recent[:1000]:
+            title = (getattr(article, "title", "") or "").strip().replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+            loc = f"{site_url}{article_url_path(article)}".replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+            pub_date = _pub_iso(article)
+            lines += [
+                "  <url>",
+                f"    <loc>{loc}</loc>",
+                "    <news:news>",
+                "      <news:publication>",
+                "        <news:name>知リポAI</news:name>",
+                "        <news:language>ja</news:language>",
+                "      </news:publication>",
+                f"      <news:publication_date>{pub_date}</news:publication_date>",
+                f"      <news:title>{title}</news:title>",
+                "    </news:news>",
+                "  </url>",
+            ]
+        lines.append("</urlset>")
+        return Response(content="\n".join(lines), media_type="application/xml; charset=utf-8")
+    except Exception as e:
+        logger.exception("sitemap-news.xml 生成失敗: %s", e)
+        fallback = (
+            '<?xml version="1.0" encoding="UTF-8"?>\n'
+            '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" '
+            'xmlns:news="http://www.google.com/schemas/sitemap-news/0.9"></urlset>'
+        )
+        return Response(content=fallback, media_type="application/xml; charset=utf-8")
 
 
 @router.api_route("/", methods=["GET", "POST", "HEAD", "OPTIONS"])
@@ -1914,6 +1943,13 @@ def _default_site_graph_jsonld(request: Request) -> dict:
 templates.env.globals["default_site_graph_jsonld"] = _default_site_graph_jsonld
 templates.env.globals["ga4_id"] = settings.GA4_MEASUREMENT_ID
 templates.env.globals["clarity_id"] = settings.CLARITY_PROJECT_ID
+try:
+    from app.services.seo_keywords_config import get_site_meta_keywords
+
+    templates.env.globals["site_meta_keywords"] = get_site_meta_keywords()
+except Exception:
+    templates.env.globals["site_meta_keywords"] = ""
+
 templates.env.globals["article_url"] = article_url_path
 
 
@@ -2813,6 +2849,116 @@ async def admin_manual_article_page(request: Request):
     if not request.session.get("admin"):
         return RedirectResponse(url="/admin/login", status_code=302)
     return templates.TemplateResponse("admin_manual_article.html", {"request": request})
+
+
+@router.get("/admin/seo", response_class=HTMLResponse)
+async def admin_seo_page(request: Request):
+    """SEO監視・キーワードダッシュボード（管理者のみ）"""
+    if not getattr(settings, "ADMIN_SECRET", ""):
+        raise HTTPException(status_code=403, detail="管理機能は無効です")
+    if not request.session.get("admin"):
+        return RedirectResponse(url="/admin/login", status_code=302)
+    from app.services.seo_optimizer import get_seo_dashboard_payload
+
+    data = get_seo_dashboard_payload()
+    return templates.TemplateResponse(
+        "admin_seo.html",
+        {"request": request, "seo": data},
+    )
+
+
+@router.get("/api/admin/seo")
+async def api_admin_seo_get(
+    request: Request,
+    x_admin_secret: str | None = Header(None, alias="X-Admin-Secret"),
+):
+    if not _is_admin(request, x_admin_secret):
+        raise HTTPException(status_code=403, detail="管理者のみ利用できます")
+    from app.services.seo_optimizer import get_seo_dashboard_payload
+
+    return get_seo_dashboard_payload()
+
+
+@router.post("/api/admin/seo/run")
+async def api_admin_seo_run(
+    request: Request,
+    x_admin_secret: str | None = Header(None, alias="X-Admin-Secret"),
+):
+    if not _is_admin(request, x_admin_secret):
+        raise HTTPException(status_code=403, detail="管理者のみ利用できます")
+    from app.services.seo_optimizer import run_seo_optimize
+
+    import asyncio
+
+    loop = asyncio.get_event_loop()
+    summary = await loop.run_in_executor(None, lambda: run_seo_optimize(force=True))
+    return summary
+
+
+@router.post("/api/admin/seo/performance")
+async def api_admin_seo_performance(
+    request: Request,
+    x_admin_secret: str | None = Header(None, alias="X-Admin-Secret"),
+):
+    if not _is_admin(request, x_admin_secret):
+        raise HTTPException(status_code=403, detail="管理者のみ利用できます")
+    try:
+        body = await request.json()
+    except Exception:
+        raise HTTPException(status_code=400, detail="JSON で text を送ってください")
+    text = body.get("text") or ""
+    from app.services.seo_keywords_store import save_performance_from_paste
+
+    state = save_performance_from_paste(text)
+    return {"status": "ok", "count": len(state.get("performance") or [])}
+
+
+@router.post("/api/admin/seo/block")
+async def api_admin_seo_block(
+    request: Request,
+    x_admin_secret: str | None = Header(None, alias="X-Admin-Secret"),
+):
+    if not _is_admin(request, x_admin_secret):
+        raise HTTPException(status_code=403, detail="管理者のみ利用できます")
+    body = await request.json()
+    keyword = (body.get("keyword") or "").strip()
+    if not keyword:
+        raise HTTPException(status_code=400, detail="keyword 必須")
+    from app.services.seo_keywords_store import block_keyword
+
+    return block_keyword(keyword)
+
+
+@router.post("/api/admin/seo/promote")
+async def api_admin_seo_promote(
+    request: Request,
+    x_admin_secret: str | None = Header(None, alias="X-Admin-Secret"),
+):
+    if not _is_admin(request, x_admin_secret):
+        raise HTTPException(status_code=403, detail="管理者のみ利用できます")
+    body = await request.json()
+    keyword = (body.get("keyword") or "").strip()
+    if not keyword:
+        raise HTTPException(status_code=400, detail="keyword 必須")
+    from app.services.seo_keywords_store import promote_keyword
+
+    return promote_keyword(keyword)
+
+
+@router.post("/api/admin/seo/unpromote")
+async def api_admin_seo_unpromote(
+    request: Request,
+    x_admin_secret: str | None = Header(None, alias="X-Admin-Secret"),
+):
+    if not _is_admin(request, x_admin_secret):
+        raise HTTPException(status_code=403, detail="管理者のみ利用できます")
+    body = await request.json()
+    keyword = (body.get("keyword") or "").strip()
+    if not keyword:
+        raise HTTPException(status_code=400, detail="keyword 必須")
+    from app.services.seo_keywords_store import unpromote_keyword
+
+    return unpromote_keyword(keyword)
 
 
 def _do_create_manual_article_sync(title: str, summary: str, link: str = "", source: str = "編集部") -> dict:

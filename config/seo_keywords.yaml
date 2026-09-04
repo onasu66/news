@@ -1,0 +1,218 @@
+# =============================================================================
+# 知リポAI — SEO・キーワード方針（ここを編集＝狙いKWの変更）
+# =============================================================================
+# ・target_high_value … 記事選定の加点・救済に使う「狙いキーワード」
+# ・auto_boost は自動ジョブが別途更新（管理画面 /admin/seo で確認）
+# ・performance は Search Console のクエリを管理画面から貼り付け
+# ・記事本文の自動リライトはしない（加点リストの更新のみ）
+# =============================================================================
+
+# サイト全体のデフォルト meta keywords（base.html）
+site_meta_keywords:
+  - 知リポAI
+  - AIニュース
+  - AI論文
+  - 生成AIニュース
+  - AI最新ニュース
+  - 論文要約AI
+  - AI解説
+  - 人工知能ニュース
+  - チリポ
+  - ちりぽ
+  - AI最新情報
+
+# 狙いキーワード（固定）。タイトル・要約に含まれると選定スコア加点／低価値カテゴリの救済
+target_high_value:
+  # 政治・経済・社会制度
+  - 政策
+  - 法案
+  - 経済
+  - 規制
+  - 金利
+  - インフレ
+  - GDP
+  - 予算
+  - 制裁
+  - 半導体
+  - AI
+  - 量子
+  - 脱炭素
+  - 再生可能エネルギー
+  - 外交
+  - 安全保障
+  - サミット
+  - 条約
+  - 改革
+  - 選挙
+  - 判決
+  - 裁判
+  - 汚職
+  - 調査
+  # 健康・科学
+  - 体重
+  - 筋肉
+  - 老化
+  - 健康
+  - 運動
+  - 栄養
+  - 睡眠
+  - 予防
+  # 災害・緊急事態
+  - 地震
+  - 噴火
+  - 津波
+  - 台風
+  - 洪水
+  - 土砂崩れ
+  - 大雨
+  - 警報
+  - 避難
+  - 震度
+  - マグニチュード
+  - 活火山
+  - 火山
+  - 富士山
+  - 南海トラフ
+  - 原発
+  - 放射線
+  - 停電
+  - 断水
+  - 被害
+  - 救助
+  - 行方不明
+  # 英語
+  - policy
+  - regulation
+  - economy
+  - inflation
+  - legislation
+  - sanctions
+  - semiconductor
+  - quantum
+  - climate
+  - diplomacy
+  - summit
+  - reform
+  - election
+  - ruling
+  - investigation
+  - muscle
+  - aging
+  - protein
+  - exercise
+  - diet
+  - health
+  - longevity
+  - earthquake
+  - eruption
+  - tsunami
+  - typhoon
+  - flood
+  - disaster
+  - evacuation
+
+# 低価値とみなすカテゴリ（高価値KWまたはSEOスコアで救済可）
+low_value_categories:
+  - スポーツ
+  - エンタメ
+
+# タイトル除外パターン（正規表現の一部）。研究・論文カテゴリには適用しない
+exclude_title_patterns: "号外|訃報|結果|スコア|芸能|ランキング|占い|星座|ゴシップ|breaking\\s*:?\\s*$|score|results|obituary|gossip"
+
+# 検索意図っぽい語（seo_potential_score 加点）
+search_intent_terms:
+  - とは
+  - なぜ
+  - 理由
+  - 影響
+  - 今後
+  - いつ
+  - どこ
+  - 誰
+  - 何
+  - プロフィール
+  - 経歴
+  - 成績
+  - 年俸
+  - 移籍
+  - 結婚
+  - 身長
+  - 年齢
+  - 比較
+  - 過去
+  - データ
+  - ランキング
+  - サービス
+  - 使い方
+
+comparison_terms:
+  - 前年
+  - 昨季
+  - 過去
+  - 比較
+  - 平均
+  - ランキング
+  - 推移
+  - 変化
+  - 最多
+  - 初
+  - 連続
+  - 率
+  - 倍
+  - ％
+  - "%"
+  - 位
+  - 試合
+  - 本塁打
+  - 打率
+
+question_words:
+  - 何
+  - とは
+  - いつ
+  - どうして
+  - なぜ
+  - どう
+  - どこ
+  - 誰
+
+# sitemap 掲載優先に使う意図KW
+sitemap_high_intent:
+  - AI
+  - 生成AI
+  - 人工知能
+  - ChatGPT
+  - OpenAI
+  - Gemini
+  - Claude
+  - LLM
+  - 論文
+  - 研究
+  - arXiv
+  - Nature
+  - Science
+  - 機械学習
+  - 深層学習
+  - 半導体
+  - 量子
+  - 医療
+  - 気候
+  - エネルギー
+  - 規制
+
+sitemap_low_intent:
+  - 占い
+  - ランキング
+  - 熱愛
+  - 不倫
+  - ゴシップ
+  - 速報
+  - 試合結果
+
+# 自動最適化ジョブのパラメータ
+optimizer:
+  lookback_days: 7
+  min_article_hits: 2          # 直近記事での出現回数の下限
+  max_auto_boost: 40           # auto_boost の上限件数
+  require_trend_or_performance: true  # トレンド or 実績KWと交差したものだけ自動採用
+  demote_after_days: 14        # この日数タッチされなければ auto_boost から外す候補

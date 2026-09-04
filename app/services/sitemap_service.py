@@ -24,38 +24,23 @@ _STATIC_URLS = [
 ]
 _CATEGORY_SLUGS = ["ai", "tech", "science", "world", "social", "sports", "entertainment"]
 
-_HIGH_INTENT_KEYWORDS = (
-    "AI",
-    "生成AI",
-    "人工知能",
-    "ChatGPT",
-    "OpenAI",
-    "Gemini",
-    "Claude",
-    "LLM",
-    "論文",
-    "研究",
-    "arXiv",
-    "Nature",
-    "Science",
-    "機械学習",
-    "深層学習",
-    "半導体",
-    "量子",
-    "医療",
-    "気候",
-    "エネルギー",
-    "規制",
-)
-_LOW_INTENT_KEYWORDS = (
-    "占い",
-    "ランキング",
-    "熱愛",
-    "不倫",
-    "ゴシップ",
-    "速報",
-    "試合結果",
-)
+
+def _high_intent_keywords() -> tuple[str, ...]:
+    try:
+        from app.services.seo_keywords_config import get_sitemap_high_intent
+
+        return get_sitemap_high_intent()
+    except Exception:
+        return ("AI", "論文", "研究")
+
+
+def _low_intent_keywords() -> tuple[str, ...]:
+    try:
+        from app.services.seo_keywords_config import get_sitemap_low_intent
+
+        return get_sitemap_low_intent()
+    except Exception:
+        return ("占い", "ゴシップ")
 
 
 def _setting_int(name: str, default: int, min_value: int, max_value: int) -> int:
@@ -100,14 +85,33 @@ def _article_lastmod(article, today: str) -> str:
     return today
 
 
-def _article_url_path(article) -> str:
-    try:
-        from app.routers.news import article_url_path
+def _slugify_title(title: str, max_len: int = 55) -> str:
+    import re as _re
 
-        return article_url_path(article)
-    except Exception:
+    s = (title or "").strip()
+    s = _re.sub(
+        r'[「」『』【】〈〉《》\[\]{}()（）<>""\'\'`！!？?。、，,．\.。:;：；・＊*＋+＝=＆&＠@＃#｜|＼\\／/]',
+        "",
+        s,
+    )
+    s = _re.sub(r"[\s\u3000　]+", "-", s)
+    s = _re.sub(r"-+", "-", s).strip("-")
+    return s[:max_len] if s else ""
+
+
+def _article_url_path(article) -> str:
+    """記事URLパス（routers.news への依存なし）。"""
+    if isinstance(article, dict):
+        article_id = str(article.get("id") or "")
+        title = str(article.get("title") or "")
+    else:
         article_id = getattr(article, "id", "") or ""
-        return f"/topic/{article_id}"
+        title = getattr(article, "title", "") or ""
+    slug = _slugify_title(title)
+    if slug:
+        suffix = article_id[-6:] if len(article_id) >= 6 else article_id
+        return f"/topic/{slug}-{suffix}" if suffix else f"/topic/{slug}"
+    return f"/topic/{article_id}"
 
 
 def _article_text(article) -> str:
@@ -131,13 +135,13 @@ def _article_score(article) -> int:
         score += 2
     if len(summary) >= 120:
         score += 3
-    if any(keyword in haystack for keyword in _HIGH_INTENT_KEYWORDS):
+    if any(keyword in haystack for keyword in _high_intent_keywords()):
         score += 5
     if "研究" in category or "論文" in category:
         score += 4
     if "テクノロジ" in category or "科学" in category:
         score += 2
-    if any(keyword in haystack for keyword in _LOW_INTENT_KEYWORDS):
+    if any(keyword in haystack for keyword in _low_intent_keywords()):
         score -= 6
     return score
 

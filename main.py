@@ -189,6 +189,18 @@ def _scheduled_collect_metrics():
         logger.warning("メトリクス収集でエラー: %s", e)
 
 
+def _scheduled_seo_optimize():
+    """SEO監視・auto_boost 更新（1日2回）。"""
+    try:
+        from app.services.seo_optimizer import run_seo_optimize
+
+        logger.info("SEO最適化ジョブ 開始")
+        summary = run_seo_optimize(force=False)
+        logger.info("SEO最適化ジョブ 完了: %s", summary)
+    except Exception as e:
+        logger.warning("SEO最適化ジョブでエラー: %s", e)
+
+
 def _seed_if_needed():
     """キャッシュが少ないときだけRSS取得→記事化。"""
     from app.services.explanation_cache import get_cached_article_ids
@@ -383,6 +395,31 @@ async def lifespan(app: FastAPI):
             id="collect_metrics",
         )
         logger.info("統計メトリクス収集: 毎週月曜 0:00 JST に設定")
+        # SEO監視・自動ブースト更新（記事ジョブの合間）
+        scheduler.add_job(
+            _scheduled_seo_optimize,
+            CronTrigger(hour=9, minute=15, timezone=JST),
+            id="seo_optimize_0915",
+        )
+        scheduler.add_job(
+            _scheduled_seo_optimize,
+            CronTrigger(hour=21, minute=15, timezone=JST),
+            id="seo_optimize_2115",
+        )
+        logger.info("SEO最適化: 9:15 / 21:15 JST に設定")
+    # RSS無効環境でも sitemap ヘルス確認のため SEO ジョブは動かす
+    else:
+        scheduler.add_job(
+            _scheduled_seo_optimize,
+            CronTrigger(hour=9, minute=15, timezone=JST),
+            id="seo_optimize_0915",
+        )
+        scheduler.add_job(
+            _scheduled_seo_optimize,
+            CronTrigger(hour=21, minute=15, timezone=JST),
+            id="seo_optimize_2115",
+        )
+        logger.info("SEO最適化（RSS無効環境）: 9:15 / 21:15 JST")
     scheduler.start()
     # 起動直後のメモリをログ（Render 512MB 制限の確認用）
     try:
@@ -413,8 +450,13 @@ try:
     if not _session_key:
         _session_key = (getattr(settings, "ADMIN_SECRET", "") or "").strip() or "dev-secret-change-me"
     app.add_middleware(SessionMiddleware, secret_key=_session_key, session_cookie="newsite_admin")
-except Exception:
-    pass
+except Exception as e:
+    logger.error(
+        "SessionMiddleware を有効化できません（管理画面が 500 になります）: %s: %s。"
+        " itsdangerous が入っているか requirements.txt を確認してください。",
+        type(e).__name__,
+        e,
+    )
 
 from app.middleware.markdown_for_agents import MarkdownForAgentsMiddleware
 
