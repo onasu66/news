@@ -2788,6 +2788,31 @@ async def api_refresh_news():
     return {"status": "ok", "message": msg}
 
 
+def _session_get(request: Request, key: str, default=None):
+    """SessionMiddleware 未導入時でも 500 にしない。"""
+    try:
+        return request.session.get(key, default)
+    except Exception as e:
+        logger.warning("session get 失敗 (%s): %s", key, e)
+        return default
+
+
+def _session_set(request: Request, key: str, value) -> bool:
+    try:
+        request.session[key] = value
+        return True
+    except Exception as e:
+        logger.warning("session set 失敗 (%s): %s", key, e)
+        return False
+
+
+def _session_pop(request: Request, key: str) -> None:
+    try:
+        request.session.pop(key, None)
+    except Exception as e:
+        logger.warning("session pop 失敗 (%s): %s", key, e)
+
+
 def _is_admin(request: Request, x_admin_secret: str | None = Header(None, alias="X-Admin-Secret")) -> bool:
     """セッションまたは X-Admin-Secret ヘッダで管理者か判定"""
     admin = (getattr(settings, "ADMIN_SECRET", "") or "").strip()
@@ -2795,11 +2820,7 @@ def _is_admin(request: Request, x_admin_secret: str | None = Header(None, alias=
         return False
     if x_admin_secret and x_admin_secret.strip() == admin:
         return True
-    try:
-        return request.session.get("admin") is True
-    except Exception as e:
-        logger.warning("管理判定: セッション読み取り失敗（Cookie 破損や鍵不一致の可能性）: %s", e)
-        return False
+    return _session_get(request, "admin") is True
 
 
 def _is_cache_refresh_notify_authorized(request: Request, x_admin_secret: str | None) -> bool:
@@ -2817,27 +2838,35 @@ async def admin_login_page(request: Request):
     """管理者ログインフォーム表示"""
     if not getattr(settings, "ADMIN_SECRET", ""):
         return templates.TemplateResponse("admin_login.html", {"request": request, "error": "管理機能は無効です（ADMIN_SECRET 未設定）"})
-    if request.session.get("admin"):
+    if _session_get(request, "admin"):
         return RedirectResponse(url="/admin", status_code=302)
     err = "シークレットが正しくありません" if request.query_params.get("error") == "invalid" else None
     return templates.TemplateResponse("admin_login.html", {"request": request, "error": err})
 
 
-@router.post("/admin/login", response_class=RedirectResponse)
+@router.post("/admin/login", response_class=HTMLResponse)
 async def admin_login_submit(request: Request, secret: str = Form(...)):
     """管理者ログイン処理"""
     if not getattr(settings, "ADMIN_SECRET", ""):
         raise HTTPException(status_code=403, detail="管理機能は無効です")
     if secret.strip() != settings.ADMIN_SECRET:
         return RedirectResponse(url="/admin/login?error=invalid", status_code=302)
-    request.session["admin"] = True
+    if not _session_set(request, "admin", True):
+        return templates.TemplateResponse(
+            "admin_login.html",
+            {
+                "request": request,
+                "error": "セッションを開始できません（itsdangerous 未インストールの可能性）。デプロイログを確認してください。",
+            },
+            status_code=500,
+        )
     return RedirectResponse(url="/admin", status_code=302)
 
 
 @router.get("/admin/logout", response_class=RedirectResponse)
 async def admin_logout(request: Request):
     """管理者ログアウト"""
-    request.session.pop("admin", None)
+    _session_pop(request, "admin")
     return RedirectResponse(url="/", status_code=302)
 
 
@@ -2846,7 +2875,7 @@ async def admin_manual_article_page(request: Request):
     """手動記事追加フォーム（管理者のみ）"""
     if not getattr(settings, "ADMIN_SECRET", ""):
         raise HTTPException(status_code=403, detail="管理機能は無効です")
-    if not request.session.get("admin"):
+    if not _session_get(request, "admin"):
         return RedirectResponse(url="/admin/login", status_code=302)
     return templates.TemplateResponse("admin_manual_article.html", {"request": request})
 
@@ -2856,7 +2885,7 @@ async def admin_seo_page(request: Request):
     """SEO監視・キーワードダッシュボード（管理者のみ）"""
     if not getattr(settings, "ADMIN_SECRET", ""):
         raise HTTPException(status_code=403, detail="管理機能は無効です")
-    if not request.session.get("admin"):
+    if not _session_get(request, "admin"):
         return RedirectResponse(url="/admin/login", status_code=302)
     from app.services.seo_optimizer import get_seo_dashboard_payload
 

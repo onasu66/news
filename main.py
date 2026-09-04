@@ -443,6 +443,7 @@ app = FastAPI(
 
 try:
     from app.config import settings
+    import itsdangerous  # noqa: F401  — SessionMiddleware に必須（無いと管理画面が壊れる）
     from starlette.middleware.sessions import SessionMiddleware
 
     # セッション Cookie 署名鍵。未設定なら ADMIN_SECRET（前後空白除去）を使用。鍵を固定したい場合は SESSION_SECRET を Render に設定。
@@ -450,10 +451,11 @@ try:
     if not _session_key:
         _session_key = (getattr(settings, "ADMIN_SECRET", "") or "").strip() or "dev-secret-change-me"
     app.add_middleware(SessionMiddleware, secret_key=_session_key, session_cookie="newsite_admin")
+    logger.info("SessionMiddleware 有効（管理画面ログイン用）")
 except Exception as e:
     logger.error(
-        "SessionMiddleware を有効化できません（管理画面が 500 になります）: %s: %s。"
-        " itsdangerous が入っているか requirements.txt を確認してください。",
+        "SessionMiddleware を有効化できません（管理画面が壊れます）: %s: %s。"
+        " requirements に itsdangerous があるか、Render で Clear build cache して再デプロイしてください。",
         type(e).__name__,
         e,
     )
