@@ -53,6 +53,12 @@ def _question_words() -> list[str]:
     return get_question_words()
 
 
+def _topical_focus() -> dict:
+    from app.services.seo_keywords_config import get_topical_focus
+
+    return get_topical_focus()
+
+
 # 後方互換: 古い import 向け（起動時スナップショット。動的更新は _high_value_keywords() を使う）
 try:
     from app.services.seo_keywords_config import get_target_high_value
@@ -130,10 +136,19 @@ def lightweight_filter(
     if len(text.strip()) < MIN_CONTENT_LENGTH:
         return False
 
-    if trend_keywords and _trend_token_match(text, trend_keywords) >= 2:
-        return True
-
     high_value = _high_value_keywords()
+    focus = _topical_focus()
+    topical_required = bool(focus.get("enabled")) and category not in (
+        focus.get("exempt_categories") or set()
+    )
+    on_topic = any(kw in text for kw in high_value)
+
+    # トレンド一致は「狙いの範囲内での救済」。看板と無関係な話題まで
+    # 通してしまうと、トレンド経由で一般ニュースが素通りしてしまう。
+    if trend_keywords and _trend_token_match(text, trend_keywords) >= 2:
+        if not topical_required or on_topic:
+            return True
+
     if category != "研究・論文":
         if _low_value_title_patterns().search(title):
             if not any(kw in text for kw in high_value) and seo_potential_score(title, summary, category) < 14:
@@ -141,6 +156,14 @@ def lightweight_filter(
         if category in _low_value_categories():
             if not any(kw in text for kw in high_value) and seo_potential_score(title, summary, category) < 16:
                 return False
+
+    # サイトの看板（AI・研究）と無関係な一般ニュースを弾く。
+    # 以前はここが無く、低価値カテゴリ以外は素通りしていたため、
+    # 台風・花火大会・企業人事のような記事が量産されていた。
+    if topical_required and not on_topic:
+        threshold = focus.get("min_score_without_match") or 0
+        if threshold <= 0 or seo_potential_score(title, summary, category) < threshold:
+            return False
     return True
 
 

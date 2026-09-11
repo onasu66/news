@@ -44,6 +44,13 @@ _DEFAULTS: dict[str, Any] = {
         "require_trend_or_performance": True,
         "demote_after_days": 14,
     },
+    # 一般ニュースに「サイトの看板（AI・研究）との一致」を要求するかどうか。
+    # 無効にすると従来どおり、低価値カテゴリ以外は素通りする。
+    "topical_focus": {
+        "enabled": True,
+        "exempt_categories": ["研究・論文"],
+        "min_score_without_match": 0,
+    },
 }
 
 
@@ -75,7 +82,7 @@ def load_seo_config() -> dict[str, Any]:
             if key not in raw:
                 continue
             val = raw[key]
-            if key == "optimizer" and isinstance(val, dict) and isinstance(default, dict):
+            if key in ("optimizer", "topical_focus") and isinstance(val, dict) and isinstance(default, dict):
                 merged = dict(default)
                 merged.update(val)
                 data[key] = merged
@@ -159,6 +166,25 @@ def get_site_meta_keywords() -> str:
     cfg = load_seo_config()
     kws = [str(x).strip() for x in (cfg.get("site_meta_keywords") or []) if str(x).strip()]
     return ",".join(kws)
+
+
+def get_topical_focus() -> dict[str, Any]:
+    """一般ニュースに狙いKWとの一致を要求する設定。
+
+    enabled=True のとき、exempt_categories 以外の記事は
+    「狙いKWを含む」か「min_score_without_match 以上のSEOスコア」でなければ弾く。
+    min_score_without_match=0 は「KW不一致なら常に弾く」を意味する。
+    """
+    cfg = load_seo_config()
+    tf = cfg.get("topical_focus") or {}
+    if not isinstance(tf, dict):
+        tf = {}
+    base = dict(_DEFAULTS["topical_focus"])
+    base.update(tf)
+    base["exempt_categories"] = {
+        str(x).strip() for x in (base.get("exempt_categories") or []) if str(x).strip()
+    }
+    return base
 
 
 def get_optimizer_settings() -> dict[str, Any]:
