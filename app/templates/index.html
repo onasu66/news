@@ -4,7 +4,15 @@
 {% block meta_keywords %}<meta name="keywords" content="AIニュース,AI最新ニュース,生成AIニュース,ChatGPTニュース,OpenAIニュース,GeminiAIニュース,LLMニュース,AIニュースまとめ,人工知能最新情報,AI最新情報,テクノロジーニュース,テクノロジー最新情報,AI最新動向,AI規制ニュース,国内外ニュースAI解説,国際ニュースAI解説,ニュース解説AI,科学ニュース解説,人工知能ニュース日本語,知リポAI">{% endblock %}
 {% block meta_extra %}
     {# キーワード付きURLは重複になりやすいので正規URLへ統一 + noindex 対策 #}
-    <link rel="canonical" href="{{ site_url }}/news">
+    {# 2ページ目以降は自己参照 canonical にする。1ページ目に集約すると
+       そのページの記事リンクが評価されず、古い記事が辿られなくなる。 #}
+    <link rel="canonical" href="{{ site_url }}/news{% if pagination and pagination.page > 1 %}?page={{ pagination.page }}{% endif %}">
+    {% if pagination and pagination.has_prev %}
+    <link rel="prev" href="{{ site_url }}/news{% if pagination.page > 2 %}?page={{ pagination.page - 1 }}{% endif %}">
+    {% endif %}
+    {% if pagination and pagination.has_next %}
+    <link rel="next" href="{{ site_url }}/news?page={{ pagination.page + 1 }}">
+    {% endif %}
     {% if search_keyword %}
     <meta name="robots" content="noindex,follow">
     {% endif %}
@@ -156,6 +164,34 @@
         <div id="infinite-end" class="infinite-end" style="display:none;">
             <p>すべての記事を表示しました</p>
         </div>
+
+        {# クローラ用のページ送り。無限スクロールは JS で「もっと読む」だけなので、
+           クローラは2ページ目以降に到達できない。実リンクを常にHTMLへ出す。 #}
+        {% if pagination and pagination.total_pages > 1 %}
+        <nav class="pager" aria-label="記事一覧のページ送り">
+            {% if pagination.has_prev %}
+            <a class="pager-link" rel="prev" href="/news{% if pagination.page > 2 %}?page={{ pagination.page - 1 }}{% endif %}">← 前のページ</a>
+            {% endif %}
+            <ol class="pager-list">
+                {% for p in range(1, pagination.total_pages + 1) %}
+                {% if p == 1 or p == pagination.total_pages or (p >= pagination.page - 2 and p <= pagination.page + 2) %}
+                <li>
+                    {% if p == pagination.page %}
+                    <span class="pager-link is-current" aria-current="page">{{ p }}</span>
+                    {% else %}
+                    <a class="pager-link" href="/news{% if p > 1 %}?page={{ p }}{% endif %}">{{ p }}</a>
+                    {% endif %}
+                </li>
+                {% elif p == pagination.page - 3 or p == pagination.page + 3 %}
+                <li><span class="pager-gap">…</span></li>
+                {% endif %}
+                {% endfor %}
+            </ol>
+            {% if pagination.has_next %}
+            <a class="pager-link" rel="next" href="/news?page={{ pagination.page + 1 }}">次のページ →</a>
+            {% endif %}
+        </nav>
+        {% endif %}
     </div>
 
     <aside class="sidebar">

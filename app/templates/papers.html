@@ -142,6 +142,34 @@
         <div id="papers-end" class="infinite-end" style="display:none;">
             <p>すべての論文を表示しました</p>
         </div>
+
+        {# クローラ用のページ送り。無限スクロールだけだと2ページ目以降へ辿れない。
+           page>1 は noindex,follow なので、リンクは辿られるがインデックスはされない。 #}
+        {% if pagination and pagination.total_pages > 1 %}
+        <nav class="pager" aria-label="論文一覧のページ送り">
+            {% if pagination.has_prev %}
+            <a class="pager-link" rel="prev" href="/{% if pagination.page > 2 %}?page={{ pagination.page - 1 }}{% endif %}">← 前のページ</a>
+            {% endif %}
+            <ol class="pager-list">
+                {% for p in range(1, pagination.total_pages + 1) %}
+                {% if p == 1 or p == pagination.total_pages or (p >= pagination.page - 2 and p <= pagination.page + 2) %}
+                <li>
+                    {% if p == pagination.page %}
+                    <span class="pager-link is-current" aria-current="page">{{ p }}</span>
+                    {% else %}
+                    <a class="pager-link" href="/{% if p > 1 %}?page={{ p }}{% endif %}">{{ p }}</a>
+                    {% endif %}
+                </li>
+                {% elif p == pagination.page - 3 or p == pagination.page + 3 %}
+                <li><span class="pager-gap">…</span></li>
+                {% endif %}
+                {% endfor %}
+            </ol>
+            {% if pagination.has_next %}
+            <a class="pager-link" rel="next" href="/?page={{ pagination.page + 1 }}">次のページ →</a>
+            {% endif %}
+        </nav>
+        {% endif %}
         {% endif %}
 
     </div>

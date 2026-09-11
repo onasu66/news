@@ -4,9 +4,12 @@
 
 **サイト: https://tiripo-ai.site**
 
-- AI論文・研究解説: https://tiripo-ai.site/ai
+- AI論文・研究解説: https://tiripo-ai.site/topics/ai
+- テクノロジーニュース: https://tiripo-ai.site/topics/tech
 - ニュース一覧: https://tiripo-ai.site/news
+- いま注目のトピック: https://tiripo-ai.site/trend
 - 解説キャラクター一覧: https://tiripo-ai.site/personas
+- 推し偉人AIに投票: https://tiripo-ai.site/ai
 
 ## 特徴
 

@@ -3902,6 +3902,50 @@ body::after {
     font-size: 0.9rem;
 }
 
+/* ===== PAGER（クローラが辿れる実リンクのページ送り） ===== */
+.pager {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    gap: 0.4rem;
+    padding: 1.5rem 1rem 2.5rem;
+}
+.pager-list {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.3rem;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+.pager-link {
+    display: inline-block;
+    min-width: 2.25rem;
+    padding: 0.4rem 0.65rem;
+    border: 1px solid var(--color-border, #d7dde3);
+    border-radius: 6px;
+    color: var(--color-text, #23303c);
+    font-size: 0.9rem;
+    text-align: center;
+    text-decoration: none;
+}
+.pager-link:hover {
+    border-color: var(--color-accent, #2b6cb0);
+    color: var(--color-accent, #2b6cb0);
+}
+.pager-link.is-current {
+    background: var(--color-accent, #2b6cb0);
+    border-color: var(--color-accent, #2b6cb0);
+    color: #fff;
+    font-weight: 700;
+}
+.pager-gap {
+    padding: 0 0.2rem;
+    color: var(--color-text-muted, #7a8896);
+}
+
 /* ===== SIDEBAR ===== */
 .sidebar {
     position: sticky;
