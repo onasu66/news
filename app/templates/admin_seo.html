@@ -7,7 +7,7 @@
 <div class="admin-manual-wrap admin-seo-wrap">
     <h1>SEO監視・キーワード</h1>
     <p class="admin-desc">
-        狙いKW（YAML）・自動ブースト・Search Console実績の貼り付けをここで確認・操作できます。
+        Search Console の実績（順位・表示・クリック）と、狙いKW（YAML）・自動ブーストをここで確認・操作できます。
         記事本文の自動リライトはしません。新記事は最適化ジョブ（1日2回／手動実行）で候補→条件付きで auto_boost に入ります。
     </p>
     <p class="admin-nav-links">
@@ -26,6 +26,117 @@
         <button type="button" class="admin-seo-btn" id="btn-run-seo">今すぐ最適化を実行</button>
         <span id="run-status" class="admin-seo-status"></span>
     </section>
+
+    <section class="admin-seo-section">
+        <h2>Search Console 連携</h2>
+        {% if seo.gsc.configured %}
+        <p class="admin-desc">
+            プロパティ: <code>{{ seo.gsc.site_url }}</code>
+            {% if seo.gsc.service_account_email %}<br>サービスアカウント: <code>{{ seo.gsc.service_account_email }}</code>{% endif %}
+            <br>最終同期: <strong>{{ seo.gsc_last_sync_at or '未同期' }}</strong>
+            ／ 履歴: <strong>{{ seo.rank_history_days }}</strong> 日分
+        </p>
+        {% else %}
+        <p class="admin-seo-warn">
+            未設定です。{{ seo.gsc.error or '認証情報を確認してください。' }}<br>
+            環境変数 <code>GSC_SERVICE_ACCOUNT_JSON</code>（または <code>GSC_SERVICE_ACCOUNT_FILE</code>）と
+            <code>GSC_SITE_URL</code> を設定してください。設定するまでは下の「実績キーワード貼り付け」で代用できます。
+        </p>
+        {% endif %}
+        <button type="button" class="admin-seo-btn" id="btn-gsc-sync">GSCから取得</button>
+        <button type="button" class="admin-seo-btn" id="btn-gsc-check">接続確認</button>
+        <span id="gsc-status" class="admin-seo-status"></span>
+    </section>
+
+    {% if seo.totals_series %}
+    <section class="admin-seo-section">
+        <h2>推移</h2>
+        <div class="admin-seo-tiles" id="seo-tiles"></div>
+        <div class="admin-seo-charts">
+            <figure class="admin-seo-chart">
+                <figcaption>クリック数 / 表示回数</figcaption>
+                <div id="chart-traffic"></div>
+            </figure>
+            <figure class="admin-seo-chart">
+                <figcaption>平均掲載順位（上が良い）</figcaption>
+                <div id="chart-position"></div>
+            </figure>
+        </div>
+    </section>
+    {% endif %}
+
+    <section class="admin-seo-section">
+        <h2>おすすめキーワード（改善機会）</h2>
+        <p class="admin-desc">
+            優先度 = 表示回数 × {{ '%.0f'|format((seo.opportunity_summary.ctr_target or 0.25) * 100) }}% − 現在のクリック数。
+            「1位への近さ」ではなく「取り逃しているクリック数」で並べています。
+            {% if seo.opportunity_summary.total_potential %}
+            <br>この一覧の合計ポテンシャル: <strong>約 {{ seo.opportunity_summary.total_potential|round|int }} クリック/期間</strong>
+            {% endif %}
+        </p>
+        {% if seo.opportunities %}
+        <div class="admin-seo-filters">
+            <button type="button" class="admin-seo-chip is-on" data-filter="all">すべて</button>
+            {% for key, label in (seo.opportunity_summary.labels or {}).items() %}
+            {% if (seo.opportunity_summary.counts or {}).get(key) %}
+            <button type="button" class="admin-seo-chip" data-filter="{{ key }}">{{ label }} ({{ seo.opportunity_summary.counts[key] }})</button>
+            {% endif %}
+            {% endfor %}
+        </div>
+        <table class="admin-seo-table admin-seo-opps">
+            <thead>
+                <tr>
+                    <th>キーワード</th><th>順位</th><th>推移</th>
+                    <th>表示</th><th>クリック</th><th>CTR</th>
+                    <th>ポテンシャル</th><th>区分</th><th>操作</th>
+                </tr>
+            </thead>
+            <tbody>
+            {% set max_potential = seo.opportunities[0].potential or 1 %}
+            {% for o in seo.opportunities %}
+            <tr data-category="{{ o.category }}">
+                <td class="admin-seo-q">{{ o.query }}</td>
+                <td>{{ o.position }}</td>
+                <td>
+                    {% if o.delta is none %}<span class="admin-seo-flat">—</span>
+                    {% elif o.delta < 0 %}<span class="admin-seo-up">▲ {{ (-o.delta)|round(1) }}</span>
+                    {% elif o.delta > 0 %}<span class="admin-seo-down">▼ {{ o.delta|round(1) }}</span>
+                    {% else %}<span class="admin-seo-flat">±0</span>{% endif %}
+                </td>
+                <td>{{ o.impressions }}</td>
+                <td>{{ o.clicks }}</td>
+                <td>{{ o.ctr }}%</td>
+                <td class="admin-seo-potential">
+                    <span class="admin-seo-bar-track">
+                        <span class="admin-seo-bar" style="width: {{ ((o.potential / max_potential) * 100)|round|int }}%"></span>
+                    </span>
+                    <span class="admin-seo-bar-val">{{ o.potential|round|int }}</span>
+                </td>
+                <td><span class="admin-seo-badge admin-seo-badge--{{ o.category }}">{{ o.label }}</span></td>
+                <td>
+                    {% if not o.known %}
+                    <button type="button" class="admin-seo-mini" data-promote="{{ o.query|e }}">狙いKWに追加</button>
+                    {% endif %}
+                    <button type="button" class="admin-seo-mini" data-block="{{ o.query|e }}">除外</button>
+                </td>
+            </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <p class="admin-desc">
+            まだ算出できていません。GSC から取得するか、下の欄に Search Console のデータを貼り付けてください。
+            表示回数が {{ seo.opportunity_summary.min_impressions or 10 }} 回未満の語は母数が小さいため除外しています。
+        </p>
+        {% endif %}
+    </section>
+
+    {% if seo.tracked_series %}
+    <section class="admin-seo-section">
+        <h2>注目キーワードの順位推移</h2>
+        <div class="admin-seo-sparks" id="seo-sparks"></div>
+    </section>
+    {% endif %}
 
     <section class="admin-seo-section">
         <h2>固定の狙いキーワード（YAML）</h2>
@@ -149,6 +260,47 @@
 .admin-seo-health { line-height: 1.7; }
 #perf-text { width: 100%; font-family: ui-monospace, monospace; font-size: 0.85rem; }
 .admin-nav-links { margin-bottom: 1rem; }
+
+.admin-seo-warn { background: #fff5e6; border-left: 3px solid #e8a13a; padding: 0.6rem 0.8rem; font-size: 0.88rem; line-height: 1.6; }
+
+/* サマリタイル */
+.admin-seo-tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 0.6rem; margin-bottom: 1rem; }
+.admin-seo-tile { background: #f7f9fb; border: 1px solid #e3e9ef; border-radius: 6px; padding: 0.7rem 0.8rem; }
+.admin-seo-tile-label { font-size: 0.75rem; color: #667; }
+.admin-seo-tile-value { font-size: 1.4rem; font-weight: 700; line-height: 1.3; }
+.admin-seo-tile-delta { font-size: 0.75rem; }
+
+/* グラフ */
+.admin-seo-charts { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 1rem; }
+.admin-seo-chart { margin: 0; }
+.admin-seo-chart figcaption { font-size: 0.8rem; color: #667; margin-bottom: 0.3rem; }
+.admin-seo-chart svg { width: 100%; height: auto; display: block; }
+
+/* 機会リスト */
+.admin-seo-filters { display: flex; flex-wrap: wrap; gap: 0.35rem; margin-bottom: 0.6rem; }
+.admin-seo-chip { font-size: 0.78rem; padding: 0.25rem 0.6rem; border: 1px solid #ccd5dd; background: #fff; border-radius: 999px; cursor: pointer; }
+.admin-seo-chip.is-on { background: #2b6cb0; border-color: #2b6cb0; color: #fff; }
+.admin-seo-opps td { font-size: 0.85rem; }
+.admin-seo-q { max-width: 20rem; word-break: break-word; }
+.admin-seo-potential { white-space: nowrap; }
+.admin-seo-bar-track { display: inline-block; width: 3.5rem; height: 0.55rem; background: #eef2f6; border-radius: 2px; vertical-align: middle; overflow: hidden; }
+.admin-seo-bar { display: block; height: 100%; background: #7aa7d4; border-radius: 2px; min-width: 2px; }
+.admin-seo-bar-val { font-size: 0.78rem; margin-left: 0.35rem; color: #445; }
+.admin-seo-badge { font-size: 0.72rem; padding: 0.12rem 0.4rem; border-radius: 3px; white-space: nowrap; }
+.admin-seo-badge--almost { background: #e6f4ea; color: #1e6b3a; }
+.admin-seo-badge--reach { background: #eaf0fb; color: #2b4f8f; }
+.admin-seo-badge--ctr { background: #fdf0e3; color: #8a5314; }
+.admin-seo-badge--untapped { background: #f3ebfa; color: #5c3a87; }
+.admin-seo-up { color: #1e7a45; font-weight: 600; }
+.admin-seo-down { color: #b03030; font-weight: 600; }
+.admin-seo-flat { color: #999; }
+
+/* スパークライン */
+.admin-seo-sparks { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 0.75rem; }
+.admin-seo-spark { border: 1px solid #e3e9ef; border-radius: 6px; padding: 0.5rem 0.6rem; }
+.admin-seo-spark-head { display: flex; justify-content: space-between; align-items: baseline; gap: 0.5rem; font-size: 0.82rem; margin-bottom: 0.2rem; }
+.admin-seo-spark-q { font-weight: 600; word-break: break-word; }
+.admin-seo-spark svg { width: 100%; height: auto; display: block; }
 </style>
 {% endblock %}
 {% block scripts %}
@@ -185,6 +337,149 @@ document.getElementById('btn-save-perf').addEventListener('click', function() {
     else alert('保存に失敗しました');
   });
 });
+/* ---------- GSC 連携 ---------- */
+(function() {
+  var st = document.getElementById('gsc-status');
+  var sync = document.getElementById('btn-gsc-sync');
+  var check = document.getElementById('btn-gsc-check');
+  if (sync) sync.addEventListener('click', function() {
+    sync.disabled = true;
+    st.textContent = '取得中…';
+    postJson('/api/admin/seo/gsc/sync', { days: 28 }).then(function(res) {
+      sync.disabled = false;
+      if (res.data && res.data.ok) {
+        st.textContent = '取得しました（' + res.data.queries + ' クエリ）';
+        setTimeout(function() { location.reload(); }, 700);
+      } else {
+        st.textContent = 'エラー: ' + ((res.data && res.data.error) || '不明');
+      }
+    }).catch(function() { sync.disabled = false; st.textContent = '通信エラー'; });
+  });
+  if (check) check.addEventListener('click', function() {
+    check.disabled = true;
+    st.textContent = '確認中…';
+    fetch('/api/admin/seo/gsc/check').then(function(r) { return r.json(); }).then(function(d) {
+      check.disabled = false;
+      st.textContent = d.ok
+        ? 'OK: ' + d.site_url + ' にアクセスできます'
+        : 'NG: ' + (d.error || '不明');
+    }).catch(function() { check.disabled = false; st.textContent = '通信エラー'; });
+  });
+})();
+
+/* ---------- グラフ（外部ライブラリなし・インラインSVG） ---------- */
+var SEO_TOTALS = {{ (seo.totals_series or [])|tojson }};
+var SEO_TRACKED = {{ (seo.tracked_series or [])|tojson }};
+
+function esc(s) {
+  return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+function fmt(n) {
+  return Number(n || 0).toLocaleString('ja-JP');
+}
+function pathFor(values, w, h, pad, invert) {
+  var max = Math.max.apply(null, values);
+  var min = Math.min.apply(null, values);
+  if (max === min) { max = min + 1; }
+  var stepX = values.length > 1 ? (w - pad * 2) / (values.length - 1) : 0;
+  return values.map(function(v, i) {
+    var ratio = (v - min) / (max - min);
+    if (invert) ratio = 1 - ratio;      // 順位は小さいほど上
+    var y = h - pad - ratio * (h - pad * 2);
+    return (i === 0 ? 'M' : 'L') + (pad + i * stepX).toFixed(1) + ' ' + y.toFixed(1);
+  }).join(' ');
+}
+function lineChart(series, opts) {
+  var w = 480, h = 160, pad = 12;
+  if (!series.length) return '';
+  var parts = ['<svg viewBox="0 0 ' + w + ' ' + h + '" preserveAspectRatio="none" role="img">'];
+  parts.push('<rect x="0" y="0" width="' + w + '" height="' + h + '" fill="#fbfcfd"/>');
+  opts.lines.forEach(function(line) {
+    var values = series.map(function(d) { return Number(d[line.key] || 0); });
+    var d = pathFor(values, w, h, pad, !!opts.invert);
+    if (line.area) {
+      parts.push('<path d="' + d + ' L ' + (w - pad) + ' ' + (h - pad) + ' L ' + pad + ' ' + (h - pad) + ' Z" fill="' + line.color + '" opacity="0.15"/>');
+    }
+    parts.push('<path d="' + d + '" fill="none" stroke="' + line.color + '" stroke-width="2" stroke-linejoin="round"/>');
+  });
+  parts.push('</svg>');
+  return parts.join('');
+}
+function renderCharts() {
+  if (!SEO_TOTALS.length) return;
+  var last = SEO_TOTALS[SEO_TOTALS.length - 1];
+  var prev = SEO_TOTALS.length > 1 ? SEO_TOTALS[0] : null;
+
+  function delta(key, invert) {
+    if (!prev) return '';
+    var diff = Number(last[key] || 0) - Number(prev[key] || 0);
+    if (!diff) return '<span class="admin-seo-flat">±0</span>';
+    var good = invert ? diff < 0 : diff > 0;
+    var cls = good ? 'admin-seo-up' : 'admin-seo-down';
+    var sign = diff > 0 ? '+' : '';
+    return '<span class="' + cls + '">' + sign + (Math.round(diff * 10) / 10) + '</span>';
+  }
+
+  var tiles = [
+    { label: 'クリック', value: fmt(last.clicks), d: delta('clicks', false) },
+    { label: '表示回数', value: fmt(last.impressions), d: delta('impressions', false) },
+    { label: '平均CTR', value: (last.ctr || 0) + '%', d: delta('ctr', false) },
+    { label: '平均順位', value: (last.position || 0), d: delta('position', true) },
+    { label: '計測日数', value: SEO_TOTALS.length + '日', d: '' }
+  ];
+  document.getElementById('seo-tiles').innerHTML = tiles.map(function(t) {
+    return '<div class="admin-seo-tile">' +
+      '<div class="admin-seo-tile-label">' + esc(t.label) + '</div>' +
+      '<div class="admin-seo-tile-value">' + t.value + '</div>' +
+      '<div class="admin-seo-tile-delta">' + t.d + '</div></div>';
+  }).join('');
+
+  document.getElementById('chart-traffic').innerHTML = lineChart(SEO_TOTALS, {
+    lines: [
+      { key: 'impressions', color: '#7aa7d4', area: true },
+      { key: 'clicks', color: '#2b6cb0' }
+    ]
+  }) + '<div class="admin-seo-tile-label">■ 表示回数（薄）／ ■ クリック（濃）— 各系列を個別スケールで描画</div>';
+
+  document.getElementById('chart-position').innerHTML = lineChart(SEO_TOTALS, {
+    invert: true,
+    lines: [{ key: 'position', color: '#1e7a45', area: true }]
+  });
+}
+function renderSparks() {
+  var box = document.getElementById('seo-sparks');
+  if (!box || !SEO_TRACKED.length) return;
+  box.innerHTML = SEO_TRACKED.map(function(t) {
+    var values = t.points.map(function(p) { return Number(p.position || 0); });
+    var up = t.delta < 0;
+    var cls = t.delta === 0 ? 'admin-seo-flat' : (up ? 'admin-seo-up' : 'admin-seo-down');
+    var arrow = t.delta === 0 ? '±0' : (up ? '▲ ' + (-t.delta) : '▼ ' + t.delta);
+    return '<div class="admin-seo-spark">' +
+      '<div class="admin-seo-spark-head">' +
+        '<span class="admin-seo-spark-q">' + esc(t.query) + '</span>' +
+        '<span>' + t.current + '位 <span class="' + cls + '">' + arrow + '</span></span>' +
+      '</div>' +
+      '<svg viewBox="0 0 200 44" preserveAspectRatio="none" role="img">' +
+        '<path d="' + pathFor(values, 200, 44, 4, true) + '" fill="none" stroke="' +
+          (up ? '#1e7a45' : '#b03030') + '" stroke-width="2"/>' +
+      '</svg></div>';
+  }).join('');
+}
+renderCharts();
+renderSparks();
+
+/* ---------- 機会リストの絞り込み ---------- */
+document.addEventListener('click', function(e) {
+  var filter = e.target && e.target.getAttribute && e.target.getAttribute('data-filter');
+  if (!filter) return;
+  Array.prototype.forEach.call(document.querySelectorAll('[data-filter]'), function(b) {
+    b.classList.toggle('is-on', b === e.target);
+  });
+  Array.prototype.forEach.call(document.querySelectorAll('.admin-seo-opps tbody tr'), function(tr) {
+    tr.style.display = (filter === 'all' || tr.getAttribute('data-category') === filter) ? '' : 'none';
+  });
+});
+
 document.addEventListener('click', function(e) {
   var t = e.target;
   if (!t || !t.getAttribute) return;

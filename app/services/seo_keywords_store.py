@@ -24,13 +24,22 @@ _STATE_ID = "latest"
 _EMPTY: dict[str, Any] = {
     "auto_boost": [],  # [{keyword, hits, sources, updated_at}]
     "promoted": [],  # 手動で固定扱いに昇格した語
-    "performance": [],  # [{query, clicks, impressions, ctr, position}]
+    "performance": [],  # [{query, clicks, impressions, ctr, position}] 最新スナップショット
     "blocked": [],  # auto_boost から除外する語
     "optimization_log": [],  # [{at, action, keyword, detail}]
     "health": {},  # sitemap / indexnow 等
     "last_run_at": None,
     "last_candidates": [],  # 直近ジョブの候補一覧
+    # GSC 由来の追記型スナップショット。順位推移グラフの元データ。
+    # [{date: "YYYY-MM-DD", source, totals: {...}, rows: [{query, clicks, impressions, ctr, position}]}]
+    "rank_history": [],
+    "gsc_last_sync_at": None,
 }
+
+# 履歴の保持件数（1日1スナップショット想定で約3か月）
+_RANK_HISTORY_MAX = 90
+# 1スナップショットに残すクエリ数の上限（ストア肥大の抑制）
+_RANK_HISTORY_ROWS = 200
 
 
 def _now_iso() -> str:
@@ -44,7 +53,15 @@ def _ensure_shape(data: dict[str, Any] | None) -> dict[str, Any]:
     for key in _EMPTY:
         if key in data:
             out[key] = data[key]
-    for list_key in ("auto_boost", "promoted", "performance", "blocked", "optimization_log", "last_candidates"):
+    for list_key in (
+        "auto_boost",
+        "promoted",
+        "performance",
+        "blocked",
+        "optimization_log",
+        "last_candidates",
+        "rank_history",
+    ):
         if not isinstance(out[list_key], list):
             out[list_key] = []
     if not isinstance(out.get("health"), dict):
@@ -366,6 +383,116 @@ def re_split_csv(line: str) -> list[str]:
     return [line]
 
 
+def save_performance_rows(
+    rows: list[dict[str, Any]], *, source: str = "gsc"
+) -> dict[str, Any]:
+    """パース済みの実績行を保存（GSC API 取得用）。"""
+    cleaned: list[dict[str, Any]] = []
+    for r in rows:
+        if not isinstance(r, dict):
+            continue
+        query = str(r.get("query") or "").strip()
+        if not query:
+            continue
+        cleaned.append(
+            {
+                "query": query,
+                "clicks": int(r.get("clicks") or 0),
+                "impressions": int(r.get("impressions") or 0),
+                "ctr": float(r.get("ctr") or 0.0),
+                "position": float(r.get("position") or 0.0),
+            }
+        )
+    cleaned.sort(key=lambda x: x["impressions"], reverse=True)
+
+    state = load_state()
+    state["performance"] = cleaned[:500]
+    if source == "gsc":
+        state["gsc_last_sync_at"] = _now_iso()
+    logs = list(state.get("optimization_log") or [])
+    logs.insert(
+        0,
+        {
+            "at": _now_iso(),
+            "action": "performance_import",
+            "keyword": "",
+            "detail": f"{len(cleaned)} queries ({source})",
+        },
+    )
+    state["optimization_log"] = logs[:200]
+    return save_state(state)
+
+
+def append_rank_snapshot(
+    rows: list[dict[str, Any]],
+    *,
+    totals: dict[str, Any] | None = None,
+    source: str = "gsc",
+    snapshot_date: str | None = None,
+) -> dict[str, Any]:
+    """順位スナップショットを追記。同日は上書き（1日1件）。"""
+    day = snapshot_date or datetime.now(timezone.utc).date().isoformat()
+    trimmed = [
+        {
+            "query": str(r.get("query") or "").strip(),
+            "clicks": int(r.get("clicks") or 0),
+            "impressions": int(r.get("impressions") or 0),
+            "ctr": round(float(r.get("ctr") or 0.0), 2),
+            "position": round(float(r.get("position") or 0.0), 1),
+        }
+        for r in rows
+        if isinstance(r, dict) and str(r.get("query") or "").strip()
+    ]
+    trimmed.sort(key=lambda x: x["impressions"], reverse=True)
+
+    state = load_state()
+    history = [
+        h
+        for h in (state.get("rank_history") or [])
+        if isinstance(h, dict) and h.get("date") != day
+    ]
+    history.append(
+        {
+            "date": day,
+            "source": source,
+            "totals": dict(totals or {}),
+            "rows": trimmed[:_RANK_HISTORY_ROWS],
+            "recorded_at": _now_iso(),
+        }
+    )
+    history.sort(key=lambda h: str(h.get("date") or ""))
+    state["rank_history"] = history[-_RANK_HISTORY_MAX:]
+    return save_state(state)
+
+
+def get_rank_history() -> list[dict[str, Any]]:
+    """日付昇順のスナップショット一覧。"""
+    state = load_state()
+    return [h for h in (state.get("rank_history") or []) if isinstance(h, dict)]
+
+
+def get_query_series(query: str) -> list[dict[str, Any]]:
+    """特定クエリの時系列 [{date, position, clicks, impressions}]。"""
+    key = (query or "").strip().lower()
+    if not key:
+        return []
+    series: list[dict[str, Any]] = []
+    for snap in get_rank_history():
+        for row in snap.get("rows") or []:
+            if str(row.get("query") or "").strip().lower() != key:
+                continue
+            series.append(
+                {
+                    "date": snap.get("date"),
+                    "position": row.get("position"),
+                    "clicks": row.get("clicks"),
+                    "impressions": row.get("impressions"),
+                }
+            )
+            break
+    return series
+
+
 def save_performance_from_paste(text: str) -> dict[str, Any]:
     rows = parse_performance_paste(text)
     state = load_state()
@@ -381,4 +508,8 @@ def save_performance_from_paste(text: str) -> dict[str, Any]:
         },
     )
     state["optimization_log"] = logs[:200]
-    return save_state(state)
+    save_state(state)
+    # 順位付きで貼られた場合は履歴にも残す（API 未設定でもグラフが描けるように）
+    if any(float(r.get("position") or 0) > 0 for r in rows):
+        return append_rank_snapshot(rows, source="paste")
+    return load_state()

@@ -16,5 +16,9 @@ openai>=1.55.0
 apscheduler==3.10.4
 pyyaml>=6.0
 itsdangerous>=2.2.0
+# Search Console API（サービスアカウント認証）。未インストールでも起動は可能で、
+# 連携機能だけが「未設定」表示になる。
+google-auth>=2.23.0
+requests>=2.31.0
 
 # NOTE: Render build時の依存解決のためのダミー更新（実体の依存追加なし）

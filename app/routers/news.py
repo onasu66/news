@@ -2924,6 +2924,44 @@ async def api_admin_seo_run(
     return summary
 
 
+@router.post("/api/admin/seo/gsc/sync")
+async def api_admin_seo_gsc_sync(
+    request: Request,
+    x_admin_secret: str | None = Header(None, alias="X-Admin-Secret"),
+):
+    """Search Console から実績を取得して performance / rank_history を更新。"""
+    if not _is_admin(request, x_admin_secret):
+        raise HTTPException(status_code=403, detail="管理者のみ利用できます")
+    days = 28
+    try:
+        body = await request.json()
+        days = int(body.get("days") or 28)
+    except Exception:
+        pass
+    from app.services.seo_optimizer import run_gsc_sync
+
+    import asyncio
+
+    loop = asyncio.get_event_loop()
+    return await loop.run_in_executor(None, lambda: run_gsc_sync(days=days))
+
+
+@router.get("/api/admin/seo/gsc/check")
+async def api_admin_seo_gsc_check(
+    request: Request,
+    x_admin_secret: str | None = Header(None, alias="X-Admin-Secret"),
+):
+    """認証情報とプロパティへのアクセス可否を確認する。"""
+    if not _is_admin(request, x_admin_secret):
+        raise HTTPException(status_code=403, detail="管理者のみ利用できます")
+    from app.services.gsc_client import check_access
+
+    import asyncio
+
+    loop = asyncio.get_event_loop()
+    return await loop.run_in_executor(None, check_access)
+
+
 @router.post("/api/admin/seo/performance")
 async def api_admin_seo_performance(
     request: Request,

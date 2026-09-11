@@ -266,6 +266,97 @@ def run_seo_optimize(*, force: bool = False) -> dict[str, Any]:
     return summary
 
 
+def run_gsc_sync(*, days: int = 28) -> dict[str, Any]:
+    """Search Console から実績を取得し、performance と rank_history を更新。
+
+    認証未設定でも例外を投げず {"ok": False, "error": ...} を返す。
+    """
+    from app.services.gsc_client import (
+        GscNotConfigured,
+        fetch_query_stats,
+        fetch_totals,
+    )
+    from app.services.seo_keywords_store import (
+        append_rank_snapshot,
+        save_performance_rows,
+    )
+
+    try:
+        rows = fetch_query_stats(days=days, row_limit=500)
+        totals = fetch_totals(days=days)
+    except GscNotConfigured as e:
+        return {"ok": False, "error": str(e), "configured": False}
+    except PermissionError as e:
+        return {"ok": False, "error": str(e), "configured": True}
+    except Exception as e:
+        logger.warning("GSC 同期失敗: %s", e)
+        return {"ok": False, "error": f"{type(e).__name__}: {e}", "configured": True}
+
+    save_performance_rows(rows, source="gsc")
+    append_rank_snapshot(rows, totals=totals, source="gsc")
+
+    return {
+        "ok": True,
+        "configured": True,
+        "queries": len(rows),
+        "totals": totals,
+        "days": days,
+    }
+
+
+def _totals_series() -> list[dict[str, Any]]:
+    """rank_history からサイト全体の推移を取り出す（グラフ用）。"""
+    from app.services.seo_keywords_store import get_rank_history
+
+    series: list[dict[str, Any]] = []
+    for snap in get_rank_history():
+        totals = snap.get("totals") or {}
+        rows = snap.get("rows") or []
+        if totals.get("impressions") is not None:
+            clicks = int(totals.get("clicks") or 0)
+            impressions = int(totals.get("impressions") or 0)
+            position = float(totals.get("position") or 0)
+        else:
+            # 貼り付け由来など totals が無い場合は行から概算する
+            clicks = sum(int(r.get("clicks") or 0) for r in rows)
+            impressions = sum(int(r.get("impressions") or 0) for r in rows)
+            ranked = [float(r.get("position") or 0) for r in rows if float(r.get("position") or 0) > 0]
+            position = round(sum(ranked) / len(ranked), 1) if ranked else 0.0
+        series.append(
+            {
+                "date": snap.get("date"),
+                "clicks": clicks,
+                "impressions": impressions,
+                "position": position,
+                "ctr": round(clicks / impressions * 100, 2) if impressions else 0.0,
+            }
+        )
+    return series
+
+
+def _tracked_series(queries: list[str], *, max_points: int = 30) -> list[dict[str, Any]]:
+    """指定クエリの順位推移（スパークライン用）。"""
+    from app.services.seo_keywords_store import get_query_series
+
+    out: list[dict[str, Any]] = []
+    for q in queries:
+        points = [p for p in get_query_series(q) if (p.get("position") or 0) > 0]
+        if len(points) < 2:
+            continue
+        points = points[-max_points:]
+        first = float(points[0]["position"])
+        last = float(points[-1]["position"])
+        out.append(
+            {
+                "query": q,
+                "points": points,
+                "current": round(last, 1),
+                "delta": round(last - first, 1),
+            }
+        )
+    return out
+
+
 def get_seo_dashboard_payload() -> dict[str, Any]:
     """管理画面用の集約データ。"""
     from app.services.seo_keywords_config import (
@@ -284,8 +375,41 @@ def get_seo_dashboard_payload() -> dict[str, Any]:
         pass
 
     state = load_state()
+
+    # GSC 由来の集計。未設定・データ無しでもダッシュボードは壊さない。
+    try:
+        from app.services.gsc_client import status as gsc_status
+
+        gsc = gsc_status()
+    except Exception as e:
+        logger.debug("GSC status 取得失敗: %s", e)
+        gsc = {"configured": False, "error": str(e), "site_url": ""}
+
+    try:
+        from app.services.seo_opportunities import build_opportunities, summarize
+
+        opportunities = build_opportunities(state.get("performance") or [])
+        opportunity_summary = summarize(opportunities)
+    except Exception as e:
+        logger.warning("機会スコア算出失敗: %s", e)
+        opportunities, opportunity_summary = [], {"counts": {}, "labels": {}, "total_potential": 0}
+
+    try:
+        totals_series = _totals_series()
+        tracked = _tracked_series([o["query"] for o in opportunities[:8]])
+    except Exception as e:
+        logger.warning("推移データ構築失敗: %s", e)
+        totals_series, tracked = [], []
+
     return {
         "yaml_path": str(yaml_path()),
+        "gsc": gsc,
+        "gsc_last_sync_at": state.get("gsc_last_sync_at"),
+        "opportunities": opportunities,
+        "opportunity_summary": opportunity_summary,
+        "totals_series": totals_series,
+        "tracked_series": tracked,
+        "rank_history_days": len(state.get("rank_history") or []),
         "target_high_value": sorted(get_target_high_value()),
         "site_meta_keywords": get_site_meta_keywords(),
         "optimizer": get_optimizer_settings(),
